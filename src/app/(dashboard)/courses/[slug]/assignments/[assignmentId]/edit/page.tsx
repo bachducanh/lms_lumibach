@@ -1,0 +1,59 @@
+import { notFound, redirect } from 'next/navigation';
+import { auth } from '@/auth';
+import { getCourseBySlugAction } from '@/actions/courses';
+import { getAssignmentAction } from '@/actions/assignments';
+import { AssignmentForm } from '@/components/features/assignments/AssignmentForm';
+import { prisma } from '@/lib/db';
+import type { UserRole } from '@prisma/client';
+
+export const metadata = { title: 'Chỉnh sửa bài tập' };
+
+export default async function EditAssignmentPage({
+  params,
+}: { params: Promise<{ slug: string; assignmentId: string }> }) {
+  const { slug, assignmentId } = await params;
+  const session = await auth();
+  const role = session?.user?.role as UserRole;
+
+  const course = await getCourseBySlugAction(slug);
+  if (!course) notFound();
+
+  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  if (!canManage) redirect(`/courses/${slug}/assignments`);
+
+  const assignment = await getAssignmentAction(assignmentId);
+  if (!assignment || assignment.courseId !== course.id) notFound();
+
+  const modules = await prisma.module.findMany({
+    where: { courseId: course.id },
+    orderBy: { position: 'asc' },
+    select: { id: true, name: true },
+  });
+
+  return (
+    <div className="max-w-5xl">
+      <AssignmentForm
+        mode="edit"
+        courseSlug={slug}
+        courseId={course.id}
+        modules={modules}
+        assignment={{
+          id:            assignment.id,
+          title:         assignment.title,
+          instructions:  assignment.instructions,
+          type:          assignment.type,
+          status:        assignment.status,
+          maxScore:      assignment.maxScore,
+          weight:        assignment.weight,
+          availableFrom: assignment.availableFrom,
+          dueDate:       assignment.dueDate,
+          lateDeadline:  assignment.lateDeadline,
+          latePolicy:    assignment.latePolicy,
+          latePenalty:   assignment.latePenalty,
+          allowResubmit: assignment.allowResubmit,
+          maxAttempts:   assignment.maxAttempts,
+        }}
+      />
+    </div>
+  );
+}

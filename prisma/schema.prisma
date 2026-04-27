@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  TA
+  STUDENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+  SUSPENDED
+}
+
+enum ModuleItemType {
+  LESSON
+  ASSIGNMENT
+  QUIZ
+  FILE
+  EXTERNAL_URL
+}
+
+enum CompletionType {
+  VIEW
+  SUBMIT
+  MIN_SCORE
+}
+
+enum AssignmentType {
+  TEXT
+  FILE
+  BOTH
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  LATE
+  GRADED
+  RETURNED
+}
+
+enum LatePolicy {
+  NONE
+  ALLOW
+  DEDUCT
+}
+
+// ============================================================
+// AUTHENTICATION MODELS
+// ============================================================
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  username     String?    @unique
+  passwordHash String
+
+  // Thông tin cá nhân
+  firstName    String
+  lastName     String
+  fullName     String?   // tên đầy đủ kiểu Việt Nam: "Nguyễn Văn A"
+  avatar       String?   // URL ảnh trên MinIO
+  phone        String?
+  dateOfBirth  DateTime?
+
+  // Vai trò và trạng thái
+  role          UserRole   @default(STUDENT)
+  status        UserStatus @default(PENDING)
+  emailVerified DateTime?
+
+  // Metadata
+  lastLoginAt DateTime?
+  loginCount  Int       @default(0)
+  preferences Json?     // theme, language, notifications
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  passwordResets    PasswordReset[]
+  emailTokens       EmailVerificationToken[]
+  auditLogs         AuditLog[]
+  ownedCourses      Course[]           @relation("CourseOwner")
+  enrollments       Enrollment[]
+  taAssignments     TeachingAssistant[]
+
+  @@index([email])
+  @@index([username])
+  @@index([role])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  userRole   String?
+  action     String
+  resource   String?
+  resourceId String?
+  changes    Json?    // before/after state
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// COURSE MODULE
+// ============================================================
+
+model Course {
+  id             String       @id @default(cuid())
+  name           String
+  shortName      String?
+  slug           String       @unique
+  description    String?      @db.Text
+  thumbnail      String?
+  subject        String?
+  gradeLevel     String?
+  status         CourseStatus @default(DRAFT)
+  isPublic       Boolean      @default(false)
+  enrollmentCode String?      @unique
+
+  startDate DateTime?
+  endDate   DateTime?
+  settings  Json?
+
+  ownerId String
+  owner   User   @relation("CourseOwner", fields: [ownerId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  deletedAt   DateTime?
+
+  enrollments        Enrollment[]
+  teachingAssistants TeachingAssistant[]
+  modules            Module[]
+  assignments        Assignment[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Enrollment {
+  id       String           @id @default(cuid())
+  userId   String
+  courseId String
+  status   EnrollmentStatus @default(ACTIVE)
+
+  enrolledAt    DateTime  @default(now())
+  completedAt   DateTime?
+  progress      Float     @default(0)
+  lastAccessAt  DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+}
+
+model TeachingAssistant {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  assignedAt  DateTime @default(now())
+  assignedBy  String?
+  permissions Json?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ============================================================
+// CONTENT MODULE
+// ============================================================
+
+model Module {
+  id          String   @id @default(cuid())
+  courseId    String
+  name        String
+  description String?  @db.Text
+  position    Int
+  isPublished Boolean  @default(false)
+  unlockAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  items  ModuleItem[]
+
+  @@index([courseId])
+  @@index([courseId, position])
+}
+
+model ModuleItem {
+  id          String         @id @default(cuid())
+  moduleId    String
+  type        ModuleItemType
+  position    Int
+  title       String
+  lessonId    String?
+  externalUrl String?
+  isPublished Boolean        @default(false)
+  requireCompletion Boolean  @default(false)
+  completionType    CompletionType @default(VIEW)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignmentId String?
+
+  module      Module      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson      Lesson?     @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  assignment  Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  completions ModuleItemCompletion[]
+
+  @@index([moduleId])
+  @@index([moduleId, position])
+}
+
+model Lesson {
+  id               String   @id @default(cuid())
+  title            String
+  content          String   @db.Text
+  estimatedMinutes Int?
+  createdBy        String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  moduleItems ModuleItem[]
+  attachments LessonAttachment[]
+}
+
+model LessonAttachment {
+  id         String   @id @default(cuid())
+  lessonId   String
+  name       String
+  url        String
+  mimeType   String
+  size       Int
+  uploadedBy String
+
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+}
+
+model ModuleItemCompletion {
+  id           String   @id @default(cuid())
+  userId       String
+  moduleItemId String
+  completedAt  DateTime @default(now())
+
+  moduleItem ModuleItem @relation(fields: [moduleItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleItemId])
+  @@index([userId])
+  @@index([moduleItemId])
+}
+
+// ============================================================
+// ASSIGNMENT MODULE
+// ============================================================
+
+model Assignment {
+  id           String           @id @default(cuid())
+  courseId     String
+  title        String
+  instructions String           @db.Text
+  type         AssignmentType   @default(TEXT)
+  status       AssignmentStatus @default(DRAFT)
+
+  maxScore    Float  @default(100)
+  weight      Float  @default(1)
+
+  availableFrom DateTime?
+  dueDate       DateTime?
+  lateDeadline  DateTime?
+  latePolicy    LatePolicy @default(NONE)
+  latePenalty   Float?
+
+  allowResubmit Boolean @default(false)
+  maxAttempts   Int?
+
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  deletedAt   DateTime?
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleItems ModuleItem[]
+  submissions Submission[]
+
+  @@index([courseId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([deletedAt])
+}
+
+model Submission {
+  id            String           @id @default(cuid())
+  assignmentId  String
+  studentId     String
+  content       String?          @db.Text
+  status        SubmissionStatus @default(DRAFT)
+  attemptNumber Int              @default(1)
+
+  submittedAt DateTime?
+  score       Float?
+  feedback    String?   @db.Text
+  gradedAt    DateTime?
+  gradedBy    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignment Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  files      SubmissionFile[]
+
+  @@unique([assignmentId, studentId, attemptNumber])
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model SubmissionFile {
+  id           String   @id @default(cuid())
+  submissionId String
+  name         String
+  url          String
+  mimeType     String
+  size         Int
+  uploadedBy   String
+  createdAt    DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+}
