@@ -49,115 +49,108 @@
 }
 
 /* ============================================================
-   LIGHT MODE
-   Primary: #050E3C (navy)   Accent: #00C8FF (cyan)   Base: #F4F6FB
+   LIGHT MODE — #2596be as primary
    ============================================================ */
 :root {
-  /* Surface */
-  --background:          oklch(0.965 0.008 254);     /* #F4F6FB — nền xanh rất nhạt */
-  --foreground:          oklch(0.212 0.091 254.3);   /* #050E3C — chữ navy */
+  --background:          oklch(0.965 0.008 254);
+  --foreground:          oklch(0.15 0.035 258);
 
   --card:                oklch(1 0 0);
-  --card-foreground:     oklch(0.212 0.091 254.3);
+  --card-foreground:     oklch(0.15 0.035 258);
 
   --popover:             oklch(1 0 0);
-  --popover-foreground:  oklch(0.212 0.091 254.3);
+  --popover-foreground:  oklch(0.15 0.035 258);
 
-  /* Brand primary — navy #050E3C */
-  --primary:             oklch(0.212 0.091 254.3);
-  --primary-foreground:  oklch(1 0 0);
+  /* Brand primary — #fd085d */
+  --primary:             #fd085d;
+  --primary-foreground:  oklch(0.98 0.005 0);
 
-  /* Secondary */
-  --secondary:           oklch(0.94 0.020 254);
-  --secondary-foreground: oklch(0.212 0.091 254.3);
+  --secondary:           oklch(0.94 0.012 215);
+  --secondary-foreground: oklch(0.15 0.035 258);
 
-  /* Muted */
-  --muted:               oklch(0.94 0.012 254);
-  --muted-foreground:    oklch(0.50 0.07 254);
+  --muted:               oklch(0.94 0.008 254);
+  --muted-foreground:    oklch(0.50 0.04 254);
 
-  /* Accent — cyan tech #00C8FF */
-  --accent:              oklch(0.93 0.030 214);
-  --accent-foreground:   oklch(0.212 0.091 254.3);
+  --accent:              oklch(0.93 0.025 215);
+  --accent-foreground:   oklch(0.15 0.035 258);
 
-  /* Cyan highlight — dùng cho badge, glow */
-  --cyan:                oklch(0.78 0.14 210);
+  --cyan:                oklch(0.72 0.14 210);
 
-  /* Destructive */
   --destructive:         oklch(0.570 0.233 24.4);
 
-  /* Borders & inputs */
-  --border:              oklch(0.89 0.022 254);
-  --input:               oklch(0.89 0.022 254);
-  --ring:                oklch(0.212 0.091 254.3);
+  --border:              oklch(0.88 0.015 254);
+  --input:               oklch(0.88 0.015 254);
+  --ring:                #fd085d;
 
-  /* Radius */
   --radius: 0.5rem;
 
-  /* Charts */
-  --chart-1:  oklch(0.292 0.107 242.8);
-  --chart-2:  oklch(0.570 0.233 24.4);
-  --chart-3:  oklch(0.78  0.14  210);
-  --chart-4:  oklch(0.666 0.229 22.5);
-  --chart-5:  oklch(0.65  0.10  255);
+  --chart-1:  #fd085d;
+  --chart-2:  oklch(0.72 0.14  210);
+  --chart-3:  oklch(0.45 0.15  255);
+  --chart-4:  oklch(0.60 0.18  140);
+  --chart-5:  oklch(0.570 0.233 24.4);
 
-  /* ── Sidebar: nền navy đậm #050E3C ── */
-  --sidebar:                    oklch(0.170 0.080 258);    /* navy sâu hơn chút */
-  --sidebar-foreground:         oklch(0.88  0.020 254);
-  --sidebar-primary:            oklch(0.78  0.14  210);    /* cyan active */
-  --sidebar-primary-foreground: oklch(0.13  0.06  258);    /* chữ navy tối trên cyan */
-  --sidebar-accent:             oklch(0.25  0.085 256);    /* hover bg */
-  --sidebar-accent-foreground:  oklch(1 0 0);
-  --sidebar-border:             oklch(1 0 0 / 8%);
-  --sidebar-ring:               oklch(0.78  0.14  210);
+  /* Sidebar — dark navy (same feel as before) */
+  --sidebar:                    oklch(0.11 0.028 258);
+  --sidebar-foreground:         oklch(0.80 0.015 255);
+  --sidebar-primary:            #fd085d;
+  --sidebar-primary-foreground: oklch(0.98 0.005 0);
+  --sidebar-accent:             oklch(0.18 0.038 257);
+  --sidebar-accent-foreground:  oklch(0.92 0.010 255);
+  --sidebar-border:             oklch(1 0 0 / 7%);
+  --sidebar-ring:               #fd085d;
 }
 
 /* ============================================================
-   DARK MODE — deep space navy
+   DARK MODE — Unity dark + #fd085d primary
+   Surfaces: #0f1923 → #16213e → #1e2d4a
    ============================================================ */
 .dark {
-  --background:          oklch(0.12 0.050 258);
-  --foreground:          oklch(0.95 0.010 255);
+  --background:          oklch(0.13 0.025 258);
+  --foreground:          oklch(0.92 0.010 255);
 
-  --card:                oklch(0.17 0.065 257);
-  --card-foreground:     oklch(0.95 0.010 255);
+  --card:                oklch(0.175 0.035 258);
+  --card-foreground:     oklch(0.92 0.010 255);
 
-  --popover:             oklch(0.17 0.065 257);
-  --popover-foreground:  oklch(0.95 0.010 255);
+  --popover:             oklch(0.15 0.030 258);
+  --popover-foreground:  oklch(0.92 0.010 255);
 
-  --primary:             oklch(0.78 0.14 210);       /* cyan sáng làm primary trong dark */
-  --primary-foreground:  oklch(0.12 0.050 258);
+  /* Brand primary — #fd085d (vivid in dark) */
+  --primary:             #fd085d;
+  --primary-foreground:  oklch(0.98 0.005 0);
 
-  --secondary:           oklch(0.23 0.075 257);
-  --secondary-foreground: oklch(0.95 0.010 255);
+  --secondary:           oklch(0.22 0.040 257);
+  --secondary-foreground: oklch(0.88 0.012 255);
 
-  --muted:               oklch(0.21 0.055 257);
-  --muted-foreground:    oklch(0.62 0.045 255);
+  --muted:               oklch(0.20 0.030 257);
+  --muted-foreground:    oklch(0.58 0.030 255);
 
-  --accent:              oklch(0.27 0.095 257);
-  --accent-foreground:   oklch(0.95 0.010 255);
+  --accent:              oklch(0.24 0.045 257);
+  --accent-foreground:   oklch(0.82 0.12 210);
 
-  --cyan:                oklch(0.78 0.14 210);
+  --cyan:                oklch(0.80 0.13 210);
 
-  --destructive:         oklch(0.666 0.229 22.5);
+  --destructive:         oklch(0.62 0.22 25);
 
-  --border:              oklch(1 0 0 / 9%);
-  --input:               oklch(1 0 0 / 13%);
-  --ring:                oklch(0.78 0.14 210);
+  --border:              oklch(1 0 0 / 8%);
+  --input:               oklch(1 0 0 / 10%);
+  --ring:                #fd085d;
 
-  --chart-1:  oklch(0.78  0.14  210);
-  --chart-2:  oklch(0.666 0.229 22.5);
-  --chart-3:  oklch(0.55  0.15  255);
-  --chart-4:  oklch(0.570 0.233 24.4);
-  --chart-5:  oklch(0.70  0.10  255);
+  --chart-1:  #fd085d;
+  --chart-2:  oklch(0.80 0.13  210);
+  --chart-3:  oklch(0.55 0.15  255);
+  --chart-4:  oklch(0.70 0.18  140);
+  --chart-5:  oklch(0.66 0.22  25);
 
-  --sidebar:                    oklch(0.15 0.060 258);
-  --sidebar-foreground:         oklch(0.88 0.018 255);
-  --sidebar-primary:            oklch(0.78 0.14  210);
-  --sidebar-primary-foreground: oklch(0.12 0.050 258);
-  --sidebar-accent:             oklch(0.22 0.072 257);
-  --sidebar-accent-foreground:  oklch(0.95 0.010 255);
-  --sidebar-border:             oklch(1 0 0 / 8%);
-  --sidebar-ring:               oklch(0.78 0.14  210);
+  /* Sidebar */
+  --sidebar:                    oklch(0.09 0.020 258);
+  --sidebar-foreground:         oklch(0.78 0.015 255);
+  --sidebar-primary:            #fd085d;
+  --sidebar-primary-foreground: oklch(0.98 0.005 0);
+  --sidebar-accent:             oklch(0.16 0.035 257);
+  --sidebar-accent-foreground:  oklch(0.92 0.010 255);
+  --sidebar-border:             oklch(1 0 0 / 6%);
+  --sidebar-ring:               #fd085d;
 }
 
 @layer base {
@@ -171,13 +164,21 @@
   html {
     @apply font-sans;
   }
-  /* Native select — đảm bảo đúng màu ở cả light & dark mode */
   select {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground cursor-pointer;
     color-scheme: light dark;
   }
   .dark select {
     @apply bg-card;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  label {
+    cursor: pointer;
   }
 }
 
@@ -239,17 +240,15 @@
   text-align: left;
 }
 
-/* Selected cell highlight */
 .ProseMirror .selectedCell::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: oklch(0.212 0.091 254.3 / 0.08);
+  background: rgb(253 8 93 / 10%);
   pointer-events: none;
   z-index: 2;
 }
 
-/* Column resize handle */
 .ProseMirror .column-resize-handle {
   position: absolute;
   right: -2px;
@@ -260,7 +259,6 @@
   pointer-events: none;
 }
 
-/* YouTube embed responsive */
 .ProseMirror .youtube-embed,
 .ProseMirror iframe[src*="youtube"] {
   width: 100%;
@@ -268,4 +266,31 @@
   border-radius: 0.5rem;
   aspect-ratio: 16 / 9;
   height: auto;
+}
+
+/* ── Unity Learn — Custom animations ──────────────────────── */
+@keyframes unity-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(253 8 93 / 40%); }
+  50%       { box-shadow: 0 0 0 8px rgb(253 8 93 / 0%); }
+}
+
+@keyframes unity-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.unity-glow-hover:hover {
+  box-shadow: 0 0 24px rgb(253 8 93 / 25%),
+              0 4px 16px oklch(0 0 0 / 0.4);
+}
+
+.unity-card-hover {
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.unity-card-hover:hover {
+  border-color: rgb(253 8 93 / 50%);
+  box-shadow: 0 0 0 1px rgb(253 8 93 / 15%),
+              0 8px 32px oklch(0 0 0 / 0.35);
+  transform: translateY(-2px);
 }

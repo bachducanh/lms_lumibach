@@ -23,7 +23,6 @@ export default async function CoursePeoplePage({
   const session = await auth();
   const role = session?.user?.role as UserRole;
 
-  // Chỉ TEACHER/ADMIN/TA mới truy cập được trang này
   if (!hasMinRole(role, 'TA')) redirect(`/courses/${slug}`);
 
   const course = await getCourseBySlugAction(slug);
@@ -33,7 +32,9 @@ export default async function CoursePeoplePage({
     role === 'ADMIN' ||
     (role === 'TEACHER' && course.ownerId === session?.user?.id);
 
-  const { enrollments, tas } = await listCourseMembersAction(course.id);
+  const { enrollments, tas, coTeachers } = await listCourseMembersAction(course.id);
+
+  const totalTeachers = 1 + coTeachers.length;
 
   return (
     <div className="space-y-4 max-w-2xl">
@@ -45,7 +46,9 @@ export default async function CoursePeoplePage({
 
       <div>
         <h1 className="text-2xl font-bold">Thành viên</h1>
-        <p className="text-sm text-muted-foreground">{enrollments.length} học sinh · {tas.length} trợ giảng</p>
+        <p className="text-sm text-muted-foreground">
+          {totalTeachers} giáo viên · {tas.length} trợ giảng · {enrollments.length} học sinh
+        </p>
       </div>
 
       <PeoplePanel
@@ -53,7 +56,17 @@ export default async function CoursePeoplePage({
         canManage={canManage}
         enrollments={enrollments}
         tas={tas}
+        coTeachers={coTeachers}
+        courseOwner={{
+          id: course.owner.id,
+          fullName: course.owner.fullName ?? null,
+          firstName: course.owner.firstName,
+          lastName: course.owner.lastName,
+          email: course.owner.email,
+          avatar: course.owner.avatar ?? null,
+        }}
       />
+
     </div>
   );
 }

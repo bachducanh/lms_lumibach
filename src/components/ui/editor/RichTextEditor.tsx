@@ -25,6 +25,8 @@ import {
   ChevronDown, Upload, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePromptDialog } from '@/hooks/usePromptDialog';
+import { toast } from 'sonner';
 
 // ─── Preset palettes ──────────────────────────────────────────────────────────
 
@@ -294,7 +296,6 @@ type Props = {
   placeholder?: string;
   className?: string;
   editable?: boolean;
-  stickyToolbarOffset?: number;
   compact?: boolean;
 };
 
@@ -304,11 +305,11 @@ export function RichTextEditor({
   placeholder = 'Nhập nội dung...',
   className,
   editable = true,
-  stickyToolbarOffset = 0,
   compact = false,
 }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [promptDialog, openPrompt] = usePromptDialog();
 
   const editor = useEditor({
     extensions: [
@@ -351,21 +352,21 @@ export function RichTextEditor({
   const ed = editor;
   const wordCount = countWords(ed.getHTML());
 
-  function handleSetLink() {
+  async function handleSetLink() {
     const prev = ed.getAttributes('link').href as string | undefined;
-    const url = window.prompt('URL liên kết:', prev ?? '');
+    const url = await openPrompt('URL liên kết', prev ?? '');
     if (url === null) return;
     if (!url) { ed.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
     ed.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }
 
-  function handleInsertYoutube() {
-    const url = window.prompt('URL video YouTube:');
+  async function handleInsertYoutube() {
+    const url = await openPrompt('URL video YouTube');
     if (url) ed.commands.setYoutubeVideo({ src: url });
   }
 
-  function handleInsertImage() {
-    const url = window.prompt('URL hình ảnh:');
+  async function handleInsertImage() {
+    const url = await openPrompt('URL hình ảnh');
     if (url) ed.chain().focus().setImage({ src: url }).run();
   }
 
@@ -377,9 +378,9 @@ export function RichTextEditor({
       const res = await fetch('/api/upload/editor-image', { method: 'POST', body: fd });
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) ed.chain().focus().setImage({ src: data.url }).run();
-      else alert(data.error ?? 'Upload thất bại');
+      else toast.error(data.error ?? 'Upload thất bại');
     } catch {
-      alert('Upload thất bại');
+      toast.error('Upload thất bại');
     } finally {
       setImageUploading(false);
     }
@@ -396,11 +397,9 @@ export function RichTextEditor({
 
   return (
     <div className={cn('rounded-xl border border-input bg-background shadow-sm', className)}>
+      {promptDialog}
       {/* ── Toolbar ─────────────────────────────────────────── */}
-      <div
-        className="sticky z-10 rounded-t-xl border-b border-input bg-background"
-        style={{ top: stickyToolbarOffset }}
-      >
+      <div className="rounded-t-xl border-b border-input bg-background">
         {/* Row 1 */}
         <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5">
           {/* Undo / Redo */}

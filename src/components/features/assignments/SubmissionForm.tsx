@@ -8,22 +8,17 @@ import { toast } from 'sonner';
 import { submitAssignmentAction } from '@/actions/assignments';
 
 type Props = {
-  assignmentId:  string;
+  assignmentId:   string;
   assignmentType: string;
-  draftContent:  string;
-  hasSubmitted:  boolean;
-  allowResubmit: boolean;
+  initialContent: string;
+  isEdit:         boolean;
 };
 
-export function SubmissionForm({ assignmentId, assignmentType, draftContent, hasSubmitted, allowResubmit }: Props) {
+export function SubmissionForm({ assignmentId, assignmentType, initialContent, isEdit }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [content, setContent] = useState(draftContent);
+  const [content, setContent] = useState(initialContent);
   const showEditor = assignmentType === 'TEXT' || assignmentType === 'BOTH';
-
-  if (hasSubmitted && !allowResubmit) {
-    return <p className="text-sm text-muted-foreground italic">Bạn đã nộp bài. Bài tập này không cho phép nộp lại.</p>;
-  }
 
   function handleAction(asDraft: boolean) {
     startTransition(async () => {
@@ -39,12 +34,6 @@ export function SubmissionForm({ assignmentId, assignmentType, draftContent, has
 
   return (
     <div className="space-y-4">
-      {hasSubmitted && allowResubmit && (
-        <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
-          Bạn đang nộp lại bài. Bài nộp trước sẽ được thay thế.
-        </p>
-      )}
-
       {showEditor && (
         <RichTextEditor
           content={content}
@@ -64,7 +53,7 @@ export function SubmissionForm({ assignmentId, assignmentType, draftContent, has
           Lưu nháp
         </Button>
         <Button type="button" size="sm" onClick={() => handleAction(false)} disabled={pending}>
-          {pending ? 'Đang nộp...' : hasSubmitted ? 'Nộp lại' : 'Nộp bài'}
+          {pending ? 'Đang lưu...' : isEdit ? 'Cập nhật bài nộp' : 'Nộp bài'}
         </Button>
       </div>
     </div>

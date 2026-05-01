@@ -40,35 +40,48 @@ export type CourseTA = {
   assignedAt: Date;
 };
 
+export type CourseCoTeacher = {
+  id: string;
+  userId: string;
+  user: {
+    id: string;
+    fullName: string | null;
+    firstName: string;
+    lastName: string;
+    email: string;
+    avatar: string | null;
+  };
+  assignedAt: Date;
+};
+
 // ── List members ──────────────────────────────────────────────
 
+const userSelect = { id: true, fullName: true, firstName: true, lastName: true, email: true, avatar: true };
+
 export async function listCourseMembersAction(courseId: string) {
-  const [enrollments, tas] = await Promise.all([
+  const [enrollments, tas, coTeachers] = await Promise.all([
     prisma.enrollment.findMany({
       where: { courseId },
       orderBy: { enrolledAt: 'asc' },
-      select: {
-        id: true,
-        userId: true,
-        status: true,
-        progress: true,
-        enrolledAt: true,
-        user: { select: { id: true, fullName: true, firstName: true, lastName: true, email: true, avatar: true } },
-      },
+      select: { id: true, userId: true, status: true, progress: true, enrolledAt: true, user: { select: userSelect } },
     }),
     prisma.teachingAssistant.findMany({
       where: { courseId },
       orderBy: { assignedAt: 'asc' },
-      select: {
-        id: true,
-        userId: true,
-        assignedAt: true,
-        user: { select: { id: true, fullName: true, firstName: true, lastName: true, email: true, avatar: true } },
-      },
+      select: { id: true, userId: true, assignedAt: true, user: { select: userSelect } },
+    }),
+    prisma.courseCoTeacher.findMany({
+      where: { courseId },
+      orderBy: { assignedAt: 'asc' },
+      select: { id: true, userId: true, assignedAt: true, user: { select: userSelect } },
     }),
   ]);
 
-  return { enrollments: enrollments as CourseMember[], tas: tas as CourseTA[] };
+  return {
+    enrollments: enrollments as CourseMember[],
+    tas: tas as CourseTA[],
+    coTeachers: coTeachers as CourseCoTeacher[],
+  };
 }
 
 // ── Enroll single user (by email) ─────────────────────────────
@@ -264,6 +277,70 @@ export async function removeTAAction(taId: string): Promise<ActionResult> {
   await prisma.teachingAssistant.delete({ where: { id: taId } });
 
   return { success: true, message: 'Đã xoá trợ giảng.' };
+}
+
+// ── Add co-teacher ────────────────────────────────────────────
+
+export async function addCoTeacherAction(courseId: string, email: string): Promise<ActionResult> {
+  const session = await auth();
+  const role = session?.user?.role as UserRole;
+  if (!hasMinRole(role, 'TEACHER')) return { success: false, error: 'Không có quyền.' };
+
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return { success: false, error: 'Khoá học không tồn tại.' };
+  if (role !== 'ADMIN' && course.ownerId !== session!.user!.id) {
+    return { success: false, error: 'Bạn không có quyền quản lý khoá học này.' };
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+  if (!user) return { success: false, error: `Không tìm thấy tài khoản: ${email}` };
+  if (user.role !== 'TEACHER' && user.role !== 'ADMIN') {
+    return { success: false, error: 'Chỉ có thể thêm tài khoản có vai trò Giáo viên.' };
+  }
+  if (user.id === course.ownerId) {
+    return { success: false, error: 'Người dùng này đã là chủ khoá học.' };
+  }
+
+  const existing = await prisma.courseCoTeacher.findUnique({
+    where: { userId_courseId: { userId: user.id, courseId } },
+  });
+  if (existing) return { success: false, error: `${email} đã là giáo viên của khoá học này.` };
+
+  await prisma.courseCoTeacher.create({
+    data: { userId: user.id, courseId, assignedBy: session!.user!.id },
+  });
+
+  await auditLog({
+    action: 'ADD_CO_TEACHER',
+    userId: session!.user!.id,
+    userRole: role,
+    resource: 'CourseCoTeacher',
+    resourceId: courseId,
+    changes: { email, courseId },
+  });
+
+  return { success: true, message: `Đã thêm ${email} làm giáo viên khoá học.` };
+}
+
+// ── Remove co-teacher ─────────────────────────────────────────
+
+export async function removeCoTeacherAction(coTeacherId: string): Promise<ActionResult> {
+  const session = await auth();
+  const role = session?.user?.role as UserRole;
+  if (!hasMinRole(role, 'TEACHER')) return { success: false, error: 'Không có quyền.' };
+
+  const coTeacher = await prisma.courseCoTeacher.findUnique({
+    where: { id: coTeacherId },
+    include: { course: true },
+  });
+  if (!coTeacher) return { success: false, error: 'Không tìm thấy.' };
+  if (role !== 'ADMIN' && coTeacher.course.ownerId !== session!.user!.id) {
+    return { success: false, error: 'Bạn không có quyền.' };
+  }
+
+  await prisma.courseCoTeacher.delete({ where: { id: coTeacherId } });
+
+  return { success: true, message: 'Đã xoá giáo viên khỏi khoá học.' };
 }
 
 // ── Generate enrollment code ───────────────────────────────────

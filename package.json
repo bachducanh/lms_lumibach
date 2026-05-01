@@ -10,7 +10,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "worker:dev": "tsx watch src/workers/code-execution.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -26,7 +27,11 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.2",
+    "@monaco-editor/react": "^4.7.0",
     "@prisma/client": "^5",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",
@@ -49,8 +54,11 @@
     "@tiptap/react": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
     "bcryptjs": "^3.0.3",
+    "bullmq": "^5.76.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
+    "emmet-monaco-es": "^5.7.0",
     "lucide-react": "^1.11.0",
     "minio": "^8.0.7",
     "next": "16.2.4",

@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${exo2.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-        <ThemeProvider defaultTheme="light">
+        <ThemeProvider defaultTheme="dark">
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>

@@ -5,8 +5,11 @@ import { getCourseBySlugAction } from '@/actions/courses';
 import { getAssignmentAction, getSubmissionsAction } from '@/actions/assignments';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { GradeForm } from '@/components/features/assignments/GradeForm';
+import { RubricGrader } from '@/components/features/assignments/RubricGrader';
+import { DeleteSubmissionButton } from '@/components/features/assignments/DeleteSubmissionButton';
+import { getRubricAction, getSubmissionRubricGradesAction } from '@/actions/rubric';
 import { hasMinRole } from '@/lib/permissions';
-import { ChevronLeft, CheckCircle2, Clock, Circle } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Clock, Circle, CalendarCheck } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@prisma/client';
@@ -37,22 +40,27 @@ export default async function SubmissionsPage({
   const assignment = await getAssignmentAction(assignmentId);
   if (!assignment || assignment.courseId !== course.id) notFound();
 
-  const submissions = await getSubmissionsAction(assignmentId);
-
-  // Load enrolled students
-  const enrollments = await prisma.enrollment.findMany({
-    where: { courseId: course.id, status: 'ACTIVE' },
-    select: { userId: true, user: { select: { id: true, fullName: true, email: true } } },
-    orderBy: { user: { fullName: 'asc' } },
-  });
+  const [submissions, rubric, enrollments] = await Promise.all([
+    getSubmissionsAction(assignmentId),
+    getRubricAction(assignmentId),
+    prisma.enrollment.findMany({
+      where: { courseId: course.id, status: 'ACTIVE' },
+      select: { userId: true, user: { select: { id: true, fullName: true, email: true } } },
+      orderBy: { user: { fullName: 'asc' } },
+    }),
+  ]);
 
   const submissionMap = new Map(submissions.map((s) => [s.studentId, s]));
-
-  const selectedSub = selectedStudentId ? submissionMap.get(selectedStudentId) ?? null : null;
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const selectedSub   = selectedStudentId ? (submissionMap.get(selectedStudentId) ?? null) : null;
+  const canManage     = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
 
   const submittedCount = submissions.filter((s) => s.status !== 'DRAFT').length;
   const gradedCount    = submissions.filter((s) => s.status === 'GRADED').length;
+
+  // Fetch rubric grades for the currently selected submission (server-side)
+  const rubricGrades = selectedSub && rubric
+    ? await getSubmissionRubricGradesAction(selectedSub.id)
+    : [];
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] max-w-7xl overflow-hidden -mx-6 -mb-6 -mt-6">
@@ -115,16 +123,27 @@ export default async function SubmissionsPage({
           <div className="max-w-3xl space-y-6">
             {/* Submission meta */}
             <div className="flex items-center justify-between">
-              <div>
+              <div className="space-y-1.5">
                 {(() => {
                   const u = enrollments.find((e) => e.userId === selectedStudentId)?.user;
                   return <p className="font-semibold">{u?.fullName ?? u?.email}</p>;
                 })()}
-                <p className="text-xs text-muted-foreground">
-                  Nộp lúc {formatDate(selectedSub.submittedAt)}
-                  {selectedSub.status === 'LATE' && <span className="ml-2 text-orange-500">(trễ)</span>}
-                </p>
+                <div className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium',
+                  selectedSub.status === 'LATE'
+                    ? 'bg-orange-500/10 text-orange-700 dark:text-orange-400'
+                    : 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+                )}>
+                  <CalendarCheck className="h-3.5 w-3.5" />
+                  {selectedSub.status === 'LATE' ? 'Nộp trễ' : 'Đã nộp'} lúc {formatDate(selectedSub.submittedAt)}
+                </div>
               </div>
+              {canManage && (
+                <DeleteSubmissionButton
+                  submissionId={selectedSub.id}
+                  studentName={enrollments.find((e) => e.userId === selectedStudentId)?.user.fullName ?? 'học sinh'}
+                />
+              )}
             </div>
 
             {/* Content */}
@@ -147,7 +166,17 @@ export default async function SubmissionsPage({
               </div>
             )}
 
-            {/* Grade form */}
+            {/* Rubric grader (if rubric exists) */}
+            {canManage && rubric && rubric.criteria.length > 0 && (
+              <RubricGrader
+                submissionId={selectedSub.id}
+                maxScore={assignment.maxScore}
+                rubric={rubric}
+                initialGrades={rubricGrades}
+              />
+            )}
+
+            {/* Manual grade form (always shown alongside or without rubric) */}
             {canManage && (
               <GradeForm
                 submissionId={selectedSub.id}

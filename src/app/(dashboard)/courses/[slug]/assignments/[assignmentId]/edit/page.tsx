@@ -3,6 +3,8 @@ import { auth } from '@/auth';
 import { getCourseBySlugAction } from '@/actions/courses';
 import { getAssignmentAction } from '@/actions/assignments';
 import { AssignmentForm } from '@/components/features/assignments/AssignmentForm';
+import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
+import { getRubricAction } from '@/actions/rubric';
 import { prisma } from '@/lib/db';
 import type { UserRole } from '@prisma/client';
 
@@ -24,11 +26,14 @@ export default async function EditAssignmentPage({
   const assignment = await getAssignmentAction(assignmentId);
   if (!assignment || assignment.courseId !== course.id) notFound();
 
-  const modules = await prisma.module.findMany({
-    where: { courseId: course.id },
-    orderBy: { position: 'asc' },
-    select: { id: true, name: true },
-  });
+  const [modules, rubric] = await Promise.all([
+    prisma.module.findMany({
+      where: { courseId: course.id },
+      orderBy: { position: 'asc' },
+      select: { id: true, name: true },
+    }),
+    getRubricAction(assignment.id),
+  ]);
 
   return (
     <div className="max-w-5xl">
@@ -54,6 +59,14 @@ export default async function EditAssignmentPage({
           maxAttempts:   assignment.maxAttempts,
         }}
       />
+
+      <div className="mt-10 border-t border-border pt-8">
+        <RubricBuilder
+          assignmentId={assignment.id}
+          maxScore={assignment.maxScore}
+          initialRubric={rubric}
+        />
+      </div>
     </div>
   );
 }

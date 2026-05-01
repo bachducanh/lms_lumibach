@@ -5,6 +5,7 @@ import { FileUploader } from '@/components/ui/uploader/FileUploader';
 import { toast } from 'sonner';
 import { FileText, FileImage, FileArchive, File, Trash2, Download } from 'lucide-react';
 import type { AttachmentDTO } from '@/actions/attachments';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -28,6 +29,7 @@ type Props = {
 export function LessonAttachments({ lessonId, initialAttachments, canEdit }: Props) {
   const [attachments, setAttachments] = useState<AttachmentDTO[]>(initialAttachments);
   const [, startTransition] = useTransition();
+  const [confirmDialog, openConfirm] = useConfirmDialog();
 
   function handleUploadSuccess(data: unknown) {
     const result = data as { attachment?: AttachmentDTO };
@@ -37,8 +39,9 @@ export function LessonAttachments({ lessonId, initialAttachments, canEdit }: Pro
     }
   }
 
-  function handleDelete(id: string) {
-    if (!confirm('Xoá file đính kèm này?')) return;
+  async function handleDelete(id: string) {
+    const ok = await openConfirm('Xoá file đính kèm này?');
+    if (!ok) return;
     startTransition(async () => {
       const res = await fetch(`/api/upload/lesson-file?id=${id}`, { method: 'DELETE' });
       const json = await res.json() as { success?: boolean; error?: string };
@@ -53,6 +56,7 @@ export function LessonAttachments({ lessonId, initialAttachments, canEdit }: Pro
 
   return (
     <div className="space-y-3">
+      {confirmDialog}
       {attachments.length === 0 && !canEdit && (
         <p className="text-sm text-muted-foreground">Không có file đính kèm.</p>
       )}

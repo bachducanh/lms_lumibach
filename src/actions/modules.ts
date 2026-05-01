@@ -111,6 +111,21 @@ export async function reorderModulesAction(courseId: string, orderedIds: string[
   return { success: true, message: 'Đã cập nhật thứ tự.' };
 }
 
+export async function reorderModuleItemsAction(moduleId: string, orderedIds: string[]): Promise<ActionResult> {
+  const mod = await prisma.module.findUnique({ where: { id: moduleId } });
+  if (!mod) return { success: false, error: 'Chương không tồn tại.' };
+
+  const { error } = await assertCanManageCourse(mod.courseId);
+  if (error) return { success: false, error };
+
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      prisma.moduleItem.update({ where: { id }, data: { position: index } }),
+    ),
+  );
+  return { success: true, message: 'Đã cập nhật thứ tự.' };
+}
+
 // ── Module items ──────────────────────────────────────────────
 
 export async function addModuleItemAction(
@@ -174,11 +189,53 @@ export async function listModulesAction(courseId: string, publishedOnly = false)
     orderBy: { position: 'asc' },
     include: {
       items: {
+        where: publishedOnly ? { isPublished: true } : undefined,
         orderBy: { position: 'asc' },
-        include: { lesson: { select: { id: true, title: true, estimatedMinutes: true } } },
+        include: {
+          lesson:       { select: { id: true, title: true, estimatedMinutes: true } },
+          quiz:         { select: { id: true, title: true, status: true } } as any,
+          codeExercise: { select: { id: true, title: true, language: true, status: true } },
+        },
       },
     },
   });
 }
 
 export type ModuleWithItems = Awaited<ReturnType<typeof listModulesAction>>[number];
+
+// ── Course-wide nav items (for prev/next across all activities) ─
+
+export async function listCourseNavItemsAction(courseId: string, publishedOnly = false) {
+  return prisma.moduleItem.findMany({
+    where: {
+      module: {
+        courseId,
+        ...(publishedOnly ? { isPublished: true } : {}),
+      },
+      type: { in: ['LESSON', 'ASSIGNMENT', 'QUIZ', 'CODE_EXERCISE'] },
+      ...(publishedOnly ? { isPublished: true } : {}),
+      // Với học sinh: chỉ hiện CODE_EXERCISE đã PUBLISHED (tránh click vào bị 404)
+      ...(publishedOnly ? {
+        OR: [
+          { type: { not: 'CODE_EXERCISE' } },
+          { type: 'CODE_EXERCISE', codeExercise: { status: 'PUBLISHED' } },
+        ],
+      } : {}),
+    },
+    orderBy: [
+      { module: { position: 'asc' } },
+      { position: 'asc' },
+    ],
+    select: {
+      id: true,
+      title: true,
+      type: true,
+      lessonId: true,
+      assignmentId: true,
+      quizId: true,
+      codeExerciseId: true,
+    },
+  });
+}
+
+export type CourseNavItem = Awaited<ReturnType<typeof listCourseNavItemsAction>>[number];

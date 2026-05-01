@@ -13,8 +13,8 @@ import { cn } from '@/lib/utils';
 type Module = { id: string; name: string };
 
 type Props =
-  | { mode: 'create'; courseSlug: string; courseId: string; modules: Module[]; assignment?: undefined }
-  | { mode: 'edit';   courseSlug: string; courseId: string; modules: Module[]; assignment: {
+  | { mode: 'create'; courseSlug: string; courseId: string; modules: Module[]; defaultModuleId?: string; assignment?: undefined }
+  | { mode: 'edit';   courseSlug: string; courseId: string; modules: Module[]; defaultModuleId?: string; assignment: {
       id: string; title: string; instructions: string;
       type: string; status: string; maxScore: number; weight: number;
       availableFrom: Date | null; dueDate: Date | null; lateDeadline: Date | null;
@@ -30,7 +30,7 @@ function toInputDate(d: Date | null | undefined): string {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 }
 
-export function AssignmentForm({ mode, courseSlug, courseId, modules, assignment }: Props) {
+export function AssignmentForm({ mode, courseSlug, courseId, modules, defaultModuleId, assignment }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -46,7 +46,7 @@ export function AssignmentForm({ mode, courseSlug, courseId, modules, assignment
   const [latePenalty,   setLatePenalty]   = useState(String(assignment?.latePenalty ?? ''));
   const [allowResubmit, setAllowResubmit] = useState(assignment?.allowResubmit ?? false);
   const [maxAttempts,   setMaxAttempts]   = useState(String(assignment?.maxAttempts ?? ''));
-  const [moduleId,      setModuleId]      = useState('');
+  const [moduleId,      setModuleId]      = useState(defaultModuleId ?? '');
 
   function buildValues(): AssignmentFormValues {
     return {
@@ -90,7 +90,7 @@ export function AssignmentForm({ mode, courseSlug, courseId, modules, assignment
   return (
     <div>
       {/* ── Sticky bar ──────────────────────────────────────── */}
-      <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur">
+      <div className="-mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b bg-muted/20 px-4">
         <Link href={cancelHref} className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ChevronLeft className="h-4 w-4" />
           {mode === 'create' ? 'Bài tập' : 'Chi tiết'}
@@ -136,6 +136,7 @@ export function AssignmentForm({ mode, courseSlug, courseId, modules, assignment
               <option value="TEXT">Văn bản</option>
               <option value="FILE">File đính kèm</option>
               <option value="BOTH">Văn bản + File</option>
+              <option value="CODE">Lập trình (code)</option>
             </select>
           </div>
 
@@ -245,7 +246,6 @@ export function AssignmentForm({ mode, courseSlug, courseId, modules, assignment
             content={instructions}
             onChange={setInstructions}
             placeholder="Nhập đề bài, hướng dẫn nộp bài..."
-            stickyToolbarOffset={56}
             compact
           />
         </div>

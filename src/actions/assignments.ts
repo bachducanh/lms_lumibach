@@ -46,6 +46,31 @@ async function canManageCourse(userId: string, role: UserRole, courseId: string)
 
 // ── Assignment CRUD ───────────────────────────────────────────
 
+export type AssignmentListItem = {
+  id:           string;
+  title:        string;
+  type:         string;
+  status:       string;
+  maxScore:     number;
+  dueDate:      Date | null;
+  availableFrom: Date | null;
+  allowResubmit: boolean;
+  latePolicy:   string;
+  _count:       { submissions: number };
+};
+
+export type AssignmentModuleGroup = {
+  moduleId:    string;
+  moduleName:  string;
+  position:    number;
+  assignments: AssignmentListItem[];
+};
+
+export type AssignmentsByModule = {
+  groups:     AssignmentModuleGroup[];
+  standalone: AssignmentListItem[];
+};
+
 export async function getAssignmentsAction(courseId: string) {
   const session = await auth();
   if (!session?.user?.id) return [];
@@ -67,6 +92,62 @@ export async function getAssignmentsAction(courseId: string) {
       _count: { select: { submissions: true } },
     },
   });
+}
+
+export async function listAssignmentsByModuleAction(courseId: string): Promise<AssignmentsByModule> {
+  const session = await auth();
+  if (!session?.user?.id) return { groups: [], standalone: [] };
+
+  const role    = session.user.role as UserRole;
+  const isStaff = hasMinRole(role, 'TA');
+  const statusFilter = isStaff ? {} : { status: 'PUBLISHED' as const };
+
+  const modules = await prisma.module.findMany({
+    where:   { courseId, ...(isStaff ? {} : { isPublished: true }) },
+    orderBy: { position: 'asc' },
+    select:  {
+      id: true, name: true, position: true,
+      items: {
+        where:   { type: 'ASSIGNMENT', ...(isStaff ? {} : { isPublished: true }) },
+        orderBy: { position: 'asc' },
+        select:  { assignmentId: true },
+      },
+    },
+  });
+
+  const allAssignments = await prisma.assignment.findMany({
+    where:   { courseId, deletedAt: null, ...statusFilter },
+    orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
+    select: {
+      id: true, title: true, type: true, status: true,
+      maxScore: true, dueDate: true, availableFrom: true,
+      allowResubmit: true, latePolicy: true,
+      _count: { select: { submissions: true } },
+    },
+  });
+
+  const assignmentMap = new Map(allAssignments.map((a) => [a.id, a as AssignmentListItem]));
+  const linkedIds = new Set<string>();
+  const groups: AssignmentModuleGroup[] = [];
+
+  for (const mod of modules) {
+    const modAssignments: AssignmentListItem[] = [];
+    for (const item of mod.items) {
+      if (item.assignmentId && assignmentMap.has(item.assignmentId)) {
+        modAssignments.push(assignmentMap.get(item.assignmentId)!);
+        linkedIds.add(item.assignmentId);
+      }
+    }
+    if (modAssignments.length > 0) {
+      groups.push({ moduleId: mod.id, moduleName: mod.name, position: mod.position, assignments: modAssignments });
+    }
+  }
+
+  // Standalone chỉ trả về cho staff; học sinh chỉ thấy items được gán vào module published
+  const standalone = isStaff
+    ? allAssignments.filter((a) => !linkedIds.has(a.id)) as AssignmentListItem[]
+    : [];
+  return { groups, standalone };
 }
 
 export async function getAssignmentAction(assignmentId: string) {
@@ -207,18 +288,37 @@ export async function getMySubmissionAction(assignmentId: string) {
   });
 }
 
+export async function getMySubmissionsAction(assignmentId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  return prisma.submission.findMany({
+    where: { assignmentId, studentId: session.user.id },
+    orderBy: { attemptNumber: 'desc' },
+    include: { files: { select: { id: true, name: true, url: true, size: true } } },
+  });
+}
+
 export async function getSubmissionsAction(assignmentId: string) {
   const session = await auth();
   if (!session?.user?.id) return [];
   const role = session.user.role as UserRole;
   if (!hasMinRole(role, 'TA')) return [];
 
-  return prisma.submission.findMany({
+  const all = await prisma.submission.findMany({
     where: { assignmentId },
-    orderBy: { submittedAt: 'desc' },
+    orderBy: [{ studentId: 'asc' }, { attemptNumber: 'desc' }],
     include: {
       files: { select: { id: true, name: true, url: true, mimeType: true, size: true } },
     },
+  });
+
+  // Keep only the latest attempt per student (first seen since ordered desc)
+  const seen = new Set<string>();
+  return all.filter((s) => {
+    if (seen.has(s.studentId)) return false;
+    seen.add(s.studentId);
+    return true;
   });
 }
 
@@ -232,64 +332,84 @@ export async function submitAssignmentAction(
 
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId, deletedAt: null },
-    select: { status: true, allowResubmit: true, maxAttempts: true, dueDate: true, lateDeadline: true, latePolicy: true },
+    select: { status: true, dueDate: true, lateDeadline: true, latePolicy: true },
   });
   if (!assignment) return { success: false, error: 'Bài tập không tồn tại.' };
   if (assignment.status !== 'PUBLISHED') return { success: false, error: 'Bài tập chưa được đăng.' };
-
-  const now = new Date();
-  const isLate = assignment.dueDate ? now > assignment.dueDate : false;
-  if (isLate && assignment.latePolicy === 'NONE') {
-    if (!assignment.lateDeadline || now > assignment.lateDeadline) {
-      return { success: false, error: 'Đã hết hạn nộp bài.' };
-    }
-  }
 
   const existing = await prisma.submission.findFirst({
     where: { assignmentId, studentId: session.user.id },
     orderBy: { attemptNumber: 'desc' },
   });
 
-  if (existing && existing.status !== 'DRAFT' && !assignment.allowResubmit) {
-    return { success: false, error: 'Bài tập không cho phép nộp lại.' };
+  if (existing?.status === 'GRADED') {
+    return { success: false, error: 'Bài đã được chấm. Liên hệ giáo viên để nộp lại.' };
   }
 
-  const attemptNumber = existing?.status === 'DRAFT' ? existing.attemptNumber : (existing?.attemptNumber ?? 0) + 1;
+  const now = new Date();
+  const isLate = assignment.dueDate ? now > assignment.dueDate : false;
 
-  if (assignment.maxAttempts && attemptNumber > assignment.maxAttempts) {
-    return { success: false, error: `Đã hết số lần nộp (tối đa ${assignment.maxAttempts}).` };
+  // Only block new submissions past deadline — editing existing is always allowed until graded
+  if (!existing && isLate && assignment.latePolicy === 'NONE') {
+    if (!assignment.lateDeadline || now > assignment.lateDeadline) {
+      return { success: false, error: 'Đã hết hạn nộp bài.' };
+    }
   }
 
   const status = asDraft ? 'DRAFT' : isLate ? 'LATE' : 'SUBMITTED';
 
-  const sub = await prisma.submission.upsert({
-    where: {
-      assignmentId_studentId_attemptNumber: {
+  let sub;
+  if (existing) {
+    sub = await prisma.submission.update({
+      where: { id: existing.id },
+      data: {
+        content,
+        status,
+        submittedAt: asDraft ? existing.submittedAt : now,
+      },
+    });
+  } else {
+    sub = await prisma.submission.create({
+      data: {
         assignmentId,
         studentId: session.user.id,
-        attemptNumber,
+        content,
+        status,
+        attemptNumber: 1,
+        submittedAt: asDraft ? null : now,
       },
-    },
-    create: {
-      assignmentId,
-      studentId: session.user.id,
-      content,
-      status,
-      attemptNumber,
-      submittedAt: asDraft ? null : now,
-    },
-    update: {
-      content,
-      status,
-      submittedAt: asDraft ? undefined : now,
-    },
-  });
+    });
+  }
 
   return {
     success: true,
-    message: asDraft ? 'Đã lưu nháp.' : 'Đã nộp bài thành công!',
+    message: asDraft ? 'Đã lưu nháp.' : existing ? 'Đã cập nhật bài nộp.' : 'Đã nộp bài thành công!',
     data: { submissionId: sub.id },
   };
+}
+
+export async function deleteSubmissionAction(submissionId: string): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: 'Chưa đăng nhập.' };
+  const role = session.user.role as UserRole;
+  if (!hasMinRole(role, 'TA')) return { success: false, error: 'Không có quyền.' };
+
+  const sub = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: { assignment: { select: { courseId: true } } },
+  });
+  if (!sub) return { success: false, error: 'Không tìm thấy bài nộp.' };
+
+  if (role !== 'ADMIN') {
+    const course = await prisma.course.findUnique({
+      where: { id: sub.assignment.courseId },
+      select: { ownerId: true },
+    });
+    if (course?.ownerId !== session.user.id) return { success: false, error: 'Không có quyền.' };
+  }
+
+  await prisma.submission.delete({ where: { id: submissionId } });
+  return { success: true, message: 'Đã xoá bài nộp. Học sinh có thể nộp lại.' };
 }
 
 export async function gradeSubmissionAction(

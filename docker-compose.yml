@@ -51,11 +51,65 @@ services:
       timeout: 20s
       retries: 3
 
-  # Judge0 - sẽ setup ở Tuần 13
-  # judge0:
-  #   ...
+  # ── Judge0 CE — Code Execution Engine ─────────────────────────
+  judge0-db:
+    image: postgres:13
+    container_name: judge0-db
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0_secret
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  judge0-redis:
+    image: redis:6-alpine
+    container_name: judge0-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - judge0_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-server
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    ports:
+      - "2358:2358"
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-workers
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    restart: unless-stopped
+    command: ["/api/scripts/workers"]
+    depends_on:
+      - judge0-server
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  judge0_db_data:
+  judge0_redis_data:

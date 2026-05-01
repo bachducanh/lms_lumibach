@@ -39,7 +39,7 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-accent transition-colors outline-none">
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-accent transition-colors outline-none cursor-pointer">
         <Avatar className="h-8 w-8">
           <AvatarImage src={user.image ?? undefined} alt={user.name ?? ''} />
           <AvatarFallback className="text-xs">{initials}</AvatarFallback>

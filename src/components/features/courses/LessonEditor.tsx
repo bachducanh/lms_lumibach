@@ -59,7 +59,7 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
   return (
     <form onSubmit={handleSubmit}>
       {/* ── Sticky action bar ─────────────────────────────── */}
-      <div className="sticky top-0 z-20 -mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
+      <div className="-mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b bg-muted/20 px-4">
         <Link
           href={`/courses/${courseSlug}/modules`}
           className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -124,7 +124,6 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
         content={content}
         onChange={setContent}
         placeholder="Bắt đầu viết nội dung bài giảng..."
-        stickyToolbarOffset={56}
       />
 
       {/* ── Attachments (edit mode only) ──────────────────── */}

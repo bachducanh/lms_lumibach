@@ -7,8 +7,15 @@ import type { UserRole } from '@prisma/client';
 
 export const metadata = { title: 'Tạo bài tập mới' };
 
-export default async function NewAssignmentPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function NewAssignmentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ moduleId?: string }>;
+}) {
   const { slug } = await params;
+  const { moduleId: defaultModuleId } = await searchParams;
   const session = await auth();
   const role = session?.user?.role as UserRole;
 
@@ -26,7 +33,7 @@ export default async function NewAssignmentPage({ params }: { params: Promise<{ 
 
   return (
     <div className="max-w-5xl">
-      <AssignmentForm mode="create" courseSlug={slug} courseId={course.id} modules={modules} />
+      <AssignmentForm mode="create" courseSlug={slug} courseId={course.id} modules={modules} defaultModuleId={defaultModuleId} />
     </div>
   );
 }

@@ -42,6 +42,7 @@ enum ModuleItemType {
   LESSON
   ASSIGNMENT
   QUIZ
+  CODE_EXERCISE
   FILE
   EXTERNAL_URL
 }
@@ -56,6 +57,32 @@ enum AssignmentType {
   TEXT
   FILE
   BOTH
+}
+
+enum ExerciseStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum CodeLanguage {
+  PYTHON3
+  JAVASCRIPT
+  CPP17
+  WEB
+}
+
+enum CodeSubmissionStatus {
+  PENDING
+  PROCESSING
+  ACCEPTED
+  PARTIAL
+  WRONG_ANSWER
+  COMPILE_ERROR
+  RUNTIME_ERROR
+  TIME_LIMIT
+  INTERNAL_ERROR
+  MANUAL_REVIEW
 }
 
 enum AssignmentStatus {
@@ -76,6 +103,29 @@ enum LatePolicy {
   NONE
   ALLOW
   DEDUCT
+}
+
+enum QuizStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE_SINGLE
+  MULTIPLE_CHOICE_MULTIPLE
+  TRUE_FALSE
+  TRUE_FALSE_MULTI
+  ESSAY
+  CODE_PYTHON
+  CODE_CPP
+  CODE_WEB
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
 }
 
 // ============================================================
@@ -117,6 +167,8 @@ model User {
   ownedCourses      Course[]           @relation("CourseOwner")
   enrollments       Enrollment[]
   taAssignments     TeachingAssistant[]
+  coTeachingCourses CourseCoTeacher[]   @relation("CoTeacher")
+  quizAttempts      QuizAttempt[]
 
   @@index([email])
   @@index([username])
@@ -204,10 +256,15 @@ model Course {
   archivedAt  DateTime?
   deletedAt   DateTime?
 
-  enrollments        Enrollment[]
-  teachingAssistants TeachingAssistant[]
-  modules            Module[]
-  assignments        Assignment[]
+  enrollments         Enrollment[]
+  teachingAssistants  TeachingAssistant[]
+  coTeachers          CourseCoTeacher[]
+  modules             Module[]
+  assignments         Assignment[]
+  quizzes             Quiz[]
+  questions           Question[]
+  questionCategories  QuestionCategory[]
+  exercises           CodeExercise[]
 
   @@index([slug])
   @@index([ownerId])
@@ -244,6 +301,21 @@ model TeachingAssistant {
   permissions Json?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model CourseCoTeacher {
+  id         String   @id @default(cuid())
+  userId     String
+  courseId   String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  user   User   @relation("CoTeacher", fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, courseId])
@@ -289,12 +361,16 @@ model ModuleItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assignmentId String?
+  assignmentId     String?
+  quizId           String?
+  codeExerciseId   String?
 
-  module      Module      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  lesson      Lesson?     @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  assignment  Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
-  completions ModuleItemCompletion[]
+  module        Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson        Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  assignment    Assignment?   @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  quiz          Quiz?         @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  codeExercise  CodeExercise? @relation(fields: [codeExerciseId], references: [id], onDelete: SetNull)
+  completions   ModuleItemCompletion[]
 
   @@index([moduleId])
   @@index([moduleId, position])
@@ -373,9 +449,10 @@ model Assignment {
   publishedAt DateTime?
   deletedAt   DateTime?
 
-  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  moduleItems ModuleItem[]
-  submissions Submission[]
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleItems     ModuleItem[]
+  submissions     Submission[]
+  rubric          Rubric?
 
   @@index([courseId])
   @@index([status])
@@ -400,14 +477,73 @@ model Submission {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assignment Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  files      SubmissionFile[]
+  assignment   Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  files        SubmissionFile[]
+  rubricGrades RubricGrade[]
 
   @@unique([assignmentId, studentId, attemptNumber])
   @@index([assignmentId])
   @@index([studentId])
   @@index([status])
 }
+
+// ── Rubric ───────────────────────────────────────────────────
+
+model Rubric {
+  id           String   @id @default(cuid())
+  assignmentId String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignment Assignment        @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  criteria   RubricCriterion[]
+}
+
+model RubricCriterion {
+  id          String  @id @default(cuid())
+  rubricId    String
+  name        String
+  description String?
+  position    Int     @default(0)
+
+  rubric Rubric        @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  levels RubricLevel[]
+  grades RubricGrade[]
+
+  @@index([rubricId])
+}
+
+model RubricLevel {
+  id          String  @id @default(cuid())
+  criterionId String
+  label       String
+  points      Float
+  description String?
+  position    Int     @default(0)
+
+  criterion RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  grades    RubricGrade[]
+
+  @@index([criterionId])
+}
+
+model RubricGrade {
+  id           String   @id @default(cuid())
+  submissionId String
+  criterionId  String
+  levelId      String
+  gradedBy     String
+  gradedAt     DateTime @default(now())
+
+  submission Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  criterion  RubricCriterion @relation(fields: [criterionId], references: [id])
+  level      RubricLevel     @relation(fields: [levelId], references: [id])
+
+  @@unique([submissionId, criterionId])
+  @@index([submissionId])
+}
+
+// ── Submission File ──────────────────────────────────────────
 
 model SubmissionFile {
   id           String   @id @default(cuid())
@@ -422,4 +558,259 @@ model SubmissionFile {
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([submissionId])
+}
+
+// ── Quiz Engine ──────────────────────────────────────────────
+
+model Quiz {
+  id          String     @id @default(cuid())
+  courseId    String
+  title       String
+  description String?    @db.Text
+  status      QuizStatus @default(DRAFT)
+
+  timeLimit        Int?     // phút, null = không giới hạn
+  maxAttempts      Int?     // null = không giới hạn
+  passingScore     Float?   // null = không yêu cầu
+  shuffleQuestions Boolean  @default(false)
+  shuffleAnswers   Boolean  @default(false)
+  showResults      Boolean  @default(true)
+
+  availableFrom DateTime?
+  dueDate       DateTime?
+
+  createdBy   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  publishedAt DateTime?
+  deletedAt   DateTime?
+
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+  moduleItems ModuleItem[]
+
+  @@index([courseId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model QuestionCategory {
+  id        String   @id @default(cuid())
+  courseId  String
+  name      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@index([courseId])
+}
+
+model Question {
+  id          String       @id @default(cuid())
+  courseId    String
+  categoryId  String?
+  type        QuestionType
+  content     String       @db.Text
+  explanation String?      @db.Text
+  points      Float        @default(1)
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // For CODE_* question types
+  starterCode   String?  @db.Text
+  solutionCode  String?  @db.Text
+  timeLimit     Int?               // seconds per test case
+  memoryLimit   Int?               // KB
+
+  course     Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category   QuestionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  options    QuestionOption[]
+  quizzes    QuizQuestion[]
+  answers    Answer[]
+  testCases  QuestionTestCase[]
+
+  @@index([courseId])
+  @@index([categoryId])
+  @@index([type])
+  @@index([deletedAt])
+}
+
+model QuestionTestCase {
+  id             String  @id @default(cuid())
+  questionId     String
+  input          String  @db.Text
+  expectedOutput String  @db.Text
+  isHidden       Boolean @default(false)
+  points         Float   @default(1)
+  position       Int     @default(0)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+model QuestionOption {
+  id         String  @id @default(cuid())
+  questionId String
+  content    String
+  isCorrect  Boolean @default(false)
+  position   Int     @default(0)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+model QuizQuestion {
+  id         String @id @default(cuid())
+  quizId     String
+  questionId String
+  position   Int    @default(0)
+  points     Float? // override câu hỏi gốc
+
+  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, questionId])
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id        String        @id @default(cuid())
+  quizId    String
+  studentId String
+  status    AttemptStatus @default(IN_PROGRESS)
+
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  score       Float?
+  maxScore    Float?
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student User     @relation(fields: [studentId], references: [id])
+  answers Answer[]
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+// ── Code Exercise Module ─────────────────────────────────────
+
+model CodeExercise {
+  id          String         @id @default(cuid())
+  courseId    String
+  title       String
+  description String?        @db.Text
+  language    CodeLanguage
+  status      ExerciseStatus @default(DRAFT)
+
+  // For PYTHON3 / JAVASCRIPT / CPP17
+  starterCode  String?  @db.Text
+  solutionCode String?  @db.Text
+  timeLimit    Int      @default(3)      // seconds per test case
+  memoryLimit  Int      @default(262144) // KB = 256 MB
+
+  // For WEB (HTML + CSS + JS)
+  starterHtml String?  @db.Text
+  starterCss  String?  @db.Text
+  starterJs   String?  @db.Text
+
+  createdBy String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  deletedAt DateTime?
+
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleItems ModuleItem[]
+  testCases   TestCase[]
+  submissions CodeSubmission[]
+
+  @@index([courseId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model TestCase {
+  id               String  @id @default(cuid())
+  codeExerciseId   String
+  label            String?
+  input            String  @db.Text
+  expectedOutput   String  @db.Text
+  isHidden         Boolean @default(true)
+  points           Float   @default(1)
+  position         Int     @default(0)
+
+  codeExercise CodeExercise     @relation(fields: [codeExerciseId], references: [id], onDelete: Cascade)
+  results      TestCaseResult[]
+
+  @@index([codeExerciseId])
+}
+
+model CodeSubmission {
+  id             String               @id @default(cuid())
+  codeExerciseId String
+  studentId      String
+  language       CodeLanguage
+  code           String               @db.Text  // JSON for WEB: {html,css,js}
+  status         CodeSubmissionStatus @default(PENDING)
+  score          Float?
+  maxScore       Float?
+  feedback       String?              @db.Text
+  attemptNumber  Int                  @default(1)
+  submittedAt    DateTime             @default(now())
+  gradedAt       DateTime?
+  gradedBy       String?
+
+  codeExercise CodeExercise     @relation(fields: [codeExerciseId], references: [id], onDelete: Cascade)
+  results      TestCaseResult[]
+
+  @@index([codeExerciseId])
+  @@index([studentId])
+}
+
+model TestCaseResult {
+  id            String               @id @default(cuid())
+  submissionId  String
+  testCaseId    String
+  status        CodeSubmissionStatus
+  stdout        String?              @db.Text
+  stderr        String?              @db.Text
+  compileOutput String?              @db.Text
+  time          Float?               // seconds
+  memory        Int?                 // KB
+  score         Float?
+  judge0Token   String?
+
+  submission CodeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  testCase   TestCase       @relation(fields: [testCaseId], references: [id])
+
+  @@unique([submissionId, testCaseId])
+  @@index([submissionId])
+}
+
+model Answer {
+  id         String @id @default(cuid())
+  attemptId  String
+  questionId String
+
+  selectedOptionIds String?  // JSON: ["optId1","optId2"] cho MCQ
+  booleanAnswer     Boolean? // cho TRUE_FALSE
+  textAnswer        String?  @db.Text // cho ESSAY
+
+  isCorrect Boolean?
+  score     Float?
+  feedback  String? @db.Text
+
+  attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
 }

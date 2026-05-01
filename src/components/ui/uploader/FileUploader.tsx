@@ -135,7 +135,7 @@ export function FileUploader({ uploadUrl, extraFields = {}, onSuccess, className
         <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <X className="h-4 w-4 shrink-0" />
           <span>{state.message}</span>
-          <button type="button" className="ml-auto" onClick={() => setState({ phase: 'idle' })}>
+          <button type="button" className="ml-auto rounded p-0.5 hover:opacity-70 transition-opacity" onClick={() => setState({ phase: 'idle' })}>
             <X className="h-3 w-3" />
           </button>
         </div>

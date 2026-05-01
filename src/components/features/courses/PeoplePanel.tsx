@@ -13,15 +13,21 @@ import {
   unenrollAction,
   assignTAAction,
   removeTAAction,
+  addCoTeacherAction,
+  removeCoTeacherAction,
   type CourseMember,
   type CourseTA,
+  type CourseCoTeacher,
 } from '@/actions/enrollments';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 type Props = {
   courseId: string;
   canManage: boolean;
   enrollments: CourseMember[];
   tas: CourseTA[];
+  coTeachers: CourseCoTeacher[];
+  courseOwner: { id: string; fullName: string | null; firstName: string; lastName: string; email: string; avatar: string | null };
 };
 
 function userDisplayName(u: { fullName: string | null; firstName: string; lastName: string }) {
@@ -128,6 +134,36 @@ function AddStudentPanel({ courseId, onDone }: { courseId: string; onDone: () =>
   );
 }
 
+// ── Add co-teacher panel ──────────────────────────────────────
+
+function AddCoTeacherPanel({ courseId, onDone }: { courseId: string; onDone: () => void }) {
+  const [email, setEmail] = useState('');
+  const [pending, startTransition] = useTransition();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const res = await addCoTeacherAction(courseId, email);
+      if (res.success) { toast.success(res.message); setEmail(''); onDone(); }
+      else toast.error(res.error);
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input
+        type="email"
+        placeholder="Email giáo viên (role Teacher)..."
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+      <Button type="submit" size="sm" disabled={pending}>Thêm</Button>
+    </form>
+  );
+}
+
 // ── Add TA panel ──────────────────────────────────────────────
 
 function AddTAPanel({ courseId, onDone }: { courseId: string; onDone: () => void }) {
@@ -160,17 +196,20 @@ function AddTAPanel({ courseId, onDone }: { courseId: string; onDone: () => void
 
 // ── Main component ────────────────────────────────────────────
 
-export function PeoplePanel({ courseId, canManage, enrollments, tas }: Props) {
+export function PeoplePanel({ courseId, canManage, enrollments, tas, coTeachers, courseOwner }: Props) {
   const router = useRouter();
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showAddCoTeacher, setShowAddCoTeacher] = useState(false);
   const [, startTransition] = useTransition();
+  const [confirmDialog, openConfirm] = useConfirmDialog();
 
   function refresh() {
     startTransition(() => router.refresh());
   }
 
-  function handleUnenroll(enrollmentId: string, name: string) {
-    if (!confirm(`Xoá ${name} khỏi lớp?`)) return;
+  async function handleUnenroll(enrollmentId: string, name: string) {
+    const ok = await openConfirm(`Xoá ${name} khỏi lớp?`);
+    if (!ok) return;
     startTransition(async () => {
       const res = await unenrollAction(enrollmentId);
       if (res.success) { toast.success(res.message); router.refresh(); }
@@ -178,8 +217,9 @@ export function PeoplePanel({ courseId, canManage, enrollments, tas }: Props) {
     });
   }
 
-  function handleRemoveTA(taId: string, name: string) {
-    if (!confirm(`Xoá ${name} khỏi danh sách trợ giảng?`)) return;
+  async function handleRemoveTA(taId: string, name: string) {
+    const ok = await openConfirm(`Xoá ${name} khỏi danh sách trợ giảng?`);
+    if (!ok) return;
     startTransition(async () => {
       const res = await removeTAAction(taId);
       if (res.success) { toast.success(res.message); router.refresh(); }
@@ -187,8 +227,79 @@ export function PeoplePanel({ courseId, canManage, enrollments, tas }: Props) {
     });
   }
 
+  async function handleRemoveCoTeacher(coTeacherId: string, name: string) {
+    const ok = await openConfirm(`Xoá ${name} khỏi danh sách giáo viên?`);
+    if (!ok) return;
+    startTransition(async () => {
+      const res = await removeCoTeacherAction(coTeacherId);
+      if (res.success) { toast.success(res.message); router.refresh(); }
+      else toast.error(res.error);
+    });
+  }
+
   return (
     <div className="space-y-6">
+      {confirmDialog}
+
+      {/* Teachers */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              Giáo viên
+              <Badge variant="secondary">{1 + coTeachers.length}</Badge>
+            </CardTitle>
+            {canManage && (
+              <Button variant="outline" size="sm" onClick={() => setShowAddCoTeacher((v) => !v)}>
+                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                Thêm
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {canManage && showAddCoTeacher && (
+            <AddCoTeacherPanel
+              courseId={courseId}
+              onDone={() => { setShowAddCoTeacher(false); refresh(); }}
+            />
+          )}
+          <ul className="divide-y divide-border">
+            {/* Course owner — always shown, not removable */}
+            <li className="flex items-center justify-between py-2 gap-3">
+              <div className="flex items-center gap-3">
+                <Avatar user={courseOwner} />
+                <div>
+                  <p className="text-sm font-medium">{userDisplayName(courseOwner)}</p>
+                  <p className="text-xs text-muted-foreground">{courseOwner.email}</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-xs">Chủ khoá học</Badge>
+            </li>
+            {/* Co-teachers */}
+            {coTeachers.map((ct) => (
+              <li key={ct.id} className="flex items-center justify-between py-2 gap-3">
+                <div className="flex items-center gap-3">
+                  <Avatar user={ct.user} />
+                  <div>
+                    <p className="text-sm font-medium">{userDisplayName(ct.user)}</p>
+                    <p className="text-xs text-muted-foreground">{ct.user.email}</p>
+                  </div>
+                </div>
+                {canManage && (
+                  <button
+                    onClick={() => handleRemoveCoTeacher(ct.id, userDisplayName(ct.user))}
+                    className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
       {/* Teaching Assistants */}
       <Card>
         <CardHeader className="pb-3">

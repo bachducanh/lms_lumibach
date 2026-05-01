@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
 import { auditLog } from '@/lib/audit';
 import { slugify } from '@/lib/utils';
-import type { UserRole, CourseStatus } from '@prisma/client';
+import type { UserRole, CourseStatus, EnrollmentStatus } from '@prisma/client';
 import type { ActionResult } from './auth';
 
 // ── Schemas ───────────────────────────────────────────────────
@@ -209,8 +209,12 @@ export async function listCoursesAction(params: CourseListParams = {}) {
     deletedAt: null,
     ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
     ...(status ? { status: status as CourseStatus } : {}),
-    // Students and TAs see only published courses (or enrolled ones — handled on page level)
-    ...(role === 'STUDENT' || role === 'TA' ? { status: 'PUBLISHED' as CourseStatus, isPublic: true } : {}),
+    // Students only see courses they're enrolled in
+    ...(role === 'STUDENT' && userId
+      ? { status: 'PUBLISHED' as CourseStatus, enrollments: { some: { userId, status: { in: ['ACTIVE', 'COMPLETED'] as EnrollmentStatus[] } } } }
+      : {}),
+    // TAs see all published courses
+    ...(role === 'TA' ? { status: 'PUBLISHED' as CourseStatus } : {}),
     ...(ownOnly && userId ? { ownerId: userId } : {}),
   };
 
@@ -249,7 +253,7 @@ export async function getCourseBySlugAction(slug: string) {
   return prisma.course.findFirst({
     where: { slug, deletedAt: null },
     include: {
-      owner: { select: { id: true, fullName: true, firstName: true, lastName: true, avatar: true } },
+      owner: { select: { id: true, fullName: true, firstName: true, lastName: true, email: true, avatar: true } },
       _count: { select: { enrollments: true, teachingAssistants: true } },
     },
   });

@@ -7,11 +7,11 @@ type Theme = 'light' | 'dark';
 const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (t: Theme) => void;
-}>({ theme: 'light', setTheme: () => {} });
+}>({ theme: 'dark', setTheme: () => {} });
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'light',
+  defaultTheme = 'dark',
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;

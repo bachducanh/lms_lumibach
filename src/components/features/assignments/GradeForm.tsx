@@ -54,7 +54,6 @@ export function GradeForm({ submissionId, maxScore, currentScore, currentFeedbac
           content={feedback}
           onChange={setFeedback}
           placeholder="Nhận xét, góp ý cho học sinh..."
-          stickyToolbarOffset={0}
         />
       </div>
 

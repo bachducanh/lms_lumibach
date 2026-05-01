@@ -1,116 +1,183 @@
 import Link from 'next/link';
-import { BookOpen, Users, Calendar, ArrowRight } from 'lucide-react';
+import { BookOpen, Users, Play } from 'lucide-react';
 import type { CourseListItem } from '@/actions/courses';
+import { cn } from '@/lib/utils';
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  DRAFT:     { label: 'Nháp',     className: 'bg-orange-500/15 text-orange-500 border border-orange-500/25' },
-  PUBLISHED: { label: 'Hoạt động', className: 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/25 dark:text-emerald-400' },
-  ARCHIVED:  { label: 'Lưu trữ',  className: 'bg-slate-500/15 text-slate-500 border border-slate-500/25' },
-};
+// ── Subject → colored chip ─────────────────────────────────────
 
-/* Gradient nền khi không có thumbnail — xoay vòng theo hash tên */
+const CHIP_COLORS = [
+  'border-blue-500/30 bg-blue-500/10 text-blue-400',
+  'border-violet-500/30 bg-violet-500/10 text-violet-400',
+  'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  'border-cyan-500/30 bg-cyan-500/10 text-cyan-400',
+  'border-amber-500/30 bg-amber-500/10 text-amber-400',
+  'border-rose-500/30 bg-rose-500/10 text-rose-400',
+  'border-teal-500/30 bg-teal-500/10 text-teal-400',
+  'border-orange-500/30 bg-orange-500/10 text-orange-400',
+];
+
+function getSubjectChip(subject: string | null): string {
+  if (!subject) return '';
+  const s = subject.toLowerCase();
+  if (s.includes('python'))                                        return 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400';
+  if (s.includes('html') || s.includes('web') || s.includes('css')) return 'border-violet-500/30 bg-violet-500/10 text-violet-400';
+  if (s.includes('javascript') || s.includes(' js'))              return 'border-amber-500/30 bg-amber-500/10 text-amber-400';
+  if (s.includes('lập trình') || s.includes('programming'))       return 'border-blue-500/30 bg-blue-500/10 text-blue-400';
+  if (s.includes('toán') || s.includes('math'))                   return 'border-green-500/30 bg-green-500/10 text-green-400';
+  if (s.includes('cơ sở dữ liệu') || s.includes('database') || s.includes('sql')) return 'border-rose-500/30 bg-rose-500/10 text-rose-400';
+  if (s.includes('mạng') || s.includes('network'))                return 'border-teal-500/30 bg-teal-500/10 text-teal-400';
+  if (s.includes('thuật toán') || s.includes('algorithm'))        return 'border-orange-500/30 bg-orange-500/10 text-orange-400';
+  if (s.includes('tin học'))                                       return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-400';
+  let h = 0;
+  for (let i = 0; i < subject.length; i++) h = (h * 31 + subject.charCodeAt(i)) >>> 0;
+  return CHIP_COLORS[h % CHIP_COLORS.length] ?? CHIP_COLORS[0]!;
+}
+
+// ── Thumbnail gradient placeholder (Unity-dark palette) ─────────
+
 const GRADIENTS = [
-  'from-[#050E3C] via-[#0A2260] to-[#0D3B8E]',
-  'from-[#0A1628] via-[#0D2D5A] to-[#0B4F8A]',
-  'from-[#0D1B3E] via-[#1A3A6B] to-[#0E5E8A]',
-  'from-[#070F2B] via-[#142550] to-[#1A3C7A]',
+  ['#0d1b2a', '#1b3a5c', '#ff6b35'],
+  ['#0d0d1a', '#1a1a3e', '#7c3aed'],
+  ['#0a1628', '#0f3460', '#00d4ff'],
+  ['#140a00', '#3d1f00', '#ff8c42'],
+  ['#001a1a', '#003d3d', '#00d4ff'],
+  ['#0f0a1e', '#2d1b5c', '#a855f7'],
+  ['#001a0d', '#003d1f', '#22c55e'],
+  ['#1a0010', '#3d0025', '#f43f5e'],
 ];
 
 function pickGradient(name: string) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return GRADIENTS[h % GRADIENTS.length];
+  return GRADIENTS[h % GRADIENTS.length]!;
 }
+
+// ── Status ──────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<string, { dot: string; label: string; glow: string }> = {
+  PUBLISHED: { dot: 'bg-emerald-500', label: 'Đang mở',  glow: 'oklch(0.70 0.18 140 / 0.8)' },
+  DRAFT:     { dot: 'bg-amber-500',   label: 'Nháp',     glow: 'oklch(0.78 0.16 80  / 0.8)' },
+  ARCHIVED:  { dot: 'bg-slate-500',   label: 'Lưu trữ',  glow: 'none' },
+};
+
+// ── Component ──────────────────────────────────────────────────
 
 type Props = { course: CourseListItem };
 
 export function CourseCard({ course }: Props) {
-  const ownerName =
-    course.owner.fullName ??
-    `${course.owner.firstName} ${course.owner.lastName}`.trim();
-
-  const status = STATUS_CONFIG[course.status] ?? STATUS_CONFIG.DRAFT;
-  const grad   = pickGradient(course.name);
+  const ownerName   = course.owner.fullName ?? `${course.owner.firstName} ${course.owner.lastName}`.trim();
+  const [bg1, bg2, accent] = pickGradient(course.name);
+  const chipClass   = course.subject ? getSubjectChip(course.subject) : '';
+  const status      = STATUS_CONFIG[course.status] ?? { dot: 'bg-slate-500', label: course.status, glow: 'none' };
 
   return (
     <Link
       href={`/courses/${course.slug}`}
       className="group flex flex-col rounded-xl border border-border bg-card overflow-hidden
-                 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30"
+                 transition-all duration-200 unity-card-hover"
     >
-      {/* Thumbnail */}
-      <div className="relative h-40 w-full shrink-0 overflow-hidden">
+      {/* ── Thumbnail (16:9) ──────────────────────────────── */}
+      <div className="relative aspect-video w-full overflow-hidden shrink-0">
         {course.thumbnail ? (
           <img
             src={course.thumbnail}
             alt={course.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${grad}`}>
-            {/* Grid pattern overlay */}
-            <svg className="absolute inset-0 h-full w-full opacity-10" xmlns="http://www.w3.org/2000/svg">
+          <div
+            className="relative flex h-full w-full items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${bg1}, ${bg2})` }}
+          >
+            {/* Grid pattern */}
+            <svg className="absolute inset-0 h-full w-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <pattern id={`grid-${course.id}`} width="24" height="24" patternUnits="userSpaceOnUse">
-                  <path d="M 24 0 L 0 0 0 24" fill="none" stroke="white" strokeWidth="0.5"/>
+                <pattern id={`g-${course.id}`} width="32" height="32" patternUnits="userSpaceOnUse">
+                  <path d="M 32 0 L 0 0 0 32" fill="none" stroke="white" strokeWidth="0.5"/>
                 </pattern>
               </defs>
-              <rect width="100%" height="100%" fill={`url(#grid-${course.id})`} />
+              <rect width="100%" height="100%" fill={`url(#g-${course.id})`} />
             </svg>
-            <BookOpen className="relative h-12 w-12 text-white/20" />
+
+            {/* Dot matrix pattern */}
+            <svg className="absolute inset-0 h-full w-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id={`d-${course.id}`} width="16" height="16" patternUnits="userSpaceOnUse">
+                  <circle cx="2" cy="2" r="1" fill="white"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill={`url(#d-${course.id})`} />
+            </svg>
+
+            {/* Accent glow blob */}
+            <div
+              className="absolute bottom-0 right-0 h-20 w-20 rounded-full blur-2xl opacity-40"
+              style={{ background: accent }}
+            />
+
+            {/* Center icon */}
+            <div className="relative z-10 flex flex-col items-center gap-1.5">
+              <BookOpen className="h-10 w-10 text-white/20" />
+            </div>
           </div>
         )}
 
-        {/* Status badge */}
-        <div className="absolute top-2.5 left-2.5">
-          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold backdrop-blur-sm ${status.className}`}>
-            {status.label}
-          </span>
+        {/* Play overlay on hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300"
+            style={{ boxShadow: '0 0 20px rgb(253 8 93 / 60%)' }}
+          >
+            <Play className="h-4 w-4 text-primary-foreground ml-0.5" />
+          </div>
         </div>
-
-        {/* Subject/grade badge top-right */}
-        {(course.subject || course.gradeLevel) && (
-          <div className="absolute top-2.5 right-2.5">
-            <span className="inline-flex items-center rounded-md bg-black/40 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white/80">
-              {[course.subject, course.gradeLevel].filter(Boolean).join(' · ')}
-            </span>
-          </div>
-        )}
-
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-primary/0 transition-colors duration-200 group-hover:bg-primary/5" />
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex-1">
-          <p className="font-semibold leading-snug line-clamp-2 transition-colors duration-150 group-hover:text-primary">
-            {course.name}
-          </p>
-          {course.shortName && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{course.shortName}</p>
+      {/* ── Card body ──────────────────────────────────────── */}
+      <div className="flex flex-1 flex-col p-4 gap-3">
+
+        {/* Subject + grade chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {course.subject && (
+            <span className={cn('inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold tracking-wide', chipClass)}>
+              {course.subject}
+            </span>
+          )}
+          {course.gradeLevel && (
+            <span className="inline-flex items-center rounded border border-border bg-secondary/50 px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+              {course.gradeLevel}
+            </span>
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          <span className="text-muted-foreground/60">GV · </span>{ownerName}
-        </p>
+        {/* Title */}
+        <div className="flex-1">
+          <p className="font-semibold leading-snug line-clamp-2 text-[15px] transition-colors duration-150 group-hover:text-primary">
+            {course.name}
+          </p>
+          {course.shortName && (
+            <p className="mt-0.5 text-xs text-muted-foreground font-mono">{course.shortName}</p>
+          )}
+        </div>
+
+        {/* Teacher */}
+        <p className="text-xs text-muted-foreground/70 truncate">{ownerName}</p>
+
+        {/* Divider */}
+        <div className="h-px bg-border" />
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {course._count.enrollments}
-            </span>
-            {course.startDate && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {new Date(course.startDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-              </span>
-            )}
-          </div>
-          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30 transition-all duration-150 group-hover:text-primary group-hover:translate-x-0.5" />
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Users className="h-3.5 w-3.5" />
+            {course._count.enrollments} học sinh
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span
+              className={cn('h-1.5 w-1.5 rounded-full', status.dot)}
+              style={{ boxShadow: `0 0 5px ${status.glow}` }}
+            />
+            {status.label}
+          </span>
         </div>
       </div>
     </Link>
