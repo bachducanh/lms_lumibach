@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   for (const assignment of assignments) {
     for (const enrollment of assignment.course.enrollments) {
       // Kiểm tra đã gửi thông báo chưa (trong 1h trước)
-      const existing = await (prisma as any).notification.findFirst({
+      const existing = await prisma.notification.findFirst({
         where: {
           userId:    enrollment.userId,
           type:      'ASSIGNMENT_DUE_SOON',

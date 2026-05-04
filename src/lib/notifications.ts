@@ -41,7 +41,7 @@ function isTypeEmailEnabled(pref: NotifPref | null, type: NotificationType): boo
 
 export async function createNotification(params: CreateParams): Promise<void> {
   try {
-    const db = prisma as any;
+    const db = prisma;
 
     const pref: NotifPref | null = await db.notificationPreference.findUnique({
       where: { userId: params.userId },

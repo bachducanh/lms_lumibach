@@ -105,7 +105,6 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     }
     const id = setInterval(() => setTimeLeft((t) => (t !== null ? t - 1 : null)), 1000);
     return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
   // ── Save helpers ─────────────────────────────────────────────
@@ -448,7 +447,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
                     <div className="rounded-xl border border-border overflow-hidden">
                       <CodeEditor
-                        value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
+                        value={texts[q.questionId] ?? q.question.starterCode ?? ''}
                         onChange={(v) => handleCode(q.questionId, v)}
                         language={codeLang}
                         height={280}
@@ -533,7 +532,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     Viết code HTML/CSS/JS — giáo viên sẽ xem và chấm điểm sau khi nộp.
                   </p>
                   <WebCodeEditor
-                    value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
+                    value={texts[q.questionId] ?? q.question.starterCode ?? ''}
                     onChange={(v) => handleCode(q.questionId, v)}
                   />
                 </div>

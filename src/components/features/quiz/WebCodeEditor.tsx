@@ -32,7 +32,9 @@ export function WebCodeEditor({ value, onChange, readOnly = false, height = 420 
   const handleBeforeMount: BeforeMount = (monaco) => {
     defineDraculaTheme(monaco);
     // Configure HTML language service
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((monaco.languages as any).html?.htmlDefaults) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (monaco.languages as any).html.htmlDefaults.setOptions({
         suggest: { html5: true },
         format: { tabSize: 2, insertSpaces: true, wrapLineLength: 0 },
@@ -44,6 +46,7 @@ export function WebCodeEditor({ value, onChange, readOnly = false, height = 420 
     if (emmetInitialized.current) return;
     emmetInitialized.current = true;
     import('emmet-monaco-es').then(({ emmetHTML }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       emmetHTML(monaco as any, ['html', 'css']);
     }).catch(() => {});
   };

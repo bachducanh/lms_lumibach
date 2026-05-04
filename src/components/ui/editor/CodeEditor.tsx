@@ -1,7 +1,7 @@
 'use client';
 
-import { useTheme } from 'next-themes';
-import Editor, { useMonaco } from '@monaco-editor/react';
+// import { useTheme } from 'next-themes';
+import Editor from '@monaco-editor/react';
 
 // Map từ language key của app sang Monaco language ID
 const MONACO_LANG: Record<string, string> = {
@@ -19,6 +19,7 @@ type Props = {
   fontSize?:  number;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const defineDraculaTheme = (monaco: any) => {
   monaco.editor.defineTheme('dracula', {
     base: 'vs-dark',
@@ -67,7 +68,7 @@ export function CodeEditor({
   height    = 400,
   fontSize  = 14,
 }: Props) {
-  const { resolvedTheme } = useTheme();
+  // const { resolvedTheme } = useTheme();
   const monacoLang = MONACO_LANG[language] ?? language;
 
   return (
