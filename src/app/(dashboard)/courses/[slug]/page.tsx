@@ -63,7 +63,7 @@ export default async function CourseDetailPage({
       </Link>
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
         <div className="space-y-2 flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {/* Status badge */}
@@ -152,7 +152,7 @@ export default async function CourseDetailPage({
       )}
 
       {/* ── Primary CTA ────────────────────────────────────── */}
-      <div className="flex items-stretch gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch gap-3">
         {/* Start learning — Unity orange CTA */}
         <Link
           href={`/courses/${slug}/modules`}

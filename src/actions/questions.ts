@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
+import { runCode, LANGUAGE_ID } from '@/lib/judge0';
 import type { ActionResult } from '@/actions/auth';
 import type { UserRole } from '@prisma/client';
 
@@ -219,7 +220,7 @@ export async function listQuestionsByCategoryAction(courseId: string): Promise<Q
 
   return {
     categories:    cats as CategoryWithQuestions[],
-    uncategorized: allQuestions as QuestionItem[],
+    uncategorized: allQuestions as unknown as QuestionItem[],
   };
 }
 
@@ -330,6 +331,120 @@ export async function updateQuestionAction(
   ]);
 
   return { success: true, message: 'Đã cập nhật câu hỏi.' };
+}
+
+// ── Run solution code to generate expected output (teacher) ───
+
+export async function runSolutionCodeForTCAction(
+  solutionCode:  string,
+  language:      'PYTHON3' | 'CPP17',
+  input:         string,
+  timeLimitSec:  number,
+  memoryLimitKB: number,
+): Promise<{ success: true; output: string } | { success: false; error: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: 'Chưa đăng nhập.' };
+  const role = session.user.role as UserRole;
+  if (!hasMinRole(role, 'TA')) return { success: false, error: 'Không có quyền.' };
+  if (!solutionCode.trim()) return { success: false, error: 'Code đáp án trống.' };
+
+  const langId = language === 'PYTHON3' ? LANGUAGE_ID.PYTHON3 : LANGUAGE_ID.CPP17;
+  try {
+    const r = await runCode({
+      languageId:   langId,
+      sourceCode:   solutionCode,
+      stdin:        input,
+      cpuTimeLimit: timeLimitSec,
+      memoryLimit:  memoryLimitKB,
+    });
+    if (r.status.id === 6)  return { success: false, error: `Lỗi compile:\n${r.compile_output ?? ''}` };
+    if (r.status.id >= 7)   return { success: false, error: `Lỗi runtime:\n${r.stderr ?? ''}` };
+    if (r.status.id === 5)  return { success: false, error: 'Quá giới hạn thời gian.' };
+    return { success: true, output: r.stdout?.trimEnd() ?? '' };
+  } catch {
+    return { success: false, error: 'Không thể kết nối Judge0.' };
+  }
+}
+
+// ── Check student's code against question test cases ──────────
+
+export type TCCheckResult = {
+  position:    number;
+  isHidden:    boolean;
+  passed:      boolean;
+  statusId:    number;
+  statusDesc:  string;
+  input:       string | null;
+  expected:    string | null;
+  actual:      string | null;
+  errorDetail: string | null;
+};
+
+export async function checkQuizCodeAction(
+  questionId: string,
+  code:       string,
+): Promise<{ success: true; results: TCCheckResult[] } | { success: false; error: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: 'Chưa đăng nhập.' };
+  if (!code.trim()) return { success: false, error: 'Code trống.' };
+
+  const question = await (prisma.question as any).findUnique({
+    where:   { id: questionId, deletedAt: null },
+    include: { testCases: { orderBy: { position: 'asc' } } },
+  });
+  if (!question) return { success: false, error: 'Không tìm thấy câu hỏi.' };
+  if (question.type !== 'CODE_PYTHON' && question.type !== 'CODE_CPP') {
+    return { success: false, error: 'Loại câu hỏi không hỗ trợ kiểm tra.' };
+  }
+  if (!question.testCases?.length) return { success: false, error: 'Câu hỏi chưa có test case.' };
+
+  const langId = question.type === 'CODE_PYTHON' ? LANGUAGE_ID.PYTHON3 : LANGUAGE_ID.CPP17;
+
+  const results = await Promise.all(
+    (question.testCases as any[]).map(async (tc): Promise<TCCheckResult> => {
+      try {
+        const r = await runCode({
+          languageId:   langId,
+          sourceCode:   code,
+          stdin:        tc.input,
+          cpuTimeLimit: question.timeLimit ?? 5,
+          memoryLimit:  question.memoryLimit ?? 262144,
+        });
+        const actual   = r.stdout?.trimEnd() ?? '';
+        const passed   = r.status.id !== 6 && r.status.id < 7
+          ? actual === tc.expectedOutput.trimEnd()
+          : false;
+        let errorDetail: string | null = null;
+        if (r.status.id === 6) errorDetail = r.compile_output ?? null;
+        else if (r.status.id >= 7) errorDetail = r.stderr ?? null;
+        return {
+          position:   tc.position,
+          isHidden:   tc.isHidden,
+          passed,
+          statusId:   r.status.id,
+          statusDesc: r.status.description,
+          input:      tc.isHidden ? null : tc.input,
+          expected:   tc.isHidden ? null : tc.expectedOutput,
+          actual:     tc.isHidden ? null : actual,
+          errorDetail,
+        };
+      } catch {
+        return {
+          position:   tc.position,
+          isHidden:   tc.isHidden,
+          passed:     false,
+          statusId:   13,
+          statusDesc: 'Internal Error',
+          input:      tc.isHidden ? null : tc.input,
+          expected:   tc.isHidden ? null : tc.expectedOutput,
+          actual:     null,
+          errorDetail: null,
+        };
+      }
+    }),
+  );
+
+  return { success: true, results };
 }
 
 // ── Delete (soft) ─────────────────────────────────────────────

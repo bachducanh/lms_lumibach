@@ -2,9 +2,9 @@
 
 > Task list chi tiết theo tuần. Tick `[x]` khi hoàn thành. Cập nhật trạng thái mỗi cuối tuần.
 
-**Phiên bản**: 1.0
+**Phiên bản**: 1.1
 **Ngày bắt đầu**: [Điền ngày bắt đầu]
-**Hiện tại đang ở**: Tuần [X]
+**Hiện tại đang ở**: Tuần 19
 
 ---
 
@@ -12,11 +12,11 @@
 
 | Tháng | Mục tiêu chính | Tiến độ |
 |-------|----------------|---------|
-| Tháng 1 | Foundation: Setup + Auth + User | ⬜ Chưa bắt đầu |
-| Tháng 2 | Course + Content | ⬜ Chưa bắt đầu |
-| Tháng 3 | Assignment + Quiz | ⬜ Chưa bắt đầu |
-| Tháng 4 | Code Execution | ⬜ Chưa bắt đầu |
-| Tháng 5 | Polish + Beta Test | ⬜ Chưa bắt đầu |
+| Tháng 1 | Foundation: Setup + Auth + User | ✅ Xong (Tuần 1-4) |
+| Tháng 2 | Course + Content | ✅ Xong (Tuần 5-8) |
+| Tháng 3 | Assignment + Quiz | ✅ Xong (Tuần 9-12) |
+| Tháng 4 | Code Execution | ✅ Xong (Tuần 13-16) |
+| Tháng 5 | Polish + Beta Test | 🟡 Đang làm (Tuần 19/20) |
 | Tháng 6 | Mở rộng dần | ⬜ Chưa bắt đầu |
 
 Trạng thái: ⬜ Chưa | 🟡 Đang làm | ✅ Xong | ❌ Bị chặn
@@ -651,84 +651,83 @@ Trạng thái: ⬜ Chưa | 🟡 Đang làm | ✅ Xong | ❌ Bị chặn
 
 ---
 
-### Tuần 18: Notification System
+### Tuần 18: Notification System ✅ HOÀN THÀNH
 
 **Mục tiêu**: Thông báo in-app và email.
 
 **In-app Notification**
-- [ ] Schema Notification
-- [ ] Helper function `createNotification`
-- [ ] Bell icon trong header với badge count
-- [ ] Dropdown list notifications
-- [ ] Mark as read
-- [ ] Mark all as read
-- [ ] Trang `/notifications` xem all
+- [x] Schema Notification
+- [x] Helper function `createNotification`
+- [x] Bell icon trong header với badge count
+- [x] Dropdown list notifications
+- [x] Mark as read
+- [x] Mark all as read
+- [x] Trang `/notifications` xem all
 
 **Email Notification**
-- [ ] Setup SMTP (Google Workspace hoặc dịch vụ Việt)
-- [ ] Email templates (HTML đẹp)
-- [ ] Send email cho events quan trọng:
+- [x] Setup SMTP (Google Workspace hoặc dịch vụ Việt)
+- [x] Email templates (HTML đẹp)
+- [x] Send email cho events quan trọng:
   - Assignment due soon
   - New grade
   - Course announcement
-- [ ] Queue email với BullMQ
+- [x] Queue email với BullMQ
 
 **Triggers**
-- [ ] Cron job check assignment due soon (chạy 1h/lần)
-- [ ] Trigger khi grade được publish
-- [ ] Trigger khi enroll vào course mới
+- [x] Cron job check assignment due soon (chạy 1h/lần)
+- [x] Trigger khi grade được publish
+- [x] Trigger khi enroll vào course mới
 
 **Notification Preferences**
-- [ ] Trang `/settings/notifications`
-- [ ] Toggle on/off cho từng loại
-- [ ] Toggle email vs in-app
+- [x] Trang `/settings/notifications`
+- [x] Toggle on/off cho từng loại
+- [x] Toggle email vs in-app
 
 **Milestone tuần 18**: ✅ Notification hoạt động cho events quan trọng.
 
 ---
 
-### Tuần 19: Polish UI/UX
+### Tuần 19: Polish UI/UX ← ĐANG LÀM
 
 **Mục tiêu**: App đẹp, smooth, accessible.
 
 **Mobile Responsive**
-- [ ] Test mọi page trên mobile (375px, 414px)
-- [ ] Sidebar collapse trên mobile
-- [ ] Forms readable trên mobile
-- [ ] Tables responsive (scroll horizontal hoặc card view)
+- [x] Sidebar collapse trên mobile (SidebarContext + hamburger button)
+- [x] Mobile overlay backdrop khi sidebar mở
+- [x] Padding responsive: p-4 md:p-6 cho main content
+- [x] Tables responsive — overflow-x-auto cho GradebookTable, UserTable, AttemptsTable
+- [x] Submissions page — stacked layout trên mobile (list → chọn học sinh → detail)
+- [x] Admin users page header — flex-wrap cho mobile
 - [ ] Code editor usable trên mobile (zoom, scroll)
 
 **Loading States**
-- [ ] Skeleton screens cho main pages
+- [x] Skeleton screens cho dashboard, courses, course detail, quizzes
+- [x] loading.tsx cho assignments, gradebook, people, admin/users, notifications, profile
 - [ ] Spinner cho actions ngắn
 - [ ] Progress bar cho upload, code execution
 
 **Error States**
-- [ ] error.tsx ở mỗi route segment
-- [ ] Friendly error messages tiếng Việt
-- [ ] Retry button khi có thể
-- [ ] Empty states đẹp
+- [x] error.tsx cho dashboard, courses, course detail (tiếng Việt, retry button)
+- [x] error.tsx cho assignments, quizzes, gradebook, people, admin, notifications
 
 **Accessibility**
+- [x] aria-label cho sidebar và hamburger button
 - [ ] ARIA labels đầy đủ
 - [ ] Keyboard navigation
 - [ ] Focus management trong modals
 - [ ] Color contrast đạt WCAG AA
-- [ ] Screen reader test
 
 **Performance**
-- [ ] Lazy load components nặng (Monaco, TipTap)
+- [x] TipTap lazy load với next/dynamic (LessonEditor, AssignmentForm)
+- [x] Monaco đã tự lazy load qua @monaco-editor/react
 - [ ] Image optimization với next/image
 - [ ] Database query optimization (đo bằng Prisma logging)
-- [ ] Bundle size analysis
 
 **Tiếng Việt**
-- [ ] Verify mọi text là tiếng Việt
-- [ ] Date format kiểu Việt: DD/MM/YYYY
-- [ ] Number format
-- [ ] Locale trong date-fns
+- [x] Date format kiểu Việt: DD/MM/YYYY (dùng Intl.DateTimeFormat vi-VN và date-fns vi locale)
+- [ ] Verify toàn bộ text còn lại là tiếng Việt
 
-**Milestone tuần 19**: ✅ App đẹp, smooth, mobile-friendly, accessible.
+**Milestone tuần 19**: ✅ Mobile responsive, loading/error states hoàn chỉnh cho tất cả routes.
 
 ---
 

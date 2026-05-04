@@ -211,6 +211,79 @@ export async function getQuizAction(quizId: string) {
   });
 }
 
+// ── Get quiz for teacher preview (full question data) ─────────
+
+export type PreviewQuizQuestion = {
+  questionId: string;
+  position:   number;
+  points:     number;
+  question: {
+    id:          string;
+    type:        string;
+    content:     string;
+    explanation: string | null;
+    starterCode: string | null;
+    options:     { id: string; content: string; isCorrect: boolean; position: number }[];
+  };
+};
+
+export type PreviewQuizData = {
+  id:               string;
+  title:            string;
+  description:      string | null;
+  timeLimit:        number | null;
+  shuffleQuestions: boolean;
+  shuffleAnswers:   boolean;
+  questions:        PreviewQuizQuestion[];
+};
+
+export async function getQuizPreviewAction(quizId: string): Promise<PreviewQuizData | null> {
+  const session = await auth();
+  const role    = session?.user?.role as UserRole | undefined;
+  if (!role || !hasMinRole(role, 'TA')) return null;
+
+  const quiz = await prisma.quiz.findUnique({
+    where: { id: quizId, deletedAt: null },
+    include: {
+      questions: {
+        orderBy: { position: 'asc' },
+        include: {
+          question: {
+            include: { options: { orderBy: { position: 'asc' } } },
+          },
+        },
+      },
+    },
+  });
+  if (!quiz) return null;
+
+  const questions: PreviewQuizQuestion[] = quiz.questions.map((qq) => ({
+    questionId: qq.questionId,
+    position:   qq.position,
+    points:     qq.points ?? qq.question.points,
+    question: {
+      id:          qq.question.id,
+      type:        qq.question.type,
+      content:     qq.question.content,
+      explanation: qq.question.explanation ?? null,
+      starterCode: qq.question.starterCode ?? null,
+      options:     qq.question.options.map((o) => ({
+        id: o.id, content: o.content, isCorrect: o.isCorrect, position: o.position,
+      })),
+    },
+  }));
+
+  return {
+    id:               quiz.id,
+    title:            quiz.title,
+    description:      quiz.description,
+    timeLimit:        quiz.timeLimit,
+    shuffleQuestions: quiz.shuffleQuestions,
+    shuffleAnswers:   quiz.shuffleAnswers,
+    questions,
+  };
+}
+
 // ── Create ────────────────────────────────────────────────────
 
 export async function createQuizAction(
@@ -498,4 +571,33 @@ export async function addRandomQuestionsToQuizAction(
   }));
 
   return { success: true, message: `Đã thêm ${toAdd.length} câu hỏi ngẫu nhiên.`, data: { added } };
+}
+
+// ── Update quiz question points ───────────────────────────────
+
+export async function updateQuizQuestionPointsAction(
+  quizQuestionId: string,
+  points: number,
+): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: 'Chưa đăng nhập.' };
+  const role = session.user.role as UserRole;
+
+  if (!isFinite(points) || points <= 0) return { success: false, error: 'Điểm phải lớn hơn 0.' };
+
+  const qq = await prisma.quizQuestion.findUnique({
+    where: { id: quizQuestionId },
+    select: { quiz: { select: { courseId: true } } },
+  });
+  if (!qq) return { success: false, error: 'Không tìm thấy câu hỏi trong quiz.' };
+  if (!(await canManageCourse(session.user.id, role, qq.quiz.courseId))) {
+    return { success: false, error: 'Không có quyền.' };
+  }
+
+  await prisma.quizQuestion.update({
+    where: { id: quizQuestionId },
+    data: { points },
+  });
+
+  return { success: true, message: 'Da cap nhat diem.' };
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Plus, Trash2, CheckCircle2, Circle, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, Circle, Eye, EyeOff, Zap, Loader2 } from 'lucide-react';
 import {
-  createQuestionAction, updateQuestionAction,
+  createQuestionAction, updateQuestionAction, runSolutionCodeForTCAction,
   type QuestionItem, type QuestionFormValues, type QuestionTestCase,
 } from '@/actions/questions';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
@@ -83,7 +83,11 @@ export function QuestionForm({ courseId, courseSlug, question, returnTo, default
   const [solutionCode, setSolutionCode] = useState(question?.solutionCode ?? '');
   const [timeLimit,    setTimeLimit]    = useState(String(question?.timeLimit ?? 3));
   const [memoryLimit,  setMemoryLimit]  = useState(String(question?.memoryLimit ?? 256));
-  const [showSolution, setShowSolution] = useState(false);
+  const [showSolution, setShowSolution] = useState(
+    initType === 'CODE_PYTHON' || initType === 'CODE_CPP',
+  );
+  const [tcGenerating, setTcGenerating] = useState<Record<number, boolean>>({});
+  const [, startGenTransition] = useTransition();
 
   const [options, setOptions] = useState<Option[]>(() => {
     if (question) return question.options.map((o) => ({ content: o.content, isCorrect: o.isCorrect }));
@@ -104,6 +108,7 @@ export function QuestionForm({ courseId, courseSlug, question, returnTo, default
     setType(t);
     setOptions(defaultOptions(t));
     if (!['CODE_PYTHON', 'CODE_CPP', 'CODE_WEB'].includes(t)) setTestCases([]);
+    setShowSolution(t === 'CODE_PYTHON' || t === 'CODE_CPP');
   }
 
   // ── Option helpers ─────────────────────────────────────────
@@ -142,6 +147,36 @@ export function QuestionForm({ courseId, courseSlug, question, returnTo, default
 
   function removeTC(i: number) {
     setTestCases((prev) => prev.filter((_, j) => j !== i));
+  }
+
+  // ── Generate expected output from solution code ────────────
+
+  async function generateExpectedOutput(tcIndex: number) {
+    if (!solutionCode.trim()) {
+      toast.error('Cần nhập code đáp án trước.');
+      return;
+    }
+    const tc = testCases[tcIndex];
+    if (!tc) return;
+    const lang: 'PYTHON3' | 'CPP17' = type === 'CODE_PYTHON' ? 'PYTHON3' : 'CPP17';
+    setTcGenerating((prev) => ({ ...prev, [tcIndex]: true }));
+    try {
+      const res = await runSolutionCodeForTCAction(
+        solutionCode,
+        lang,
+        tc.input,
+        Number(timeLimit) || 3,
+        (Number(memoryLimit) || 256) * 1024,
+      );
+      if (res.success) {
+        updateTC(tcIndex, 'expectedOutput', res.output);
+        toast.success('Đã sinh expected output.');
+      } else {
+        toast.error(res.error);
+      }
+    } finally {
+      setTcGenerating((prev) => ({ ...prev, [tcIndex]: false }));
+    }
   }
 
   // ── Validate ───────────────────────────────────────────────
@@ -424,29 +459,43 @@ export function QuestionForm({ courseId, courseSlug, question, returnTo, default
             </div>
           </div>
 
-          {/* Solution code */}
+          {/* Solution / Answer code */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Code mẫu (chỉ giáo viên xem)
-              </label>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {type === 'CODE_PYTHON' || type === 'CODE_CPP'
+                    ? 'Đáp án (code mẫu — dùng để sinh expected output)'
+                    : 'Code mẫu (chỉ giáo viên xem)'}
+                </label>
+                {(type === 'CODE_PYTHON' || type === 'CODE_CPP') && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Viết code đúng ở đây, rồi ấn ⚡ Sinh ở từng test case để tự sinh expected output.
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowSolution((v) => !v)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
               >
                 {showSolution ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 {showSolution ? 'Ẩn' : 'Hiện'}
               </button>
             </div>
             {showSolution && (
-              <div className="rounded-xl border border-border overflow-hidden">
+              <div className={cn(
+                'rounded-xl border overflow-hidden',
+                type === 'CODE_PYTHON' || type === 'CODE_CPP'
+                  ? 'border-primary/40 ring-1 ring-primary/20'
+                  : 'border-border',
+              )}>
                 {codeEditorLang && codeEditorLang !== 'WEB' ? (
                   <CodeEditor
                     value={solutionCode}
                     onChange={setSolutionCode}
                     language={codeEditorLang}
-                    height={200}
+                    height={220}
                   />
                 ) : (
                   <textarea
@@ -536,11 +585,26 @@ export function QuestionForm({ courseId, courseSlug, question, returnTo, default
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-medium text-muted-foreground uppercase">Expected output</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase">Expected output</label>
+                        <button
+                          type="button"
+                          onClick={() => void generateExpectedOutput(i)}
+                          disabled={tcGenerating[i]}
+                          className="flex items-center gap-1 rounded border border-primary/40 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                          title="Chạy code đáp án với input này để sinh expected output"
+                        >
+                          {tcGenerating[i]
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Zap className="h-3 w-3" />
+                          }
+                          {tcGenerating[i] ? 'Đang chạy...' : '⚡ Sinh'}
+                        </button>
+                      </div>
                       <textarea
                         value={tc.expectedOutput}
                         onChange={(e) => updateTC(i, 'expectedOutput', e.target.value)}
-                        placeholder="Kết quả mong đợi..."
+                        placeholder="Kết quả mong đợi (hoặc ấn ⚡ Sinh)..."
                         rows={3}
                         className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                       />

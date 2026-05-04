@@ -3,8 +3,16 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
-import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
+
+const RichTextEditor = dynamic(
+  () => import('@/components/ui/editor/RichTextEditor').then((m) => ({ default: m.RichTextEditor })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 rounded-xl bg-muted/30 animate-pulse" />,
+  },
+);
 import { LessonAttachments } from '@/components/features/courses/LessonAttachments';
 import { toast } from 'sonner';
 import { createLessonAction, updateLessonAction, type LessonFormValues } from '@/actions/lessons';

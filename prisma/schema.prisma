@@ -128,6 +128,27 @@ enum AttemptStatus {
   GRADED
 }
 
+enum NotificationType {
+  QUIZ_GRADED
+  ASSIGNMENT_GRADED
+  CODE_GRADED
+  COURSE_ENROLLED
+  ASSIGNMENT_DUE_SOON
+  ANNOUNCEMENT
+}
+
+enum ActivityAction {
+  VIEW_COURSE
+  VIEW_LESSON
+  START_QUIZ
+  SUBMIT_QUIZ
+  VIEW_ASSIGNMENT
+  SUBMIT_ASSIGNMENT
+  SUBMIT_CODE
+  VIEW_EXERCISE
+  LOGIN
+}
+
 // ============================================================
 // AUTHENTICATION MODELS
 // ============================================================
@@ -164,11 +185,14 @@ model User {
   passwordResets    PasswordReset[]
   emailTokens       EmailVerificationToken[]
   auditLogs         AuditLog[]
+  activityLogs      ActivityLog[]
   ownedCourses      Course[]           @relation("CourseOwner")
   enrollments       Enrollment[]
   taAssignments     TeachingAssistant[]
   coTeachingCourses CourseCoTeacher[]   @relation("CoTeacher")
-  quizAttempts      QuizAttempt[]
+  quizAttempts           QuizAttempt[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
 
   @@index([email])
   @@index([username])
@@ -265,6 +289,7 @@ model Course {
   questions           Question[]
   questionCategories  QuestionCategory[]
   exercises           CodeExercise[]
+  activityLogs        ActivityLog[]
 
   @@index([slug])
   @@index([ownerId])
@@ -813,4 +838,67 @@ model Answer {
 
   @@unique([attemptId, questionId])
   @@index([attemptId])
+}
+
+// ============================================================
+// NOTIFICATION SYSTEM
+// ============================================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?          @db.Text
+  link      String?
+  isRead    Boolean          @default(false)
+  emailSent Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  inAppEnabled          Boolean @default(true)
+  emailEnabled          Boolean @default(true)
+  emailQuizGraded       Boolean @default(true)
+  emailAssignmentGraded Boolean @default(true)
+  emailCodeGraded       Boolean @default(true)
+  emailEnrolled         Boolean @default(true)
+  emailDueSoon          Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// ACTIVITY LOG
+// ============================================================
+
+model ActivityLog {
+  id           String         @id @default(cuid())
+  userId       String
+  courseId     String?
+  action       ActivityAction
+  resourceType String?        // "lesson" | "quiz" | "assignment" | "exercise"
+  resourceId   String?
+  resourceName String?        // denormalized title for display
+  metadata     Json?
+  ipAddress    String?
+  createdAt    DateTime       @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([courseId, createdAt])
 }

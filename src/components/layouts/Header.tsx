@@ -3,6 +3,9 @@
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/layouts/ThemeToggle';
 import { UserMenu } from '@/components/features/auth/UserMenu';
+import { NotificationBell } from '@/components/features/notifications/NotificationBell';
+import { useSidebar } from '@/components/layouts/SidebarContext';
+import { Menu } from 'lucide-react';
 
 const SEGMENT_LABEL: Record<string, string> = {
   dashboard:    'Tổng quan',
@@ -24,8 +27,9 @@ const SEGMENT_LABEL: Record<string, string> = {
   submissions:  'Bài nộp',
   security:     'Bảo mật',
   admin:        'Quản trị',
-  gradebook:    'Bảng điểm',
-  manage:       'Quản lý câu hỏi',
+  gradebook:     'Bảng điểm',
+  manage:        'Quản lý câu hỏi',
+  notifications: 'Thông báo',
 };
 
 // Returns true if this segment looks like a database ID (cuid/uuid)
@@ -35,6 +39,7 @@ function isId(s: string) {
 
 export function Header() {
   const pathname = usePathname();
+  const { toggle } = useSidebar();
 
   const segments = pathname.split('/').filter(Boolean);
 
@@ -48,9 +53,18 @@ export function Header() {
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center border-b border-border bg-card/60 backdrop-blur-md px-6 gap-3"
+      className="relative z-10 flex h-14 shrink-0 items-center border-b border-border bg-card/60 backdrop-blur-md px-6 gap-3"
       style={{ boxShadow: '0 1px 0 0 oklch(1 0 0 / 5%)' }}
     >
+      {/* Mobile hamburger */}
+      <button
+        onClick={toggle}
+        className="md:hidden -ml-1 mr-1 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+        aria-label="Mở menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       {/* Breadcrumb */}
       <div className="flex-1 flex items-center gap-1.5 text-xs font-medium select-none min-w-0">
         {crumbs.map((crumb, i) => (
@@ -71,6 +85,7 @@ export function Header() {
 
       {/* Right controls */}
       <div className="flex items-center gap-2 shrink-0">
+        <NotificationBell />
         <ThemeToggle />
         <div className="h-5 w-px bg-border" />
         <UserMenu />

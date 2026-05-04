@@ -212,9 +212,9 @@ function EditableModuleName({ id, name, onSaved }: { id: string; name: string; o
   }
 
   return (
-    <span className="flex-1 text-lg font-bold cursor-pointer hover:text-primary transition-colors" onClick={() => setEditing(true)}>
+    <h3 className="flex-1 text-base sm:text-lg font-bold cursor-pointer hover:text-primary transition-colors line-clamp-2" onClick={() => setEditing(true)}>
       {name}
-    </span>
+    </h3>
   );
 }
 
@@ -337,7 +337,7 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
   const LANG_ICON: Record<string, string> = {
     PYTHON3: '/question_icon/python_icon.png',
     CPP17:   '/question_icon/cplusplus_icon.png',
-    WEB:     '/question_icon/web_icon.png',
+    WEB:     '/question_icon/web_icon_v2.png',
   };
 
   return (
@@ -535,16 +535,16 @@ function SortableModuleRow({
         ${isDragging ? 'opacity-40 ring-2 ring-primary/20' : ''}`}
     >
       {/* Module Header */}
-      <div className="px-5 py-4 bg-muted/20 border-b border-primary/20 flex items-center gap-3">
+      <div className="px-4 py-3 sm:px-5 sm:py-4 bg-muted/20 border-b border-primary/20 flex items-center gap-2 sm:gap-3">
         {canManage && (
           <button
             {...attributes}
             {...listeners}
-            className="flex items-center justify-center h-7 w-5 shrink-0 text-muted-foreground/30 hover:text-muted-foreground/70 cursor-grab active:cursor-grabbing touch-none"
+            className="flex items-center justify-center h-7 w-4 sm:w-5 shrink-0 text-muted-foreground/30 hover:text-muted-foreground/70 cursor-grab active:cursor-grabbing touch-none"
             tabIndex={-1}
             aria-label="Kéo để sắp xếp chương"
           >
-            <GripVertical className="h-5 w-5" />
+            <GripVertical className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         )}
 
@@ -560,12 +560,12 @@ function SortableModuleRow({
           {canManage ? (
             <EditableModuleName id={mod.id} name={mod.name} onSaved={onRefresh} />
           ) : (
-            <h3 className="text-lg font-bold truncate">{mod.name}</h3>
+            <h3 className="text-base sm:text-lg font-bold line-clamp-2">{mod.name}</h3>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="text-xs font-mono bg-background border-border/50">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Badge variant="outline" className="text-[10px] sm:text-xs font-mono bg-background border-border/50">
             {mod.items.length} bài
           </Badge>
           {canManage && (

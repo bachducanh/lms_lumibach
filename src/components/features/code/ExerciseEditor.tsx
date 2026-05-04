@@ -12,7 +12,7 @@ import type { CodeLanguage } from '@prisma/client';
 const LANGUAGES: { key: CodeLanguage; label: string; icon: string }[] = [
   { key: 'PYTHON3', label: 'Python 3',         icon: '/question_icon/python_icon.png'    },
   { key: 'CPP17',   label: 'C++ 17',            icon: '/question_icon/cplusplus_icon.png' },
-  { key: 'WEB',     label: 'Web (HTML+CSS+JS)', icon: '/question_icon/web_icon.png'       },
+  { key: 'WEB',     label: 'Web (HTML+CSS+JS)', icon: '/question_icon/web_icon_v2.png'    },
 ];
 
 type Props = {

@@ -367,30 +367,31 @@ export default async function AssignmentViewPage({
 
         {/* Prev / Next navigation */}
         {(prevNavItem || nextNavItem) && (
-          <div className="flex items-center justify-between gap-4 pt-6 border-t border-border">
-            <div className="flex-1">
+          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-border">
+            <div className="min-w-0">
               {prevNavItem ? (
-                <Link href={navItemUrl(prevNavItem, slug)} className="inline-flex items-center gap-3 hover:text-primary transition-colors max-w-full group">
-                  <ChevronLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
+                <Link href={navItemUrl(prevNavItem, slug)} className="inline-flex items-center gap-2 sm:gap-3 hover:text-primary transition-colors max-w-full group">
+                  <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài trước</p>
-                    <p className="text-sm font-semibold truncate max-w-40 md:max-w-xs">{prevNavItem.title}</p>
+                    <p className="text-sm font-semibold truncate max-w-[100px] sm:max-w-xs">{prevNavItem.title}</p>
                   </div>
                 </Link>
               ) : (
                 <Link href={`/courses/${slug}/modules`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group">
-                  <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Về danh sách bài học
+                  <ChevronLeft className="h-4 w-4 shrink-0 group-hover:-translate-x-1 transition-transform" />
+                  <span className="truncate">Về danh sách</span>
                 </Link>
               )}
             </div>
             
-            <div className="flex-1 flex justify-end">
+            <div className="min-w-0 flex justify-end">
               {nextNavItem && (
-                <Link href={navItemUrl(nextNavItem, slug)} className="inline-flex flex-row-reverse items-center gap-3 hover:text-primary transition-colors max-w-full text-right group">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                <Link href={navItemUrl(nextNavItem, slug)} className="inline-flex flex-row-reverse items-center gap-2 sm:gap-3 hover:text-primary transition-colors max-w-full text-right group">
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài tiếp theo</p>
-                    <p className="text-sm font-semibold truncate max-w-40 md:max-w-xs">{nextNavItem.title}</p>
+                    <p className="text-sm font-semibold truncate max-w-[100px] sm:max-w-xs">{nextNavItem.title}</p>
                   </div>
                 </Link>
               )}

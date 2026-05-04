@@ -59,6 +59,30 @@ export async function sendVerificationEmail(email: string, token: string) {
   );
 }
 
+export async function sendNotificationEmail(
+  email: string,
+  recipientName: string,
+  title: string,
+  body: string | null | undefined,
+  link: string | null | undefined,
+) {
+  const fullUrl = link ? (link.startsWith('http') ? link : `${APP_URL}${link}`) : null;
+  await send(
+    email,
+    `${title} — LumiBach`,
+    `<div style="font-family:sans-serif;max-width:520px;margin:auto;padding:24px">
+      <h2 style="color:#050E3C;margin-bottom:8px">${title}</h2>
+      <p style="color:#444;margin-bottom:4px">Xin chào <strong>${recipientName}</strong>,</p>
+      ${body ? `<p style="color:#444;margin-bottom:20px">${body}</p>` : ''}
+      ${fullUrl ? `<a href="${fullUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Xem chi tiết →</a>` : ''}
+      <p style="color:#888;font-size:12px;margin-top:24px">
+        Email tự động từ LumiBach LMS.
+        <a href="${APP_URL}/settings/notifications" style="color:#7c3aed">Tắt thông báo email</a>
+      </p>
+    </div>`,
+  );
+}
+
 export async function sendPasswordResetEmail(email: string, token: string) {
   const url = `${APP_URL}/reset-password?token=${token}`;
   await send(

@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
+import { runCode, LANGUAGE_ID } from '@/lib/judge0';
+import { createNotification } from '@/lib/notifications';
+import { logActivity } from '@/lib/activity';
 import type { ActionResult } from '@/actions/auth';
 import type { UserRole } from '@prisma/client';
 
@@ -17,6 +20,7 @@ export type AttemptQuestion = {
     type:        string;
     content:     string;
     explanation: string | null;
+    starterCode: string | null;
     options:     { id: string; content: string; isCorrect: boolean; position: number }[];
   };
 };
@@ -81,7 +85,7 @@ export async function startAttemptAction(quizId: string): Promise<ActionResult<{
 
   const quiz = await prisma.quiz.findUnique({
     where: { id: quizId, deletedAt: null, status: 'PUBLISHED' },
-    select: { id: true, maxAttempts: true, availableFrom: true, dueDate: true },
+    select: { id: true, courseId: true, title: true, maxAttempts: true, availableFrom: true, dueDate: true },
   });
   if (!quiz) return { success: false, error: 'Quiz không tồn tại hoặc chưa được đăng.' };
 
@@ -107,6 +111,7 @@ export async function startAttemptAction(quizId: string): Promise<ActionResult<{
   const attempt = await prisma.quizAttempt.create({
     data: { quizId, studentId: userId },
   });
+  logActivity({ userId, courseId: quiz.courseId, action: 'START_QUIZ', resourceType: 'quiz', resourceId: quizId, resourceName: quiz.title });
   return { success: true, message: 'Bắt đầu làm bài.', data: { attemptId: attempt.id } };
 }
 
@@ -138,11 +143,16 @@ export async function getAttemptAction(attemptId: string): Promise<AttemptData |
     where: { quizId: attempt.quizId },
     orderBy: { position: 'asc' },
     include: {
-      question: { include: { options: { orderBy: { position: 'asc' } } } },
+      question: {
+        include: {
+          options:   { orderBy: { position: 'asc' } },
+          testCases: { orderBy: { position: 'asc' } },
+        },
+      },
     },
-  });
+  } as any);
 
-  const questions: AttemptQuestion[] = quizQuestions.map((qq) => ({
+  const questions: AttemptQuestion[] = (quizQuestions as any[]).map((qq) => ({
     questionId: qq.questionId,
     position:   qq.position,
     points:     qq.points ?? qq.question.points,
@@ -151,7 +161,8 @@ export async function getAttemptAction(attemptId: string): Promise<AttemptData |
       type:        qq.question.type,
       content:     qq.question.content,
       explanation: qq.question.explanation,
-      options:     qq.question.options.map((o) => ({
+      starterCode: qq.question.starterCode ?? null,
+      options:     qq.question.options.map((o: any) => ({
         id: o.id, content: o.content, isCorrect: o.isCorrect, position: o.position,
       })),
     },
@@ -220,7 +231,7 @@ export async function saveAnswerAction(
   return { success: true, message: '' };
 }
 
-// ── Submit attempt (auto-grade MCQ / TRUE_FALSE) ───────────────
+// ── Submit attempt (auto-grade MCQ / TRUE_FALSE / TRUE_FALSE_MULTI / CODE) ──
 
 export async function submitAttemptAction(attemptId: string): Promise<ActionResult> {
   const session = await auth();
@@ -228,80 +239,205 @@ export async function submitAttemptAction(attemptId: string): Promise<ActionResu
 
   const attempt = await prisma.quizAttempt.findUnique({
     where: { id: attemptId },
-    select: { studentId: true, status: true, quizId: true },
+    select: { studentId: true, status: true, quizId: true, quiz: { select: { courseId: true, title: true } } },
   });
   if (!attempt || attempt.studentId !== session.user.id)
     return { success: false, error: 'Không tìm thấy.' };
   if (attempt.status !== 'IN_PROGRESS') return { success: false, error: 'Bài đã nộp.' };
 
-  const quizQuestions = await prisma.quizQuestion.findMany({
-    where: { quizId: attempt.quizId },
-    include: { question: { include: { options: true } } },
-  });
+  const quizQuestions = await (prisma.quizQuestion as any).findMany({
+    where:   { quizId: attempt.quizId },
+    include: {
+      question: {
+        include: {
+          options:   true,
+          testCases: { orderBy: { position: 'asc' } },
+        },
+      },
+    },
+  }) as any[];
 
   const savedAnswers = await prisma.answer.findMany({ where: { attemptId } });
-  const answerMap = new Map(savedAnswers.map((a) => [a.questionId, a]));
+  const answerMap    = new Map(savedAnswers.map((a) => [a.questionId, a]));
 
-  let totalScore = 0;
-  let maxScore   = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ops: ReturnType<typeof prisma.answer.upsert | typeof prisma.quizAttempt.update>[] = [] as any[];
+  let totalScore         = 0;
+  let maxScore           = 0;
+  let needsManualGrading = false;
+
+  type Update = {
+    questionId:        string;
+    selectedOptionIds: string | null;
+    booleanAnswer:     boolean | null;
+    textAnswer:        string | null;
+    isCorrect:         boolean | null;
+    score:             number | null;
+  };
+  const updates: Update[] = [];
 
   for (const qq of quizQuestions) {
-    const pts  = qq.points ?? qq.question.points;
+    const pts  = (qq.points ?? qq.question.points) as number;
     maxScore  += pts;
     const ans  = answerMap.get(qq.questionId);
-    const type = qq.question.type;
-    const opts = qq.question.options;
+    const type = qq.question.type as string;
+    const opts = qq.question.options as { id: string; content: string; isCorrect: boolean }[];
 
-    if (type === 'ESSAY') {
-      ops.push(
-        prisma.answer.upsert({
-          where:  { attemptId_questionId: { attemptId, questionId: qq.questionId } },
-          create: { attemptId, questionId: qq.questionId, textAnswer: ans?.textAnswer ?? null },
-          update: {},
-        }),
-      );
-      continue; // essay not auto-graded; score stays null
+    // ── Manual-review types ────────────────────────────────────
+    if (type === 'ESSAY' || type === 'CODE_WEB') {
+      needsManualGrading = true;
+      updates.push({
+        questionId: qq.questionId,
+        selectedOptionIds: null,
+        booleanAnswer:     null,
+        textAnswer:        ans?.textAnswer ?? null,
+        isCorrect:         null,
+        score:             null,
+      });
+      continue;
     }
 
-    let isCorrect = false;
+    // ── MCQ ────────────────────────────────────────────────────
     if (type === 'MULTIPLE_CHOICE_SINGLE' || type === 'MULTIPLE_CHOICE_MULTIPLE') {
       const correctIds  = opts.filter((o) => o.isCorrect).map((o) => o.id).sort();
       const selectedIds = ans?.selectedOptionIds
         ? (JSON.parse(ans.selectedOptionIds) as string[]).sort()
         : [];
-      isCorrect = correctIds.length > 0
+      const isCorrect = correctIds.length > 0
         && correctIds.length === selectedIds.length
         && correctIds.every((id, i) => id === selectedIds[i]);
-    } else if (type === 'TRUE_FALSE') {
-      const correctIsDong = opts.find((o) => o.content === 'Đúng')?.isCorrect ?? false;
-      isCorrect = (ans?.booleanAnswer ?? null) === correctIsDong;
+      const score = isCorrect ? pts : 0;
+      totalScore += score;
+      updates.push({
+        questionId: qq.questionId,
+        selectedOptionIds: ans?.selectedOptionIds ?? null,
+        booleanAnswer: null, textAnswer: null,
+        isCorrect, score,
+      });
+      continue;
     }
 
-    const score = isCorrect ? pts : 0;
-    totalScore += score;
+    // ── TRUE_FALSE ─────────────────────────────────────────────
+    if (type === 'TRUE_FALSE') {
+      const correctIsDong = opts.find((o) => o.content === 'Đúng')?.isCorrect ?? false;
+      const isCorrect     = (ans?.booleanAnswer ?? null) === correctIsDong;
+      const score         = isCorrect ? pts : 0;
+      totalScore += score;
+      updates.push({
+        questionId: qq.questionId,
+        selectedOptionIds: null,
+        booleanAnswer: ans?.booleanAnswer ?? null,
+        textAnswer: null,
+        isCorrect, score,
+      });
+      continue;
+    }
 
-    ops.push(
-      prisma.answer.upsert({
-        where:  { attemptId_questionId: { attemptId, questionId: qq.questionId } },
-        create: {
-          attemptId, questionId: qq.questionId,
-          selectedOptionIds: ans?.selectedOptionIds ?? null,
-          booleanAnswer:     ans?.booleanAnswer     ?? null,
-          isCorrect, score,
-        },
-        update: { isCorrect, score },
-      }),
-    );
+    // ── TRUE_FALSE_MULTI (proportional scoring per statement) ──
+    if (type === 'TRUE_FALSE_MULTI') {
+      const studentDong = new Set<string>(
+        ans?.selectedOptionIds ? (JSON.parse(ans.selectedOptionIds) as string[]) : [],
+      );
+      let correct = 0;
+      for (const opt of opts) {
+        if (studentDong.has(opt.id) === opt.isCorrect) correct++;
+      }
+      const score = opts.length > 0
+        ? Math.round((correct / opts.length) * pts * 10) / 10
+        : 0;
+      totalScore += score;
+      updates.push({
+        questionId: qq.questionId,
+        selectedOptionIds: ans?.selectedOptionIds ?? null,
+        booleanAnswer: null, textAnswer: null,
+        isCorrect: correct === opts.length,
+        score,
+      });
+      continue;
+    }
+
+    // ── CODE_PYTHON / CODE_CPP (auto-grade via Judge0) ─────────
+    if (type === 'CODE_PYTHON' || type === 'CODE_CPP') {
+      const code      = ans?.textAnswer ?? '';
+      const testCases = (qq.question.testCases ?? []) as any[];
+      const langId    = type === 'CODE_PYTHON' ? LANGUAGE_ID.PYTHON3 : LANGUAGE_ID.CPP17;
+      const timeLim   = (qq.question.timeLimit  as number | null) ?? 3;
+      const memLim    = (qq.question.memoryLimit as number | null) ?? 262144;
+
+      if (!code.trim() || testCases.length === 0) {
+        updates.push({
+          questionId: qq.questionId,
+          selectedOptionIds: null, booleanAnswer: null,
+          textAnswer: code || null,
+          isCorrect: false, score: 0,
+        });
+        continue;
+      }
+
+      let codeScore   = 0;
+      const maxTcPts  = testCases.reduce((s: number, tc: any) => s + (tc.points as number), 0);
+
+      await Promise.all(
+        testCases.map(async (tc: any) => {
+          try {
+            const result = await runCode({
+              languageId:     langId,
+              sourceCode:     code,
+              stdin:          tc.input,
+              expectedOutput: tc.expectedOutput,
+              cpuTimeLimit:   timeLim,
+              memoryLimit:    memLim,
+            });
+            if (
+              result.status.id === 3 &&
+              (result.stdout?.trim() ?? '') === String(tc.expectedOutput).trim()
+            ) {
+              codeScore += tc.points as number;
+            }
+          } catch { /* Judge0 unavailable — skip */ }
+        }),
+      );
+
+      const score = maxTcPts > 0
+        ? Math.round((codeScore / maxTcPts) * pts * 10) / 10
+        : 0;
+      totalScore += score;
+      updates.push({
+        questionId: qq.questionId,
+        selectedOptionIds: null, booleanAnswer: null,
+        textAnswer: code,
+        isCorrect:  score === pts,
+        score,
+      });
+      continue;
+    }
   }
 
-  const hasEssay = quizQuestions.some((qq) => qq.question.type === 'ESSAY');
+  // ── Persist all answers + update attempt status ────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ops: any[] = updates.map((u) =>
+    prisma.answer.upsert({
+      where:  { attemptId_questionId: { attemptId, questionId: u.questionId } },
+      create: {
+        attemptId,
+        questionId:        u.questionId,
+        selectedOptionIds: u.selectedOptionIds,
+        booleanAnswer:     u.booleanAnswer,
+        textAnswer:        u.textAnswer,
+        isCorrect:         u.isCorrect,
+        score:             u.score,
+      },
+      update: {
+        isCorrect: u.isCorrect,
+        score:     u.score,
+        ...(u.textAnswer !== null ? { textAnswer: u.textAnswer } : {}),
+      },
+    }),
+  );
+
   ops.push(
     prisma.quizAttempt.update({
       where: { id: attemptId },
       data: {
-        status:      hasEssay ? 'SUBMITTED' : 'GRADED',
+        status:      needsManualGrading ? 'SUBMITTED' : 'GRADED',
         submittedAt: new Date(),
         score:       totalScore,
         maxScore,
@@ -310,6 +446,7 @@ export async function submitAttemptAction(attemptId: string): Promise<ActionResu
   );
 
   await prisma.$transaction(ops);
+  logActivity({ userId: session.user.id, courseId: attempt.quiz.courseId, action: 'SUBMIT_QUIZ', resourceType: 'quiz', resourceId: attempt.quizId, resourceName: attempt.quiz.title });
   return { success: true, message: 'Đã nộp bài.' };
 }
 
@@ -442,7 +579,19 @@ export async function gradeEssayAction(
     where: { id: answerId },
     select: {
       attemptId: true,
-      attempt:   { select: { quizId: true, quiz: { select: { courseId: true } } } },
+      attempt: {
+        select: {
+          studentId: true,
+          quizId:    true,
+          quiz: {
+            select: {
+              title:    true,
+              courseId: true,
+              course:   { select: { slug: true } },
+            },
+          },
+        },
+      },
     },
   });
   if (!answerRow) return { success: false, error: 'Không tìm thấy câu trả lời.' };
@@ -459,17 +608,28 @@ export async function gradeEssayAction(
     where:  { attemptId: answerRow.attemptId },
     select: { score: true },
   });
-  const totalScore  = allAnswers.reduce((sum, a) => sum + (a.score ?? 0), 0);
-  const allGraded   = allAnswers.every((a) => a.score !== null);
+  const totalScore    = allAnswers.reduce((sum, a) => sum + (a.score ?? 0), 0);
+  const allGraded     = allAnswers.every((a) => a.score !== null);
   const questionCount = await prisma.quizQuestion.count({ where: { quizId: answerRow.attempt.quizId } });
+  const fullyGraded   = allGraded && allAnswers.length >= questionCount;
 
   await prisma.quizAttempt.update({
     where: { id: answerRow.attemptId },
     data:  {
       score: totalScore,
-      ...(allGraded && allAnswers.length >= questionCount ? { status: 'GRADED' } : {}),
+      ...(fullyGraded ? { status: 'GRADED' } : {}),
     },
   });
+
+  if (fullyGraded) {
+    void createNotification({
+      userId: answerRow.attempt.studentId,
+      type:   'QUIZ_GRADED',
+      title:  `Quiz "${answerRow.attempt.quiz.title}" đã được chấm`,
+      body:   `Điểm của bạn: ${totalScore.toFixed(1)} điểm.`,
+      link:   `/courses/${answerRow.attempt.quiz.course.slug}/quizzes/${answerRow.attempt.quizId}`,
+    });
+  }
 
   return { success: true, message: 'Đã chấm điểm.' };
 }

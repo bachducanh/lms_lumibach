@@ -8,11 +8,12 @@ import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules'
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuizButton } from '@/components/features/quiz/DeleteQuizButton';
 import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
+import { QuizQuestionPoints } from '@/components/features/quiz/QuizQuestionPoints';
 import { StartQuizButton } from '@/components/features/quiz/StartQuizButton';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Brain, Clock, Pencil, CheckCircle2, Calendar,
-  RotateCcw, HelpCircle, Users, ListChecks, ChevronLeft, ChevronRight, Target
+  RotateCcw, HelpCircle, Users, ListChecks, ChevronLeft, ChevronRight, Target, Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@prisma/client';
@@ -114,7 +115,7 @@ export default async function QuizDetailPage({
             Nội dung khoá học
           </Link>
 
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
             <div className="space-y-2 flex-1">
               <div className="flex items-center gap-2">
                 <Brain className="h-3.5 w-3.5 text-amber-500" style={{ filter: 'drop-shadow(0 0 6px #f59e0b)' }} />
@@ -125,7 +126,7 @@ export default async function QuizDetailPage({
                 <p className="text-sm text-muted-foreground max-w-2xl mt-1">{quiz.description}</p>
               )}
               
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {canManage && (
                   <span className={cn('inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide', STATUS_CLASS[quiz.status])}>
                     {STATUS_LABEL[quiz.status]}
@@ -163,7 +164,7 @@ export default async function QuizDetailPage({
             </div>
 
             {canManage && (
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <QuizStatusButton quizId={quizId} isPublished={quiz.status === 'PUBLISHED'} />
                 <Link href={`/courses/${slug}/quizzes/${quizId}/manage`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                   <ListChecks className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> Câu hỏi
@@ -242,7 +243,7 @@ export default async function QuizDetailPage({
                         <Link
                           key={a.id}
                           href={`/courses/${slug}/quizzes/${quizId}/attempt/${a.id}`}
-                          className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:border-violet-500/40 hover:bg-muted/50 transition-all group"
+                          className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:border-violet-500/40 hover:bg-muted/50 transition-all group"
                         >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-bold text-muted-foreground group-hover:bg-violet-500/10 group-hover:text-violet-500 transition-colors">
                             #{myAttempts.length - i}
@@ -291,9 +292,14 @@ export default async function QuizDetailPage({
                 <h2 className="text-lg font-bold">Danh sách câu hỏi <span className="text-muted-foreground font-normal ml-1">({quiz.questions.length})</span></h2>
               </div>
               {canManage && (
-                <Link href={`/courses/${slug}/quizzes/${quizId}/manage`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-500 hover:text-violet-400 transition-colors">
-                  <ListChecks className="h-4 w-4" /> Thêm / Xoá câu hỏi
-                </Link>
+                <div className="flex items-center gap-4">
+                  <Link href={`/courses/${slug}/quizzes/${quizId}/preview`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-500 hover:text-amber-400 transition-colors">
+                    <Eye className="h-4 w-4" /> Xem thử
+                  </Link>
+                  <Link href={`/courses/${slug}/quizzes/${quizId}/manage`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-500 hover:text-violet-400 transition-colors">
+                    <ListChecks className="h-4 w-4" /> Thêm / Xoá câu hỏi
+                  </Link>
+                </div>
               )}
             </div>
 
@@ -319,9 +325,16 @@ export default async function QuizDetailPage({
                         {TYPE_SHORT[qq.question.type] ?? qq.question.type}
                       </span>
                       <p className="flex-1 min-w-0 text-sm font-medium line-clamp-2">{qq.question.content}</p>
-                      <span className="text-sm font-bold text-muted-foreground shrink-0 bg-muted px-2 py-1 rounded-md">
-                        {qq.points ?? qq.question.points}đ
-                      </span>
+                      {canManage ? (
+                        <QuizQuestionPoints
+                          quizQuestionId={qq.id}
+                          initialPoints={qq.points ?? qq.question.points}
+                        />
+                      ) : (
+                        <span className="text-sm font-bold text-muted-foreground shrink-0 bg-muted px-2 py-1 rounded-md">
+                          {qq.points ?? qq.question.points}đ
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -332,30 +345,31 @@ export default async function QuizDetailPage({
 
         {/* Prev / Next navigation */}
         {(prevNavItem || nextNavItem) && (
-          <div className="flex items-center justify-between gap-4 pt-6 border-t border-border">
-            <div className="flex-1">
+          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-border">
+            <div className="min-w-0">
               {prevNavItem ? (
-                <Link href={navItemUrl(prevNavItem, slug)} className="inline-flex items-center gap-3 hover:text-primary transition-colors max-w-full group">
-                  <ChevronLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
+                <Link href={navItemUrl(prevNavItem, slug)} className="inline-flex items-center gap-2 sm:gap-3 hover:text-primary transition-colors max-w-full group">
+                  <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài trước</p>
-                    <p className="text-sm font-semibold truncate max-w-40 md:max-w-xs">{prevNavItem.title}</p>
+                    <p className="text-sm font-semibold truncate max-w-[100px] sm:max-w-xs">{prevNavItem.title}</p>
                   </div>
                 </Link>
               ) : (
                 <Link href={`/courses/${slug}/modules`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group">
-                  <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Về danh sách bài học
+                  <ChevronLeft className="h-4 w-4 shrink-0 group-hover:-translate-x-1 transition-transform" /> 
+                  <span className="truncate">Về danh sách</span>
                 </Link>
               )}
             </div>
             
-            <div className="flex-1 flex justify-end">
+            <div className="min-w-0 flex justify-end">
               {nextNavItem && (
-                <Link href={navItemUrl(nextNavItem, slug)} className="inline-flex flex-row-reverse items-center gap-3 hover:text-primary transition-colors max-w-full text-right group">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                <Link href={navItemUrl(nextNavItem, slug)} className="inline-flex flex-row-reverse items-center gap-2 sm:gap-3 hover:text-primary transition-colors max-w-full text-right group">
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài tiếp theo</p>
-                    <p className="text-sm font-semibold truncate max-w-40 md:max-w-xs">{nextNavItem.title}</p>
+                    <p className="text-sm font-semibold truncate max-w-[100px] sm:max-w-xs">{nextNavItem.title}</p>
                   </div>
                 </Link>
               )}

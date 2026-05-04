@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
 import { auditLog } from '@/lib/audit';
+import { createNotification } from '@/lib/notifications';
 import type { UserRole, EnrollmentStatus } from '@prisma/client';
 import type { ActionResult } from './auth';
 import { randomBytes } from 'crypto';
@@ -110,6 +111,13 @@ export async function enrollUserAction(
 
   await prisma.enrollment.create({ data: { userId: user.id, courseId, status: 'ACTIVE' } });
 
+  void createNotification({
+    userId: user.id,
+    type:   'COURSE_ENROLLED',
+    title:  `Bạn đã được thêm vào khoá học "${course.name}"`,
+    link:   `/courses/${course.slug}`,
+  });
+
   await auditLog({
     action: 'ENROLL_USER',
     userId: session!.user!.id,
@@ -155,6 +163,12 @@ export async function bulkEnrollAction(
 
     await prisma.enrollment.create({ data: { userId: user.id, courseId, status: 'ACTIVE' } });
     enrolled++;
+    void createNotification({
+      userId: user.id,
+      type:   'COURSE_ENROLLED',
+      title:  `Bạn đã được thêm vào khoá học "${course.name}"`,
+      link:   `/courses/${course.slug}`,
+    });
   }
 
   await auditLog({
@@ -192,6 +206,13 @@ export async function selfEnrollAction(code: string): Promise<ActionResult<{ slu
 
   await prisma.enrollment.create({
     data: { userId: session.user.id, courseId: course.id, status: 'ACTIVE' },
+  });
+
+  void createNotification({
+    userId: session.user.id,
+    type:   'COURSE_ENROLLED',
+    title:  `Bạn đã tham gia khoá học "${course.name}"`,
+    link:   `/courses/${course.slug}`,
   });
 
   return { success: true, message: `Đã tham gia khoá học "${course.name}".`, data: { slug: course.slug } };

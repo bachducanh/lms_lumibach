@@ -63,9 +63,13 @@ export default async function SubmissionsPage({
     : [];
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] max-w-7xl overflow-hidden -mx-6 -mb-6 -mt-6">
-      {/* Left: student list */}
-      <aside className="w-64 shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto">
+    <div className="flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden -mx-4 -mb-4 -mt-4 md:-mx-6 md:-mb-6 md:-mt-6 max-w-7xl">
+      {/* Left: student list — full width on mobile when no student selected, hidden when student selected */}
+      <aside className={cn(
+        'flex flex-col border-border bg-card overflow-y-auto',
+        'border-b md:border-b-0 md:border-r md:w-64 md:shrink-0',
+        selectedStudentId ? 'hidden md:flex' : 'flex max-h-52 md:max-h-none',
+      )}>
         <div className="border-b border-border px-4 py-3">
           <Link href={`/courses/${slug}/assignments/${assignmentId}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-2 transition-colors">
             <ChevronLeft className="h-3.5 w-3.5" /> {assignment.title}
@@ -109,8 +113,18 @@ export default async function SubmissionsPage({
         </nav>
       </aside>
 
-      {/* Right: submission detail + grading */}
-      <main className="flex-1 overflow-y-auto p-6">
+      {/* Right: submission detail + grading — hidden on mobile when no student selected */}
+      <main className={cn('overflow-y-auto p-4 md:p-6', selectedStudentId ? 'flex-1' : 'hidden md:flex md:flex-1')}>
+        {/* Mobile: back to list */}
+        {selectedStudentId && (
+          <Link
+            href={`/courses/${slug}/assignments/${assignmentId}/submissions`}
+            className="md:hidden mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Danh sách học sinh
+          </Link>
+        )}
         {!selectedStudentId ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <p>Chọn học sinh từ danh sách để xem bài nộp</p>

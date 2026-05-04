@@ -2,15 +2,18 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
+import { useSidebar } from './SidebarContext';
 import {
   BookOpen,
-  ClipboardList,
+  Terminal,
   GraduationCap,
   LayoutDashboard,
   ScrollText,
+  Activity,
   Settings,
   Users,
   ChevronRight,
@@ -27,13 +30,14 @@ type NavItem = {
 const mainNavItems: NavItem[] = [
   { label: 'Tổng quan', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Khóa học',  href: '/courses',   icon: BookOpen },
-  { label: 'Bài tập',  href: '/assignments', icon: ClipboardList, roles: ['ADMIN', 'TEACHER', 'TA'] },
-  { label: 'Học sinh',  href: '/students',   icon: GraduationCap, roles: ['ADMIN', 'TEACHER', 'TA'] },
+  { label: 'Sandbox',  href: '/sandbox',   icon: Terminal },
+  { label: 'Học sinh', href: '/students',  icon: GraduationCap, roles: ['ADMIN', 'TEACHER', 'TA'] },
 ];
 
 const adminNavItems: NavItem[] = [
-  { label: 'Người dùng', href: '/admin/users',       icon: Users,       roles: ['ADMIN'] },
-  { label: 'Nhật ký',    href: '/admin/audit-logs',  icon: ScrollText,  roles: ['ADMIN'] },
+  { label: 'Người dùng',     href: '/admin/users',       icon: Users,      roles: ['ADMIN'] },
+  { label: 'Nhật ký hệ thống', href: '/admin/logs',      icon: Activity,   roles: ['ADMIN'] },
+  { label: 'Audit log',      href: '/admin/audit-logs',  icon: ScrollText, roles: ['ADMIN'] },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -91,8 +95,14 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { isOpen, close } = useSidebar();
   const role = session?.user?.role;
   const user = session?.user;
+
+  // Close sidebar on route change (mobile navigation)
+  useEffect(() => {
+    close();
+  }, [pathname, close]);
 
   const visibleMain  = mainNavItems.filter(i => !i.roles || (role && i.roles.includes(role)));
   const visibleAdmin = adminNavItems.filter(i => !i.roles || (role && i.roles.includes(role)));
@@ -105,10 +115,28 @@ export function Sidebar() {
     .toUpperCase();
 
   return (
-    <aside
-      className="flex h-full w-60 flex-col bg-sidebar border-r border-sidebar-border"
-      style={{ boxShadow: '1px 0 0 0 oklch(1 0 0 / 5%)' }}
-    >
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={cn(
+          'flex h-full w-60 flex-col bg-sidebar border-r border-sidebar-border',
+          // Mobile: fixed overlay, slides in/out
+          'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop: always visible in normal flow
+          'md:relative md:translate-x-0 md:transition-none',
+        )}
+        style={{ boxShadow: '1px 0 0 0 oklch(1 0 0 / 5%)' }}
+        aria-label="Điều hướng chính"
+      >
       {/* ── Logo ─────────────────────────────────────────────── */}
       <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-4">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
@@ -195,5 +223,6 @@ export function Sidebar() {
         )}
       </div>
     </aside>
+    </>
   );
 }

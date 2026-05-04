@@ -4,19 +4,30 @@ import { getAttemptAction } from '@/actions/attempts';
 import { getCourseBySlugAction } from '@/actions/courses';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
+import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { hasMinRole } from '@/lib/permissions';
-import { CheckCircle2, XCircle, Minus, Brain } from 'lucide-react';
+import { CheckCircle2, XCircle, Minus, Brain, Code } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@prisma/client';
 
 export const metadata = { title: 'Làm bài' };
 
+const CODE_LANG: Record<string, string> = {
+  CODE_PYTHON: 'PYTHON3',
+  CODE_CPP:    'CPP17',
+};
+
 const TYPE_LABEL: Record<string, string> = {
   MULTIPLE_CHOICE_SINGLE:   'Trắc nghiệm (1 đáp án)',
   MULTIPLE_CHOICE_MULTIPLE: 'Trắc nghiệm (nhiều đáp án)',
   TRUE_FALSE:               'Đúng / Sai',
+  TRUE_FALSE_MULTI:         'Đúng / Sai (nhiều phát biểu)',
   ESSAY:                    'Tự luận',
+  CODE_PYTHON:              'Code Python (tự chấm)',
+  CODE_CPP:                 'Code C++ (tự chấm)',
+  CODE_WEB:                 'Code Web (chấm tay)',
 };
 
 export default async function AttemptPage({
@@ -49,7 +60,7 @@ export default async function AttemptPage({
   if (attempt.status === 'IN_PROGRESS') {
     if (!isOwn) redirect(`/courses/${slug}/quizzes/${quizId}/attempts`);
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <QuizTaker attempt={attempt} courseSlug={slug} />
       </div>
     );
@@ -57,11 +68,12 @@ export default async function AttemptPage({
 
   // ── Results view ───────────────────────────────────────────────
   const { score, maxScore, quiz } = attempt;
-  const hasEssay = attempt.questions.some((q) => q.question.type === 'ESSAY');
+  const MANUAL_TYPES = new Set(['ESSAY', 'CODE_WEB']);
+  const hasEssay = attempt.questions.some((q) => MANUAL_TYPES.has(q.question.type));
   const ungradedEssay = attempt.answers.some(
     (a) => {
       const q = attempt.questions.find((qq) => qq.questionId === a.questionId);
-      return q?.question.type === 'ESSAY' && a.score === null;
+      return q && MANUAL_TYPES.has(q.question.type) && a.score === null;
     },
   );
 
@@ -81,12 +93,12 @@ export default async function AttemptPage({
     : null;
 
   const correctCount = attempt.answers.filter((a) => a.isCorrect === true).length;
-  const autoGradedCount = attempt.questions.filter((q) => q.question.type !== 'ESSAY').length;
+  const autoGradedCount = attempt.questions.filter((q) => !MANUAL_TYPES.has(q.question.type)).length;
 
   const answerMap = new Map(attempt.answers.map((a) => [a.questionId, a]));
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="bg-muted/20 -mx-6 -mt-6 mb-6 px-6 py-4 border-b border-border flex items-center gap-3">
         <Brain className="h-4 w-4 text-primary" />
@@ -172,13 +184,20 @@ export default async function AttemptPage({
           {attempt.questions.map((q, idx) => {
             const ans     = answerMap.get(q.questionId);
             const qType   = q.question.type;
-            const isEssay = qType === 'ESSAY';
+            const isManual = MANUAL_TYPES.has(qType);
+            const isEssay  = qType === 'ESSAY';
+            const isCodeWeb = qType === 'CODE_WEB';
+            const isCodeAuto = qType === 'CODE_PYTHON' || qType === 'CODE_CPP';
+            const isTFMulti  = qType === 'TRUE_FALSE_MULTI';
 
             let resultIcon = <Minus className="h-4 w-4 text-muted-foreground" />;
-            if (!isEssay && ans) {
+            if (!isManual && ans) {
               resultIcon = ans.isCorrect
                 ? <CheckCircle2 className="h-4 w-4 text-green-500" />
                 : <XCircle className="h-4 w-4 text-destructive" />;
+            }
+            if (isManual && ans?.score != null) {
+              resultIcon = <CheckCircle2 className="h-4 w-4 text-amber-500" />;
             }
 
             return (
@@ -190,11 +209,13 @@ export default async function AttemptPage({
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{TYPE_LABEL[qType]}</span>
+                      <span>{TYPE_LABEL[qType] ?? qType}</span>
                       <span>·</span>
                       <span>
-                        {isEssay
+                        {isManual
                           ? (ans?.score != null ? `${ans.score}/${q.points}` : `?/${q.points}`)
+                          : isCodeAuto
+                          ? (ans?.score != null ? `${ans.score}/${q.points}` : `0/${q.points}`)
                           : `${ans?.isCorrect ? q.points : 0}/${q.points}`
                         } điểm
                       </span>
@@ -285,8 +306,90 @@ export default async function AttemptPage({
                   </div>
                 )}
 
+                {/* TRUE_FALSE_MULTI */}
+                {isTFMulti && (
+                  <div className="pl-9 space-y-1.5">
+                    {q.question.options.map((opt, oi) => {
+                      const studentDong = (ans?.selectedOptionIds ?? []).includes(opt.id);
+                      const correct     = studentDong === opt.isCorrect;
+                      return (
+                        <div
+                          key={opt.id}
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                            correct
+                              ? 'border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400'
+                              : 'border-destructive/30 bg-destructive/5 text-destructive',
+                          )}
+                        >
+                          <span className="shrink-0 w-4 h-4 flex items-center justify-center rounded-full bg-muted text-[9px] font-bold">
+                            {String.fromCharCode(97 + oi)}
+                          </span>
+                          <span className="flex-1">{opt.content}</span>
+                          <span className="shrink-0 font-medium">
+                            {studentDong ? 'Đúng' : 'Sai'}
+                            {correct ? ' ✓' : ' ✗'}
+                          </span>
+                          <span className="shrink-0 text-muted-foreground">
+                            (đúng: {opt.isCorrect ? 'Đúng' : 'Sai'})
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* CODE_PYTHON / CODE_CPP */}
+                {isCodeAuto && (
+                  <div className="pl-4 space-y-2">
+                    {ans?.textAnswer ? (
+                      <div className="rounded-xl border border-border overflow-hidden">
+                        <CodeEditor
+                          value={ans.textAnswer}
+                          language={CODE_LANG[qType] ?? 'PYTHON3'}
+                          height={220}
+                          readOnly
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic pl-5">Không có code nộp</p>
+                    )}
+                    {ans?.score != null && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 pl-1">
+                        <Code className="h-3.5 w-3.5" />
+                        Điểm auto-grader: {ans.score}/{q.points}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* CODE_WEB */}
+                {isCodeWeb && (
+                  <div className="pl-4 space-y-3">
+                    {ans?.textAnswer ? (
+                      <WebCodeEditor value={ans.textAnswer} readOnly />
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic pl-5">Không có code nộp</p>
+                    )}
+                    {ans?.feedback && (
+                      <div className="rounded-lg border border-border bg-card px-4 py-3 text-xs space-y-1">
+                        <p className="font-medium text-muted-foreground">Nhận xét của giáo viên:</p>
+                        <p className="whitespace-pre-wrap">{ans.feedback}</p>
+                      </div>
+                    )}
+                    {canManage && ans && (
+                      <EssayGrader
+                        answerId={ans.id}
+                        maxPoints={q.points}
+                        initialScore={ans.score}
+                        initialFeedback={ans.feedback}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Explanation */}
-                {q.question.explanation && !isEssay && (
+                {q.question.explanation && !isManual && !isCodeAuto && (
                   <div className="pl-9 rounded-lg bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
                     <span className="font-medium">Giải thích: </span>
                     {q.question.explanation}

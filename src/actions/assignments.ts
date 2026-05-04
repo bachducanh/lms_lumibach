@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { hasMinRole } from '@/lib/permissions';
+import { logActivity } from '@/lib/activity';
 import type { ActionResult } from '@/actions/auth';
 import type { UserRole, AssignmentStatus } from '@prisma/client';
 
@@ -332,7 +333,7 @@ export async function submitAssignmentAction(
 
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId, deletedAt: null },
-    select: { status: true, dueDate: true, lateDeadline: true, latePolicy: true },
+    select: { courseId: true, title: true, status: true, dueDate: true, lateDeadline: true, latePolicy: true },
   });
   if (!assignment) return { success: false, error: 'Bài tập không tồn tại.' };
   if (assignment.status !== 'PUBLISHED') return { success: false, error: 'Bài tập chưa được đăng.' };
@@ -381,6 +382,9 @@ export async function submitAssignmentAction(
     });
   }
 
+  if (!asDraft) {
+    logActivity({ userId: session.user.id, courseId: assignment.courseId, action: 'SUBMIT_ASSIGNMENT', resourceType: 'assignment', resourceId: assignmentId, resourceName: assignment.title });
+  }
   return {
     success: true,
     message: asDraft ? 'Đã lưu nháp.' : existing ? 'Đã cập nhật bài nộp.' : 'Đã nộp bài thành công!',

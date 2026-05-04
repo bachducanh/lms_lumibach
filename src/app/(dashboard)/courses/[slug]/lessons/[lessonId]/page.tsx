@@ -8,6 +8,7 @@ import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { buttonVariants } from '@/components/ui/button';
 import { MarkCompleteButton } from '@/components/features/courses/MarkCompleteButton';
 import { LessonAttachments } from '@/components/features/courses/LessonAttachments';
+import { logActivity } from '@/lib/activity';
 import { prisma } from '@/lib/db';
 import { Clock, Pencil, ChevronLeft, ChevronRight, BookOpen, Paperclip, CheckCircle2 } from 'lucide-react';
 import type { UserRole } from '@prisma/client';
@@ -47,6 +48,8 @@ export default async function LessonViewPage({
 
   const moduleItem = lesson.moduleItems.find((item) => item.module.courseId === course.id);
   if (!moduleItem) notFound();
+
+  if (userId) logActivity({ userId, courseId: course.id, action: 'VIEW_LESSON', resourceType: 'lesson', resourceId: lessonId, resourceName: lesson.title });
 
   if (role === 'STUDENT' && !moduleItem.isPublished) notFound();
 
@@ -176,25 +179,43 @@ export default async function LessonViewPage({
         )}
 
         {/* Bottom action bar */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border">
-          <div className="flex-1 w-full sm:w-auto text-left">
-            {prevNavItem ? (
-              <Link href={navItemUrl(prevNavItem, slug)} className="inline-flex items-center gap-3 hover:text-primary transition-colors max-w-full group">
-                <ChevronLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài trước</p>
-                  <p className="text-sm font-semibold truncate max-w-40 md:max-w-xs">{prevNavItem.title}</p>
-                </div>
-              </Link>
-            ) : (
-              <Link href={`/courses/${slug}/modules`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group">
-                <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" /> Về danh sách bài học
-              </Link>
-            )}
+        <div className="pt-6 border-t border-border space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Previous link */}
+            <div className="min-w-0">
+              {prevNavItem ? (
+                <Link href={navItemUrl(prevNavItem, slug)} className="inline-flex items-center gap-2 sm:gap-3 hover:text-primary transition-colors max-w-full group">
+                  <ChevronLeft className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài trước</p>
+                    <p className="text-sm font-semibold truncate max-w-[100px] sm:max-w-xs">{prevNavItem.title}</p>
+                  </div>
+                </Link>
+              ) : (
+                <Link href={`/courses/${slug}/modules`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group">
+                  <ChevronLeft className="h-4 w-4 shrink-0 group-hover:-translate-x-1 transition-transform" />
+                  <span className="truncate">Về danh sách</span>
+                </Link>
+              )}
+            </div>
+
+            {/* Next link */}
+            <div className="min-w-0 flex justify-end">
+              {nextNavItem && (
+                <Link href={navItemUrl(nextNavItem, slug)} className="inline-flex flex-row-reverse items-center gap-2 sm:gap-3 hover:text-primary transition-colors max-w-full text-right group">
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài tiếp theo</p>
+                    <p className="text-sm font-semibold truncate max-w-[100px] sm:max-w-xs">{nextNavItem.title}</p>
+                  </div>
+                </Link>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row items-center gap-4 shrink-0 w-full sm:w-auto">
-            {userId && (
+          {/* Mark complete button row */}
+          {userId && (
+            <div className="flex justify-center border-t border-border/40 pt-6 sm:pt-0 sm:border-0">
               <div className="w-full sm:w-auto">
                 <MarkCompleteButton
                   moduleItemId={moduleItem.id}
@@ -203,19 +224,8 @@ export default async function LessonViewPage({
                   lessonId={lessonId}
                 />
               </div>
-            )}
-            {nextNavItem && (
-              <div className="w-full sm:w-auto text-right">
-                <Link href={navItemUrl(nextNavItem, slug)} className="inline-flex flex-row-reverse items-center gap-3 hover:text-primary transition-colors max-w-full text-right group">
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-0.5">Bài tiếp theo</p>
-                    <p className="text-sm font-semibold truncate max-w-40 md:max-w-xs">{nextNavItem.title}</p>
-                  </div>
-                </Link>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

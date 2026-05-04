@@ -4,9 +4,11 @@ import { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Brain, CheckCircle2, Circle, Clock, Send } from 'lucide-react';
+import { Brain, CheckCircle2, Circle, Clock, Send, Play, Loader2, XCircle } from 'lucide-react';
 import { saveAnswerAction, submitAttemptAction, type AttemptData, type AnswerInput } from '@/actions/attempts';
+import { checkQuizCodeAction, type TCCheckResult } from '@/actions/questions';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage } from '@prisma/client';
@@ -63,6 +65,25 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     }
     return m;
   });
+
+  // ── Code check state ─────────────────────────────────────────
+  const [codeCheckResults, setCodeCheckResults] = useState<Record<string, TCCheckResult[]>>({});
+  const [codeCheckPending, setCodeCheckPending] = useState<Record<string, boolean>>({});
+
+  async function handleCheckCode(questionId: string, code: string) {
+    if (!code.trim()) { toast.error('Chưa viết code.'); return; }
+    setCodeCheckPending((prev) => ({ ...prev, [questionId]: true }));
+    try {
+      const res = await checkQuizCodeAction(questionId, code);
+      if (res.success) {
+        setCodeCheckResults((prev) => ({ ...prev, [questionId]: res.results }));
+      } else {
+        toast.error(res.error);
+      }
+    } finally {
+      setCodeCheckPending((prev) => ({ ...prev, [questionId]: false }));
+    }
+  }
 
   // ── Essay / Code debounce ────────────────────────────────────
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -188,7 +209,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
       {confirmDialog}
 
       {/* Header */}
-      <div className="rounded-2xl border border-border/60 bg-card px-6 py-4 mb-8 flex items-center justify-between gap-4 shadow-sm">
+      <div className="rounded-2xl border border-border/60 bg-card px-6 py-4 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Brain className="h-4 w-4" />
@@ -397,21 +418,113 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
               )}
 
               {/* CODE_PYTHON / CODE_CPP */}
-              {(qType === 'CODE_PYTHON' || qType === 'CODE_CPP') && codeLang && (
-                <div className="pl-4 space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    Viết code {qType === 'CODE_PYTHON' ? 'Python' : 'C++'} — bài sẽ tự động chấm khi nộp.
-                  </p>
-                  <div className="rounded-xl border border-border overflow-hidden">
-                    <CodeEditor
-                      value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
-                      onChange={(v) => handleCode(q.questionId, v)}
-                      language={codeLang}
-                      height={280}
-                    />
+              {(qType === 'CODE_PYTHON' || qType === 'CODE_CPP') && codeLang && (() => {
+                const checkResults = codeCheckResults[q.questionId];
+                const isPending    = codeCheckPending[q.questionId] ?? false;
+                const passedCount  = checkResults?.filter((r) => r.passed).length ?? 0;
+                const totalCount   = checkResults?.length ?? 0;
+                const hasCompileErr = checkResults?.some((r) => r.statusId === 6) ?? false;
+                const compileOutput = checkResults?.find((r) => r.statusId === 6)?.errorDetail ?? null;
+                return (
+                  <div className="pl-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Viết code {qType === 'CODE_PYTHON' ? 'Python' : 'C++'} — bài sẽ tự động chấm khi nộp.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={() => void handleCheckCode(q.questionId, texts[q.questionId] ?? '')}
+                        className="gap-1.5 text-xs h-7 rounded-lg"
+                      >
+                        {isPending
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Play className="h-3.5 w-3.5" />
+                        }
+                        {isPending ? 'Đang chạy...' : 'Kiểm tra'}
+                      </Button>
+                    </div>
+
+                    <div className="rounded-xl border border-border overflow-hidden">
+                      <CodeEditor
+                        value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
+                        onChange={(v) => handleCode(q.questionId, v)}
+                        language={codeLang}
+                        height={280}
+                      />
+                    </div>
+
+                    {/* Check results panel */}
+                    {checkResults && (
+                      <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs">
+                        <div className={cn(
+                          'flex items-center gap-2 font-semibold',
+                          passedCount === totalCount ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400',
+                        )}>
+                          {passedCount === totalCount
+                            ? <CheckCircle2 className="h-4 w-4" />
+                            : <XCircle className="h-4 w-4" />
+                          }
+                          Kết quả: {passedCount}/{totalCount} test case đúng
+                        </div>
+
+                        {hasCompileErr && compileOutput && (
+                          <div className="rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-2">
+                            <p className="font-semibold text-red-500 mb-1">Lỗi compile:</p>
+                            <pre className="whitespace-pre-wrap font-mono text-red-500">{compileOutput}</pre>
+                          </div>
+                        )}
+
+                        {!hasCompileErr && checkResults.map((tc, ri) => (
+                          <div
+                            key={ri}
+                            className={cn(
+                              'rounded-lg border px-3 py-2 space-y-1',
+                              tc.passed
+                                ? 'border-green-500/30 bg-green-500/5'
+                                : 'border-red-400/30 bg-red-400/5',
+                            )}
+                          >
+                            <div className={cn(
+                              'flex items-center gap-1.5 font-medium',
+                              tc.passed ? 'text-green-600 dark:text-green-400' : 'text-red-500',
+                            )}>
+                              {tc.passed
+                                ? <CheckCircle2 className="h-3.5 w-3.5" />
+                                : <XCircle className="h-3.5 w-3.5" />
+                              }
+                              Test #{tc.position + 1}{tc.isHidden ? ' (ẩn)' : ''} — {tc.statusDesc}
+                            </div>
+                            {!tc.isHidden && (
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Input:</p>
+                                  <pre className="whitespace-pre-wrap font-mono bg-background rounded px-2 py-1 text-foreground">{tc.input || '(trống)'}</pre>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Expected:</p>
+                                  <pre className="whitespace-pre-wrap font-mono bg-background rounded px-2 py-1 text-green-600 dark:text-green-400">{tc.expected}</pre>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-0.5">Output của bạn:</p>
+                                  <pre className={cn(
+                                    'whitespace-pre-wrap font-mono bg-background rounded px-2 py-1',
+                                    tc.passed ? 'text-green-600 dark:text-green-400' : 'text-red-500',
+                                  )}>{tc.actual ?? '(trống)'}</pre>
+                                </div>
+                              </div>
+                            )}
+                            {!tc.isHidden && tc.errorDetail && (
+                              <pre className="whitespace-pre-wrap font-mono text-red-500 text-[11px] pt-1">{tc.errorDetail}</pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* CODE_WEB */}
               {qType === 'CODE_WEB' && (
@@ -419,12 +532,9 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                   <p className="text-xs text-muted-foreground">
                     Viết code HTML/CSS/JS — giáo viên sẽ xem và chấm điểm sau khi nộp.
                   </p>
-                  <textarea
+                  <WebCodeEditor
                     value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
-                    onChange={(e) => handleCode(q.questionId, e.target.value)}
-                    placeholder="<!-- Nhập code HTML, CSS, JS ở đây -->"
-                    rows={8}
-                    className="w-full rounded-xl border border-input bg-background px-4 py-3 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                    onChange={(v) => handleCode(q.questionId, v)}
                   />
                 </div>
               )}

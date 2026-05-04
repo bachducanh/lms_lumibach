@@ -22,6 +22,14 @@ export type CodeExecutionJobData = {
   submissionId: string;
 };
 
+export type EmailJobData = {
+  to:            string;
+  recipientName: string;
+  title:         string;
+  body:          string | null;
+  link:          string | null;
+};
+
 const QUEUE_OPTIONS = {
   connection: redisConnection,
   defaultJobOptions: {
@@ -32,10 +40,16 @@ const QUEUE_OPTIONS = {
   },
 } as const;
 
-let _codeQueue: Queue<CodeExecutionJobData> | null = null;
+let _codeQueue:  Queue<CodeExecutionJobData> | null = null;
+let _emailQueue: Queue<EmailJobData>          | null = null;
 
 export function getCodeQueue(): Queue<CodeExecutionJobData> {
   if (!_codeQueue) _codeQueue = new Queue<CodeExecutionJobData>('code-execution', QUEUE_OPTIONS);
   return _codeQueue;
+}
+
+export function getEmailQueue(): Queue<EmailJobData> {
+  if (!_emailQueue) _emailQueue = new Queue<EmailJobData>('email', QUEUE_OPTIONS);
+  return _emailQueue;
 }
 

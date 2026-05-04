@@ -85,7 +85,7 @@ function TerminalOutput({ result, pending }: { result: RunCodeResult | null; pen
   const hasError = !!(result?.compileOutput || result?.stderr);
 
   return (
-    <div className="min-h-[120px] bg-[#1a1a2e] rounded-b-xl font-mono text-sm px-4 py-3 overflow-x-auto">
+    <div className="h-full bg-[#1a1a2e] font-mono text-sm px-4 py-3 overflow-x-auto">
       {pending && (
         <div className="flex items-center gap-2 text-[#7ec8e3]">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -241,8 +241,8 @@ export function ExerciseSubmitPanel({
       ) : (
         <div className="flex flex-col lg:flex-row gap-5 items-stretch">
           {/* Left Side: Editor */}
-          <div className="flex-1 min-w-0 rounded-xl p-[1px] bg-gradient-to-r from-[#fd085d] via-[oklch(0.80_0.13_210/0.5)] to-transparent shadow-sm">
-            <div className="h-full rounded-xl flex flex-col overflow-hidden bg-[#1a1a2e] border-transparent">
+          <div className="flex-1 min-w-0 rounded-xl p-[1px] bg-gradient-to-r from-[#fd085d] via-[oklch(0.80_0.13_210/0.5)] to-transparent shadow-sm flex flex-col">
+            <div className="flex-1 rounded-xl flex flex-col overflow-hidden bg-[#1a1a2e] border-transparent">
               {/* Toolbar */}
               <div className="flex items-center gap-3 border-b border-white/10 bg-[#1a1a2e] px-3 py-2">
                 <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium text-[#f8f8f2]">
@@ -304,7 +304,7 @@ export function ExerciseSubmitPanel({
 
             {/* Terminal */}
             <div className="rounded-xl p-[1px] bg-gradient-to-r from-transparent via-[oklch(0.80_0.13_210/0.2)] to-[#fd085d] shadow-sm flex-1 flex flex-col min-h-[250px]">
-              <div className="h-full rounded-xl flex flex-col overflow-hidden bg-[#1a1a2e] border-transparent">
+              <div className="flex-1 rounded-xl flex flex-col overflow-hidden bg-[#1a1a2e] border-transparent">
                 <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 flex-shrink-0">
                   <Terminal className="h-3.5 w-3.5 text-[#7ec8e3]" />
                   <span className="text-xs font-semibold text-[#7ec8e3] uppercase tracking-wider">Output</span>

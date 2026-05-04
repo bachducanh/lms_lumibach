@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { hasMinRole } from '@/lib/permissions';
 import { submitCode, waitForResult, LANGUAGE_ID } from '@/lib/judge0';
 import { getCodeQueue } from '@/lib/queue';
+import { logActivity } from '@/lib/activity';
 import type { CodeLanguage, CodeSubmissionStatus, ExerciseStatus, UserRole } from '@prisma/client';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -208,6 +209,7 @@ export async function submitExerciseAction(
     },
   });
 
+  logActivity({ userId, courseId: ex.courseId, action: 'SUBMIT_CODE', resourceType: 'exercise', resourceId: exerciseId, resourceName: ex.title });
   return { success: true, submissionId: sub.id };
 }
 
@@ -376,6 +378,20 @@ export async function listCourseExercisesByModuleAction(courseId: string): Promi
 
   const standalone = isStaff ? exercises.filter((e) => !linkedIds.has(e.id)) : [];
   return { groups, standalone };
+}
+
+// ── Teacher: delete a student submission ───────────────────────
+
+export async function deleteSubmissionAction(submissionId: string): Promise<ActionResult> {
+  const session = await auth();
+  const role    = session?.user?.role as UserRole | undefined;
+  if (!role || !hasMinRole(role, 'TA')) return { success: false, error: 'Không có quyền' };
+
+  const sub = await prisma.codeSubmission.findUnique({ where: { id: submissionId } });
+  if (!sub) return { success: false, error: 'Không tìm thấy bài nộp' };
+
+  await prisma.codeSubmission.delete({ where: { id: submissionId } });
+  return { success: true, message: 'Đã xoá bài nộp' };
 }
 
 // ── Util ──────────────────────────────────────────────────────
