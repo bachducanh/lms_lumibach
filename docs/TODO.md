@@ -810,8 +810,8 @@ Trạng thái: ⬜ Chưa | 🟡 Đang làm | ✅ Xong | ❌ Bị chặn
 
 ## PHASE 3 (Tháng 10-12) - Backlog
 
-- [ ] Scratch Blocks
-- [ ] Analytics dashboard chi tiết
+- [x] Scratch Blocks (Scratch thật qua iframe TurboWarp; Scratch là một module item type, học sinh nộp .sb3, giáo viên xem & chấm tay)
+- [x] Analytics dashboard chi tiết (admin: /admin/analytics; giáo viên: /courses/[slug]/analytics)
 - [ ] AI tutor với Claude API
 - [ ] Migration tool hoàn chỉnh
 - [ ] Migrate hết các lớp từ Moodle

@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getCourseBySlugAction } from '@/actions/courses';
 import { getAssignmentAction, getMySubmissionAction } from '@/actions/assignments';
+import { logActivity } from '@/lib/activity';
 import { getRubricAction } from '@/actions/rubric';
 import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { RubricView } from '@/components/features/assignments/RubricView';
@@ -18,9 +19,14 @@ import { cn } from '@/lib/utils';
 import type { UserRole } from '@prisma/client';
 
 function navItemUrl(item: CourseNavItem, slug: string): string {
-  if (item.type === 'LESSON'     && item.lessonId)     return `/courses/${slug}/lessons/${item.lessonId}`;
-  if (item.type === 'ASSIGNMENT' && item.assignmentId) return `/courses/${slug}/assignments/${item.assignmentId}`;
-  if (item.type === 'QUIZ'       && item.quizId)       return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'LESSON'        && item.lessonId)        return `/courses/${slug}/lessons/${item.lessonId}`;
+  if (item.type === 'ASSIGNMENT'    && item.assignmentId)    return `/courses/${slug}/assignments/${item.assignmentId}`;
+  if (item.type === 'QUIZ'          && item.quizId)          return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
+    return item.codeExercise?.language === 'SCRATCH'
+      ? `/courses/${slug}/scratch/${item.codeExerciseId}`
+      : `/courses/${slug}/exercises/${item.codeExerciseId}`;
+  }
   return `/courses/${slug}/modules`;
 }
 
@@ -63,6 +69,8 @@ export default async function AssignmentViewPage({
   const assignment = await getAssignmentAction(assignmentId);
   if (!assignment) notFound();
   if (assignment.courseId !== course.id) notFound();
+
+  logActivity({ userId, courseId: course.id, action: 'VIEW_ASSIGNMENT', resourceType: 'assignment', resourceId: assignmentId, resourceName: assignment.title });
 
   const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
   const isStaff   = hasMinRole(role, 'TA');

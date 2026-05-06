@@ -354,11 +354,49 @@ export async function submitAttemptAction(attemptId: string): Promise<ActionResu
       continue;
     }
 
-    // ── CODE_PYTHON / CODE_CPP (auto-grade via Judge0) ─────────
-    if (type === 'CODE_PYTHON' || type === 'CODE_CPP') {
+    // ── PARSONS (proportional scoring by correct positions) ────
+    if (type === 'PARSONS') {
+      const studentIds: string[] = (() => {
+        try { return JSON.parse(ans?.textAnswer ?? '[]') as string[]; } catch { return []; }
+      })();
+      const sortedOpts = [...opts].sort((a, b) => (a as any).position - (b as any).position);
+      let correct = 0;
+      for (let idx = 0; idx < sortedOpts.length; idx++) {
+        if (studentIds[idx] === sortedOpts[idx]!.id) correct++;
+      }
+      const score = sortedOpts.length > 0
+        ? Math.round((correct / sortedOpts.length) * pts * 10) / 10
+        : 0;
+      totalScore += score;
+      updates.push({ questionId: qq.questionId, selectedOptionIds: null, booleanAnswer: null,
+        textAnswer: ans?.textAnswer ?? null, isCorrect: correct === sortedOpts.length, score });
+      continue;
+    }
+
+    // ── CODE_FILL (compare each blank, partial credit) ─────────
+    if (type === 'CODE_FILL') {
+      const studentFills: string[] = (() => {
+        try { return JSON.parse(ans?.textAnswer ?? '[]') as string[]; } catch { return []; }
+      })();
+      const sortedBlanks = [...opts].sort((a, b) => (a as any).position - (b as any).position);
+      let correct = 0;
+      for (let idx = 0; idx < sortedBlanks.length; idx++) {
+        if ((studentFills[idx] ?? '').trim() === sortedBlanks[idx]!.content.trim()) correct++;
+      }
+      const score = sortedBlanks.length > 0
+        ? Math.round((correct / sortedBlanks.length) * pts * 10) / 10
+        : 0;
+      totalScore += score;
+      updates.push({ questionId: qq.questionId, selectedOptionIds: null, booleanAnswer: null,
+        textAnswer: ans?.textAnswer ?? null, isCorrect: correct === sortedBlanks.length, score });
+      continue;
+    }
+
+    // ── CODE_PYTHON / CODE_CPP / CODE_DEBUG_* (auto-grade via Judge0) ──
+    if (type === 'CODE_PYTHON' || type === 'CODE_CPP' || type === 'CODE_DEBUG_PYTHON' || type === 'CODE_DEBUG_CPP') {
       const code      = ans?.textAnswer ?? '';
       const testCases = (qq.question.testCases ?? []) as any[];
-      const langId    = type === 'CODE_PYTHON' ? LANGUAGE_ID.PYTHON3 : LANGUAGE_ID.CPP17;
+      const langId    = (type === 'CODE_PYTHON' || type === 'CODE_DEBUG_PYTHON') ? LANGUAGE_ID.PYTHON3 : LANGUAGE_ID.CPP17;
       const timeLim   = (qq.question.timeLimit  as number | null) ?? 3;
       const memLim    = (qq.question.memoryLimit as number | null) ?? 262144;
 

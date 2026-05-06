@@ -72,6 +72,10 @@ const QUESTION_TYPES = [
   'CODE_PYTHON',
   'CODE_CPP',
   'CODE_WEB',
+  'PARSONS',
+  'CODE_FILL',
+  'CODE_DEBUG_PYTHON',
+  'CODE_DEBUG_CPP',
 ] as const;
 
 const optionSchema = z.object({
@@ -393,12 +397,13 @@ export async function checkQuizCodeAction(
     include: { testCases: { orderBy: { position: 'asc' } } },
   });
   if (!question) return { success: false, error: 'Không tìm thấy câu hỏi.' };
-  if (question.type !== 'CODE_PYTHON' && question.type !== 'CODE_CPP') {
-    return { success: false, error: 'Loại câu hỏi không hỗ trợ kiểm tra.' };
-  }
+  const isCodeAutoType = ['CODE_PYTHON','CODE_CPP','CODE_DEBUG_PYTHON','CODE_DEBUG_CPP'].includes(question.type);
+  if (!isCodeAutoType) return { success: false, error: 'Loại câu hỏi không hỗ trợ kiểm tra.' };
   if (!question.testCases?.length) return { success: false, error: 'Câu hỏi chưa có test case.' };
 
-  const langId = question.type === 'CODE_PYTHON' ? LANGUAGE_ID.PYTHON3 : LANGUAGE_ID.CPP17;
+  const langId = (question.type === 'CODE_PYTHON' || question.type === 'CODE_DEBUG_PYTHON')
+    ? LANGUAGE_ID.PYTHON3
+    : LANGUAGE_ID.CPP17;
 
   const results = await Promise.all(
     (question.testCases as any[]).map(async (tc): Promise<TCCheckResult> => {

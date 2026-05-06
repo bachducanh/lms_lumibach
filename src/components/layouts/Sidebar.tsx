@@ -18,6 +18,7 @@ import {
   Users,
   ChevronRight,
   Zap,
+  BarChart3,
 } from 'lucide-react';
 
 type NavItem = {
@@ -30,14 +31,15 @@ type NavItem = {
 const mainNavItems: NavItem[] = [
   { label: 'Tổng quan', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Khóa học',  href: '/courses',   icon: BookOpen },
-  { label: 'Sandbox',  href: '/sandbox',   icon: Terminal },
+  { label: 'Sandbox',  href: '/sandbox',    icon: Terminal },
   { label: 'Học sinh', href: '/students',  icon: GraduationCap, roles: ['ADMIN', 'TEACHER', 'TA'] },
 ];
 
 const adminNavItems: NavItem[] = [
-  { label: 'Người dùng',     href: '/admin/users',       icon: Users,      roles: ['ADMIN'] },
-  { label: 'Nhật ký hệ thống', href: '/admin/logs',      icon: Activity,   roles: ['ADMIN'] },
-  { label: 'Audit log',      href: '/admin/audit-logs',  icon: ScrollText, roles: ['ADMIN'] },
+  { label: 'Người dùng',       href: '/admin/users',      icon: Users,      roles: ['ADMIN'] },
+  { label: 'Phân tích',        href: '/admin/analytics',  icon: BarChart3,  roles: ['ADMIN'] },
+  { label: 'Nhật ký hệ thống', href: '/admin/logs',       icon: Activity,   roles: ['ADMIN'] },
+  { label: 'Audit log',        href: '/admin/audit-logs', icon: ScrollText, roles: ['ADMIN'] },
 ];
 
 const bottomNavItems: NavItem[] = [

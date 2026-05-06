@@ -7,6 +7,7 @@ import {
   listMyExerciseSubmissionsAction,
   listExerciseSubmissionsAction,
 } from '@/actions/exercises';
+import { logActivity } from '@/lib/activity';
 import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
@@ -25,7 +26,11 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'LESSON'        && item.lessonId)        return `/courses/${slug}/lessons/${item.lessonId}`;
   if (item.type === 'ASSIGNMENT'    && item.assignmentId)    return `/courses/${slug}/assignments/${item.assignmentId}`;
   if (item.type === 'QUIZ'          && item.quizId)          return `/courses/${slug}/quizzes/${item.quizId}`;
-  if (item.type === 'CODE_EXERCISE' && item.codeExerciseId)  return `/courses/${slug}/exercises/${item.codeExerciseId}`;
+  if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
+    return item.codeExercise?.language === 'SCRATCH'
+      ? `/courses/${slug}/scratch/${item.codeExerciseId}`
+      : `/courses/${slug}/exercises/${item.codeExerciseId}`;
+  }
   return `/courses/${slug}/modules`;
 }
 
@@ -54,6 +59,8 @@ export default async function ExerciseViewPage({
 
   const exercise = await getExerciseAction(exerciseId);
   if (!exercise || exercise.courseId !== course.id) notFound();
+
+  if (userId) logActivity({ userId, courseId: course.id, action: 'VIEW_EXERCISE', resourceType: 'exercise', resourceId: exerciseId, resourceName: exercise.title });
 
   const moduleItem = await (async () => {
     const { prisma } = await import('@/lib/db');

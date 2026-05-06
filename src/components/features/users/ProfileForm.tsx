@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -52,6 +54,8 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 export function ProfileForm({ user }: { user: UserData }) {
+  const { update: updateSession } = useSession();
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatar ?? null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -96,6 +100,8 @@ export function ProfileForm({ user }: { user: UserData }) {
         setAvatarUrl(json.url);
         setAvatarPreview(null);
         toast.success('Ảnh đại diện đã được cập nhật');
+        await updateSession({ image: json.url });
+        router.refresh();
       }
     } catch {
       toast.error('Không thể kết nối server');

@@ -3,13 +3,14 @@ import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
 import { getCourseBySlugAction } from '@/actions/courses';
 import { listCourseMembersAction } from '@/actions/enrollments';
+import { logActivity } from '@/lib/activity';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EnrollmentCodePanel } from '@/components/features/courses/EnrollmentCodePanel';
 import { hasMinRole } from '@/lib/permissions';
 import {
   BookOpen, Users, Calendar, Pencil, UserPlus,
-  ClipboardList, PlayCircle, ChevronRight, ArrowLeft, Zap, Brain, HelpCircle, TableProperties,
+  ClipboardList, PlayCircle, ChevronRight, ArrowLeft, Zap, Brain, HelpCircle, TableProperties, MessageSquare, BarChart3,
 } from 'lucide-react';
 import type { UserRole } from '@prisma/client';
 
@@ -38,6 +39,8 @@ export default async function CourseDetailPage({
 
   const course = await getCourseBySlugAction(slug);
   if (!course) notFound();
+
+  if (userId) logActivity({ userId, courseId: course.id, action: 'VIEW_COURSE', resourceType: 'course', resourceId: course.id, resourceName: course.name });
 
   const canManage =
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
@@ -108,6 +111,12 @@ export default async function CourseDetailPage({
             </Link>
           )}
           {canViewPeople && (
+            <Link href={`/courses/${slug}/analytics`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              <BarChart3 className="h-4 w-4 mr-1.5 text-cyan-500" />
+              Phân tích
+            </Link>
+          )}
+          {canViewPeople && (
             <Link href={`/courses/${slug}/people`} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
               <Users className="h-4 w-4 mr-1.5" />
               Thành viên
@@ -152,11 +161,11 @@ export default async function CourseDetailPage({
       )}
 
       {/* ── Primary CTA ────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-stretch gap-3">
-        {/* Start learning — Unity orange CTA */}
+      <div className="space-y-3">
+        {/* Start learning — full-width CTA */}
         <Link
           href={`/courses/${slug}/modules`}
-          className="flex flex-1 items-center justify-between gap-4 rounded-xl px-6 py-4 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 group"
+          className="flex w-full items-center justify-between gap-4 rounded-xl px-6 py-4 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 group"
           style={{
             background: 'linear-gradient(135deg, #fd085d, oklch(0.58 0.195 35))',
             boxShadow: '0 4px 24px rgb(253 8 93 / 35%)',
@@ -177,35 +186,47 @@ export default async function CourseDetailPage({
           <ChevronRight className="h-5 w-5 text-white/70 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
         </Link>
 
-        {/* Assignments link */}
-        <Link
-          href={`/courses/${slug}/assignments`}
-          className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-lg group"
-          style={{ '--tw-shadow-color': 'rgb(253 8 93 / 10%)' } as React.CSSProperties}
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <ClipboardList className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-semibold leading-tight text-sm">Bài tập</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Xem &amp; nộp bài</p>
-          </div>
-        </Link>
+        {/* Secondary links — 3-column grid */}
+        <div className="grid grid-cols-3 gap-3">
+          <Link
+            href={`/courses/${slug}/assignments`}
+            className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-lg group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <ClipboardList className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold leading-tight text-sm">Bài tập</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">Xem &amp; nộp bài</p>
+            </div>
+          </Link>
 
-        {/* Quiz link */}
-        <Link
-          href={`/courses/${slug}/quizzes`}
-          className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-4 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-lg group"
-          style={{ '--tw-shadow-color': 'rgb(253 8 93 / 10%)' } as React.CSSProperties}
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-            <Brain className="h-5 w-5 text-violet-500" />
-          </div>
-          <div>
-            <p className="font-semibold leading-tight text-sm">Quiz</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Kiểm tra nhanh</p>
-          </div>
-        </Link>
+          <Link
+            href={`/courses/${slug}/quizzes`}
+            className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:border-violet-500/40 hover:-translate-y-0.5 hover:shadow-lg group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+              <Brain className="h-5 w-5 text-violet-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold leading-tight text-sm">Quiz</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">Kiểm tra nhanh</p>
+            </div>
+          </Link>
+
+          <Link
+            href={`/courses/${slug}/forum`}
+            className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-4 transition-all duration-200 hover:border-sky-500/40 hover:-translate-y-0.5 hover:shadow-lg group"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+              <MessageSquare className="h-5 w-5 text-sky-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold leading-tight text-sm">Diễn đàn</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">Thảo luận lớp học</p>
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* ── Teacher tools row ──────────────────────────────────── */}

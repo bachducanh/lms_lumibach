@@ -234,6 +234,7 @@ export async function listCourseNavItemsAction(courseId: string, publishedOnly =
       assignmentId: true,
       quizId: true,
       codeExerciseId: true,
+      codeExercise: { select: { language: true } },
     },
   });
 }

@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { logActivity } from '@/lib/activity';
 import type { UserRole } from '@prisma/client';
 
 import '@/types/auth';
@@ -54,6 +55,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           data: { lastLoginAt: new Date() },
         });
 
+        logActivity({ userId: user.id, action: 'LOGIN' });
+
         return {
           id: user.id,
           email: user.email,
@@ -65,16 +68,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role as UserRole;
+      }
+      if (trigger === 'update' && session?.image !== undefined) {
+        token.picture = session.image as string | null;
       }
       return token;
     },
     session({ session, token }) {
       if (token.id) session.user.id = token.id as string;
       if (token.role) session.user.role = token.role as UserRole;
+      if (token.picture !== undefined) session.user.image = token.picture as string | null;
       return session;
     },
   },

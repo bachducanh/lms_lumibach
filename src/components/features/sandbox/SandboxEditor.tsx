@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Image from 'next/image';
 import { Play, Loader2, Terminal, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
@@ -15,25 +14,21 @@ import type { CodeLanguage } from '@prisma/client';
 const LANGUAGES: {
   key: CodeLanguage;
   label: string;
-  icon: string;
   starter: string;
 }[] = [
   {
-    key:     'PYTHON3',
-    label:   'Python 3',
-    icon:    '/question_icon/python_icon.png',
+    key: 'PYTHON3',
+    label: 'Python 3',
     starter: '# Viết code Python của bạn ở đây\nprint("Xin chào!")\n',
   },
   {
-    key:     'CPP17',
-    label:   'C++ 17',
-    icon:    '/question_icon/cplusplus_icon.png',
+    key: 'CPP17',
+    label: 'C++ 17',
     starter: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Xin chào!" << endl;\n    return 0;\n}\n',
   },
   {
-    key:     'WEB',
-    label:   'Web',
-    icon:    '/question_icon/web_icon_v2.png',
+    key: 'WEB',
+    label: 'Web',
     starter: '',
   },
 ];
@@ -157,7 +152,6 @@ export function SandboxEditor() {
                 : 'border-border bg-card hover:border-violet-500/40 hover:bg-muted/50 text-muted-foreground',
             )}
           >
-            <Image src={l.icon} alt={l.label} width={20} height={20} style={{ width: 20, height: 20 }} />
             {l.label}
           </button>
         ))}

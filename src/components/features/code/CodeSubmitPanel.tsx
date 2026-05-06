@@ -19,6 +19,7 @@ const LANG_LABEL: Record<CodeLanguage, string> = {
   JAVASCRIPT: 'JavaScript',
   CPP17:      'C++ 17',
   WEB:        'Web (HTML/CSS/JS)',
+  SCRATCH:    'Scratch',
 };
 
 const STATUS_LABEL: Record<CodeSubmissionStatus, string> = {

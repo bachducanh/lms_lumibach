@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { auth } from '@/auth';
 import { buttonVariants } from '@/components/ui/button';
-import { BookOpen, ClipboardList, GraduationCap, ArrowRight, Sparkles, Zap, Terminal, Code2 } from 'lucide-react';
+import { BookOpen, FlaskConical, GraduationCap, ArrowRight, Sparkles, Zap, Terminal, Code2 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Tổng quan',
@@ -20,15 +20,14 @@ const QUICK_LINKS = [
     border: 'hover:border-primary/40',
   },
   {
-    href: '/assignments',
-    icon: ClipboardList,
-    label: 'Bài tập',
-    description: 'Tạo và chấm bài tập',
+    href: '/sandbox',
+    icon: FlaskConical,
+    label: 'Sandbox',
+    description: 'Thực hành lập trình tự do',
     color: 'text-cyan-400',
     bg: 'bg-cyan-500/10',
     glow: 'oklch(0.80 0.13 210 / 0.25)',
     border: 'hover:border-cyan-400/40',
-    roles: ['ADMIN', 'TEACHER', 'TA'],
   },
   {
     href: '/students',

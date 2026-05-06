@@ -70,6 +70,7 @@ enum CodeLanguage {
   JAVASCRIPT
   CPP17
   WEB
+  SCRATCH
 }
 
 enum CodeSubmissionStatus {
@@ -120,6 +121,10 @@ enum QuestionType {
   CODE_PYTHON
   CODE_CPP
   CODE_WEB
+  PARSONS
+  CODE_FILL
+  CODE_DEBUG_PYTHON
+  CODE_DEBUG_CPP
 }
 
 enum AttemptStatus {
@@ -135,6 +140,7 @@ enum NotificationType {
   COURSE_ENROLLED
   ASSIGNMENT_DUE_SOON
   ANNOUNCEMENT
+  FORUM_REPLY
 }
 
 enum ActivityAction {
@@ -193,6 +199,8 @@ model User {
   quizAttempts           QuizAttempt[]
   notifications          Notification[]
   notificationPreference NotificationPreference?
+  forumTopics            ForumTopic[]            @relation("ForumTopicAuthor")
+  forumPosts             ForumPost[]             @relation("ForumPostAuthor")
 
   @@index([email])
   @@index([username])
@@ -290,6 +298,7 @@ model Course {
   questionCategories  QuestionCategory[]
   exercises           CodeExercise[]
   activityLogs        ActivityLog[]
+  forumTopics         ForumTopic[]
 
   @@index([slug])
   @@index([ownerId])
@@ -747,6 +756,9 @@ model CodeExercise {
   starterCss  String?  @db.Text
   starterJs   String?  @db.Text
 
+  // For SCRATCH (.sb3 file URL on MinIO)
+  starterFileUrl String?
+
   createdBy String
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
@@ -901,4 +913,48 @@ model ActivityLog {
   @@index([createdAt])
   @@index([userId, createdAt])
   @@index([courseId, createdAt])
+}
+
+// ============================================================
+// DISCUSSION FORUM
+// ============================================================
+
+model ForumTopic {
+  id        String   @id @default(cuid())
+  courseId  String
+  authorId  String
+  title     String
+  isPinned  Boolean  @default(false)
+  isLocked  Boolean  @default(false)
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  author User        @relation("ForumTopicAuthor", fields: [authorId], references: [id])
+  posts  ForumPost[]
+
+  @@index([courseId])
+  @@index([authorId])
+  @@index([courseId, createdAt])
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  topicId   String
+  authorId  String
+  content   String   @db.Text
+  isAnswer  Boolean  @default(false)
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topic   ForumTopic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author  User        @relation("ForumPostAuthor", fields: [authorId], references: [id])
+  parent  ForumPost?  @relation("ForumPostReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies ForumPost[] @relation("ForumPostReplies")
+
+  @@index([topicId])
+  @@index([authorId])
+  @@index([topicId, createdAt])
 }

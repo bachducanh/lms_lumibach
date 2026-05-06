@@ -6,6 +6,7 @@ import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
+import { ParsonsQuestion } from '@/components/features/quiz/ParsonsQuestion';
 import { hasMinRole } from '@/lib/permissions';
 import { CheckCircle2, XCircle, Minus, Brain, Code } from 'lucide-react';
 import Link from 'next/link';
@@ -15,8 +16,10 @@ import type { UserRole } from '@prisma/client';
 export const metadata = { title: 'Làm bài' };
 
 const CODE_LANG: Record<string, string> = {
-  CODE_PYTHON: 'PYTHON3',
-  CODE_CPP:    'CPP17',
+  CODE_PYTHON:       'PYTHON3',
+  CODE_CPP:          'CPP17',
+  CODE_DEBUG_PYTHON: 'PYTHON3',
+  CODE_DEBUG_CPP:    'CPP17',
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -28,6 +31,10 @@ const TYPE_LABEL: Record<string, string> = {
   CODE_PYTHON:              'Code Python (tự chấm)',
   CODE_CPP:                 'Code C++ (tự chấm)',
   CODE_WEB:                 'Code Web (chấm tay)',
+  PARSONS:                  'Sắp xếp code',
+  CODE_FILL:                'Điền vào chỗ trống',
+  CODE_DEBUG_PYTHON:        'Debug Python',
+  CODE_DEBUG_CPP:           'Debug C++',
 };
 
 export default async function AttemptPage({
@@ -68,7 +75,7 @@ export default async function AttemptPage({
 
   // ── Results view ───────────────────────────────────────────────
   const { score, maxScore, quiz } = attempt;
-  const MANUAL_TYPES = new Set(['ESSAY', 'CODE_WEB']);
+  const MANUAL_TYPES = new Set(['ESSAY', 'CODE_WEB']); // types needing manual grading
   const hasEssay = attempt.questions.some((q) => MANUAL_TYPES.has(q.question.type));
   const ungradedEssay = attempt.answers.some(
     (a) => {
@@ -187,8 +194,10 @@ export default async function AttemptPage({
             const isManual = MANUAL_TYPES.has(qType);
             const isEssay  = qType === 'ESSAY';
             const isCodeWeb = qType === 'CODE_WEB';
-            const isCodeAuto = qType === 'CODE_PYTHON' || qType === 'CODE_CPP';
-            const isTFMulti  = qType === 'TRUE_FALSE_MULTI';
+            const isCodeAuto  = ['CODE_PYTHON','CODE_CPP','CODE_DEBUG_PYTHON','CODE_DEBUG_CPP'].includes(qType);
+            const isTFMulti   = qType === 'TRUE_FALSE_MULTI';
+            const isParsons   = qType === 'PARSONS';
+            const isCodeFill  = qType === 'CODE_FILL';
 
             let resultIcon = <Minus className="h-4 w-4 text-muted-foreground" />;
             if (!isManual && ans) {
@@ -214,7 +223,7 @@ export default async function AttemptPage({
                       <span>
                         {isManual
                           ? (ans?.score != null ? `${ans.score}/${q.points}` : `?/${q.points}`)
-                          : isCodeAuto
+                          : (isCodeAuto || isParsons || isCodeFill)
                           ? (ans?.score != null ? `${ans.score}/${q.points}` : `0/${q.points}`)
                           : `${ans?.isCorrect ? q.points : 0}/${q.points}`
                         } điểm
@@ -388,8 +397,131 @@ export default async function AttemptPage({
                   </div>
                 )}
 
+                {/* CODE_DEBUG result — show submitted code + score */}
+                {isCodeAuto && (qType === 'CODE_DEBUG_PYTHON' || qType === 'CODE_DEBUG_CPP') && (
+                  <div className="pl-4 space-y-2">
+                    {ans?.textAnswer ? (
+                      <div className="rounded-xl border border-orange-500/30 overflow-hidden">
+                        <CodeEditor value={ans.textAnswer} language={CODE_LANG[qType] ?? 'PYTHON3'} height={220} readOnly />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic pl-5">Không có code nộp</p>
+                    )}
+                    {ans?.score != null && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 pl-1">
+                        <Code className="h-3.5 w-3.5" />
+                        Điểm auto-grader: {ans.score}/{q.points}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* PARSONS result — show student's arrangement vs correct order */}
+                {isParsons && (() => {
+                  const sortedCorrect = [...q.question.options].sort((a, b) => a.position - b.position);
+                  let studentLines: typeof sortedCorrect = [];
+                  if (ans?.textAnswer) {
+                    try {
+                      const ids = JSON.parse(ans.textAnswer) as string[];
+                      studentLines = ids.map((id) => sortedCorrect.find((o) => o.id === id)!).filter(Boolean);
+                    } catch { studentLines = []; }
+                  }
+                  return (
+                    <div className="pl-9 space-y-3">
+                      {studentLines.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground font-medium">Thứ tự bạn chọn:</p>
+                          {studentLines.map((line, li) => {
+                            const isCorrectPos = sortedCorrect[li]?.id === line.id;
+                            return (
+                              <div key={line.id} className={cn(
+                                'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                isCorrectPos
+                                  ? 'border-green-500/30 bg-green-500/5'
+                                  : 'border-destructive/30 bg-destructive/5',
+                              )}>
+                                <span className="text-muted-foreground w-4 shrink-0 tabular-nums">{li + 1}</span>
+                                <pre className="flex-1 font-mono whitespace-pre overflow-x-auto">{line.content}</pre>
+                                {isCorrectPos
+                                  ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                  : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                                }
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">Không có câu trả lời</p>
+                      )}
+                      {ans?.score != null && sortedCorrect.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Đúng {Math.round((ans.score / q.points) * sortedCorrect.length)}/{sortedCorrect.length} vị trí — {ans.score}/{q.points} điểm
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* CODE_FILL result — show each blank */}
+                {isCodeFill && (() => {
+                  const sortedBlanks = [...q.question.options].sort((a, b) => a.position - b.position);
+                  let fills: string[] = [];
+                  if (ans?.textAnswer) {
+                    try { fills = JSON.parse(ans.textAnswer) as string[]; } catch { fills = []; }
+                  }
+                  const template = (q.question as any).starterCode ?? '';
+                  const parts = template.split('___');
+                  return (
+                    <div className="pl-9 space-y-3">
+                      {template && (
+                        <div className="rounded-xl border border-border bg-muted/20 p-3 font-mono text-xs whitespace-pre-wrap leading-relaxed overflow-x-auto">
+                          {parts.map((part: string, pi: number) => (
+                            <span key={pi}>
+                              {part}
+                              {pi < parts.length - 1 && (
+                                <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 font-bold mx-0.5',
+                                  fills[pi]?.trim() === sortedBlanks[pi]?.content.trim()
+                                    ? 'bg-green-500/20 text-green-700 dark:text-green-300'
+                                    : 'bg-red-400/20 text-red-600 dark:text-red-400',
+                                )}>
+                                  {fills[pi] || '(trống)'}
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        {sortedBlanks.map((blank, bi) => {
+                          const student  = (fills[bi] ?? '').trim();
+                          const expected = blank.content.trim();
+                          const correct  = student === expected;
+                          return (
+                            <div key={blank.id} className={cn(
+                              'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs',
+                              correct ? 'border-green-500/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/5',
+                            )}>
+                              <span className="font-bold text-violet-600 dark:text-violet-400 w-6 shrink-0">[{bi+1}]</span>
+                              <span className={cn('font-mono flex-1', correct ? 'text-green-700 dark:text-green-300' : 'text-destructive')}>
+                                {fills[bi] || '(trống)'}
+                              </span>
+                              {!correct && (
+                                <span className="text-muted-foreground font-mono">→ {expected}</span>
+                              )}
+                              {correct
+                                ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                              }
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Explanation */}
-                {q.question.explanation && !isManual && !isCodeAuto && (
+                {q.question.explanation && !isManual && !isCodeAuto && !(isParsons || isCodeFill) && (
                   <div className="pl-9 rounded-lg bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
                     <span className="font-medium">Giải thích: </span>
                     {q.question.explanation}

@@ -7,7 +7,8 @@ export type NotificationType =
   | 'CODE_GRADED'
   | 'COURSE_ENROLLED'
   | 'ASSIGNMENT_DUE_SOON'
-  | 'ANNOUNCEMENT';
+  | 'ANNOUNCEMENT'
+  | 'FORUM_REPLY';
 
 type CreateParams = {
   userId: string;

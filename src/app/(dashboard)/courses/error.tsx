@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { AlertTriangle, RotateCcw, BookOpen } from 'lucide-react';
 
 export default function CoursesError({
@@ -32,12 +32,10 @@ export default function CoursesError({
           <RotateCcw className="h-4 w-4" />
           Thử lại
         </Button>
-        <Button asChild variant="ghost" className="gap-2">
-          <Link href="/dashboard">
-            <BookOpen className="h-4 w-4" />
-            Về trang chủ
-          </Link>
-        </Button>
+        <Link href="/dashboard" className={buttonVariants({ variant: 'ghost' }) + ' gap-2'}>
+          <BookOpen className="h-4 w-4" />
+          Về trang chủ
+        </Link>
       </div>
     </div>
   );

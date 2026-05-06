@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     // Warning: Dangerously allow production builds to successfully complete even if
     // your project has type errors.
@@ -19,6 +14,17 @@ const nextConfig: NextConfig = {
         port: '9000',
         pathname: '/**',
       },
+      // Production: MinIO hostname từ env
+      ...(process.env.MINIO_ENDPOINT && process.env.MINIO_ENDPOINT !== 'localhost'
+        ? [
+            {
+              protocol: (process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http') as 'http' | 'https',
+              hostname: process.env.MINIO_ENDPOINT,
+              port: process.env.MINIO_USE_SSL === 'true' ? undefined : (process.env.MINIO_PORT ?? '9000'),
+              pathname: '/**',
+            },
+          ]
+        : []),
     ],
   },
 };

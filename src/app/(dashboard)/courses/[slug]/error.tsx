@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { AlertTriangle, RotateCcw, ChevronLeft } from 'lucide-react';
 
 export default function CourseError({
@@ -32,12 +32,10 @@ export default function CourseError({
           <RotateCcw className="h-4 w-4" />
           Thử lại
         </Button>
-        <Button asChild variant="ghost" className="gap-2">
-          <Link href="/courses">
-            <ChevronLeft className="h-4 w-4" />
-            Danh sách khóa học
-          </Link>
-        </Button>
+        <Link href="/courses" className={buttonVariants({ variant: 'ghost' }) + ' gap-2'}>
+          <ChevronLeft className="h-4 w-4" />
+          Danh sách khóa học
+        </Link>
       </div>
     </div>
   );

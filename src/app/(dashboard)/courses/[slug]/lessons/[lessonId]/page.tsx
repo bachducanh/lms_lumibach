@@ -14,9 +14,14 @@ import { Clock, Pencil, ChevronLeft, ChevronRight, BookOpen, Paperclip, CheckCir
 import type { UserRole } from '@prisma/client';
 
 function navItemUrl(item: CourseNavItem, slug: string): string {
-  if (item.type === 'LESSON'     && item.lessonId)     return `/courses/${slug}/lessons/${item.lessonId}`;
-  if (item.type === 'ASSIGNMENT' && item.assignmentId) return `/courses/${slug}/assignments/${item.assignmentId}`;
-  if (item.type === 'QUIZ'       && item.quizId)       return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'LESSON'        && item.lessonId)        return `/courses/${slug}/lessons/${item.lessonId}`;
+  if (item.type === 'ASSIGNMENT'    && item.assignmentId)    return `/courses/${slug}/assignments/${item.assignmentId}`;
+  if (item.type === 'QUIZ'          && item.quizId)          return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
+    return item.codeExercise?.language === 'SCRATCH'
+      ? `/courses/${slug}/scratch/${item.codeExerciseId}`
+      : `/courses/${slug}/exercises/${item.codeExerciseId}`;
+  }
   return `/courses/${slug}/modules`;
 }
 

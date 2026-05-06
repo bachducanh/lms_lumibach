@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LumiBach LMS
 
-## Getting Started
+Hệ thống quản lý học tập (Learning Management System) hiện đại được xây dựng với Next.js, Prisma, PostgreSQL, Redis, MinIO và Judge0.
 
-First, run the development server:
+## 🚀 Tài liệu hướng dẫn
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Hướng dẫn cài đặt Development**: [docs/SETUP.md](docs/SETUP.md)
+- **Hướng dẫn triển khai Server (Production)**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Cấu trúc Database**: [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠 Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: Next.js 15+ (App Router)
+- **Database**: PostgreSQL (Prisma ORM)
+- **Cache & Queue**: Redis (BullMQ)
+- **Storage**: MinIO (S3 compatible)
+- **Code Execution**: Judge0 (Docker)
+- **Styling**: Tailwind CSS & Shadcn UI
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 💻 Bắt đầu nhanh (Dev)
 
-## Learn More
+1. **Khởi động hạ tầng**:
+   ```bash
+   docker compose up -d
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Cài đặt dependencies**:
+   ```bash
+   pnpm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Chạy ứng dụng**:
+   ```bash
+   pnpm dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. **Chạy workers**:
+   ```bash
+   # Terminal 1: Worker chấm code
+   pnpm worker:dev
 
-## Deploy on Vercel
+   # Terminal 2: Worker gửi mail
+   pnpm worker:email
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Mở [http://localhost:3000](http://localhost:3000) để xem kết quả.
