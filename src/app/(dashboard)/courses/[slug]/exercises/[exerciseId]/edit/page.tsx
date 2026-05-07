@@ -3,7 +3,9 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getCourseBySlugAction } from '@/actions/courses';
 import { getExerciseAction } from '@/actions/exercises';
+import { getCodeExerciseRubricAction } from '@/actions/rubric';
 import { ExerciseSetup } from '@/components/features/code/ExerciseSetup';
+import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
 import { buttonVariants } from '@/components/ui/button';
 import { ArrowLeft, Code2 } from 'lucide-react';
 import { hasMinRole } from '@/lib/permissions';
@@ -50,6 +52,7 @@ export default async function EditExercisePage({
     notFound();
   }
 
+  const rubric = await getCodeExerciseRubricAction(exercise.id);
 
   return (
     <div className="max-w-3xl">
@@ -96,6 +99,15 @@ export default async function EditExercisePage({
         }}
         courseSlug={slug}
       />
+
+      <div className="mt-10 border-t border-border pt-8">
+        <RubricBuilder
+          ownerKind="codeExercise"
+          ownerId={exercise.id}
+          maxScore={10}
+          initialRubric={rubric}
+        />
+      </div>
     </div>
   );
 }

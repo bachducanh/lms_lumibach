@@ -64,3 +64,7 @@ next-env.d.ts
 
 # Scratch files
 /scratch/
+
+# Self-hosted scratch-gui — cloned source + build output
+/external/scratch-gui/
+/public/scratch-gui/

@@ -13,7 +13,8 @@
     "prepare": "husky",
     "postinstall": "prisma generate",
     "worker:dev": "tsx watch src/workers/code-execution.ts",
-    "worker:email": "tsx watch src/workers/email.worker.ts"
+    "worker:email": "tsx watch src/workers/email.worker.ts",
+    "build:scratch-gui": "node scripts/build-scratch-gui.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

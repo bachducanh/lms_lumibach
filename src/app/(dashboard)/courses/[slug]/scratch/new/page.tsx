@@ -11,13 +11,13 @@ export const metadata = { title: 'Tạo bài Scratch' };
 export default async function NewScratchExercisePage({
   params, searchParams,
 }: {
-  params:       Promise<{ slug: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ moduleId?: string }>;
 }) {
-  const { slug }       = await params;
-  const { moduleId }   = await searchParams;
+  const { slug } = await params;
+  const { moduleId } = await searchParams;
   const session = await auth();
-  const role    = session?.user?.role as UserRole | undefined;
+  const role = session?.user?.role as UserRole | undefined;
   if (!role || !hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
   const course = await getCourseBySlugAction(slug);

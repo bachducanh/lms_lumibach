@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db';
 import { getCourseBySlugAction } from '@/actions/courses';
 import { hasMinRole } from '@/lib/permissions';
 import { ScratchExerciseForm } from '@/components/features/scratch/ScratchExerciseForm';
+import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
+import { getCodeExerciseRubricAction } from '@/actions/rubric';
 import { Cat } from 'lucide-react';
 import type { UserRole } from '@prisma/client';
 
@@ -16,8 +18,8 @@ export default async function EditScratchExercisePage({
 }) {
   const { slug, exerciseId } = await params;
   const session = await auth();
-  const role    = session?.user?.role as UserRole | undefined;
-  const userId  = session?.user?.id;
+  const role = session?.user?.role as UserRole | undefined;
+  const userId = session?.user?.id;
   if (!userId || !role || !hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
   const course = await getCourseBySlugAction(slug);
@@ -33,6 +35,8 @@ export default async function EditScratchExercisePage({
   });
   if (!ex || ex.courseId !== course.id) notFound();
   if (ex.language !== 'SCRATCH') redirect(`/courses/${slug}/exercises/${exerciseId}/edit`);
+
+  const rubric = await getCodeExerciseRubricAction(ex.id);
 
   return (
     <div className="space-y-5 max-w-3xl">
@@ -51,12 +55,21 @@ export default async function EditScratchExercisePage({
         exerciseId={ex.id}
         courseSlug={slug}
         initial={{
-          title:          ex.title,
-          description:    ex.description,
+          title: ex.title,
+          description: ex.description,
           starterFileUrl: ex.starterFileUrl,
-          status:         ex.status,
+          status: ex.status,
         }}
       />
+
+      <div className="mt-10 border-t border-border pt-8">
+        <RubricBuilder
+          ownerKind="codeExercise"
+          ownerId={ex.id}
+          maxScore={10}
+          initialRubric={rubric}
+        />
+      </div>
     </div>
   );
 }

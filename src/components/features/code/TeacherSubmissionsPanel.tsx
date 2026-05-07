@@ -21,6 +21,8 @@ import {
 } from '@/actions/exercises';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage, CodeSubmissionStatus } from '@prisma/client';
+import { RubricGradePanel } from './RubricGradePanel';
+import type { RubricData } from '@/actions/rubric';
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -82,6 +84,8 @@ type Props = {
   exerciseId:   string;
   initialSubs:  SubRow[];
   language:     CodeLanguage;
+  /** Optional rubric for the exercise — when set the dialog shows a rubric grading panel. */
+  rubric?:      RubricData | null;
 };
 
 function parseWebCode(raw: string | null | undefined): WebCode | null {
@@ -216,12 +220,14 @@ function GradeForm({
 function SubmissionDialog({
   exerciseId,
   row,
+  rubric,
   onClose,
   onGraded,
   onDeleted,
 }: {
   exerciseId: string;
   row:        SubRow;
+  rubric?:    RubricData | null;
   onClose:    () => void;
   onGraded:   (id: string, score: number, maxScore: number, feedback: string) => void;
   onDeleted:  (id: string) => void;
@@ -367,7 +373,20 @@ function SubmissionDialog({
               </div>
             )}
 
-            {/* Grade form */}
+            {/* Rubric grading — replaces free-form when a rubric is defined */}
+            {rubric && (
+              <RubricGradePanel
+                rubric={rubric}
+                codeSubmissionId={detail.id}
+                maxScore={Number(detail.maxScore) || 10}
+                onGraded={(score) => {
+                  onGraded(detail.id, score, Number(detail.maxScore) || 10, (detail as any).feedback ?? '');
+                  onClose();
+                }}
+              />
+            )}
+
+            {/* Free-form grade — always shown so teachers can override or write feedback */}
             <GradeForm
               submissionId={detail.id}
               initial={{
@@ -398,7 +417,7 @@ function SubmissionDialog({
 
 // ── Main panel ─────────────────────────────────────────────────
 
-export function TeacherSubmissionsPanel({ exerciseId, initialSubs, language }: Props) {
+export function TeacherSubmissionsPanel({ exerciseId, initialSubs, language, rubric }: Props) {
   const [subs,     setSubs]    = useState<SubRow[]>(initialSubs);
   const [openRow,  setOpenRow] = useState<SubRow | null>(null);
 
@@ -434,6 +453,7 @@ export function TeacherSubmissionsPanel({ exerciseId, initialSubs, language }: P
         <SubmissionDialog
           exerciseId={exerciseId}
           row={openRow}
+          rubric={rubric}
           onClose={() => setOpenRow(null)}
           onGraded={handleGraded}
           onDeleted={handleDeleted}

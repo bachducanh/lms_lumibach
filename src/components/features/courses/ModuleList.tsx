@@ -42,9 +42,9 @@ type ModuleItem = ModuleWithItems['items'][number];
 
 type Props = {
   courseSlug: string;
-  courseId:   string;
-  modules:    ModuleWithItems[];
-  canManage:  boolean;
+  courseId: string;
+  modules: ModuleWithItems[];
+  canManage: boolean;
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;
@@ -54,12 +54,12 @@ type Props = {
 // ── Activity types shown in the picker modal ──────────────────
 
 type ActivityDef = {
-  id:          string;
-  label:       string;
+  id: string;
+  label: string;
   description: string;
-  icon:        React.ReactNode;
-  iconBg:      string;
-  borderGlow:  string;
+  icon: React.ReactNode;
+  iconBg: string;
+  borderGlow: string;
 };
 
 const ACTIVITY_DEFS: ActivityDef[] = [
@@ -116,9 +116,9 @@ const ACTIVITY_DEFS: ActivityDef[] = [
 // ── Add activity modal ────────────────────────────────────────
 
 type ModalProps = {
-  courseSlug:  string;
-  moduleId:    string;
-  onClose:     () => void;
+  courseSlug: string;
+  moduleId: string;
+  onClose: () => void;
   onSelectUrl: () => void;
 };
 
@@ -128,21 +128,21 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectUrl }: ModalP
   }
 
   const navHrefs: Record<string, string> = {
-    lesson:        `/courses/${courseSlug}/lessons/new?moduleId=${moduleId}`,
-    assignment:    `/courses/${courseSlug}/assignments/new?moduleId=${moduleId}`,
-    quiz:          `/courses/${courseSlug}/quizzes/new?moduleId=${moduleId}`,
+    lesson: `/courses/${courseSlug}/lessons/new?moduleId=${moduleId}`,
+    assignment: `/courses/${courseSlug}/assignments/new?moduleId=${moduleId}`,
+    quiz: `/courses/${courseSlug}/quizzes/new?moduleId=${moduleId}`,
     code_exercise: `/courses/${courseSlug}/exercises/new?moduleId=${moduleId}`,
-    scratch:       `/courses/${courseSlug}/scratch/new?moduleId=${moduleId}`,
+    scratch: `/courses/${courseSlug}/scratch/new?moduleId=${moduleId}`,
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
       <div className="relative w-full max-w-2xl rounded-2xl border border-border/50 bg-card/90 shadow-2xl overflow-hidden"
-           style={{ boxShadow: '0 24px 64px oklch(0 0 0 / 0.5), 0 0 0 1px oklch(1 0 0 / 10%)' }}>
+        style={{ boxShadow: '0 24px 64px oklch(0 0 0 / 0.5), 0 0 0 1px oklch(1 0 0 / 10%)' }}>
 
         <div className="absolute top-0 left-0 right-0 h-[2px]"
-             style={{ background: 'linear-gradient(90deg, transparent, rgb(253 8 93 / 80%), oklch(0.80 0.13 210 / 0.6), transparent)' }} />
+          style={{ background: 'linear-gradient(90deg, transparent, rgb(253 8 93 / 80%), oklch(0.80 0.13 210 / 0.6), transparent)' }} />
 
         <div className="flex items-center justify-between border-b border-border/50 px-6 py-5 bg-muted/20">
           <div>
@@ -317,17 +317,17 @@ function AddExternalUrlForm({ moduleId, onAdded, onClose }: { moduleId: string; 
 // ── Sortable item row ─────────────────────────────────────────
 
 type ItemRowProps = {
-  item:        ModuleItem;
-  courseSlug:  string;
-  canManage:   boolean;
-  isDone:      boolean;
+  item: ModuleItem;
+  courseSlug: string;
+  canManage: boolean;
+  isDone: boolean;
   onTogglePublish: (id: string) => void;
-  onDelete:        (id: string) => void;
+  onDelete: (id: string) => void;
 };
 
 function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish, onDelete }: ItemRowProps) {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     disabled: !canManage,
@@ -338,28 +338,28 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
     transition,
   };
 
-  const isExternalUrl  = item.type === 'EXTERNAL_URL';
-  const isAssignment   = item.type === 'ASSIGNMENT';
-  const isQuiz         = item.type === 'QUIZ';
+  const isExternalUrl = item.type === 'EXTERNAL_URL';
+  const isAssignment = item.type === 'ASSIGNMENT';
+  const isQuiz = item.type === 'QUIZ';
   const isCodeExercise = item.type === 'CODE_EXERCISE';
-  const quizId         = (item as any).quiz?.id ?? (item as any).quizId;
-  const codeExId       = (item as any).codeExercise?.id ?? (item as any).codeExerciseId;
-  const codeExLang     = (item as any).codeExercise?.language as string | undefined;
-  const isScratch      = isCodeExercise && codeExLang === 'SCRATCH';
+  const quizId = (item as any).quiz?.id ?? (item as any).quizId;
+  const codeExId = (item as any).codeExercise?.id ?? (item as any).codeExerciseId;
+  const codeExLang = (item as any).codeExercise?.language as string | undefined;
+  const isScratch = isCodeExercise && codeExLang === 'SCRATCH';
   const LANG_ICON: Record<string, string> = {
     PYTHON3: '/question_icon/python_icon.png',
-    CPP17:   '/question_icon/cplusplus_icon.png',
-    WEB:     '/question_icon/web_icon_v2.png',
+    CPP17: '/question_icon/cplusplus_icon.png',
+    WEB: '/question_icon/web_icon_v2.png',
   };
 
   // Left border + icon + badge colors by type
   const typeColors: Record<string, { border: string; bg: string; icon: string; text: string; glowColor: string; bgRgba: string }> = {
-    lesson:   { border: 'border-l-teal-500',     bg: 'bg-teal-500/15',     icon: 'text-teal-500',   text: 'Bài học', glowColor: 'rgb(20, 184, 166)', bgRgba: 'rgba(20, 184, 166, 0.15)' },
-    assignment: { border: 'border-l-blue-500',   bg: 'bg-blue-500/15',     icon: 'text-blue-500',   text: 'Bài tập', glowColor: 'rgb(59, 130, 246)', bgRgba: 'rgba(59, 130, 246, 0.15)' },
-    quiz:     { border: 'border-l-violet-500',   bg: 'bg-violet-500/15',   icon: 'text-violet-500', text: 'Quiz', glowColor: 'rgb(139, 92, 246)', bgRgba: 'rgba(139, 92, 246, 0.15)' },
-    code:     { border: 'border-l-fuchsia-500',  bg: 'bg-fuchsia-500/15',  icon: 'text-fuchsia-500', text: 'Bài tập code', glowColor: 'rgb(217, 70, 239)', bgRgba: 'rgba(217, 70, 239, 0.15)' },
-    scratch:  { border: 'border-l-orange-500',   bg: 'bg-orange-500/15',   icon: 'text-orange-500', text: 'Bài Scratch', glowColor: 'rgb(251, 146, 60)', bgRgba: 'rgba(251, 146, 60, 0.15)' },
-    external: { border: 'border-l-amber-500',    bg: 'bg-amber-500/15',    icon: 'text-amber-500',  text: 'Link ngoài', glowColor: 'rgb(245, 158, 11)', bgRgba: 'rgba(245, 158, 11, 0.15)' },
+    lesson: { border: 'border-l-teal-500', bg: 'bg-teal-500/15', icon: 'text-teal-500', text: 'Bài học', glowColor: 'rgb(20, 184, 166)', bgRgba: 'rgba(20, 184, 166, 0.15)' },
+    assignment: { border: 'border-l-blue-500', bg: 'bg-blue-500/15', icon: 'text-blue-500', text: 'Bài tập', glowColor: 'rgb(59, 130, 246)', bgRgba: 'rgba(59, 130, 246, 0.15)' },
+    quiz: { border: 'border-l-violet-500', bg: 'bg-violet-500/15', icon: 'text-violet-500', text: 'Quiz', glowColor: 'rgb(139, 92, 246)', bgRgba: 'rgba(139, 92, 246, 0.15)' },
+    code: { border: 'border-l-fuchsia-500', bg: 'bg-fuchsia-500/15', icon: 'text-fuchsia-500', text: 'Bài tập code', glowColor: 'rgb(217, 70, 239)', bgRgba: 'rgba(217, 70, 239, 0.15)' },
+    scratch: { border: 'border-l-orange-500', bg: 'bg-orange-500/15', icon: 'text-orange-500', text: 'Bài Scratch', glowColor: 'rgb(251, 146, 60)', bgRgba: 'rgba(251, 146, 60, 0.15)' },
+    external: { border: 'border-l-amber-500', bg: 'bg-amber-500/15', icon: 'text-amber-500', text: 'Link ngoài', glowColor: 'rgb(245, 158, 11)', bgRgba: 'rgba(245, 158, 11, 0.15)' },
   };
 
   let typeKey = 'lesson';
@@ -403,19 +403,19 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
       <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${colors.bg} border border-current/10 shadow-sm group-hover/item:scale-110 transition-transform`}>
         {isExternalUrl ? <Link2 className={`h-5 w-5 ${colors.icon}`} />
           : isAssignment ? <ClipboardList className={`h-5 w-5 ${colors.icon}`} />
-          : isQuiz ? <Brain className={`h-5 w-5 ${colors.icon}`} />
-          : isScratch ? <Cat className={`h-5 w-5 ${colors.icon}`} />
-          : isCodeExercise && codeExLang && LANG_ICON[codeExLang]
-            ? <Image src={LANG_ICON[codeExLang]} alt={codeExLang} width={24} height={24} className="object-contain" />
-          : isCodeExercise ? <Code2 className={`h-5 w-5 ${colors.icon}`} />
-          : <BookOpen className={`h-5 w-5 ${colors.icon}`} />}
+            : isQuiz ? <Brain className={`h-5 w-5 ${colors.icon}`} />
+              : isScratch ? <Cat className={`h-5 w-5 ${colors.icon}`} />
+                : isCodeExercise && codeExLang && LANG_ICON[codeExLang]
+                  ? <Image src={LANG_ICON[codeExLang]} alt={codeExLang} width={24} height={24} className="object-contain" />
+                  : isCodeExercise ? <Code2 className={`h-5 w-5 ${colors.icon}`} />
+                    : <BookOpen className={`h-5 w-5 ${colors.icon}`} />}
       </div>
 
       {/* Title link */}
       <div className="flex-1 min-w-0">
         {isExternalUrl && item.externalUrl ? (
           <a href={item.externalUrl} target="_blank" rel="noopener noreferrer"
-             className="block">
+            className="block">
             <p className="truncate text-sm font-semibold group-hover/item:text-primary transition-colors">
               {item.title}
             </p>
@@ -477,19 +477,19 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
           <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
             {item.lessonId && (
               <Link href={`/courses/${courseSlug}/lessons/${item.lessonId}/edit`}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
+                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
                 <Pencil className="h-3.5 w-3.5" />
               </Link>
             )}
             {item.assignmentId && (
               <Link href={`/courses/${courseSlug}/assignments/${item.assignmentId}/edit`}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
+                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
                 <Pencil className="h-3.5 w-3.5" />
               </Link>
             )}
             {isQuiz && quizId && (
               <Link href={`/courses/${courseSlug}/quizzes/${quizId}/edit`}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
+                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
                 <Pencil className="h-3.5 w-3.5" />
               </Link>
             )}
@@ -497,7 +497,7 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
               <Link href={isScratch
                 ? `/courses/${courseSlug}/scratch/${codeExId}/edit`
                 : `/courses/${courseSlug}/exercises/${codeExId}/edit`}
-                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
+                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-muted rounded-md transition-all">
                 <Pencil className="h-3.5 w-3.5" />
               </Link>
             )}
@@ -505,11 +505,11 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
               <div className="w-px h-5 bg-border/30 mx-0.5" />
             )}
             <button onClick={() => onTogglePublish(item.id)}
-                    className={`p-1.5 rounded-md transition-all ${item.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}>
+              className={`p-1.5 rounded-md transition-all ${item.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}>
               {item.isPublished ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
             </button>
             <button onClick={() => onDelete(item.id)}
-                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all">
+              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -522,23 +522,23 @@ function SortableItemRow({ item, courseSlug, canManage, isDone, onTogglePublish,
 // ── Sortable module row ───────────────────────────────────────
 
 type ModuleRowProps = {
-  mod:          ModuleWithItems;
-  courseSlug:   string;
-  canManage:    boolean;
+  mod: ModuleWithItems;
+  courseSlug: string;
+  canManage: boolean;
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;
   submittedCodeExerciseIds?: Set<string>;
-  openUrlFormId:       string | null;
-  isCollapsed:         boolean;
-  onToggleCollapse:    () => void;
-  onTogglePublish:     (id: string) => void;
-  onDelete:            (id: string, name: string) => void;
-  onAddActivity:       (id: string) => void;
-  onDeleteItem:        (id: string) => void;
+  openUrlFormId: string | null;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+  onTogglePublish: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+  onAddActivity: (id: string) => void;
+  onDeleteItem: (id: string) => void;
   onToggleItemPublish: (id: string) => void;
-  onOpenUrlForm:       (id: string | null) => void;
-  onRefresh:           () => void;
+  onOpenUrlForm: (id: string | null) => void;
+  onRefresh: () => void;
 };
 
 function SortableModuleRow({
@@ -666,31 +666,31 @@ function SortableModuleRow({
             >
               <SortableContext items={localItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                 {localItems.map((item) => {
-                  const isQuiz         = item.type === 'QUIZ';
+                  const isQuiz = item.type === 'QUIZ';
                   const isCodeExercise = item.type === 'CODE_EXERCISE';
-                  const quizId   = (item as any).quiz?.id   ?? (item as any).quizId;
+                  const quizId = (item as any).quiz?.id ?? (item as any).quizId;
                   const codeExId = (item as any).codeExercise?.id ?? (item as any).codeExerciseId;
                   const isDone =
-                    (item.type === 'LESSON'    && completedIds?.has(item.id)) ||
+                    (item.type === 'LESSON' && completedIds?.has(item.id)) ||
                     (item.type === 'ASSIGNMENT' && item.assignmentId && submittedAssignmentIds?.has(item.assignmentId)) ||
-                    (isQuiz                    && quizId   && submittedQuizIds?.has(quizId)) ||
-                    (isCodeExercise            && codeExId && submittedCodeExerciseIds?.has(codeExId));
+                    (isQuiz && quizId && submittedQuizIds?.has(quizId)) ||
+                    (isCodeExercise && codeExId && submittedCodeExerciseIds?.has(codeExId));
 
                   return (
                     <SortableItemRow
                       key={item.id}
                       item={item}
                       courseSlug={courseSlug}
-                    canManage={canManage}
-                    isDone={!!isDone}
-                    onTogglePublish={onToggleItemPublish}
-                    onDelete={onDeleteItem}
-                  />
-                );
-              })}
-            </SortableContext>
-          </DndContext>
-        )}
+                      canManage={canManage}
+                      isDone={!!isDone}
+                      onTogglePublish={onToggleItemPublish}
+                      onDelete={onDeleteItem}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+          )}
 
           {/* Add activity button */}
           {canManage && (

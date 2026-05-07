@@ -7,6 +7,7 @@ import {
   listMyExerciseSubmissionsAction,
   listExerciseSubmissionsAction,
 } from '@/actions/exercises';
+import { getCodeExerciseRubricAction } from '@/actions/rubric';
 import { logActivity } from '@/lib/activity';
 import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
@@ -78,10 +79,11 @@ export default async function ExerciseViewPage({
 
   const isTeacher = hasMinRole(role as UserRole, 'TA');
 
-  const [allNavItems, mySubs, allSubs] = await Promise.all([
+  const [allNavItems, mySubs, allSubs, rubric] = await Promise.all([
     listCourseNavItemsAction(course.id, role === 'STUDENT'),
     userId ? listMyExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
     isTeacher ? listExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
+    isTeacher ? getCodeExerciseRubricAction(exerciseId) : Promise.resolve(null),
   ]);
 
   const currentIndex = allNavItems.findIndex((i) => i.codeExerciseId === exerciseId);
@@ -235,6 +237,7 @@ export default async function ExerciseViewPage({
             exerciseId={exerciseId}
             language={exercise.language}
             initialSubs={allSubs as any}
+            rubric={rubric}
           />
         )}
 

@@ -193,22 +193,41 @@ export async function resetUserPasswordAction(
 
 export type ImportRow = {
   fullName: string;
-  email: string;
+  email:    string;
   username?: string;
-  role?: UserRole;
+  role?:     UserRole;
+  /** Optional — auto-generated if missing/blank. */
+  password?: string;
+  /** Course slugs the user should be enrolled into (from Course 1/2/... columns). */
+  courseSlugs?: string[];
 };
 
 export type ImportResult = {
-  success: number;
-  errors: { row: number; email: string; reason: string }[];
+  success:   number;
+  errors:    { row: number; email: string; reason: string }[];
+  /** Plain passwords are returned only for newly-created users — display once and discard. */
   passwords: { fullName: string; email: string; password: string }[];
+  /** Per-row enrollment outcome so the teacher can spot misspelled course slugs. */
+  enrollments: { email: string; enrolled: string[]; missing: string[] }[];
 };
 
 export async function importUsersAction(rows: ImportRow[]): Promise<ActionResult<ImportResult>> {
   const session = await auth();
   requireRole(session?.user?.role as UserRole, 'ADMIN');
 
-  const result: ImportResult = { success: 0, errors: [], passwords: [] };
+  const result: ImportResult = { success: 0, errors: [], passwords: [], enrollments: [] };
+
+  // Pre-fetch all course slugs referenced anywhere in the import so we don't hit the DB per row.
+  const allSlugs = [...new Set(
+    rows.flatMap((r) => r.courseSlugs ?? []).map((s) => s.trim()).filter(Boolean),
+  )];
+  const courses = allSlugs.length
+    ? await prisma.course.findMany({
+        where:  { slug: { in: allSlugs }, deletedAt: null },
+        select: { id: true, slug: true, name: true },
+      })
+    : [];
+  const courseBySlug = new Map(courses.map((c) => [c.slug, c]));
 
   for (const [i, row] of rows.entries()) {
     const rowNum = i + 2; // Excel row 1 = header
@@ -229,38 +248,66 @@ export async function importUsersAction(rows: ImportRow[]): Promise<ActionResult
       continue;
     }
 
-    const plainPassword = generatePassword();
-    const passwordHash = await bcrypt.hash(plainPassword, 12);
-    const parts = row.fullName.trim().split(/\s+/);
-    const firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : row.fullName;
-    const lastName = parts.at(-1) ?? '';
+    const usePassword  = row.password && row.password.length >= 6 ? row.password : generatePassword();
+    const passwordHash = await bcrypt.hash(usePassword, 12);
+    const parts        = row.fullName.trim().split(/\s+/);
+    const firstName    = parts.length > 1 ? parts.slice(0, -1).join(' ') : row.fullName;
+    const lastName     = parts.at(-1) ?? '';
 
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
-        email: row.email,
+        email:    row.email,
         fullName: row.fullName,
         firstName,
         lastName,
         passwordHash,
-        role: (row.role ?? 'STUDENT') as UserRole,
-        status: 'ACTIVE',
+        role:    (row.role ?? 'STUDENT') as UserRole,
+        status:  'ACTIVE',
         emailVerified: new Date(),
         ...(row.username ? { username: row.username } : {}),
       },
     });
 
+    // Bulk enroll into the requested courses (silently skip duplicates / unknown slugs).
+    const wanted  = (row.courseSlugs ?? []).map((s) => s.trim()).filter(Boolean);
+    const enrolled: string[] = [];
+    const missing:  string[] = [];
+    for (const slug of wanted) {
+      const c = courseBySlug.get(slug);
+      if (!c) { missing.push(slug); continue; }
+      try {
+        await prisma.enrollment.create({
+          data: { userId: created.id, courseId: c.id, status: 'ACTIVE' },
+        });
+        enrolled.push(c.slug);
+      } catch {
+        // Unique-constraint duplicate: count as enrolled (idempotent UX).
+        enrolled.push(c.slug);
+      }
+    }
+    if (wanted.length) result.enrollments.push({ email: row.email, enrolled, missing });
+
     result.success++;
-    result.passwords.push({ fullName: row.fullName, email: row.email, password: plainPassword });
+    result.passwords.push({ fullName: row.fullName, email: row.email, password: usePassword });
   }
 
   await auditLog({
-    userId: session!.user.id,
+    userId:   session!.user.id,
     userRole: session!.user.role,
-    action: 'IMPORT_USERS',
-    metadata: { total: rows.length, success: result.success, errors: result.errors.length },
+    action:   'IMPORT_USERS',
+    metadata: {
+      total:    rows.length,
+      success:  result.success,
+      errors:   result.errors.length,
+      enrolled: result.enrollments.reduce((s, e) => s + e.enrolled.length, 0),
+    },
   });
 
-  return { success: true, message: `Import xong: ${result.success} thành công, ${result.errors.length} lỗi.`, data: result };
+  return {
+    success: true,
+    message: `Import xong: ${result.success} thành công, ${result.errors.length} lỗi.`,
+    data:    result,
+  };
 }
 
 // ── Cập nhật profile bản thân ────────────────────────────────

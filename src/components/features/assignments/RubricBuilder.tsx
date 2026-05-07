@@ -4,7 +4,13 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
-import { saveRubricAction, deleteRubricAction, type RubricData } from '@/actions/rubric';
+import {
+  saveRubricAction,
+  deleteRubricAction,
+  saveCodeExerciseRubricAction,
+  deleteCodeExerciseRubricAction,
+  type RubricData,
+} from '@/actions/rubric';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
 
@@ -34,12 +40,14 @@ function fromRubricData(data: RubricData | null): Criterion[] {
 }
 
 type Props = {
-  assignmentId: string;
+  /** Owner is either an Assignment or a CodeExercise (Code/Scratch). */
+  ownerKind:    'assignment' | 'codeExercise';
+  ownerId:      string;
   maxScore:     number;
   initialRubric: RubricData | null;
 };
 
-export function RubricBuilder({ assignmentId, maxScore, initialRubric }: Props) {
+export function RubricBuilder({ ownerKind, ownerId, maxScore, initialRubric }: Props) {
   const [criteria, setCriteria] = useState<Criterion[]>(() => fromRubricData(initialRubric));
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [pending, startTransition] = useTransition();
@@ -116,7 +124,7 @@ export function RubricBuilder({ assignmentId, maxScore, initialRubric }: Props) 
     }
 
     startTransition(async () => {
-      const res = await saveRubricAction(assignmentId, {
+      const payload = {
         criteria: criteria.map((c, ci) => ({
           name:        c.name.trim(),
           description: c.description.trim() || null,
@@ -128,7 +136,10 @@ export function RubricBuilder({ assignmentId, maxScore, initialRubric }: Props) 
             position:    li,
           })),
         })),
-      });
+      };
+      const res = ownerKind === 'codeExercise'
+        ? await saveCodeExerciseRubricAction(ownerId, payload)
+        : await saveRubricAction(ownerId, payload);
       if (res.success) toast.success(res.message);
       else toast.error(res.error);
     });
@@ -138,7 +149,9 @@ export function RubricBuilder({ assignmentId, maxScore, initialRubric }: Props) 
     const ok = await openConfirm('Xoá rubric? Tất cả điểm rubric đã chấm sẽ bị xoá.');
     if (!ok) return;
     startTransition(async () => {
-      const res = await deleteRubricAction(assignmentId);
+      const res = ownerKind === 'codeExercise'
+        ? await deleteCodeExerciseRubricAction(ownerId)
+        : await deleteRubricAction(ownerId);
       if (res.success) { toast.success(res.message); setCriteria([]); }
       else toast.error(res.error);
     });

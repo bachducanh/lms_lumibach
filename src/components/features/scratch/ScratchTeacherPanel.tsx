@@ -3,11 +3,13 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ScratchEditor } from './ScratchEditor';
 import { gradeScratchSubmissionAction } from '@/actions/scratch';
+import { RubricGradePanel } from '@/components/features/code/RubricGradePanel';
+import type { RubricData } from '@/actions/rubric';
 import { Users, CheckCircle2, Clock, Eye, Save, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type Submission = {
   id:            string;
@@ -28,7 +30,11 @@ type Submission = {
   };
 };
 
-type Props = { submissions: Submission[] };
+type Props = {
+  submissions: Submission[];
+  /** When the exercise has a rubric, the teacher can grade with it instead of free-form. */
+  rubric?:     RubricData | null;
+};
 
 function fmtTime(d: Date) {
   return new Intl.DateTimeFormat('vi-VN', {
@@ -46,7 +52,7 @@ function parseSb3Url(code: string): string | null {
   catch { return null; }
 }
 
-export function ScratchTeacherPanel({ submissions }: Props) {
+export function ScratchTeacherPanel({ submissions, rubric }: Props) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -147,7 +153,7 @@ export function ScratchTeacherPanel({ submissions }: Props) {
         </div>
       )}
 
-      {/* Open submission viewer */}
+      {/* Submission viewer — popup dialog (matches Code Exercise grading UX) */}
       {open && (() => {
         const url = parseSb3Url(open.code);
         const score = scoreInput[open.id] ?? (open.score !== null ? String(open.score) : '');
@@ -155,62 +161,101 @@ export function ScratchTeacherPanel({ submissions }: Props) {
         const feedback = feedbackInput[open.id] ?? open.feedback ?? '';
 
         return (
-          <div className="space-y-3 border-t border-border pt-4">
-            <p className="text-sm font-semibold">
-              Bài của <span className="text-primary">{authorName(open.student)}</span> (lần {open.attemptNumber})
-            </p>
+          <Dialog open onOpenChange={(o) => { if (!o) setOpenId(null); }}>
+            <DialogContent
+              className="max-w-7xl xl:max-w-[1600px] w-[95vw] max-h-[95vh] overflow-y-auto"
+              showCloseButton={false}
+            >
+              <DialogHeader>
+                <div className="flex items-start justify-between gap-3 pr-2">
+                  <div className="space-y-0.5">
+                    <DialogTitle>
+                      {authorName(open.student)} — Lần {open.attemptNumber}
+                    </DialogTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Nộp lúc {fmtTime(open.submittedAt)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!!open.gradedAt && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400 shrink-0">
+                        <CheckCircle2 className="h-3 w-3" />
+                        {open.score} / {open.maxScore}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setOpenId(null)}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </DialogHeader>
 
-            {url ? (
-              <ScratchEditor starterUrl={url} playerOnly />
-            ) : (
-              <p className="text-sm text-destructive">Không tìm thấy file Scratch.</p>
-            )}
+              <div className="space-y-4 mt-2">
+                {url ? (
+                  <ScratchEditor starterUrl={url} playerOnly />
+                ) : (
+                  <p className="text-sm text-destructive">Không tìm thấy file Scratch.</p>
+                )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Điểm</label>
-                <input
-                  type="number" min={0} step={0.5}
-                  value={score}
-                  onChange={(e) => setScoreInput((prev) => ({ ...prev, [open.id]: e.target.value }))}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Trên thang</label>
-                <input
-                  type="number" min={1} step={1}
-                  value={maxScore}
-                  onChange={(e) => setMaxScoreInput((prev) => ({ ...prev, [open.id]: e.target.value }))}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  type="button"
-                  onClick={() => handleGrade(open)}
-                  disabled={pending || !score}
-                  className="gap-2 w-full"
-                >
-                  <Save className="h-4 w-4" />
-                  {pending ? 'Đang lưu...' : 'Lưu điểm'}
-                </Button>
-              </div>
-            </div>
+                {rubric && (
+                  <RubricGradePanel
+                    rubric={rubric}
+                    codeSubmissionId={open.id}
+                    maxScore={Number(maxScore) || 10}
+                    onGraded={() => { router.refresh(); setOpenId(null); }}
+                  />
+                )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Nhận xét (tuỳ chọn)
-              </label>
-              <textarea
-                value={feedback}
-                onChange={(e) => setFeedbackInput((prev) => ({ ...prev, [open.id]: e.target.value }))}
-                rows={3}
-                placeholder="Phản hồi cho học sinh..."
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-              />
-            </div>
-          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Điểm</label>
+                    <input
+                      type="number" min={0} step={0.5}
+                      value={score}
+                      onChange={(e) => setScoreInput((prev) => ({ ...prev, [open.id]: e.target.value }))}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Trên thang</label>
+                    <input
+                      type="number" min={1} step={1}
+                      value={maxScore}
+                      onChange={(e) => setMaxScoreInput((prev) => ({ ...prev, [open.id]: e.target.value }))}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      onClick={() => handleGrade(open)}
+                      disabled={pending || !score}
+                      className="gap-2 w-full"
+                    >
+                      <Save className="h-4 w-4" />
+                      {pending ? 'Đang lưu...' : 'Lưu điểm'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Nhận xét (tuỳ chọn)
+                  </label>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedbackInput((prev) => ({ ...prev, [open.id]: e.target.value }))}
+                    rows={3}
+                    placeholder="Phản hồi cho học sinh..."
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                  />
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         );
       })()}
     </div>

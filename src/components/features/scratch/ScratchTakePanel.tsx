@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ScratchEditor } from './ScratchEditor';
 import { Sb3Upload } from './Sb3Upload';
 import { submitScratchAction } from '@/actions/scratch';
-import { Send, Info, History, CheckCircle2, Clock } from 'lucide-react';
+import { Send, Info, History, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Submission = {
@@ -45,7 +45,20 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
   const [pending, startTransition] = useTransition();
   const [pendingUrl, setPendingUrl]   = useState<string | null>(null);
   const [pendingName, setPendingName] = useState<string | null>(null);
-  const [subs, setSubs] = useState<Submission[]>(initialSubs);
+  const [autoSubmitting, setAutoSubmitting] = useState(false);
+  const [hasSelfHost, setHasSelfHost] = useState<boolean | null>(null);
+  const [subs] = useState<Submission[]>(initialSubs);
+
+  // Detect self-hosted scratch-gui to tailor the instructions banner
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/scratch-gui/editor.html', { method: 'HEAD' })
+      .then((r) => { if (!cancelled) setHasSelfHost(r.ok); })
+      .catch(() => { if (!cancelled) setHasSelfHost(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Manual submit (drag-drop .sb3) ──────────────────────────
 
   function handleSubmit() {
     if (!pendingUrl) {
@@ -66,53 +79,115 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
     });
   }
 
+  // ── 1-click submit (Phase B) ────────────────────────────────
+  // Self-hosted scratch-gui posts the .sb3 blob via postMessage when student
+  // saves. We upload it to MinIO and submit, all without leaving the page.
+
+  async function handleSaveBlob(blob: Blob, filename: string) {
+    if (autoSubmitting) return;
+    setAutoSubmitting(true);
+    const t = toast.loading(`Đang lưu "${filename}"...`);
+
+    try {
+      // 1. Upload .sb3 to MinIO
+      const fd = new FormData();
+      fd.append('file', new File([blob], filename, { type: 'application/x.scratch.sb3' }));
+      fd.append('kind', 'submission');
+      fd.append('exerciseId', exerciseId);
+
+      const upRes = await fetch('/api/upload/scratch', { method: 'POST', body: fd });
+      const upData = await upRes.json();
+      if (!upRes.ok) {
+        toast.error(upData.error ?? 'Upload thất bại.', { id: t });
+        return;
+      }
+
+      // 2. Create submission
+      const subRes = await submitScratchAction({
+        exerciseId,
+        sb3Url:   upData.url,
+        filename,
+      });
+      if (!subRes.success) {
+        toast.error(subRes.error, { id: t });
+        return;
+      }
+
+      toast.success('Đã nộp bài tự động!', { id: t });
+      router.refresh();
+    } catch {
+      toast.error('Lỗi mạng khi nộp bài tự động.', { id: t });
+    } finally {
+      setAutoSubmitting(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Instructions banner */}
       <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3 flex gap-3 text-sm">
-        <Info className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
-        <div className="space-y-1.5">
-          <p className="font-semibold text-orange-300">Hướng dẫn 3 bước</p>
-          <ol className="list-decimal list-inside text-xs space-y-1 text-muted-foreground">
-            <li>Bấm <strong className="text-foreground">Mở Scratch Editor</strong> ở khung bên dưới — Scratch sẽ mở trong tab mới với project khởi đầu (nếu giáo viên đã cung cấp).</li>
-            <li>Lập trình xong, trong Scratch vào menu <strong className="text-foreground">File → Save to your computer</strong> để tải file <code className="font-mono text-orange-300">.sb3</code> về máy.</li>
-            <li>Quay lại trang này, kéo file <code className="font-mono text-orange-300">.sb3</code> vào ô <strong className="text-foreground">Nộp bài</strong> bên dưới rồi bấm <strong className="text-foreground">Nộp bài</strong>.</li>
-          </ol>
-        </div>
+        {hasSelfHost ? (
+          <>
+            <Sparkles className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="font-semibold text-orange-300">Nộp bài tự động</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Lập trình xong, trong Scratch chỉ cần vào menu <strong className="text-foreground">File → Save to your computer</strong> — bài sẽ tự nộp về LMS, không cần thao tác gì thêm.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <Info className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="font-semibold text-orange-300">Hướng dẫn 3 bước</p>
+              <ol className="list-decimal list-inside text-xs space-y-1 text-muted-foreground">
+                <li>Bấm <strong className="text-foreground">Mở Scratch Editor</strong> ở khung bên dưới.</li>
+                <li>Code xong, vào <strong className="text-foreground">File → Save to your computer</strong> để tải <code className="font-mono text-orange-300">.sb3</code>.</li>
+                <li>Kéo file <code className="font-mono text-orange-300">.sb3</code> vào ô <strong className="text-foreground">Nộp bài</strong> bên dưới → bấm <strong className="text-foreground">Nộp bài</strong>.</li>
+              </ol>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Scratch editor (opens TurboWarp in new tab) */}
-      <ScratchEditor starterUrl={starterUrl} />
+      {/* Scratch editor — iframe (self-hosted) or new-tab fallback */}
+      <ScratchEditor
+        starterUrl={starterUrl}
+        onSaveBlob={handleSaveBlob}
+      />
 
-      {/* Submission area */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Nộp bài</h3>
-          {subs.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              Lần thứ {subs[0]!.attemptNumber + 1}
-            </span>
-          )}
+      {/* Manual submission area — only shown when self-host is OFF (otherwise auto) */}
+      {hasSelfHost === false && (
+        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Nộp bài</h3>
+            {subs.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                Lần thứ {subs[0]!.attemptNumber + 1}
+              </span>
+            )}
+          </div>
+
+          <Sb3Upload
+            kind="submission"
+            exerciseId={exerciseId}
+            onUploaded={(url, name) => { setPendingUrl(url || null); setPendingName(name || null); }}
+          />
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!pendingUrl || pending}
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              {pending ? 'Đang nộp...' : 'Nộp bài'}
+            </Button>
+          </div>
         </div>
-
-        <Sb3Upload
-          kind="submission"
-          exerciseId={exerciseId}
-          onUploaded={(url, name) => { setPendingUrl(url || null); setPendingName(name || null); }}
-        />
-
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!pendingUrl || pending}
-            className="gap-2"
-          >
-            <Send className="h-4 w-4" />
-            {pending ? 'Đang nộp...' : 'Nộp bài'}
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* My submission history */}
       {subs.length > 0 && (

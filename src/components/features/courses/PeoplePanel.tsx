@@ -18,6 +18,7 @@ import {
   type CourseMember,
   type CourseTA,
   type CourseCoTeacher,
+  type UserCandidate,
 } from '@/actions/enrollments';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
@@ -46,32 +47,76 @@ function Avatar({ user }: { user: { avatar: string | null; fullName: string | nu
   );
 }
 
+// ── Disambiguation picker (multiple full-name matches) ────────
+
+function CandidatePicker({
+  candidates, onPick, onCancel,
+}: {
+  candidates: UserCandidate[];
+  onPick:     (userId: string) => void;
+  onCancel:   () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+      <p className="text-xs font-medium text-amber-300">
+        Có nhiều người trùng tên — chọn đúng người:
+      </p>
+      <ul className="divide-y divide-border rounded-md border border-border bg-background">
+        {candidates.map((c) => (
+          <li key={c.id}>
+            <button
+              type="button"
+              onClick={() => onPick(c.id)}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+            >
+              <span className="text-sm">
+                <span className="font-medium">{c.fullName ?? `${c.firstName} ${c.lastName}`.trim()}</span>
+                {c.username && <span className="ml-2 text-xs text-muted-foreground">@{c.username}</span>}
+              </span>
+              <span className="text-xs text-muted-foreground">{c.email}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={onCancel} className="text-xs text-muted-foreground hover:text-foreground">
+        Huỷ
+      </button>
+    </div>
+  );
+}
+
 // ── Add Student modal ─────────────────────────────────────────
 
 function AddStudentPanel({ courseId, onDone }: { courseId: string; onDone: () => void }) {
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [bulk, setBulk] = useState('');
+  const [candidates, setCandidates] = useState<UserCandidate[] | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleSingle(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(userId?: string) {
     startTransition(async () => {
-      const res = await enrollUserAction(courseId, email);
-      if (res.success) { toast.success(res.message); setEmail(''); onDone(); }
+      const res = await enrollUserAction(courseId, identifier, userId);
+      if (res.success) { toast.success(res.message); setIdentifier(''); setCandidates(null); onDone(); }
+      else if (res.candidates) { setCandidates(res.candidates); }
       else toast.error(res.error);
     });
   }
 
+  function handleSingle(e: React.FormEvent) {
+    e.preventDefault();
+    submit();
+  }
+
   function handleBulk(e: React.FormEvent) {
     e.preventDefault();
-    const emails = bulk.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
+    const ids = bulk.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
     startTransition(async () => {
-      const res = await bulkEnrollAction(courseId, emails);
+      const res = await bulkEnrollAction(courseId, ids);
       if (res.success) {
         toast.success(res.message);
         if (res.data && res.data.errors.length > 0) {
-          res.data.errors.forEach((err) => toast.error(`${err.email}: ${err.reason}`));
+          res.data.errors.forEach((err) => toast.error(`${err.identifier}: ${err.reason}`));
         }
         setBulk('');
         onDone();
@@ -102,23 +147,32 @@ function AddStudentPanel({ courseId, onDone }: { courseId: string; onDone: () =>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         {mode === 'single' ? (
-          <form onSubmit={handleSingle} className="flex gap-2">
-            <input
-              type="email"
-              placeholder="Email học sinh..."
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-            <Button type="submit" size="sm" disabled={pending}>Thêm</Button>
-          </form>
+          <>
+            <form onSubmit={handleSingle} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Email, username, hoặc họ tên..."
+                value={identifier}
+                onChange={(e) => { setIdentifier(e.target.value); setCandidates(null); }}
+                required
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <Button type="submit" size="sm" disabled={pending}>Thêm</Button>
+            </form>
+            {candidates && (
+              <CandidatePicker
+                candidates={candidates}
+                onPick={(id) => submit(id)}
+                onCancel={() => setCandidates(null)}
+              />
+            )}
+          </>
         ) : (
           <form onSubmit={handleBulk} className="space-y-2">
             <textarea
-              placeholder={"Paste danh sách email (mỗi dòng 1 email, hoặc phân cách bởi dấu phẩy):\nhs1@example.com\nhs2@example.com"}
+              placeholder={"Mỗi dòng 1 người (email, username hoặc họ tên):\nnguyenvana@example.com\nnguyenvanb\nLê Thị C"}
               value={bulk}
               onChange={(e) => setBulk(e.target.value)}
               rows={5}
@@ -137,60 +191,80 @@ function AddStudentPanel({ courseId, onDone }: { courseId: string; onDone: () =>
 // ── Add co-teacher panel ──────────────────────────────────────
 
 function AddCoTeacherPanel({ courseId, onDone }: { courseId: string; onDone: () => void }) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [candidates, setCandidates] = useState<UserCandidate[] | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(userId?: string) {
     startTransition(async () => {
-      const res = await addCoTeacherAction(courseId, email);
-      if (res.success) { toast.success(res.message); setEmail(''); onDone(); }
+      const res = await addCoTeacherAction(courseId, identifier, userId);
+      if (res.success) { toast.success(res.message); setIdentifier(''); setCandidates(null); onDone(); }
+      else if (res.candidates) setCandidates(res.candidates);
       else toast.error(res.error);
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        type="email"
-        placeholder="Email giáo viên (role Teacher)..."
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-      />
-      <Button type="submit" size="sm" disabled={pending}>Thêm</Button>
-    </form>
+    <div className="space-y-2">
+      <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Email, username hoặc họ tên (role Teacher)..."
+          value={identifier}
+          onChange={(e) => { setIdentifier(e.target.value); setCandidates(null); }}
+          required
+          className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        <Button type="submit" size="sm" disabled={pending}>Thêm</Button>
+      </form>
+      {candidates && (
+        <CandidatePicker
+          candidates={candidates}
+          onPick={(id) => submit(id)}
+          onCancel={() => setCandidates(null)}
+        />
+      )}
+    </div>
   );
 }
 
 // ── Add TA panel ──────────────────────────────────────────────
 
 function AddTAPanel({ courseId, onDone }: { courseId: string; onDone: () => void }) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [candidates, setCandidates] = useState<UserCandidate[] | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(userId?: string) {
     startTransition(async () => {
-      const res = await assignTAAction(courseId, email);
-      if (res.success) { toast.success(res.message); setEmail(''); onDone(); }
+      const res = await assignTAAction(courseId, identifier, userId);
+      if (res.success) { toast.success(res.message); setIdentifier(''); setCandidates(null); onDone(); }
+      else if (res.candidates) setCandidates(res.candidates);
       else toast.error(res.error);
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        type="email"
-        placeholder="Email trợ giảng (role TA)..."
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-      />
-      <Button type="submit" size="sm" disabled={pending}>Gán</Button>
-    </form>
+    <div className="space-y-2">
+      <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Email, username hoặc họ tên (role TA)..."
+          value={identifier}
+          onChange={(e) => { setIdentifier(e.target.value); setCandidates(null); }}
+          required
+          className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        <Button type="submit" size="sm" disabled={pending}>Gán</Button>
+      </form>
+      {candidates && (
+        <CandidatePicker
+          candidates={candidates}
+          onPick={(id) => submit(id)}
+          onCancel={() => setCandidates(null)}
+        />
+      )}
+    </div>
   );
 }
 

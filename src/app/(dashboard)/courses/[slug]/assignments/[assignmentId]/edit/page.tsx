@@ -62,7 +62,8 @@ export default async function EditAssignmentPage({
 
       <div className="mt-10 border-t border-border pt-8">
         <RubricBuilder
-          assignmentId={assignment.id}
+          ownerKind="assignment"
+          ownerId={assignment.id}
           maxScore={assignment.maxScore}
           initialRubric={rubric}
         />
