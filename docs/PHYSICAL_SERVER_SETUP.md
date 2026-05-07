@@ -119,10 +119,16 @@ Sử dụng Docker Compose để chạy các dịch vụ lõi:
    pnpm install
    npx prisma migrate deploy
    npx prisma generate
-   pnpm build
    ```
 
-3. **Quản lý bằng PM2:**
+3. **Build ứng dụng Next.js & Scratch Editor:**
+
+   ```bash
+   pnpm build
+   pnpm build:scratch-gui
+   ```
+
+4. **Quản lý bằng PM2:**
    Chạy ứng dụng và các worker chấm code:
 
    ```bash
