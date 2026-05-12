@@ -7,7 +7,11 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "test": "dotenv -e ../../.env.test -- vitest run",
+    "test:watch": "dotenv -e ../../.env.test -- vitest",
+    "test:coverage": "dotenv -e ../../.env.test -- vitest run --coverage",
+    "test:db:reset": "dotenv -e ../../.env.test -- prisma migrate reset --schema ../../packages/db/prisma/schema.prisma --force --skip-seed"
   },
   "dependencies": {
     "@auth/core": "^0.41.2",
@@ -37,9 +41,16 @@
     "@lumibach/config": "workspace:*",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@swc/core": "^1.10.7",
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.0",
     "@types/node": "^20",
-    "typescript": "^5"
+    "@types/supertest": "^6.0.2",
+    "@vitest/coverage-v8": "^2.1.9",
+    "supertest": "^7.0.0",
+    "typescript": "^5",
+    "unplugin-swc": "^1.5.1",
+    "vitest": "^2.1.9"
   }
 }
