@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "worker:dev": "dotenv -e ../../.env -- tsx watch src/workers/code-execution.ts",
     "worker:email": "dotenv -e ../../.env -- tsx watch src/workers/email.worker.ts",
     "build:scratch-gui": "node scripts/build-scratch-gui.mjs"
@@ -79,6 +81,7 @@
     "@types/xlsx": "^0.0.36",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
+    "@playwright/test": "^1.49.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",
     "tailwindcss": "^4",

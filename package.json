@@ -31,6 +31,7 @@
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
     "test:db:migrate": "dotenv -e .env.test -- prisma migrate deploy --schema packages/db/prisma/schema.prisma",
     "test:api": "pnpm --filter @lumibach/api test",
+    "test:e2e": "pnpm --filter @lumibach/web test:e2e",
     "prepare": "husky",
     "postinstall": "pnpm --filter @lumibach/db db:generate && pnpm --filter @lumibach/db build"
   },
