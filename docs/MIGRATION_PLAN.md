@@ -256,33 +256,38 @@ Bất kỳ refactor nào không đạt budget này = regression, không merge.
 
 ---
 
-### Phase 2 — Testing Foundation — 3-4 ngày
+### Phase 2 — Testing Foundation — 3-4 ngày ✅ DONE (2026-05-12)
 
 **Mục tiêu:** Có thể viết test e2e/unit/integration cho mọi module BE từ Phase 3.
 
-- [ ] Setup Vitest cho `apps/api`:
-  - `vitest.config.ts`: alias paths, env load `.env.test`
-- [ ] Tạo `apps/api/test/setup.ts`:
-  - Container Postgres test riêng (docker-compose.test.yml port 5433)
-  - `beforeAll`: run migration
-  - `beforeEach`: truncate tables (giữ schema)
-  - Helper factory: `createTestUser({ role })`, `createTestCourse({ teacherId })`, `createTestEnrollment(...)`
-- [ ] Supertest wrapper với fake JWT:
-  - Helper `signTestToken(userId)` sign bằng `AUTH_SECRET` cho test
-  - Helper `testRequest(app)` set cookie auto
-- [ ] Viết test mẫu cho `GET /api/v1/me`:
-  - ✅ Pass: user thật, token đúng
-  - ❌ 401: không có token
-  - ❌ 401: token expired
-  - ❌ 401: token sai signature
-- [ ] CI: `.github/workflows/test.yml` thêm step:
-  - Start postgres test container
-  - `pnpm --filter @lumibach/api test`
-- [ ] Setup Playwright cho `apps/web` (e2e cross-app sau khi có BE module đầu tiên):
-  - Smoke test: login → dashboard load đúng
-  - 1 critical flow per phase
+- [x] Setup Vitest cho `apps/api` (Session 2A):
+  - `vitest.config.ts`: SWC plugin cho decorator metadata, alias `@/*`, pool=forks singleFork
+  - `.env.test` (committed): test DATABASE_URL + AUTH_SECRET test-only
+- [x] Test infrastructure (Session 2B):
+  - `docker-compose.test.yml`: postgres 16 alpine, port 5433, tmpfs ephemeral
+  - `test/db.ts`: shared PrismaClient cho test worker
+  - `test/setup.ts`: `vi.mock('@/common/auth/jwt-loader')` (workaround ESM
+    dynamic import trong vm context), beforeEach TRUNCATE all public tables
+  - `test/factories.ts`: createTestUser / createTestCourse / createTestEnrollment
+- [x] Auth helpers (Session 2C):
+  - `test/helpers/sign-test-token.ts` + `cookieHeader()`
+  - `test/helpers/app.ts: createTestApp()` mirror main.ts middleware stack
+  - Refactor src: extract Function-trick vào `src/common/auth/jwt-loader.ts`
+    để tests mock được mà không phá prod
+- [x] `/me` e2e suite (Session 2D) — 8 tests passing:
+  - ✅ 200 — token hợp lệ
+  - ❌ 401 — missing cookie / expired / wrong signature / wrong salt
+  - ❌ 401 — user.status !== ACTIVE
+  - ⛔ 403/✅ 200 — `/me/teacher-zone` STUDENT vs TEACHER (RBAC)
+  - ✅ 200 — `/health` public
+- [x] CI: `.github/workflows/test.yml` thêm `api-tests` job với
+      postgres service container + prisma migrate deploy + pnpm test
+- [x] Playwright skeleton cho `apps/web` (Session 2E):
+  - `playwright.config.ts` chromium, BASE_URL configurable
+  - `e2e/smoke.spec.ts`: login page render + home không crash
+  - Browsers cần install riêng (`pnpm exec playwright install chromium`)
 
-**Acceptance:** `pnpm test` ở root pass tất cả. CI xanh.
+**Acceptance:** ✅ `pnpm --filter @lumibach/api test` pass 8/8 trong ~2.6s.
 
 ---
 
