@@ -38,3 +38,6 @@ export class ZodQueryPipe<T> implements PipeTransform<unknown, T> {
 
 /** Sugar helper — `@Query(zodQuery(schema))` */
 export const zodQuery = <T>(schema: ZodSchema<T>) => new ZodQueryPipe(schema);
+
+/** Sugar helper — `@Body(zodBody(schema))` (alias, cùng pipe class). */
+export const zodBody = <T>(schema: ZodSchema<T>) => new ZodQueryPipe(schema);

@@ -3,12 +3,8 @@
 import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { Check, CheckCheck, Loader2 } from 'lucide-react';
-import {
-  getNotificationsAction,
-  markReadAction,
-  markAllReadAction,
-  type NotificationItem,
-} from '@/actions/notifications';
+import { apiClient } from '@/lib/api-client';
+import type { NotificationItem } from '@lumibach/types';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -37,23 +33,38 @@ export function NotificationsPageClient() {
 
   useEffect(() => {
     startTransition(async () => {
-      const rows = await getNotificationsAction(50);
-      setItems(rows);
-      setLoaded(true);
+      try {
+        const rows = await apiClient.get<NotificationItem[]>('/notifications', {
+          query: { limit: 50 },
+        });
+        setItems(rows);
+      } catch {
+        /* show empty state */
+      } finally {
+        setLoaded(true);
+      }
     });
   }, []);
 
   const handleMarkRead = (id: string) => {
     startTransition(async () => {
-      await markReadAction(id);
-      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      try {
+        await apiClient.post(`/notifications/${id}/read`);
+        setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      } catch {
+        /* ignore */
+      }
     });
   };
 
   const handleMarkAll = () => {
     startTransition(async () => {
-      await markAllReadAction();
-      setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      try {
+        await apiClient.post('/notifications/read-all');
+        setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      } catch {
+        /* ignore */
+      }
     });
   };
 

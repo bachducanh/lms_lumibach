@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { saveNotificationPrefsAction, type NotificationPrefs } from '@/actions/notifications';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type { NotificationPrefs } from '@lumibach/types';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -39,9 +40,13 @@ export function NotificationPrefsForm({ initialPrefs }: Props) {
 
   const handleSave = () => {
     startTransition(async () => {
-      const result = await saveNotificationPrefsAction(prefs);
-      if (result.success) toast.success('Đã lưu cài đặt thông báo.');
-      else toast.error(result.error ?? 'Lỗi khi lưu.');
+      try {
+        await apiClient.put('/notifications/preferences', prefs);
+        toast.success('Đã lưu cài đặt thông báo.');
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi khi lưu.';
+        toast.error(msg);
+      }
     });
   };
 

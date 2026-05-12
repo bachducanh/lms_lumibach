@@ -3,13 +3,8 @@
 import { useState, useEffect, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react';
-import {
-  getNotificationsAction,
-  getUnreadCountAction,
-  markReadAction,
-  markAllReadAction,
-  type NotificationItem,
-} from '@/actions/notifications';
+import { apiClient } from '@/lib/api-client';
+import type { NotificationItem, UnreadCount } from '@lumibach/types';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -34,8 +29,12 @@ export function NotificationBell() {
   useEffect(() => {
     const fetchCount = () => {
       startTransition(async () => {
-        const n = await getUnreadCountAction();
-        setCount(n);
+        try {
+          const res = await apiClient.get<UnreadCount>('/notifications/unread-count');
+          setCount(res.count);
+        } catch {
+          /* silent — bell sẽ retry sau 60s */
+        }
       });
     };
     fetchCount();
@@ -59,26 +58,40 @@ export function NotificationBell() {
     setOpen((o) => !o);
     if (!loaded) {
       startTransition(async () => {
-        const rows = await getNotificationsAction(20);
-        setItems(rows);
-        setLoaded(true);
+        try {
+          const rows = await apiClient.get<NotificationItem[]>('/notifications', {
+            query: { limit: 20 },
+          });
+          setItems(rows);
+          setLoaded(true);
+        } catch {
+          setLoaded(true);
+        }
       });
     }
   };
 
   const handleMarkRead = (id: string) => {
     startTransition(async () => {
-      await markReadAction(id);
-      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-      setCount((c) => Math.max(0, c - 1));
+      try {
+        await apiClient.post(`/notifications/${id}/read`);
+        setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+        setCount((c) => Math.max(0, c - 1));
+      } catch {
+        /* ignore */
+      }
     });
   };
 
   const handleMarkAll = () => {
     startTransition(async () => {
-      await markAllReadAction();
-      setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setCount(0);
+      try {
+        await apiClient.post('/notifications/read-all');
+        setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        setCount(0);
+      } catch {
+        /* ignore */
+      }
     });
   };
 
