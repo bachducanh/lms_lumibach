@@ -8,6 +8,7 @@ loadDotenv({ path: path.resolve(__dirname, '../../../.env') });
 import { NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -19,6 +20,7 @@ async function bootstrap() {
   const port = config.get<number>('API_PORT', 4000);
   const webOrigin = config.get<string>('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
 
+  app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.enableVersioning({
     type: VersioningType.URI,
