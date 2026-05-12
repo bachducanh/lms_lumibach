@@ -1,0 +1,17 @@
+{
+  "name": "@lumibach/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./index.js",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint.base.mjs": "./eslint.base.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^9.39.4",
+    "typescript": "^5"
+  }
+}
