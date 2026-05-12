@@ -25,7 +25,9 @@ dist/
 .turbo/
 
 # generated Prisma client (regenerated on install)
-packages/db/src/generated/
+packages/db/generated/
+# compiled package output (built on install)
+packages/db/dist/
 
 # misc
 .DS_Store

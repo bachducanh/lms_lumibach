@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Đã duyệt kế hoạch, chưa bắt đầu Phase 0
+**Trạng thái:** Phase 0 hoàn thành (2026-05-12, branch `feat/phase-0-monorepo`). Phase 0.5 docs/audit xong, metrics capture async. Phase 1 sẵn sàng bắt đầu.
 
 ---
 

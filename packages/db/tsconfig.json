@@ -3,9 +3,15 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "composite": false,
-    "noEmit": true
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": false,
+    "incremental": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "prisma/migrations"]
+  "exclude": ["node_modules", "dist", "generated", "prisma/migrations"]
 }

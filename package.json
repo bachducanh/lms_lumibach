@@ -22,10 +22,13 @@
     "db:seed": "pnpm --filter @lumibach/db db:seed",
     "web:dev": "pnpm --filter @lumibach/web dev",
     "web:build": "pnpm --filter @lumibach/web build",
+    "api:dev": "pnpm --filter @lumibach/api dev",
+    "api:build": "pnpm --filter @lumibach/api build",
+    "api:start": "pnpm --filter @lumibach/api start",
     "worker:dev": "pnpm --filter @lumibach/web worker:dev",
     "worker:email": "pnpm --filter @lumibach/web worker:email",
     "prepare": "husky",
-    "postinstall": "pnpm --filter @lumibach/db db:generate"
+    "postinstall": "pnpm --filter @lumibach/db db:generate && pnpm --filter @lumibach/db build"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,mjs,cjs}": [
