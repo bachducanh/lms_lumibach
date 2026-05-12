@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Phase 0 + Phase 0.5 docs + **Phase 1 (Sessions 1A→1F) hoàn thành** (2026-05-12, branch `feat/phase-0-monorepo`). NestJS API alive at `/api/v1/*`, auth bridge với NextAuth cookie verified end-to-end. Sẵn sàng Phase 2 (Testing Foundation).
+**Trạng thái:** Phase 0 + 0.5 docs + Phase 1 (1A→1F) + **Phase 2 (2A→2E) hoàn thành** (2026-05-12). Testing Foundation: Vitest + SWC cho NestJS, 8/8 e2e tests pass cho `/me`, postgres test container, Playwright skeleton. Branch `feat/phase-2-testing`. Sẵn sàng Phase 3 (Migrate Low-Risk Modules).
 
 ---
 
