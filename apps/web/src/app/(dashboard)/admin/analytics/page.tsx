@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getAdminOverviewAction } from '@/actions/analytics';
+import { apiServerClient, ApiError } from '@/lib/api-client';
+import type { AdminOverview } from '@lumibach/types';
 import { LineChart, BarChart, HorizontalBars } from '@/components/features/analytics/MiniCharts';
 import { StatCard } from '@/components/features/analytics/StatCard';
 import {
@@ -43,7 +45,11 @@ export default async function AdminAnalyticsPage() {
   const role = session?.user?.role as UserRole | undefined;
   if (role !== 'ADMIN') redirect('/dashboard');
 
-  const data = await getAdminOverviewAction();
+  const api = apiServerClient(await cookies());
+  const data = await api.get<AdminOverview>('/analytics/admin-overview').catch((err: unknown) => {
+    if (err instanceof ApiError) return null;
+    throw err;
+  });
   if (!data) redirect('/dashboard');
 
   return (

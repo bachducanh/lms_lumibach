@@ -9,6 +9,7 @@ import { CacheModule } from './common/cache/cache.module';
 import { HealthModule } from './common/health/health.module';
 import { MeModule } from './modules/me/me.module';
 import { ActivityModule } from './modules/activity/activity.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ActivityModule } from './modules/activity/activity.module';
     HealthModule,
     MeModule,
     ActivityModule,
+    AnalyticsModule,
   ],
   providers: [
     {

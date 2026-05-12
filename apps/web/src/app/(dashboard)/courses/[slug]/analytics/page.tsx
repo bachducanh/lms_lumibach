@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseAnalyticsAction } from '@/actions/analytics';
+import { apiServerClient, ApiError } from '@/lib/api-client';
+import type { CourseAnalytics } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { LineChart, BarChart, HorizontalBars } from '@/components/features/analytics/MiniCharts';
 import { StatCard } from '@/components/features/analytics/StatCard';
@@ -34,7 +36,11 @@ export default async function CourseAnalyticsPage({
   const role = session?.user?.role as UserRole | undefined;
   if (!role || !hasMinRole(role, 'TA')) redirect(`/courses/${slug}`);
 
-  const data = await getCourseAnalyticsAction(slug);
+  const api = apiServerClient(await cookies());
+  const data = await api.get<CourseAnalytics>(`/analytics/course/${slug}`).catch((err: unknown) => {
+    if (err instanceof ApiError) return null;
+    throw err;
+  });
   if (!data) notFound();
 
   const fmt = (n: number | null, suffix = '') => (n === null ? '—' : `${Math.round(n)}${suffix}`);
