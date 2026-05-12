@@ -18,7 +18,7 @@ export default defineConfig({
     globals: false,
     environment: 'node',
     include: ['test/**/*.{e2e-spec,spec}.ts', 'src/**/*.spec.ts'],
-    // setupFiles registered in Session 2B (test/setup.ts handles DB lifecycle)
+    setupFiles: ['./test/setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     pool: 'forks',
