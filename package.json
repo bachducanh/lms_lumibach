@@ -27,13 +27,13 @@
     "api:start": "pnpm --filter @lumibach/api start",
     "worker:dev": "pnpm --filter @lumibach/web worker:dev",
     "worker:email": "pnpm --filter @lumibach/web worker:email",
-    "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait && pnpm test:db:migrate",
+    "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait && pnpm test:db:push",
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
-    "test:db:migrate": "dotenv -e .env.test -- prisma migrate deploy --schema packages/db/prisma/schema.prisma",
+    "test:db:push": "dotenv -e .env.test -- pnpm --filter @lumibach/db exec prisma db push --skip-generate --accept-data-loss",
     "test:api": "pnpm --filter @lumibach/api test",
     "test:e2e": "pnpm --filter @lumibach/web test:e2e",
     "prepare": "husky",
-    "postinstall": "pnpm --filter @lumibach/db db:generate && pnpm --filter @lumibach/db build"
+    "postinstall": "pnpm --filter @lumibach/db db:generate && pnpm --filter @lumibach/db build && pnpm --filter @lumibach/types build"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,mjs,cjs}": [

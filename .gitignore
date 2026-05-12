@@ -28,6 +28,7 @@ dist/
 packages/db/generated/
 # compiled package output (built on install)
 packages/db/dist/
+packages/types/dist/
 
 # misc
 .DS_Store

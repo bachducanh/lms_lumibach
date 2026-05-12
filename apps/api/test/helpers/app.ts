@@ -1,6 +1,5 @@
 import { VersioningType, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { ZodValidationPipe } from 'nestjs-zod';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '@/app.module';
 import { ResponseInterceptor } from '@/common/interceptors/response.interceptor';
@@ -26,7 +25,6 @@ export async function createTestApp(): Promise<INestApplication> {
   app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-  app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
 

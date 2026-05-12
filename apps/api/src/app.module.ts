@@ -8,6 +8,7 @@ import { AuthModule } from './common/auth/auth.module';
 import { CacheModule } from './common/cache/cache.module';
 import { HealthModule } from './common/health/health.module';
 import { MeModule } from './modules/me/me.module';
+import { ActivityModule } from './modules/activity/activity.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { MeModule } from './modules/me/me.module';
     AuthModule,
     HealthModule,
     MeModule,
+    ActivityModule,
   ],
   providers: [
     {

@@ -3,7 +3,7 @@ import { vi } from 'date-fns/locale';
 import { BookOpen, Code2, ClipboardList, FileText, LogIn, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACTION_LABELS } from '@/lib/activity-labels';
-import type { ActivityLogRow } from '@/actions/activity';
+import type { ActivityLogRow } from '@lumibach/types';
 import type { ActivityAction } from '@lumibach/db';
 
 // ── Action icon + color ────────────────────────────────────────

@@ -6,7 +6,6 @@ import {
   type ArgumentsHost,
   type ExceptionFilter,
 } from '@nestjs/common';
-import { ZodValidationException } from 'nestjs-zod';
 import { Prisma } from '@lumibach/db';
 import type { Response } from 'express';
 import { Sentry } from '../sentry/sentry';
@@ -27,28 +26,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const res = host.switchToHttp().getResponse<Response>();
 
-    if (exception instanceof ZodValidationException) {
-      const zodError = exception.getZodError();
-      res.status(HttpStatus.BAD_REQUEST).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Request validation failed',
-          details: zodError.issues.map((i) => ({
-            path: i.path.join('.'),
-            message: i.message,
-            code: i.code,
-          })),
-        },
-      } satisfies ErrorBody);
-      return;
-    }
-
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const r = exception.getResponse();
       let message = exception.message;
       let details: unknown;
+      let code: string | undefined;
 
       if (r && typeof r === 'object') {
         const obj = r as Record<string, unknown>;
@@ -58,12 +41,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
           message = obj.message.join('; ');
           details = obj.message;
         }
+        // Custom code + details (vd: ZodQueryPipe ném { code, details, message }).
+        if (typeof obj.code === 'string') code = obj.code;
+        if (obj.details !== undefined) details = obj.details;
       }
 
       res.status(status).json({
         success: false,
         error: {
-          code: this.mapHttpStatusCode(status),
+          code: code ?? this.mapHttpStatusCode(status),
           message,
           ...(details ? { details } : {}),
         },

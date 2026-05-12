@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
 import { getStudentDetailAction, listCoursesForFilterAction } from '@/actions/students';
-import { getStudentLogsAction } from '@/actions/activity';
+import { apiServerClient, ApiError } from '@/lib/api-client';
+import type { ActivityLogPage } from '@lumibach/types';
 import { StudentDetailClient } from '@/components/features/students/StudentDetailClient';
 import { ActivityLogTable } from '@/components/features/activity/ActivityLogTable';
 import {
@@ -50,10 +52,16 @@ export default async function StudentDetailPage({
   const role = session?.user?.role as UserRole | undefined;
   if (!role || !hasMinRole(role, 'TA')) redirect('/dashboard');
 
+  const api = apiServerClient(await cookies());
   const [student, courses, recentLogs] = await Promise.all([
     getStudentDetailAction(userId),
     listCoursesForFilterAction(),
-    getStudentLogsAction(userId, { page: 1 }),
+    api
+      .get<ActivityLogPage>(`/activities/student/${userId}`, { query: { page: 1 } })
+      .catch((err: unknown) => {
+        if (err instanceof ApiError) return null;
+        throw err;
+      }),
   ]);
 
   if (!student) notFound();

@@ -105,8 +105,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Apply migrations to test DB
-        run: pnpm --filter @lumibach/db exec prisma migrate deploy
+      - name: Sync schema to test DB
+        run: pnpm --filter @lumibach/db exec prisma db push --skip-generate --accept-data-loss
 
       - name: Run API tests
         run: pnpm --filter @lumibach/api test

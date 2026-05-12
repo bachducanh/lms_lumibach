@@ -30,7 +30,6 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "nestjs-pino": "^4.4.0",
-    "nestjs-zod": "^4.3.0",
     "pino-http": "^10.4.0",
     "pino-pretty": "^11.3.0",
     "reflect-metadata": "^0.2.2",

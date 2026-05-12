@@ -11,7 +11,6 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
-import { ZodValidationPipe } from 'nestjs-zod';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
@@ -36,7 +35,9 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
-  app.useGlobalPipes(new ZodValidationPipe());
+  // Validation: dùng per-route `zodQuery(schema)` / `zodBody(schema)` thay vì
+  // global ZodValidationPipe — tránh @nest-zod/z monkey-patch Zod global
+  // error map (crash trên Zod v4).
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
 
