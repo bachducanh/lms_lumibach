@@ -9,6 +9,7 @@ import {
 import { ZodValidationException } from 'nestjs-zod';
 import { Prisma } from '@lumibach/db';
 import type { Response } from 'express';
+import { Sentry } from '../sentry/sentry';
 
 type ErrorBody = {
   success: false;
@@ -88,6 +89,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     this.logger.error('Unhandled exception', exception);
+    Sentry.captureException(exception);
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
       error: { code: 'INTERNAL_ERROR', message: 'Internal server error' },

@@ -4,9 +4,13 @@ import path from 'node:path';
 
 loadDotenv({ path: path.resolve(__dirname, '../../../.env') });
 
+import { initSentry } from './common/sentry/sentry';
+const sentryActive = initSentry();
+
 import { NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -18,6 +22,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
+
+  app.useLogger(app.get(PinoLogger));
 
   const config = app.get(ConfigService);
   const port = config.get<number>('API_PORT', 4000);
@@ -63,6 +69,7 @@ async function bootstrap() {
   logger.log(`🚀 API ready at http://localhost:${port}/api/v1`);
   logger.log(`📚 Swagger UI at http://localhost:${port}/api/docs`);
   logger.log(`CORS origin allowed: ${webOrigin}`);
+  logger.log(`Sentry: ${sentryActive ? 'enabled' : 'disabled (no SENTRY_DSN)'}`);
 }
 
 bootstrap();
