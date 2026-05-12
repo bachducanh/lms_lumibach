@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  lint-build:
     name: Lint + Type-check + Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -60,3 +60,53 @@ jobs:
           MINIO_SECRET_KEY: placeholder
           REDIS_URL: redis://localhost:6379
           JUDGE0_API_URL: http://localhost:2358
+
+  api-tests:
+    name: API tests (Vitest + Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lumibach_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: lumibach_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U lumibach_test"
+          --health-interval=3s
+          --health-timeout=3s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://lumibach_test:test_password@localhost:5433/lumibach_test?schema=public
+      AUTH_SECRET: test-secret-do-not-use-in-prod-32bytes-padding-padding
+      LOG_LEVEL: silent
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.1.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations to test DB
+        run: pnpm --filter @lumibach/db exec prisma migrate deploy
+
+      - name: Run API tests
+        run: pnpm --filter @lumibach/api test

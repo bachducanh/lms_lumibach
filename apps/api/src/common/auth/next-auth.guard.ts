@@ -11,23 +11,7 @@ import { PrismaClient } from '@lumibach/db';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator';
 import type { AuthUser, NextAuthJwtPayload } from './auth.types';
-
-// @auth/core is ESM-only. TS would transform `import()` to require() under
-// CommonJS target; force a true ESM dynamic import via the Function
-// constructor so Node treats it as native import.
-type DecodeFn = (params: {
-  token?: string;
-  secret: string | string[];
-  salt: string;
-}) => Promise<NextAuthJwtPayload | null>;
-
-const importEsm = new Function('specifier', 'return import(specifier)') as (
-  specifier: string
-) => Promise<unknown>;
-
-const decodePromise: Promise<DecodeFn> = importEsm('@auth/core/jwt').then(
-  (m) => (m as { decode: DecodeFn }).decode
-);
+import { getAuthJwt } from './jwt-loader';
 
 // NextAuth v5 cookie names (dev HTTP vs prod HTTPS).
 // Salt for JWE decryption = cookie name itself.
@@ -71,7 +55,7 @@ export class NextAuthGuard implements CanActivate {
 
     let payload: NextAuthJwtPayload | null;
     try {
-      const decode = await decodePromise;
+      const { decode } = await getAuthJwt();
       payload = await decode({ token, secret, salt });
     } catch (err) {
       this.logger.debug(`JWE decode failed: ${(err as Error).message}`);
