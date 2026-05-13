@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { BookOpen, TrendingUp, Code2, Trash2, Loader2 } from 'lucide-react';
 import { EnrollStudentDialog } from './EnrollStudentDialog';
-import { removeStudentFromCourseAction } from '@/actions/students';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import type { StudentEnrollment } from '@/actions/students';
+import type { StudentEnrollment } from '@lumibach/types';
 
 const ENROLLMENT_STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Đang học',
@@ -52,7 +52,7 @@ export function StudentDetailClient({
       courseSlug,
       status: 'ACTIVE',
       progress: 0,
-      enrolledAt: new Date(),
+      enrolledAt: new Date().toISOString(),
       quizScore: null,
       codeScore: null,
     };
@@ -62,15 +62,15 @@ export function StudentDetailClient({
   function handleRemove(enrollmentId: string) {
     setRemovingId(enrollmentId);
     startRemove(async () => {
-      const res = await removeStudentFromCourseAction(enrollmentId);
-      if (!res.success) {
-        toast.error(res.error);
+      try {
+        await apiClient.delete(`/enrollments/${enrollmentId}`);
+        toast.success('Đã xóa học sinh khỏi khoá học.');
+        setEnrollments((prev) => prev.filter((e) => e.id !== enrollmentId));
         setRemovingId(null);
-        return;
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xóa');
+        setRemovingId(null);
       }
-      toast.success(res.message);
-      setEnrollments((prev) => prev.filter((e) => e.id !== enrollmentId));
-      setRemovingId(null);
     });
   }
 

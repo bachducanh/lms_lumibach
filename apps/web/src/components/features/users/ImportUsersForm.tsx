@@ -5,7 +5,8 @@ import { read, utils, writeFile } from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { importUsersAction, type ImportRow, type ImportResult } from '@/actions/users';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type { ImportRow, ImportResult } from '@lumibach/types';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 
@@ -138,12 +139,12 @@ export function ImportUsersForm() {
 
   function handleImport() {
     startTransition(async () => {
-      const res = await importUsersAction(rows);
-      if (res.success && res.data) {
-        setResult(res.data);
-        toast.success(res.message);
-      } else {
-        toast.error(!res.success ? res.error : 'Lỗi import');
+      try {
+        const data = await apiClient.post<ImportResult>('/users/import', { rows });
+        setResult(data);
+        toast.success(`Import xong: ${data.success} thành công, ${data.errors.length} lỗi.`);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi import');
       }
     });
   }

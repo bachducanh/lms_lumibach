@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Camera, Loader2 } from 'lucide-react';
-import { updateProfileAction } from '@/actions/users';
+import { apiClient, ApiError } from '@/lib/api-client';
 import {
   Form,
   FormControl,
@@ -114,9 +114,12 @@ export function ProfileForm({ user }: { user: UserData }) {
 
   function onSubmit(values: FormValues) {
     startTransition(async () => {
-      const result = await updateProfileAction(values);
-      if (result.success) toast.success(result.message);
-      else toast.error(result.error);
+      try {
+        await apiClient.patch('/users/me/profile', values);
+        toast.success('Hồ sơ đã được cập nhật.');
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật hồ sơ');
+      }
     });
   }
 

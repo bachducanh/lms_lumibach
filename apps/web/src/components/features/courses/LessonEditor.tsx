@@ -16,8 +16,8 @@ const RichTextEditor = dynamic(
 );
 import { LessonAttachments } from '@/components/features/courses/LessonAttachments';
 import { toast } from 'sonner';
-import { createLessonAction, updateLessonAction, type LessonFormValues } from '@/actions/lessons';
-import type { AttachmentDTO } from '@/actions/attachments';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type { AttachmentDTO } from '@lumibach/types';
 import { ChevronLeft, Clock, Paperclip } from 'lucide-react';
 
 type Props =
@@ -49,26 +49,29 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const values: LessonFormValues = {
-      title,
-      content,
-      estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : undefined,
-    };
-
     startTransition(async () => {
-      const res =
-        mode === 'create'
-          ? await createLessonAction(courseId, moduleId, values)
-          : await updateLessonAction(lesson!.id, values);
-
-      if (res.success) {
-        toast.success(res.message);
-        const destId = mode === 'create' ? res.data?.lessonId : lesson!.id;
-        router.push(
-          destId ? `/courses/${courseSlug}/lessons/${destId}` : `/courses/${courseSlug}/modules`
-        );
-      } else {
-        toast.error(res.error);
+      try {
+        if (mode === 'create') {
+          const data = await apiClient.post<{ lessonId: string }>('/lessons', {
+            courseId,
+            moduleId,
+            title,
+            content,
+            estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : undefined,
+          });
+          toast.success('Đã tạo bài giảng.');
+          router.push(`/courses/${courseSlug}/lessons/${data.lessonId}`);
+        } else {
+          await apiClient.patch(`/lessons/${lesson!.id}`, {
+            title,
+            content,
+            estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null,
+          });
+          toast.success('Đã cập nhật bài giảng.');
+          router.push(`/courses/${courseSlug}/lessons/${lesson!.id}`);
+        }
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi lưu bài giảng');
       }
     });
   }

@@ -1,9 +1,10 @@
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { apiServerClient } from '@/lib/api-client';
 import { LessonEditor } from '@/components/features/courses/LessonEditor';
-import { prisma } from '@/lib/db';
 import { hasMinRole } from '@/lib/permissions';
+import type { CourseDetail } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Tạo bài giảng mới' };
@@ -22,7 +23,8 @@ export default async function NewLessonPage({
   const role = session?.user?.role as UserRole;
   if (!hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canManage =
@@ -30,9 +32,6 @@ export default async function NewLessonPage({
   if (!canManage) redirect(`/courses/${slug}`);
 
   if (!moduleId) redirect(`/courses/${slug}/modules`);
-
-  const mod = await prisma.module.findUnique({ where: { id: moduleId } });
-  if (!mod || mod.courseId !== course.id) notFound();
 
   return (
     <div className="max-w-5xl">

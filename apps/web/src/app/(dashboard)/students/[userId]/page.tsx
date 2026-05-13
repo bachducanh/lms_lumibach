@@ -3,9 +3,8 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
-import { getStudentDetailAction, listCoursesForFilterAction } from '@/actions/students';
 import { apiServerClient, ApiError } from '@/lib/api-client';
-import type { ActivityLogPage } from '@lumibach/types';
+import type { ActivityLogPage, StudentDetail } from '@lumibach/types';
 import { StudentDetailClient } from '@/components/features/students/StudentDetailClient';
 import { ActivityLogTable } from '@/components/features/activity/ActivityLogTable';
 import {
@@ -38,7 +37,8 @@ const STATUS_CLASS: Record<string, string> = {
 
 export async function generateMetadata({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params;
-  const student = await getStudentDetailAction(userId);
+  const api = apiServerClient(await cookies());
+  const student = await api.get<StudentDetail>(`/users/students/${userId}`).catch(() => null);
   return { title: student ? `${student.fullName ?? student.firstName} — Học sinh` : 'Học sinh' };
 }
 
@@ -54,8 +54,13 @@ export default async function StudentDetailPage({
 
   const api = apiServerClient(await cookies());
   const [student, courses, recentLogs] = await Promise.all([
-    getStudentDetailAction(userId),
-    listCoursesForFilterAction(),
+    api.get<StudentDetail>(`/users/students/${userId}`).catch((err: unknown) => {
+      if (err instanceof ApiError) return null;
+      throw err;
+    }),
+    api
+      .get<{ id: string; name: string; slug: string }[]>('/users/students/courses-filter')
+      .catch(() => [] as { id: string; name: string; slug: string }[]),
     api
       .get<ActivityLogPage>(`/activities/student/${userId}`, { query: { page: 1 } })
       .catch((err: unknown) => {

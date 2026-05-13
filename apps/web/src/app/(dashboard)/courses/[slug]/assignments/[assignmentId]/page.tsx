@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import { getAssignmentAction, getMySubmissionAction } from '@/actions/assignments';
 import { logActivity } from '@/lib/activity';
 import { getRubricAction } from '@/actions/rubric';
-import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { RubricView } from '@/components/features/assignments/RubricView';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { buttonVariants } from '@/components/ui/button';
@@ -99,7 +100,8 @@ export default async function AssignmentViewPage({
 
   if (!role || !userId) redirect('/login');
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const assignment = await getAssignmentAction(assignmentId);
@@ -127,7 +129,11 @@ export default async function AssignmentViewPage({
       ? getMySubmissionAction(assignmentId)
       : Promise.resolve(null),
     getRubricAction(assignmentId),
-    listCourseNavItemsAction(course.id, !isStaff),
+    api
+      .get<
+        CourseNavItem[]
+      >('/modules/nav', { query: { courseId: course.id, publishedOnly: !isStaff } })
+      .catch(() => [] as CourseNavItem[]),
     isCodeAssignment ? getCodeAssignmentAction(assignmentId) : Promise.resolve(null),
     role === 'STUDENT' && isCodeAssignment
       ? listMyCodeSubmissionsAction(assignmentId)

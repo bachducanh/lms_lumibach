@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import { logActivity } from '@/lib/activity';
 import { hasMinRole } from '@/lib/permissions';
-import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { listMyScratchSubmissionsAction, listScratchSubmissionsAction } from '@/actions/scratch';
 import { getCodeExerciseRubricAction } from '@/actions/rubric';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
@@ -51,7 +52,8 @@ export default async function ScratchExercisePage({
   const userId = session?.user?.id;
   if (!userId) redirect('/login');
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const exercise = await prisma.codeExercise.findUnique({
@@ -91,7 +93,11 @@ export default async function ScratchExercisePage({
   });
 
   const [allNavItems, mySubs, allSubs, rubric] = await Promise.all([
-    listCourseNavItemsAction(course.id, role === 'STUDENT'),
+    api
+      .get<
+        CourseNavItem[]
+      >('/modules/nav', { query: { courseId: course.id, publishedOnly: role === 'STUDENT' } })
+      .catch(() => [] as CourseNavItem[]),
     listMyScratchSubmissionsAction(exerciseId),
     isTeacher ? listScratchSubmissionsAction(exerciseId) : Promise.resolve([]),
     isTeacher ? getCodeExerciseRubricAction(exerciseId) : Promise.resolve(null),

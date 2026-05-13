@@ -45,18 +45,8 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  createModuleAction,
-  updateModuleAction,
-  deleteModuleAction,
-  toggleModulePublishAction,
-  reorderModulesAction,
-  reorderModuleItemsAction,
-  addModuleItemAction,
-  deleteModuleItemAction,
-  toggleModuleItemPublishAction,
-  type ModuleWithItems,
-} from '@/actions/modules';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type { ModuleWithItems } from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 type ModuleItem = ModuleWithItems['items'][number];
@@ -256,13 +246,13 @@ function EditableModuleName({
 
   function save() {
     startTransition(async () => {
-      const res = await updateModuleAction(id, { name: value });
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.patch(`/modules/${id}`, { name: value });
+        toast.success('Đã cập nhật tên chương.');
         setEditing(false);
         onSaved();
-      } else {
-        toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật');
         setValue(name);
         setEditing(false);
       }
@@ -316,12 +306,14 @@ function AddModuleForm({
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     startTransition(async () => {
-      const res = await createModuleAction(courseId, { name });
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.post('/modules', { courseId, name });
+        toast.success('Đã tạo chương mới.');
         setName('');
         onAdded();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi tạo chương');
+      }
     });
   }
 
@@ -374,18 +366,20 @@ function AddExternalUrlForm({
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     startTransition(async () => {
-      const res = await addModuleItemAction(moduleId, {
-        title,
-        type: 'EXTERNAL_URL',
-        externalUrl: url,
-      });
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.post(`/modules/${moduleId}/items`, {
+          title,
+          type: 'EXTERNAL_URL',
+          externalUrl: url,
+        });
+        toast.success('Đã thêm link ngoài.');
         setTitle('');
         setUrl('');
         onAdded();
         onClose();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi thêm link');
+      }
     });
   }
 
@@ -812,12 +806,14 @@ function SortableModuleRow({
     const reordered = arrayMove(localItems, oldIdx, newIdx);
     setLocalItems(reordered);
     startItemTransition(async () => {
-      const res = await reorderModuleItemsAction(
-        mod.id,
-        reordered.map((i) => i.id)
-      );
-      if (!res.success) toast.error(res.error);
-      else router.refresh();
+      try {
+        await apiClient.patch(`/modules/${mod.id}/items/reorder`, {
+          orderedIds: reordered.map((i) => i.id),
+        });
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi sắp xếp');
+      }
     });
   }
 
@@ -1024,12 +1020,15 @@ export function ModuleList({
     const reordered = arrayMove(localModules, oldIdx, newIdx);
     setLocalModules(reordered);
     startTransition(async () => {
-      const res = await reorderModulesAction(
-        courseId,
-        reordered.map((m) => m.id)
-      );
-      if (!res.success) toast.error(res.error);
-      else router.refresh();
+      try {
+        await apiClient.patch('/modules/reorder', {
+          courseId,
+          orderedIds: reordered.map((m) => m.id),
+        });
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi sắp xếp chương');
+      }
     });
   }
 
@@ -1039,21 +1038,24 @@ export function ModuleList({
     );
     if (!ok) return;
     startTransition(async () => {
-      const res = await deleteModuleAction(id);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete(`/modules/${id}`);
+        toast.success('Đã xoá chương.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá chương');
+      }
     });
   }
 
   function handleTogglePublish(id: string) {
     startTransition(async () => {
-      const res = await toggleModulePublishAction(id);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.patch(`/modules/${id}/publish`);
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật trạng thái');
+      }
     });
   }
 
@@ -1061,21 +1063,24 @@ export function ModuleList({
     const ok = await openConfirm('Xoá mục này khỏi chương?');
     if (!ok) return;
     startTransition(async () => {
-      const res = await deleteModuleItemAction(id);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete(`/modules/items/${id}`);
+        toast.success('Đã xoá mục.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá mục');
+      }
     });
   }
 
   function handleToggleItemPublish(id: string) {
     startTransition(async () => {
-      const res = await toggleModuleItemPublishAction(id);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.patch(`/modules/items/${id}/publish`);
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật trạng thái');
+      }
     });
   }
 

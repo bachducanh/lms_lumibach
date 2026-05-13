@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { getGradebookAction } from '@/actions/gradebook';
 import { GradebookTable } from '@/components/features/courses/GradebookTable';
 import { hasMinRole } from '@/lib/permissions';
@@ -10,7 +12,8 @@ import type { UserRole } from '@lumibach/db';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   return { title: `Bảng điểm — ${course?.name ?? ''}` };
 }
 
@@ -19,7 +22,8 @@ export default async function GradebookPage({ params }: { params: Promise<{ slug
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
   if (!role || !hasMinRole(role, 'TA')) redirect(`/courses/${slug}`);
 

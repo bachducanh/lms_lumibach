@@ -1,9 +1,8 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
-import { getLessonAction } from '@/actions/lessons';
-import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
+import { apiServerClient } from '@/lib/api-client';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { buttonVariants } from '@/components/ui/button';
 import { MarkCompleteButton } from '@/components/features/courses/MarkCompleteButton';
@@ -19,6 +18,7 @@ import {
   Paperclip,
   CheckCircle2,
 } from 'lucide-react';
+import type { CourseDetail, LessonDetail, CourseNavItem } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
 
 function navItemUrl(item: CourseNavItem, slug: string): string {
@@ -40,7 +40,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string; lessonId: string }>;
 }) {
   const { lessonId } = await params;
-  const lesson = await getLessonAction(lessonId);
+  const api = apiServerClient(await cookies());
+  const lesson = await api.get<LessonDetail>(`/lessons/${lessonId}`).catch(() => null);
   return { title: lesson?.title ?? 'Bài giảng' };
 }
 
@@ -54,10 +55,12 @@ export default async function LessonViewPage({
   const role = session?.user?.role as UserRole;
   const userId = session?.user?.id;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const [course, lesson] = await Promise.all([
+    api.get<CourseDetail>(`/courses/${slug}`).catch(() => null),
+    api.get<LessonDetail>(`/lessons/${lessonId}`).catch(() => null),
+  ]);
   if (!course) notFound();
-
-  const lesson = await getLessonAction(lessonId);
   if (!lesson) notFound();
 
   const moduleItem = lesson.moduleItems.find((item) => item.module.courseId === course.id);
@@ -83,7 +86,11 @@ export default async function LessonViewPage({
       })
     : null;
 
-  const allNavItems = await listCourseNavItemsAction(course.id, role === 'STUDENT');
+  const allNavItems = await api
+    .get<CourseNavItem[]>('/modules/nav', {
+      query: { courseId: course.id, publishedOnly: role === 'STUDENT' },
+    })
+    .catch(() => [] as CourseNavItem[]);
   const currentIndex = allNavItems.findIndex((i) => i.lessonId === lessonId);
   const prevNavItem = currentIndex > 0 ? (allNavItems[currentIndex - 1] ?? null) : null;
   const nextNavItem =

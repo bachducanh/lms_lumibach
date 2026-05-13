@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { ExerciseEditor } from '@/components/features/code/ExerciseEditor';
 import { prisma } from '@/lib/db';
 import { hasMinRole } from '@/lib/permissions';
@@ -22,7 +24,8 @@ export default async function NewExercisePage({
   const role = session?.user?.role as UserRole;
   if (!hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canManage =

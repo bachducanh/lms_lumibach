@@ -1,7 +1,9 @@
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { apiServerClient } from '@/lib/api-client';
 import { CourseForm } from '@/components/features/courses/CourseForm';
+import type { CourseDetail } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Chỉnh sửa khoá học' };
@@ -11,7 +13,8 @@ export default async function EditCoursePage({ params }: { params: Promise<{ slu
   const session = await auth();
   const role = session?.user?.role as UserRole;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canEdit = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);

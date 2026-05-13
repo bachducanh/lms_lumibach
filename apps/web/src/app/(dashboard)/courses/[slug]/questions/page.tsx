@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { listQuestionsByCategoryAction } from '@/actions/questions';
 import { QuestionBankList } from '@/components/features/quiz/QuestionBankList';
 import { hasMinRole } from '@/lib/permissions';
@@ -15,7 +17,8 @@ export default async function QuestionsPage({ params }: { params: Promise<{ slug
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
   if (!role || !hasMinRole(role, 'TA')) redirect('/courses');
 

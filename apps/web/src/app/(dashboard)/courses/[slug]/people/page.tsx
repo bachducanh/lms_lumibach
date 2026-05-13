@@ -1,16 +1,18 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
-import { listCourseMembersAction } from '@/actions/enrollments';
+import { apiServerClient } from '@/lib/api-client';
 import { PeoplePanel } from '@/components/features/courses/PeoplePanel';
 import { buttonVariants } from '@/components/ui/button';
 import { hasMinRole } from '@/lib/permissions';
+import type { CourseDetail, CourseMembersResponse } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   return { title: `Thành viên — ${course?.name ?? 'Khoá học'}` };
 }
 
@@ -21,13 +23,16 @@ export default async function CoursePeoplePage({ params }: { params: Promise<{ s
 
   if (!hasMinRole(role, 'TA')) redirect(`/courses/${slug}`);
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canManage =
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
 
-  const { enrollments, tas, coTeachers } = await listCourseMembersAction(course.id);
+  const { enrollments, tas, coTeachers } = await api
+    .get<CourseMembersResponse>(`/courses/${course.id}/members`)
+    .catch(() => ({ enrollments: [], tas: [], coTeachers: [] }));
 
   const totalTeachers = 1 + coTeachers.length;
 
@@ -60,7 +65,7 @@ export default async function CoursePeoplePage({ params }: { params: Promise<{ s
           fullName: course.owner.fullName ?? null,
           firstName: course.owner.firstName,
           lastName: course.owner.lastName,
-          email: course.owner.email,
+          email: course.owner.email ?? '',
           avatar: course.owner.avatar ?? null,
         }}
       />

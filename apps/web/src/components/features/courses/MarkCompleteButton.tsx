@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle } from 'lucide-react';
-import { markLessonCompleteAction, unmarkLessonCompleteAction } from '@/actions/lessons';
+import { apiClient, ApiError } from '@/lib/api-client';
 
 type Props = {
   moduleItemId: string;
@@ -25,14 +25,17 @@ export function MarkCompleteButton({
 
   function handleClick() {
     startTransition(async () => {
-      const res = isCompleted
-        ? await unmarkLessonCompleteAction(moduleItemId)
-        : await markLessonCompleteAction(moduleItemId);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        if (isCompleted) {
+          await apiClient.delete(`/lessons/completions/${moduleItemId}`);
+          toast.success('Đã bỏ đánh dấu hoàn thành.');
+        } else {
+          await apiClient.post('/lessons/completions', { moduleItemId });
+          toast.success('Đã đánh dấu hoàn thành.');
+        }
         router.refresh();
-      } else {
-        toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật tiến độ');
       }
     });
   }

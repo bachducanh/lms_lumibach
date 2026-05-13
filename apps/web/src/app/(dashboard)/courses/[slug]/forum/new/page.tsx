@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { ArrowLeft } from 'lucide-react';
 import { NewTopicForm } from './NewTopicForm';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   return { title: `Tạo chủ đề mới — ${course?.name ?? 'Khoá học'}` };
 }
 
@@ -16,7 +19,8 @@ export default async function NewTopicPage({ params }: { params: Promise<{ slug:
   const session = await auth();
   if (!session?.user) redirect('/login');
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   return (

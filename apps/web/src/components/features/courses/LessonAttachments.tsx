@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { FileUploader } from '@/components/ui/uploader/FileUploader';
 import { toast } from 'sonner';
 import { FileText, FileImage, FileArchive, File, Trash2, Download } from 'lucide-react';
-import type { AttachmentDTO } from '@/actions/attachments';
+import type { AttachmentDTO } from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 function formatBytes(bytes: number): string {

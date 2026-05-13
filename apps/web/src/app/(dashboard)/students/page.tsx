@@ -1,13 +1,15 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
-import { listStudentsAction, listCoursesForFilterAction } from '@/actions/students';
+import { apiServerClient } from '@/lib/api-client';
 import { StudentListTable } from '@/components/features/students/StudentListTable';
 import { StudentFilterBar } from '@/components/features/students/StudentFilterBar';
 import { buttonVariants } from '@/components/ui/button';
 import { GraduationCap } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
+import type { StudentRow } from '@lumibach/types';
 
 export const metadata = { title: 'Quản lý học sinh' };
 
@@ -25,10 +27,23 @@ export default async function StudentsPage({
   const courseId = typeof sp.courseId === 'string' ? sp.courseId : '';
   const page = typeof sp.page === 'string' ? Math.max(1, parseInt(sp.page)) : 1;
 
-  const [{ students, total, totalPages }, courses] = await Promise.all([
-    listStudentsAction({ q, courseId, page }),
-    listCoursesForFilterAction(),
+  const api = apiServerClient(await cookies());
+  const params = new URLSearchParams({ page: String(page) });
+  if (q) params.set('q', q);
+  if (courseId) params.set('courseId', courseId);
+  const [studentsData, courses] = await Promise.all([
+    api
+      .get<{
+        students: StudentRow[];
+        total: number;
+        totalPages: number;
+      }>(`/users/students?${params.toString()}`)
+      .catch(() => ({ students: [] as StudentRow[], total: 0, totalPages: 0 })),
+    api
+      .get<{ id: string; name: string; slug: string }[]>('/users/students/courses-filter')
+      .catch(() => [] as { id: string; name: string; slug: string }[]),
   ]);
+  const { students, total, totalPages } = studentsData;
 
   function buildHref(p: number) {
     const params = new URLSearchParams();

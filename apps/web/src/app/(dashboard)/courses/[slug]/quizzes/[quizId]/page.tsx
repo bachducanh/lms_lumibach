@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import { getQuizAction } from '@/actions/quizzes';
 import { listMyAttemptsAction } from '@/actions/attempts';
-import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuizButton } from '@/components/features/quiz/DeleteQuizButton';
 import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
@@ -96,7 +97,8 @@ export default async function QuizDetailPage({
   const role = session?.user?.role as UserRole | undefined;
   const userId = session?.user?.id;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const quiz = await getQuizAction(quizId);
@@ -109,7 +111,11 @@ export default async function QuizDetailPage({
 
   const [myAttempts, allNavItems] = await Promise.all([
     !isStaff ? listMyAttemptsAction(quizId) : Promise.resolve([]),
-    listCourseNavItemsAction(course.id, !isStaff),
+    api
+      .get<
+        CourseNavItem[]
+      >('/modules/nav', { query: { courseId: course.id, publishedOnly: !isStaff } })
+      .catch(() => [] as CourseNavItem[]),
   ]);
   const currentNavIndex = allNavItems.findIndex((i) => i.quizId === quizId);
   const prevNavItem = currentNavIndex > 0 ? (allNavItems[currentNavIndex - 1] ?? null) : null;

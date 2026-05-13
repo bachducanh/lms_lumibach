@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import {
   getExerciseAction,
   listMyExerciseSubmissionsAction,
@@ -9,7 +11,6 @@ import {
 } from '@/actions/exercises';
 import { getCodeExerciseRubricAction } from '@/actions/rubric';
 import { logActivity } from '@/lib/activity';
-import { listCourseNavItemsAction, type CourseNavItem } from '@/actions/modules';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
 import { buttonVariants } from '@/components/ui/button';
@@ -57,7 +58,8 @@ export default async function ExerciseViewPage({
   const role = session?.user?.role as UserRole;
   const userId = session?.user?.id;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const exercise = await getExerciseAction(exerciseId);
@@ -90,7 +92,11 @@ export default async function ExerciseViewPage({
   const isTeacher = hasMinRole(role as UserRole, 'TA');
 
   const [allNavItems, mySubs, allSubs, rubric] = await Promise.all([
-    listCourseNavItemsAction(course.id, role === 'STUDENT'),
+    api
+      .get<
+        CourseNavItem[]
+      >('/modules/nav', { query: { courseId: course.id, publishedOnly: role === 'STUDENT' } })
+      .catch(() => [] as CourseNavItem[]),
     userId ? listMyExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
     isTeacher ? listExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
     isTeacher ? getCodeExerciseRubricAction(exerciseId) : Promise.resolve(null),

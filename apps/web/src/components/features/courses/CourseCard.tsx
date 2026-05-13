@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BookOpen, Users, Play } from 'lucide-react';
-import type { CourseListItem } from '@/actions/courses';
+import type { CourseListItem } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 
 // ── Subject → colored chip ─────────────────────────────────────

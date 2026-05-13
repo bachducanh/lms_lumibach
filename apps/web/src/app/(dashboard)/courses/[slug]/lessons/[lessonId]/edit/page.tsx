@@ -1,9 +1,10 @@
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
-import { getLessonAction } from '@/actions/lessons';
+import { apiServerClient } from '@/lib/api-client';
 import { LessonEditor } from '@/components/features/courses/LessonEditor';
 import { hasMinRole } from '@/lib/permissions';
+import type { CourseDetail, LessonDetail } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Chỉnh sửa bài giảng' };
@@ -19,14 +20,17 @@ export default async function EditLessonPage({
   const role = session?.user?.role as UserRole;
   if (!hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const [course, lesson] = await Promise.all([
+    api.get<CourseDetail>(`/courses/${slug}`).catch(() => null),
+    api.get<LessonDetail>(`/lessons/${lessonId}`).catch(() => null),
+  ]);
   if (!course) notFound();
 
   const canManage =
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
   if (!canManage) redirect(`/courses/${slug}`);
 
-  const lesson = await getLessonAction(lessonId);
   if (!lesson) notFound();
 
   const belongsToCourse = lesson.moduleItems.some((item) => item.module.courseId === course.id);

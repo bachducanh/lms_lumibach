@@ -12,6 +12,12 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ForumModule } from './modules/forum/forum.module';
+import { UsersModule } from './modules/users/users.module';
+import { CoursesModule } from './modules/courses/courses.module';
+import { ModulesModule } from './modules/modules/modules.module';
+import { LessonsModule } from './modules/lessons/lessons.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
 
 @Module({
   imports: [
@@ -62,6 +68,12 @@ import { ForumModule } from './modules/forum/forum.module';
     AnalyticsModule,
     NotificationsModule,
     ForumModule,
+    UsersModule,
+    CoursesModule,
+    ModulesModule,
+    LessonsModule,
+    EnrollmentsModule,
+    AttachmentsModule,
   ],
   providers: [
     {

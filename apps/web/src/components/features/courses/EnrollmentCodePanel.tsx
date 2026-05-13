@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Copy, RefreshCw } from 'lucide-react';
-import { generateEnrollmentCodeAction } from '@/actions/enrollments';
+import { apiClient, ApiError } from '@/lib/api-client';
 
 type Props = {
   courseId: string;
@@ -18,11 +18,13 @@ export function EnrollmentCodePanel({ courseId, initialCode, canManage }: Props)
 
   function handleGenerate() {
     startTransition(async () => {
-      const res = await generateEnrollmentCodeAction(courseId);
-      if (res.success && res.data) {
-        setCode(res.data.code);
-        toast.success(res.message);
-      } else toast.error(!res.success ? res.error : 'Lỗi');
+      try {
+        const data = await apiClient.post<{ code: string }>(`/courses/${courseId}/enrollment-code`);
+        setCode(data.code);
+        toast.success('Đã tạo mã tham gia mới.');
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi tạo mã tham gia');
+      }
     });
   }
 

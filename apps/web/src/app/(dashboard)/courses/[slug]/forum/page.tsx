@@ -2,9 +2,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
 import { apiServerClient, ApiError } from '@/lib/api-client';
-import type { ForumTopicSummary } from '@lumibach/types';
+import type { ForumTopicSummary, CourseDetail } from '@lumibach/types';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { hasMinRole } from '@/lib/permissions';
@@ -13,7 +12,8 @@ import type { UserRole } from '@lumibach/db';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   return { title: `Diễn đàn — ${course?.name ?? 'Khoá học'}` };
 }
 
@@ -38,10 +38,10 @@ export default async function ForumPage({ params }: { params: Promise<{ slug: st
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const api = apiServerClient(await cookies());
   const topics = await api
     .get<ForumTopicSummary[]>('/forum/topics', { query: { courseId: course.id } })
     .catch((err: unknown) => {

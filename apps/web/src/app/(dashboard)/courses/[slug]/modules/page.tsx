@@ -1,16 +1,18 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { getCourseBySlugAction } from '@/actions/courses';
-import { listModulesAction } from '@/actions/modules';
+import { apiServerClient } from '@/lib/api-client';
 import { ModuleList } from '@/components/features/courses/ModuleList';
 import { ArrowLeft, Layers, Zap } from 'lucide-react';
+import type { CourseDetail, ModuleWithItems } from '@lumibach/types';
 import type { UserRole, SubmissionStatus, AttemptStatus } from '@lumibach/db';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   return { title: `Nội dung — ${course?.name ?? 'Khoá học'}` };
 }
 
@@ -20,7 +22,8 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
   const role = session?.user?.role as UserRole;
   const userId = session?.user?.id;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const isStudent = role === 'STUDENT';
@@ -32,7 +35,11 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
 
   const [modules, completions, submittedAssignments, submittedQuizzes, submittedCodeExercises] =
     await Promise.all([
-      listModulesAction(course.id, isStudent),
+      api
+        .get<ModuleWithItems[]>('/modules', {
+          query: { courseId: course.id, publishedOnly: isStudent },
+        })
+        .catch(() => [] as ModuleWithItems[]),
       userId
         ? prisma.moduleItemCompletion.findMany({
             where: { userId, moduleItem: { module: { courseId: course.id } } },

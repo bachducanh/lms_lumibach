@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { getAssignmentAction } from '@/actions/assignments';
 import { AssignmentForm } from '@/components/features/assignments/AssignmentForm';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
@@ -19,7 +21,8 @@ export default async function EditAssignmentPage({
   const session = await auth();
   const role = session?.user?.role as UserRole;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canManage =

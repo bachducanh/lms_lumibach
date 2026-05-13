@@ -9,12 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ImagePlus } from 'lucide-react';
-import { createCourseAction, updateCourseAction, type CourseFormValues } from '@/actions/courses';
-import type { Course } from '@lumibach/db';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type { CreateCourseBody, CourseDetail } from '@lumibach/types';
+
+type CourseFormValues = CreateCourseBody;
 
 type Props = {
   mode: 'create' | 'edit';
-  course?: Course;
+  course?: CourseDetail;
 };
 
 const SUBJECT_OPTIONS = ['Tin học', 'Lập trình', 'Toán', 'Vật lý', 'Khác'];
@@ -71,16 +73,24 @@ export function CourseForm({ mode, course }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const res =
-        mode === 'create'
-          ? await createCourseAction(values)
-          : await updateCourseAction(course!.id, values);
-
-      if (res.success && res.data) {
-        toast.success(res.message);
-        router.push(`/courses/${res.data.slug}`);
-      } else if (!res.success) {
-        toast.error(res.error);
+      try {
+        if (mode === 'create') {
+          const data = await apiClient.post<{ slug: string }>('/courses', {
+            ...values,
+            thumbnail: thumbnailUrl || undefined,
+          });
+          toast.success('Tạo khoá học thành công.');
+          router.push(`/courses/${data.slug}`);
+        } else {
+          const data = await apiClient.patch<{ slug: string }>(`/courses/${course!.id}`, {
+            ...values,
+            thumbnail: thumbnailUrl || undefined,
+          });
+          toast.success('Cập nhật khoá học thành công.');
+          router.push(`/courses/${data.slug}`);
+        }
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi lưu khoá học');
       }
     });
   }

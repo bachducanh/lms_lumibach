@@ -7,19 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
-import {
-  enrollUserAction,
-  bulkEnrollAction,
-  unenrollAction,
-  assignTAAction,
-  removeTAAction,
-  addCoTeacherAction,
-  removeCoTeacherAction,
-  type CourseMember,
-  type CourseTA,
-  type CourseCoTeacher,
-  type UserCandidate,
-} from '@/actions/enrollments';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type {
+  CourseMember,
+  CourseTA,
+  CourseCoTeacher,
+  UserCandidate,
+  BulkEnrollResult,
+} from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 type Props = {
@@ -45,7 +40,7 @@ function userDisplayName(u: { fullName: string | null; firstName: string; lastNa
 function Avatar({
   user,
 }: {
-  user: { avatar: string | null; fullName: string | null; firstName: string; lastName: string };
+  user: { avatar?: string | null; fullName: string | null; firstName: string; lastName: string };
 }) {
   const name = userDisplayName(user);
   const initial = (name[0] ?? '?').toUpperCase();
@@ -117,15 +112,22 @@ function AddStudentPanel({ courseId, onDone }: { courseId: string; onDone: () =>
 
   function submit(userId?: string) {
     startTransition(async () => {
-      const res = await enrollUserAction(courseId, identifier, userId);
-      if (res.success) {
-        toast.success(res.message);
-        setIdentifier('');
-        setCandidates(null);
-        onDone();
-      } else if (res.candidates) {
-        setCandidates(res.candidates);
-      } else toast.error(res.error);
+      try {
+        const data = await apiClient.post<{ message: string; candidates?: UserCandidate[] }>(
+          `/courses/${courseId}/enroll`,
+          { identifier, userId }
+        );
+        if (data.candidates) {
+          setCandidates(data.candidates);
+        } else {
+          toast.success(data.message);
+          setIdentifier('');
+          setCandidates(null);
+          onDone();
+        }
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi thêm học sinh');
+      }
     });
   }
 
@@ -141,16 +143,18 @@ function AddStudentPanel({ courseId, onDone }: { courseId: string; onDone: () =>
       .map((s) => s.trim())
       .filter(Boolean);
     startTransition(async () => {
-      const res = await bulkEnrollAction(courseId, ids);
-      if (res.success) {
-        toast.success(res.message);
-        if (res.data && res.data.errors.length > 0) {
-          res.data.errors.forEach((err) => toast.error(`${err.identifier}: ${err.reason}`));
+      try {
+        const data = await apiClient.post<BulkEnrollResult>(`/courses/${courseId}/enroll/bulk`, {
+          identifiers: ids,
+        });
+        toast.success(`Đã thêm ${data.enrolled} học sinh.`);
+        if (data.errors.length > 0) {
+          data.errors.forEach((err) => toast.error(`${err.identifier}: ${err.reason}`));
         }
         setBulk('');
         onDone();
-      } else {
-        toast.error(!res.success ? res.error : 'Lỗi');
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi thêm học sinh');
       }
     });
   }
@@ -233,14 +237,22 @@ function AddCoTeacherPanel({ courseId, onDone }: { courseId: string; onDone: () 
 
   function submit(userId?: string) {
     startTransition(async () => {
-      const res = await addCoTeacherAction(courseId, identifier, userId);
-      if (res.success) {
-        toast.success(res.message);
-        setIdentifier('');
-        setCandidates(null);
-        onDone();
-      } else if (res.candidates) setCandidates(res.candidates);
-      else toast.error(res.error);
+      try {
+        const data = await apiClient.post<{ message: string; candidates?: UserCandidate[] }>(
+          `/courses/${courseId}/co-teachers`,
+          { identifier, userId }
+        );
+        if (data.candidates) {
+          setCandidates(data.candidates);
+        } else {
+          toast.success(data.message);
+          setIdentifier('');
+          setCandidates(null);
+          onDone();
+        }
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi thêm giáo viên');
+      }
     });
   }
 
@@ -288,14 +300,22 @@ function AddTAPanel({ courseId, onDone }: { courseId: string; onDone: () => void
 
   function submit(userId?: string) {
     startTransition(async () => {
-      const res = await assignTAAction(courseId, identifier, userId);
-      if (res.success) {
-        toast.success(res.message);
-        setIdentifier('');
-        setCandidates(null);
-        onDone();
-      } else if (res.candidates) setCandidates(res.candidates);
-      else toast.error(res.error);
+      try {
+        const data = await apiClient.post<{ message: string; candidates?: UserCandidate[] }>(
+          `/courses/${courseId}/tas`,
+          { identifier, userId }
+        );
+        if (data.candidates) {
+          setCandidates(data.candidates);
+        } else {
+          toast.success(data.message);
+          setIdentifier('');
+          setCandidates(null);
+          onDone();
+        }
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi gán trợ giảng');
+      }
     });
   }
 
@@ -358,11 +378,13 @@ export function PeoplePanel({
     const ok = await openConfirm(`Xoá ${name} khỏi lớp?`);
     if (!ok) return;
     startTransition(async () => {
-      const res = await unenrollAction(enrollmentId);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete(`/enrollments/${enrollmentId}`);
+        toast.success('Đã xoá học sinh khỏi lớp.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá học sinh');
+      }
     });
   }
 
@@ -370,11 +392,13 @@ export function PeoplePanel({
     const ok = await openConfirm(`Xoá ${name} khỏi danh sách trợ giảng?`);
     if (!ok) return;
     startTransition(async () => {
-      const res = await removeTAAction(taId);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete(`/courses/${courseId}/tas/${taId}`);
+        toast.success('Đã xoá trợ giảng.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá trợ giảng');
+      }
     });
   }
 
@@ -382,11 +406,13 @@ export function PeoplePanel({
     const ok = await openConfirm(`Xoá ${name} khỏi danh sách giáo viên?`);
     if (!ok) return;
     startTransition(async () => {
-      const res = await removeCoTeacherAction(coTeacherId);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete(`/courses/${courseId}/co-teachers/${coTeacherId}`);
+        toast.success('Đã xoá giáo viên khỏi khoá học.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá giáo viên');
+      }
     });
   }
 

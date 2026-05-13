@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { getAssignmentAction, getSubmissionsAction } from '@/actions/assignments';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { GradeForm } from '@/components/features/assignments/GradeForm';
@@ -39,7 +41,8 @@ export default async function SubmissionsPage({
   const role = session?.user?.role as UserRole | undefined;
   if (!role || !hasMinRole(role, 'TA')) redirect('/login');
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const assignment = await getAssignmentAction(assignmentId);

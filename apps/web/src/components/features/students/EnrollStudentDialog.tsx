@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { enrollStudentAction } from '@/actions/students';
+import { apiClient, ApiError } from '@/lib/api-client';
 
 type Course = { id: string; name: string; slug: string };
 
@@ -34,16 +34,19 @@ export function EnrollStudentDialog({ studentId, studentName, courses, onEnrolle
       return;
     }
     startEnroll(async () => {
-      const res = await enrollStudentAction(studentId, courseId);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const course = courses.find((c) => c.id === courseId)!;
+        await apiClient.post(`/courses/${courseId}/enroll`, {
+          identifier: studentId,
+          userId: studentId,
+        });
+        toast.success(`Đã thêm học sinh vào "${course.name}".`);
+        onEnrolled?.(course.id, course.name, course.slug);
+        setOpen(false);
+        setCourseId('');
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi thêm học sinh');
       }
-      toast.success(res.message);
-      const course = courses.find((c) => c.id === courseId);
-      if (course) onEnrolled?.(course.id, course.name, course.slug);
-      setOpen(false);
-      setCourseId('');
     });
   }
 

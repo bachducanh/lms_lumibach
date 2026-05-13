@@ -1,13 +1,14 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
-import { listCourseMembersAction } from '@/actions/enrollments';
+import { apiServerClient } from '@/lib/api-client';
 import { logActivity } from '@/lib/activity';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EnrollmentCodePanel } from '@/components/features/courses/EnrollmentCodePanel';
 import { hasMinRole } from '@/lib/permissions';
+import type { CourseDetail, CourseMember, CourseTA, CourseMembersResponse } from '@lumibach/types';
 import {
   BookOpen,
   Users,
@@ -29,7 +30,8 @@ import type { UserRole } from '@lumibach/db';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   return { title: course?.name ?? 'Khoá học' };
 }
 
@@ -58,7 +60,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const role = session?.user?.role as UserRole;
   const userId = session?.user?.id;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   if (userId)
@@ -74,7 +77,9 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
   const canViewPeople = hasMinRole(role, 'TA');
 
-  const { enrollments, tas } = await listCourseMembersAction(course.id);
+  const { enrollments, tas } = await api
+    .get<CourseMembersResponse>(`/courses/${course.id}/members`)
+    .catch(() => ({ enrollments: [] as CourseMember[], tas: [] as CourseTA[], coTeachers: [] }));
 
   const ownerName =
     course.owner.fullName ?? `${course.owner.firstName} ${course.owner.lastName}`.trim();
@@ -350,13 +355,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function StudentView({
-  enrollments,
-  userId,
-}: {
-  enrollments: Awaited<ReturnType<typeof listCourseMembersAction>>['enrollments'];
-  userId?: string;
-}) {
+function StudentView({ enrollments, userId }: { enrollments: CourseMember[]; userId?: string }) {
   const myEnrollment = enrollments.find((e) => e.userId === userId);
   if (!myEnrollment) return null;
 
@@ -389,13 +388,7 @@ function StudentView({
   );
 }
 
-function TeacherView({
-  enrollments,
-  tas,
-}: {
-  enrollments: Awaited<ReturnType<typeof listCourseMembersAction>>['enrollments'];
-  tas: Awaited<ReturnType<typeof listCourseMembersAction>>['tas'];
-}) {
+function TeacherView({ enrollments, tas }: { enrollments: CourseMember[]; tas: CourseTA[] }) {
   const active = enrollments.filter((e) => e.status === 'ACTIVE').length;
   const completed = enrollments.filter((e) => e.status === 'COMPLETED').length;
   const avgProgress =

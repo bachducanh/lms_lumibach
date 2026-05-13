@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { getQuestionAction } from '@/actions/questions';
 import { QuestionForm } from '@/components/features/quiz/QuestionForm';
 import { ArrowLeft } from 'lucide-react';
@@ -19,7 +21,8 @@ export default async function EditQuestionPage({
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canManage =

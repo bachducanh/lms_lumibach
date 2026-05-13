@@ -1,7 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import Link from 'next/link';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { getQuizAction, listQuizBanksAction } from '@/actions/quizzes';
 import { QuizBuilder } from '@/components/features/quiz/QuizBuilder';
 import { buttonVariants } from '@/components/ui/button';
@@ -20,7 +22,8 @@ export default async function ManageQuizPage({
   const role = session?.user?.role as UserRole | undefined;
   const userId = session?.user?.id;
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
   const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);

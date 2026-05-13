@@ -1,11 +1,13 @@
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { auth } from '@/auth';
+import { apiServerClient } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
 import { CourseCard } from '@/components/features/courses/CourseCard';
 import { CourseFilterBar } from '@/components/features/courses/CourseFilterBar';
-import { listCoursesAction } from '@/actions/courses';
 import { Plus, BookOpen, Layers } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
+import type { CourseListItem } from '@lumibach/types';
 
 export const metadata = { title: 'Khoá học' };
 
@@ -30,12 +32,17 @@ export default async function CoursesPage({
   const status = typeof sp.status === 'string' ? sp.status : '';
   const page = typeof sp.page === 'string' ? Math.max(1, parseInt(sp.page)) : 1;
 
-  const { courses, total, totalPages } = await listCoursesAction({
-    q,
-    status,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  const api = apiServerClient(await cookies());
+  const qp = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+  if (q) qp.set('q', q);
+  if (status) qp.set('status', status);
+  const { courses, total, totalPages } = await api
+    .get<{
+      courses: CourseListItem[];
+      total: number;
+      totalPages: number;
+    }>(`/courses?${qp.toString()}`)
+    .catch(() => ({ courses: [] as CourseListItem[], total: 0, totalPages: 0 }));
 
   const baseParams = { ...(q ? { q } : {}), ...(status ? { status } : {}) };
 

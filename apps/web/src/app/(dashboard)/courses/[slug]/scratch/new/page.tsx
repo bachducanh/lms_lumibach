@@ -1,6 +1,8 @@
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { ScratchExerciseForm } from '@/components/features/scratch/ScratchExerciseForm';
 import { Cat } from 'lucide-react';
@@ -21,7 +23,8 @@ export default async function NewScratchExercisePage({
   const role = session?.user?.role as UserRole | undefined;
   if (!role || !hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
   if (role === 'TEACHER' && course.ownerId !== session!.user!.id) redirect(`/courses/${slug}`);
 

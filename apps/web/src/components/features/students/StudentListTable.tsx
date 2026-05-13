@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { UserCheck, UserX, Clock, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { StudentRow } from '@/actions/students';
+import type { StudentRow } from '@lumibach/types';
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Hoạt động',
@@ -25,7 +25,7 @@ function displayName(s: StudentRow) {
   return s.fullName || `${s.firstName} ${s.lastName}`.trim();
 }
 
-function fmtDate(d: Date | null) {
+function fmtDate(d: Date | string | null) {
   if (!d) return '—';
   return formatDistanceToNow(new Date(d), { addSuffix: true, locale: vi });
 }

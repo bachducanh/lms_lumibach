@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { getExerciseAction } from '@/actions/exercises';
 import { getCodeExerciseRubricAction } from '@/actions/rubric';
 import { ExerciseSetup } from '@/components/features/code/ExerciseSetup';
@@ -22,45 +24,18 @@ export default async function EditExercisePage({
   const session = await auth();
   const role = session?.user?.role as UserRole;
 
-  console.log('[DEBUG EditExercisePage] role:', role, 'user:', session?.user?.id);
+  if (!hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
-  if (!hasMinRole(role, 'TEACHER')) {
-    console.log('[DEBUG EditExercisePage] Redirecting because not TEACHER');
-    redirect(`/courses/${slug}`);
-  }
-
-  const course = await getCourseBySlugAction(slug);
-  console.log('[DEBUG EditExercisePage] course:', course ? course.id : 'null');
-  if (!course) {
-    console.log('[DEBUG EditExercisePage] notFound because !course');
-    notFound();
-  }
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
+  if (!course) notFound();
 
   const canManage =
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
-
-  console.log('[DEBUG EditExercisePage] canManage:', canManage, 'ownerId:', course.ownerId);
-  if (!canManage) {
-    console.log('[DEBUG EditExercisePage] Redirecting because !canManage');
-    redirect(`/courses/${slug}`);
-  }
+  if (!canManage) redirect(`/courses/${slug}`);
 
   const exercise = await getExerciseAction(exerciseId);
-  console.log(
-    '[DEBUG EditExercisePage] exercise:',
-    exercise ? exercise.id : 'null',
-    'courseId:',
-    exercise?.courseId
-  );
-  if (!exercise || exercise.courseId !== course.id) {
-    console.log(
-      '[DEBUG EditExercisePage] notFound because !exercise or wrong courseId. exercise:',
-      !!exercise,
-      'courseId match:',
-      exercise?.courseId === course?.id
-    );
-    notFound();
-  }
+  if (!exercise || exercise.courseId !== course.id) notFound();
 
   const rubric = await getCodeExerciseRubricAction(exercise.id);
 

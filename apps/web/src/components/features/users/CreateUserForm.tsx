@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createUserAction } from '@/actions/users';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
@@ -49,17 +49,12 @@ export function CreateUserForm() {
 
   function onSubmit(values: FormValues) {
     startTransition(async () => {
-      const result = await createUserAction(values);
-      if (result.success) {
-        toast.success(result.message);
-        if (result.data) setGeneratedPassword(result.data.password);
-      } else {
-        toast.error(result.error);
-        if (result.fieldErrors) {
-          Object.entries(result.fieldErrors).forEach(([field, msgs]) => {
-            form.setError(field as keyof FormValues, { message: (msgs as string[])[0] });
-          });
-        }
+      try {
+        const data = await apiClient.post<{ password: string; userId: string }>('/users', values);
+        toast.success('Tạo tài khoản thành công.');
+        setGeneratedPassword(data.password);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi tạo tài khoản');
       }
     });
   }

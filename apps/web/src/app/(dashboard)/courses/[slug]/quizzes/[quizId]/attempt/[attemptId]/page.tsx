@@ -1,7 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getAttemptAction } from '@/actions/attempts';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
@@ -48,8 +50,9 @@ export default async function AttemptPage({
 
   const role = session.user.role as UserRole;
 
+  const api = apiServerClient(await cookies());
   const [course, attempt] = await Promise.all([
-    getCourseBySlugAction(slug),
+    api.get<CourseDetail>(`/courses/${slug}`).catch(() => null),
     getAttemptAction(attemptId),
   ]);
 

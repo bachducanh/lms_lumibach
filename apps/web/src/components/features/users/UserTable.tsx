@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { softDeleteUserAction, resetUserPasswordAction } from '@/actions/users';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { UserRole, UserStatus } from '@lumibach/db';
 
@@ -50,23 +50,26 @@ export function UserTable({ users }: { users: User[] }) {
 
   function handleDelete(userId: string) {
     startTransition(async () => {
-      const result = await softDeleteUserAction(userId);
-      if (result.success) {
-        toast.success(result.message);
+      try {
+        await apiClient.delete(`/users/${userId}`);
+        toast.success('Đã xóa người dùng.');
         setConfirmDelete(null);
-      } else {
-        toast.error(result.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xóa người dùng');
       }
     });
   }
 
   function handleResetPassword(userId: string, name: string) {
     startTransition(async () => {
-      const result = await resetUserPasswordAction(userId);
-      if (result.success && result.data) {
-        setNewPassword({ name, password: result.data.password });
-      } else if (!result.success) {
-        toast.error(result.error);
+      try {
+        const data = await apiClient.post<{ password: string }>(
+          `/users/${userId}/reset-password`,
+          {}
+        );
+        setNewPassword({ name, password: data.password });
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi đặt lại mật khẩu');
       }
     });
   }

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { updateUserAction } from '@/actions/users';
+import { apiClient, ApiError } from '@/lib/api-client';
 import {
   Form,
   FormControl,
@@ -61,12 +61,12 @@ export function EditUserForm({ user }: { user: UserData }) {
 
   function onSubmit(values: FormValues) {
     startTransition(async () => {
-      const result = await updateUserAction(user.id, values);
-      if (result.success) {
-        toast.success(result.message);
+      try {
+        await apiClient.patch(`/users/${user.id}`, values);
+        toast.success('Cập nhật thành công.');
         router.push('/admin/users');
-      } else {
-        toast.error(result.error);
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật');
       }
     });
   }

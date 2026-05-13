@@ -1,7 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { getCourseBySlugAction } from '@/actions/courses';
+import { cookies } from 'next/headers';
+import { apiServerClient } from '@/lib/api-client';
+import type { CourseDetail } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { ScratchExerciseForm } from '@/components/features/scratch/ScratchExerciseForm';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
@@ -22,7 +24,8 @@ export default async function EditScratchExercisePage({
   const userId = session?.user?.id;
   if (!userId || !role || !hasMinRole(role, 'TEACHER')) redirect(`/courses/${slug}`);
 
-  const course = await getCourseBySlugAction(slug);
+  const api = apiServerClient(await cookies());
+  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
   if (role === 'TEACHER' && course.ownerId !== userId) redirect(`/courses/${slug}`);
 
