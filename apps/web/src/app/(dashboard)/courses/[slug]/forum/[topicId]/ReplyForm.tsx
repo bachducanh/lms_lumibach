@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPostAction } from '@/actions/forum';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -25,15 +25,16 @@ export function ReplyForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createPostAction(topicId, { content, parentId });
-      if (!result.success) {
-        toast.error(result.error);
-        return;
+      try {
+        await apiClient.post('/forum/posts', { topicId, content, parentId });
+        toast.success('Đã đăng trả lời');
+        setContent('');
+        onDone?.();
+        router.refresh();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi đăng bài';
+        toast.error(msg);
       }
-      toast.success('Đã đăng trả lời');
-      setContent('');
-      onDone?.();
-      router.refresh();
     });
   }
 

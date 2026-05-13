@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
 import { getCourseBySlugAction } from '@/actions/courses';
-import { listTopicsAction } from '@/actions/forum';
+import { apiServerClient, ApiError } from '@/lib/api-client';
+import type { ForumTopicSummary } from '@lumibach/types';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { hasMinRole } from '@/lib/permissions';
@@ -19,7 +21,7 @@ function authorName(u: { fullName?: string | null; firstName: string; lastName: 
   return u.fullName ?? `${u.firstName} ${u.lastName}`.trim();
 }
 
-function timeAgo(date: Date) {
+function timeAgo(date: Date | string) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return 'vừa xong';
   const minutes = Math.floor(seconds / 60);
@@ -39,7 +41,13 @@ export default async function ForumPage({ params }: { params: Promise<{ slug: st
   const course = await getCourseBySlugAction(slug);
   if (!course) notFound();
 
-  const topics = await listTopicsAction(course.id);
+  const api = apiServerClient(await cookies());
+  const topics = await api
+    .get<ForumTopicSummary[]>('/forum/topics', { query: { courseId: course.id } })
+    .catch((err: unknown) => {
+      if (err instanceof ApiError) return [] as ForumTopicSummary[];
+      throw err;
+    });
 
   const canManage = hasMinRole(role, 'TEACHER');
 

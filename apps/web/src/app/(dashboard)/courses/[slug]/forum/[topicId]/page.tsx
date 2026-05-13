@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getTopicAction } from '@/actions/forum';
+import { apiServerClient, ApiError } from '@/lib/api-client';
+import type { ForumTopicDetail } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Pin, Lock, CheckCircle2, Eye, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Pin, Lock, Eye, MessageSquare } from 'lucide-react';
 import { TopicControls } from './TopicControls';
 import { ReplyForm } from './ReplyForm';
 import { PostCard } from './PostCard';
@@ -16,11 +18,12 @@ export async function generateMetadata({
   params: Promise<{ slug: string; topicId: string }>;
 }) {
   const { topicId } = await params;
-  const topic = await getTopicAction(topicId);
+  const api = apiServerClient(await cookies());
+  const topic = await api.get<ForumTopicDetail>(`/forum/topics/${topicId}`).catch(() => null);
   return { title: topic?.title ?? 'Chủ đề' };
 }
 
-function timeAgo(date: Date) {
+function timeAgo(date: Date | string) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return 'vừa xong';
   const minutes = Math.floor(seconds / 60);
@@ -55,7 +58,13 @@ export default async function TopicDetailPage({
   const session = await auth();
   if (!session?.user) redirect('/login');
 
-  const topic = await getTopicAction(topicId);
+  const api = apiServerClient(await cookies());
+  const topic = await api
+    .get<ForumTopicDetail>(`/forum/topics/${topicId}`)
+    .catch((err: unknown) => {
+      if (err instanceof ApiError) return null;
+      throw err;
+    });
   if (!topic) notFound();
 
   const role = session.user.role as UserRole;
@@ -63,7 +72,6 @@ export default async function TopicDetailPage({
   const canManage = hasMinRole(role, 'TEACHER');
   const canReply = !topic.isLocked || canManage;
 
-  // Separate first post (original post) from replies
   const [firstPost, ...replyPosts] = topic.posts;
 
   return (

@@ -11,6 +11,7 @@ import { MeModule } from './modules/me/me.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ForumModule } from './modules/forum/forum.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ActivityModule,
     AnalyticsModule,
     NotificationsModule,
+    ForumModule,
   ],
   providers: [
     {

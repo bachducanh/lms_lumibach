@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { markAnswerAction, deletePostAction } from '@/actions/forum';
+import { apiClient, ApiError } from '@/lib/api-client';
+import type { ForumPost } from '@lumibach/types';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Trash2, Reply, CornerDownRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { ReplyForm } from './ReplyForm';
 
-function timeAgo(date: Date) {
+function timeAgo(date: Date | string) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return 'vừa xong';
   const minutes = Math.floor(seconds / 60);
@@ -34,39 +35,6 @@ function roleLabel(role: string) {
         : null;
 }
 
-type PostWithReplies = {
-  id: string;
-  content: string;
-  isAnswer: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  authorId: string;
-  author: {
-    id: string;
-    fullName?: string | null;
-    firstName: string;
-    lastName: string;
-    avatar?: string | null;
-    role: string;
-  };
-  replies: Array<{
-    id: string;
-    content: string;
-    isAnswer: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    authorId: string;
-    author: {
-      id: string;
-      fullName?: string | null;
-      firstName: string;
-      lastName: string;
-      avatar?: string | null;
-      role: string;
-    };
-  }>;
-};
-
 export function PostCard({
   post,
   currentUserId,
@@ -74,7 +42,7 @@ export function PostCard({
   slug,
   topicId,
 }: {
-  post: PostWithReplies;
+  post: ForumPost;
   currentUserId: string;
   canManage: boolean;
   slug: string;
@@ -88,25 +56,27 @@ export function PostCard({
 
   function handleMarkAnswer() {
     startTransition(async () => {
-      const result = await markAnswerAction(post.id, !post.isAnswer);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
+      try {
+        await apiClient.patch(`/forum/posts/${post.id}/answer`, { isAnswer: !post.isAnswer });
+        router.refresh();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi cập nhật';
+        toast.error(msg);
       }
-      router.refresh();
     });
   }
 
   function handleDelete() {
     if (!confirm('Xoá bài này?')) return;
     startTransition(async () => {
-      const result = await deletePostAction(post.id);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
+      try {
+        await apiClient.delete(`/forum/posts/${post.id}`);
+        toast.success('Đã xoá bài');
+        router.refresh();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi xoá bài';
+        toast.error(msg);
       }
-      toast.success('Đã xoá bài');
-      router.refresh();
     });
   }
 

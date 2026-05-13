@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { createTopicAction } from '@/actions/forum';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,13 +18,18 @@ export function NewTopicForm({ courseId, slug }: { courseId: string; slug: strin
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createTopicAction(courseId, { title, content });
-      if (!result.success) {
-        toast.error(result.error);
-        return;
+      try {
+        const data = await apiClient.post<{ topicId: string }>('/forum/topics', {
+          courseId,
+          title,
+          content,
+        });
+        toast.success('Đã tạo chủ đề');
+        router.push(`/courses/${slug}/forum/${data.topicId}`);
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi tạo chủ đề';
+        toast.error(msg);
       }
-      toast.success('Đã tạo chủ đề');
-      router.push(`/courses/${slug}/forum/${result.data!.topicId}`);
     });
   }
 

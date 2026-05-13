@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateTopicAction, deleteTopicAction } from '@/actions/forum';
+import { apiClient, ApiError } from '@/lib/api-client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,25 +29,27 @@ export function TopicControls({
 
   function toggle(data: { isPinned?: boolean; isLocked?: boolean }) {
     startTransition(async () => {
-      const result = await updateTopicAction(topicId, data);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
+      try {
+        await apiClient.patch(`/forum/topics/${topicId}`, data);
+        router.refresh();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi cập nhật chủ đề';
+        toast.error(msg);
       }
-      router.refresh();
     });
   }
 
   function handleDelete() {
     if (!confirm('Xoá chủ đề này? Tất cả bài viết sẽ bị xoá.')) return;
     startTransition(async () => {
-      const result = await deleteTopicAction(topicId);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
+      try {
+        await apiClient.delete(`/forum/topics/${topicId}`);
+        toast.success('Đã xoá chủ đề');
+        router.push(`/courses/${slug}/forum`);
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Lỗi xoá chủ đề';
+        toast.error(msg);
       }
-      toast.success('Đã xoá chủ đề');
-      router.push(`/courses/${slug}/forum`);
     });
   }
 

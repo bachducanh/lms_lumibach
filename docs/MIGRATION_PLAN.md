@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Phase 0 + 0.5 docs + Phase 1 (1A→1F) + **Phase 2 (2A→2E) hoàn thành** (2026-05-12). Testing Foundation: Vitest + SWC cho NestJS, 8/8 e2e tests pass cho `/me`, postgres test container, Playwright skeleton. Branch `feat/phase-2-testing`. Sẵn sàng Phase 3 (Migrate Low-Risk Modules).
+**Trạng thái:** Phase 0 + 0.5 docs + Phase 1 (1A→1F) + Phase 2 (2A→2E) + **Phase 3 (3A→3D) hoàn thành** (2026-05-13). Migrated 4 modules: activity, analytics, notifications, forum. 56/56 e2e tests pass. Branch `feat/phase-3-low-risk-modules`. Sẵn sàng Phase 4 (Core Domain).
 
 ---
 
@@ -291,7 +291,7 @@ Bất kỳ refactor nào không đạt budget này = regression, không merge.
 
 ---
 
-### Phase 3 — Migrate Low-Risk Modules — 1.5-2 tuần
+### Phase 3 — Migrate Low-Risk Modules — 1.5-2 tuần ✅ DONE (2026-05-13)
 
 **Mục tiêu:** Thực hành workflow Strangler Fig với module ít rủi ro, ít business logic phức tạp.
 
