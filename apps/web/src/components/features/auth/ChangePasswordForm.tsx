@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, KeyRound } from 'lucide-react';
-import { changePasswordAction } from '@/actions/auth';
+import { apiClient } from '@/lib/api-client';
 
 const schema = z
   .object({
@@ -53,14 +53,15 @@ export function ChangePasswordForm() {
   async function onConfirm() {
     setPending(true);
     setError(null);
-    const res = await changePasswordAction(getValues());
-    setPending(false);
-    if (res.success) {
+    try {
+      const res = await apiClient.patch<{ message: string }>('/auth/change-password', getValues());
       toast.success(res.message);
       handleCancel();
-    } else {
+    } catch (err) {
       setConfirm(false);
-      setError(res.error);
+      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setPending(false);
     }
   }
 

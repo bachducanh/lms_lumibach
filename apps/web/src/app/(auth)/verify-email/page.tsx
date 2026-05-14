@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { CheckCircle, XCircle, MailX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { buttonVariants } from '@/components/ui/button';
-import { verifyEmailAction } from '@/actions/auth';
+import { apiServerClient } from '@/lib/api-client';
 
 export const metadata: Metadata = { title: 'Xác thực email' };
 
@@ -31,25 +32,35 @@ export default async function VerifyEmailPage({
     );
   }
 
-  const result = await verifyEmailAction(token);
+  const api = apiServerClient(await cookies());
+  let success = false;
+  let message = '';
+
+  try {
+    const res = await api.post<{ message: string }>('/auth/verify-email', { token });
+    success = true;
+    message = res.message;
+  } catch (err) {
+    success = false;
+    message =
+      err instanceof Error ? err.message : 'Liên kết xác thực không hợp lệ hoặc đã hết hạn.';
+  }
 
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
-        {result.success ? (
+        {success ? (
           <CheckCircle className="mx-auto h-10 w-10 text-green-500" />
         ) : (
           <XCircle className="text-destructive mx-auto h-10 w-10" />
         )}
         <CardTitle className="text-lg">
-          {result.success ? 'Xác thực thành công!' : 'Xác thực thất bại'}
+          {success ? 'Xác thực thành công!' : 'Xác thực thất bại'}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-center">
-        <p className="text-muted-foreground text-sm">
-          {result.success ? result.message : result.error}
-        </p>
-        {result.success ? (
+        <p className="text-muted-foreground text-sm">{message}</p>
+        {success ? (
           <Link href="/login" className={buttonVariants({ className: 'w-full' })}>
             Đăng nhập ngay
           </Link>

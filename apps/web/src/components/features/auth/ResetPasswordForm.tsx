@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, CheckCircle } from 'lucide-react';
-import { resetPasswordAction } from '@/actions/auth';
+import { apiClient } from '@/lib/api-client';
 
 const schema = z
   .object({
@@ -40,15 +40,15 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   async function onSubmit(data: FormData) {
     setError(null);
-    const res = await resetPasswordAction({
-      token,
-      password: data.password,
-      confirmPassword: data.confirmPassword,
-    });
-    if (res.success) {
+    try {
+      await apiClient.post('/auth/reset-password', {
+        token,
+        password: data.password,
+        confirmPassword: data.confirmPassword,
+      });
       setDone(true);
-    } else {
-      setError(res.error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
     }
   }
 

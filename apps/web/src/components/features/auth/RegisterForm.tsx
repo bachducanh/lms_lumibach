@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, CheckCircle } from 'lucide-react';
-import { registerAction } from '@/actions/auth';
+import { apiClient } from '@/lib/api-client';
 
 const schema = z
   .object({
@@ -40,15 +40,18 @@ export function RegisterForm() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   async function onSubmit(data: FormData) {
-    const res = await registerAction({
-      email: data.email,
-      fullName: data.fullName,
-      password: data.password,
-    });
-    if (res.success) {
+    try {
+      const res = await apiClient.post<{ message: string }>('/auth/register', {
+        email: data.email,
+        fullName: data.fullName,
+        password: data.password,
+      });
       setResult({ success: true, message: res.message });
-    } else {
-      setResult({ success: false, message: res.error });
+    } catch (err) {
+      setResult({
+        success: false,
+        message: err instanceof Error ? err.message : 'Đăng ký thất bại.',
+      });
     }
   }
 

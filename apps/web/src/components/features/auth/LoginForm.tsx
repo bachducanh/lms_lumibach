@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { checkLoginStatus, resendVerificationAction } from '@/actions/auth';
+import { apiClient } from '@/lib/api-client';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -52,19 +52,23 @@ export function LoginForm() {
     }
 
     // Xác định lý do thất bại
-    const status = await checkLoginStatus(data.email);
-    if (status === 'pending') {
-      setLoginError('pending');
-    } else if (status === 'suspended') {
-      setLoginError('suspended');
-    } else {
+    try {
+      const { status } = await apiClient.post<{ status: string }>('/auth/check-status', {
+        email: data.email,
+      });
+      if (status === 'pending') setLoginError('pending');
+      else if (status === 'suspended') setLoginError('suspended');
+      else setLoginError('credentials');
+    } catch {
       setLoginError('credentials');
     }
   }
 
   async function handleResend() {
     setResending(true);
-    await resendVerificationAction(getValues('email'));
+    await apiClient
+      .post('/auth/resend-verification', { email: getValues('email') })
+      .catch(() => null);
     setResending(false);
     setResendDone(true);
   }

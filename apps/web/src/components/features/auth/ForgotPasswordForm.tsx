@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, MailCheck } from 'lucide-react';
-import { forgotPasswordAction } from '@/actions/auth';
+import { apiClient } from '@/lib/api-client';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -30,11 +30,11 @@ export function ForgotPasswordForm() {
 
   async function onSubmit(data: FormData) {
     setError(null);
-    const res = await forgotPasswordAction(data);
-    if (res.success) {
+    try {
+      await apiClient.post('/auth/forgot-password', { email: data.email });
       setSent(true);
-    } else {
-      setError(res.error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra. Vui lòng thử lại.');
     }
   }
 

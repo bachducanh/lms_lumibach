@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Phase 0–5 + **Phase 6 (Code Execution Modules) hoàn thành** (2026-05-14). Migrated 21 modules total (+ code-exercises, sandbox, scratch). All FE server pages + client components migrated. 4 action files deleted (code, exercises, sandbox, scratch). Branch `feat/phase-5-assessment-modules`. Judge0 integration via NestJS. Code execution, sandbox, Scratch fully on NestJS. Only `auth.ts` action remains (Phase 7).
+**Trạng thái:** Phase 0–6 + **Phase 7 (Auth Actions Migration) hoàn thành** (2026-05-14). Migrated 22 modules total. All FE server pages + client components migrated. All 5 action files deleted (code, exercises, sandbox, scratch, auth). Branch `feat/phase-5-assessment-modules`. NextAuth login (`apps/web/src/auth.ts`) giữ nguyên — Phase 7 scope: migrate 7 auth server actions → NestJS `/auth/*` endpoints (register, check-status, verify-email, resend-verification, forgot-password, reset-password, change-password). Full NextAuth replacement sẽ là Phase 7.5 sau khi có thêm refresh token infrastructure.
 
 ---
 
@@ -438,42 +438,35 @@ Migrate theo bounded context:
 
 ---
 
-### Phase 7 — Auth Migration (cuối cùng, rủi ro cao) — 1.5 tuần
+### Phase 7 — Auth Actions Migration ✅ Done (2026-05-14)
 
-**Bây giờ mới động vào auth.** BE đã production-ready, mọi module đã chạy qua BE.
+**Scope thực tế (Strangler Fig, giữ NextAuth login):**
 
-**Backend:**
+**Backend — `UserAuthModule` (`apps/api/src/modules/auth/`):**
 
-- [ ] `POST /api/v1/auth/register` (email + password, bcrypt cost 12)
-- [ ] `POST /api/v1/auth/login` → trả access token (15 phút, in-memory ở FE) + set refresh token (7 ngày, httpOnly cookie `Secure: true, SameSite: strict`)
-- [ ] `POST /api/v1/auth/refresh` → đổi access token mới
-- [ ] `POST /api/v1/auth/logout` → revoke refresh token (lưu blacklist Redis)
-- [ ] `POST /api/v1/auth/forgot-password` → tạo token + gửi email qua BullMQ
-- [ ] `POST /api/v1/auth/reset-password` → verify token + đổi password
-- [ ] `POST /api/v1/auth/verify-email` → confirm email
-- [ ] Rate limit chuyên biệt: login 5/15p/IP (theo §13)
-- [ ] Bảng `RefreshToken { id, userId, hashedToken, expiresAt, revokedAt }` trong Prisma
+- [x] `POST /auth/register` — tạo user, gửi email xác thực
+- [x] `POST /auth/check-status` — kiểm tra trạng thái tài khoản (pending/suspended/ok)
+- [x] `POST /auth/verify-email` — xác thực email bằng token
+- [x] `POST /auth/resend-verification` — gửi lại email xác thực
+- [x] `POST /auth/forgot-password` — gửi email reset password
+- [x] `POST /auth/reset-password` — đổi password bằng reset token
+- [x] `PATCH /auth/change-password` — đổi password (authenticated)
+- [x] `EmailService` (`apps/api/src/common/email/`) — nodemailer, dev mode log link ra stdout
+- [x] bcryptjs + nodemailer cài vào `apps/api`
 
-**Frontend:**
+**Frontend — 6 FE files migrated:**
 
-- [ ] `AuthContext` mới, lưu access token trong memory (KHÔNG localStorage để tránh XSS)
-- [ ] Route handler `apps/web/src/app/api/auth/[...path]/route.ts` làm proxy: forward request + cookie tới BE (giữ refresh token trong httpOnly cookie domain `apps/web`)
-- [ ] Middleware `apps/web/src/middleware.ts`: check access token → tự refresh nếu expired → redirect login nếu refresh fail
-- [ ] Update tất cả Server Components đang dùng `auth()` của NextAuth → dùng `getServerSession()` mới (đọc cookie + verify với BE)
-- [ ] **Xóa NextAuth khỏi `apps/web`**: bỏ deps `next-auth`, xóa `src/lib/auth.ts`, xóa `app/api/auth/[...nextauth]/route.ts`
+- [x] `RegisterForm.tsx` — `registerAction` → `apiClient.post('/auth/register')`
+- [x] `LoginForm.tsx` — `checkLoginStatus` → `apiClient.post('/auth/check-status')`, `resendVerificationAction` → `apiClient.post('/auth/resend-verification')`
+- [x] `ForgotPasswordForm.tsx` — `forgotPasswordAction` → `apiClient.post('/auth/forgot-password')`
+- [x] `ResetPasswordForm.tsx` — `resetPasswordAction` → `apiClient.post('/auth/reset-password')`
+- [x] `ChangePasswordForm.tsx` — `changePasswordAction` → `apiClient.patch('/auth/change-password')`
+- [x] `verify-email/page.tsx` — `verifyEmailAction` → `apiServerClient.post('/auth/verify-email')` (server component)
+- [x] `apps/web/src/actions/auth.ts` đã xóa
 
-**Migration data:**
+**NextAuth login giữ nguyên** (`apps/web/src/auth.ts` — không thay đổi). Full NextAuth replacement ở Phase 7.5 sau (cần refresh token infrastructure + mobile support).
 
-- [ ] Script `scripts/migrate-sessions.ts`: tạo refresh token cho user đang active, không bắt re-login (tùy chọn — hoặc invalidate hết, bắt user re-login 1 lần)
-
-**Mobile-ready:**
-
-- [ ] Endpoint `POST /api/v1/auth/login` chấp nhận thêm `clientType: 'mobile'` → trả refresh token JSON thay vì cookie
-- [ ] Document trong Swagger
-
-**Acceptance:** User đang login không bị bật ra (hoặc bị bật ra đúng 1 lần với thông báo). Login/logout/forgot/reset/register hoạt động. Mobile có thể login qua REST.
-
-**Rủi ro cao:** Hỏng auth = sập toàn bộ app. **Mitigation:** Deploy Phase 7 ngoài giờ học (cuối tuần), thông báo trước, có rollback plan (giữ Phase 6 branch deploy được trong 1 lệnh).
+**Acceptance:** Register, verify email, forgot/reset password, change password hoạt động qua NestJS. NextAuth session (`auth()`) vẫn hoạt động như cũ cho tất cả server pages.
 
 ---
 

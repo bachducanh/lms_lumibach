@@ -27,6 +27,7 @@ import { GradebookModule } from './modules/gradebook/gradebook.module';
 import { CodeExercisesModule } from './modules/code-exercises/code-exercises.module';
 import { SandboxModule } from './modules/sandbox/sandbox.module';
 import { ScratchModule } from './modules/scratch/scratch.module';
+import { UserAuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { ScratchModule } from './modules/scratch/scratch.module';
     CodeExercisesModule,
     SandboxModule,
     ScratchModule,
+    UserAuthModule,
   ],
   providers: [
     {
