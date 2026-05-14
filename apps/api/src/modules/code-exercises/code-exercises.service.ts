@@ -2,11 +2,15 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { Judge0Service } from '../../common/judge0/judge0.service';
+import { CodeExecutionGateway } from './code-execution.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -18,9 +22,14 @@ const LANG_MAP: Record<string, number> = { PYTHON3: 71, JAVASCRIPT: 63, CPP17: 5
 
 @Injectable()
 export class CodeExercisesService {
+  private readonly logger = new Logger(CodeExercisesService.name);
   private readonly prisma = new PrismaClient();
 
-  constructor(private readonly judge0: Judge0Service) {}
+  constructor(
+    private readonly judge0: Judge0Service,
+    @Optional() private readonly gateway: CodeExecutionGateway | null = null,
+    @Optional() private readonly notifications: NotificationsService | null = null
+  ) {}
 
   // ── CRUD ──────────────────────────────────────────────────────
 
@@ -137,7 +146,10 @@ export class CodeExercisesService {
   async submit(user: AuthUser, exerciseId: string, body: { code: string; language: string }) {
     if (!body.code.trim()) throw new BadRequestException('Code trống');
 
-    const ex = await this.prisma.codeExercise.findUnique({ where: { id: exerciseId } });
+    const ex = await this.prisma.codeExercise.findUnique({
+      where: { id: exerciseId },
+      include: { testCases: { orderBy: { position: 'asc' } } },
+    });
     if (!ex) throw new NotFoundException('Bài tập không tồn tại.');
 
     const last = await this.prisma.codeSubmission.findFirst({
@@ -146,18 +158,158 @@ export class CodeExercisesService {
       select: { attemptNumber: true },
     });
 
+    const autoGraded = ex.language !== 'WEB' && ex.testCases.length > 0;
+
     const sub = await this.prisma.codeSubmission.create({
       data: {
         codeExerciseId: exerciseId,
         studentId: user.id,
         language: body.language as any,
         code: body.code,
-        status: 'MANUAL_REVIEW',
+        status: autoGraded ? 'PENDING' : 'MANUAL_REVIEW',
         attemptNumber: (last?.attemptNumber ?? 0) + 1,
       },
     });
 
-    return { submissionId: sub.id };
+    if (autoGraded) {
+      const langId = LANG_MAP[body.language];
+      if (langId) {
+        this.autoGrade(sub.id, ex as any, body.code, langId).catch((err: unknown) => {
+          this.logger.error(`autoGrade failed for ${sub.id}: ${String(err)}`);
+          this.prisma.codeSubmission
+            .update({ where: { id: sub.id }, data: { status: 'INTERNAL_ERROR' } })
+            .catch(() => {});
+          this.gateway?.emitResult(sub.id, {
+            status: 'INTERNAL_ERROR',
+            score: null,
+            maxScore: null,
+          });
+        });
+      }
+    }
+
+    return { submissionId: sub.id, autoGraded };
+  }
+
+  private async autoGrade(
+    submissionId: string,
+    ex: {
+      id: string;
+      timeLimit: number;
+      memoryLimit: number;
+      testCases: {
+        id: string;
+        input: string;
+        expectedOutput: string;
+        isHidden: boolean;
+        points: number;
+      }[];
+    },
+    code: string,
+    langId: number
+  ): Promise<void> {
+    await this.prisma.codeSubmission.update({
+      where: { id: submissionId },
+      data: { status: 'PROCESSING' },
+    });
+
+    let totalPoints = 0;
+    let earnedPoints = 0;
+    let dominantStatus: 'COMPILE_ERROR' | 'RUNTIME_ERROR' | 'TIME_LIMIT' | 'INTERNAL_ERROR' | null =
+      null;
+
+    for (const tc of ex.testCases) {
+      const result = await this.judge0.runCode({
+        languageId: langId,
+        sourceCode: code,
+        stdin: tc.input || undefined,
+        expectedOutput: tc.expectedOutput || undefined,
+        cpuTimeLimit: ex.timeLimit,
+        memoryLimit: ex.memoryLimit,
+      });
+
+      const sid = result.status.id;
+      let tcStatus:
+        | 'ACCEPTED'
+        | 'WRONG_ANSWER'
+        | 'COMPILE_ERROR'
+        | 'RUNTIME_ERROR'
+        | 'TIME_LIMIT'
+        | 'INTERNAL_ERROR';
+      if (sid === 3) tcStatus = 'ACCEPTED';
+      else if (sid === 4) tcStatus = 'WRONG_ANSWER';
+      else if (sid === 5) tcStatus = 'TIME_LIMIT';
+      else if (sid === 6) tcStatus = 'COMPILE_ERROR';
+      else if (sid >= 7 && sid <= 12) tcStatus = 'RUNTIME_ERROR';
+      else tcStatus = 'INTERNAL_ERROR';
+
+      const tcPoints = tcStatus === 'ACCEPTED' ? tc.points : 0;
+      totalPoints += tc.points;
+      earnedPoints += tcPoints;
+
+      if (!dominantStatus && tcStatus !== 'ACCEPTED' && tcStatus !== 'WRONG_ANSWER') {
+        dominantStatus = tcStatus;
+      }
+
+      await this.prisma.testCaseResult.create({
+        data: {
+          submissionId,
+          testCaseId: tc.id,
+          status: tcStatus,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          compileOutput: result.compile_output,
+          time: result.time ? parseFloat(result.time) : null,
+          memory: result.memory,
+          score: tcPoints,
+          judge0Token: result.token,
+        },
+      });
+
+      // Stop on compile error — remaining test cases will also fail
+      if (tcStatus === 'COMPILE_ERROR') break;
+    }
+
+    let finalStatus:
+      | 'ACCEPTED'
+      | 'PARTIAL'
+      | 'WRONG_ANSWER'
+      | 'COMPILE_ERROR'
+      | 'RUNTIME_ERROR'
+      | 'TIME_LIMIT'
+      | 'INTERNAL_ERROR';
+    if (dominantStatus) finalStatus = dominantStatus;
+    else if (earnedPoints === totalPoints) finalStatus = 'ACCEPTED';
+    else if (earnedPoints > 0) finalStatus = 'PARTIAL';
+    else finalStatus = 'WRONG_ANSWER';
+
+    await this.prisma.codeSubmission.update({
+      where: { id: submissionId },
+      data: { status: finalStatus, score: earnedPoints, maxScore: totalPoints },
+    });
+
+    this.gateway?.emitResult(submissionId, {
+      status: finalStatus,
+      score: earnedPoints,
+      maxScore: totalPoints,
+    });
+
+    // Notify student
+    const sub = await this.prisma.codeSubmission.findUnique({
+      where: { id: submissionId },
+      select: { studentId: true, codeExercise: { select: { title: true } } },
+    });
+    if (sub) {
+      await this.notifications?.create(sub.studentId, {
+        type: 'CODE_GRADED',
+        title: `Bài "${sub.codeExercise.title}" đã được chấm`,
+        body:
+          finalStatus === 'ACCEPTED'
+            ? `Xuất sắc! Đạt ${earnedPoints}/${totalPoints} điểm.`
+            : `Kết quả: ${finalStatus}. Đạt ${earnedPoints}/${totalPoints} điểm.`,
+        link: null,
+      });
+    }
   }
 
   // ── Submissions ────────────────────────────────────────────────

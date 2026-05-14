@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Brain, CheckCircle2, Circle, Clock, Send, Play, Loader2, XCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { createSocket } from '@/lib/socket';
 import type { AttemptData, AnswerInput, TCCheckResult } from '@lumibach/types';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
@@ -114,6 +115,24 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     const id = setInterval(() => setTimeLeft((t) => (t !== null ? t - 1 : null)), 1000);
     return () => clearInterval(id);
   }, [timeLeft]);
+
+  // Server-authoritative timer sync
+  useEffect(() => {
+    if (!attempt.quiz.timeLimit) return;
+    const socket = createSocket('/quiz');
+    socket.on('connect', () => {
+      socket.emit('timer:start', attempt.id);
+    });
+    socket.on('timer:sync', ({ remaining }: { remaining: number }) => {
+      setTimeLeft(remaining);
+    });
+    socket.on('quiz:expired', () => {
+      setTimeLeft(0);
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, [attempt.id, attempt.quiz.timeLimit]);
 
   // ── Save helpers ─────────────────────────────────────────────
   function fireSave(questionId: string, input: AnswerInput) {

@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Phase 0–6 + **Phase 7 (Auth Actions Migration) hoàn thành** (2026-05-14). Migrated 22 modules total. All FE server pages + client components migrated. All 5 action files deleted (code, exercises, sandbox, scratch, auth). Branch `feat/phase-5-assessment-modules`. NextAuth login (`apps/web/src/auth.ts`) giữ nguyên — Phase 7 scope: migrate 7 auth server actions → NestJS `/auth/*` endpoints (register, check-status, verify-email, resend-verification, forgot-password, reset-password, change-password). Full NextAuth replacement sẽ là Phase 7.5 sau khi có thêm refresh token infrastructure.
+**Trạng thái:** Phase 0–7 + **Phase 6.5 (WebSocket Real-time Gateway) hoàn thành** (2026-05-14). Migrated 22 modules total. All FE server pages + client components migrated. All 5 action files deleted. Real-time: NotificationGateway, CodeExecutionGateway, QuizGateway đều live. Branch `feat/phase-5-assessment-modules`. NextAuth login (`apps/web/src/auth.ts`) giữ nguyên — full NextAuth replacement sẽ là Phase 7.5 sau khi có thêm refresh token infrastructure.
 
 ---
 
@@ -416,23 +416,23 @@ Migrate theo bounded context:
 
 ---
 
-### Phase 6.5 — WebSocket Real-time Gateway — 4-5 ngày
+### Phase 6.5 — WebSocket Real-time Gateway ✅ Done (2026-05-14)
 
 **Mục tiêu:** Real-time cho notification + code execution result + quiz timer. NestJS làm điều này tốt hơn Next.js nhiều — đây là điểm ăn điểm của migrate này.
 
-- [ ] `NotificationGateway` (`@WebSocketGateway`):
+- [x] `NotificationGateway` (`apps/api/src/modules/notifications/notification.gateway.ts`):
   - User connect → join room `user:${userId}`
-  - Worker emit event `notification.created` → push tới room
-  - FE: `apps/web/src/hooks/useNotifications.ts` connect Socket.IO, replace polling hiện tại
-- [ ] `CodeExecutionGateway`:
+  - `NotificationsService.create()` emit tức thì tới room
+  - FE: `NotificationBell.tsx` replace 60s polling bằng Socket.IO listener
+- [x] `CodeExecutionGateway` (`apps/api/src/modules/code-exercises/code-execution.gateway.ts`):
   - Học sinh submit code → join room `submission:${submissionId}`
-  - Worker complete Judge0 → emit `submission.complete` với result
-  - FE: thay polling bằng WebSocket listener
-- [ ] `QuizGateway` (optional, nếu quiz có time limit nghiêm ngặt):
-  - Server-authoritative timer
-  - Auto-submit khi hết giờ qua WebSocket
-- [ ] Authentication WebSocket: handshake validate JWT cookie giống REST
-- [ ] CORS WebSocket: cùng whitelist với REST
+  - `autoGrade()` chạy Judge0 rồi emit `submission:complete` với status/score/maxScore
+  - FE: `ExerciseSubmitPanel.tsx` — `pendingSubId` state + socket useEffect, kết quả tự động cập nhật
+- [x] `QuizGateway` (`apps/api/src/modules/quizzes/quiz.gateway.ts`):
+  - Server-authoritative timer: emit `timer:sync` mỗi 10s, emit `quiz:expired` khi hết giờ
+  - FE: `QuizTaker.tsx` — server sync override client countdown
+- [x] WS Auth: `apps/api/src/common/gateway/ws-auth.ts` — cookie parsing + JWT verify
+- [x] `apps/web/src/lib/socket.ts` — `createSocket(namespace)` helper
 
 **Acceptance:** Học sinh submit code KHÔNG cần refresh, kết quả hiện ngay khi Judge0 xong. Notification bell update tức thời.
 

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
@@ -9,6 +9,7 @@ import type {
   NotificationPrefsUpdate,
   UnreadCount,
 } from '@lumibach/types';
+import { NotificationGateway } from './notification.gateway';
 
 const DEFAULT_PREFS: NotificationPrefs = {
   inAppEnabled: true,
@@ -28,7 +29,8 @@ const PREFS_TTL_MS = 60_000;
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaClient,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    @Optional() private readonly gateway: NotificationGateway | null = null
   ) {}
 
   async list(userId: string, query: NotificationListQuery): Promise<NotificationItem[]> {
@@ -120,6 +122,44 @@ export class NotificationsService {
       emailEnrolled: saved.emailEnrolled,
       emailDueSoon: saved.emailDueSoon,
     };
+  }
+
+  async create(
+    userId: string,
+    data: { type: string; title: string; body?: string | null; link?: string | null }
+  ): Promise<void> {
+    const prefs = await this.getPrefs(userId);
+    if (!prefs.inAppEnabled) return;
+
+    const notif = await this.prisma.notification.create({
+      data: {
+        userId,
+        type: data.type as any,
+        title: data.title,
+        body: data.body ?? null,
+        link: data.link ?? null,
+      },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        body: true,
+        link: true,
+        isRead: true,
+        createdAt: true,
+      },
+    });
+
+    await this.invalidateUserCaches(userId);
+    this.gateway?.emitToUser(userId, {
+      id: notif.id,
+      type: notif.type,
+      title: notif.title,
+      body: notif.body,
+      link: notif.link,
+      isRead: notif.isRead,
+      createdAt: notif.createdAt.toISOString(),
+    });
   }
 
   // ── Internals ──────────────────────────────────────────────────

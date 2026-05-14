@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { Play, Send, Loader2, CheckCircle2, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';
 import { apiClient } from '@/lib/api-client';
+import { createSocket } from '@/lib/socket';
 import type { RunCodeResult, ExerciseSubmissionDetail } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage, CodeSubmissionStatus } from '@lumibach/db';
@@ -173,10 +174,41 @@ export function ExerciseSubmitPanel({
   const [subs, setSubs] = useState<SubSummary[]>(initialSubs);
   const [activeSubId, setActiveSubId] = useState<string | null>(null);
   const [activeSub, setActiveSub] = useState<Submission | null>(null);
+  const [pendingSubId, setPendingSubId] = useState<string | null>(null);
 
   const [runPending, startRun] = useTransition();
   const [subPending, startSub] = useTransition();
   const [viewPending, startView] = useTransition();
+
+  useEffect(() => {
+    if (!pendingSubId) return;
+    const socket = createSocket('/code-execution');
+    socket.on('connect', () => {
+      socket.emit('submission:join', pendingSubId);
+    });
+    socket.on(
+      'submission:complete',
+      (data: { status: CodeSubmissionStatus; score: number | null; maxScore: number | null }) => {
+        setSubs((prev) =>
+          prev.map((s) =>
+            s.id === pendingSubId
+              ? { ...s, status: data.status, score: data.score, maxScore: data.maxScore }
+              : s
+          )
+        );
+        setPendingSubId(null);
+        if (data.status === 'ACCEPTED') toast.success('Tất cả test case passed!');
+        else if (data.status === 'PARTIAL')
+          toast.warning(`Đạt ${data.score}/${data.maxScore} điểm.`);
+        else toast.error(`Kết quả: ${STATUS_LABEL[data.status]}`);
+      }
+    );
+    const timeout = setTimeout(() => socket.disconnect(), 60_000);
+    return () => {
+      clearTimeout(timeout);
+      socket.disconnect();
+    };
+  }, [pendingSubId]);
 
   function handleRun() {
     startRun(async () => {
@@ -198,14 +230,13 @@ export function ExerciseSubmitPanel({
     const codeToSubmit = isWeb ? JSON.stringify(webCode) : code;
     startSub(async () => {
       try {
-        const res = await apiClient.post<{ submissionId: string }>(
+        const res = await apiClient.post<{ submissionId: string; autoGraded: boolean }>(
           `/code-exercises/${exerciseId}/submit`,
           { code: codeToSubmit, language }
         );
-        toast.success('Đã nộp bài! Giáo viên sẽ xem và chấm điểm.');
         const newSub: SubSummary = {
           id: res.submissionId,
-          status: 'MANUAL_REVIEW',
+          status: res.autoGraded ? 'PENDING' : 'MANUAL_REVIEW',
           score: null,
           maxScore: null,
           submittedAt: new Date(),
@@ -213,6 +244,12 @@ export function ExerciseSubmitPanel({
           language,
         };
         setSubs((prev) => [newSub, ...prev]);
+        if (res.autoGraded) {
+          setPendingSubId(res.submissionId);
+          toast.info('Đang chấm bài tự động...');
+        } else {
+          toast.success('Đã nộp bài! Giáo viên sẽ xem và chấm điểm.');
+        }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }

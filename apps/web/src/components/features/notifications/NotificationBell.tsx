@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { createSocket } from '@/lib/socket';
 import type { NotificationItem, UnreadCount } from '@lumibach/types';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -25,21 +26,34 @@ export function NotificationBell() {
   const [pending, startTransition] = useTransition();
   const dropRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unread count on mount and every 60s
+  // Fetch unread count on mount
   useEffect(() => {
-    const fetchCount = () => {
-      startTransition(async () => {
-        try {
-          const res = await apiClient.get<UnreadCount>('/notifications/unread-count');
-          setCount(res.count);
-        } catch {
-          /* silent — bell sẽ retry sau 60s */
-        }
+    startTransition(async () => {
+      try {
+        const res = await apiClient.get<UnreadCount>('/notifications/unread-count');
+        setCount(res.count);
+      } catch {
+        /* silent */
+      }
+    });
+  }, []);
+
+  // Real-time notifications via WebSocket
+  useEffect(() => {
+    const socket = createSocket('/notifications');
+
+    socket.on('notification:new', (notif: NotificationItem) => {
+      setCount((c) => c + 1);
+      setItems((prev) => {
+        if (prev.find((n) => n.id === notif.id)) return prev;
+        return [notif, ...prev].slice(0, 20);
       });
+      setLoaded(true);
+    });
+
+    return () => {
+      socket.disconnect();
     };
-    fetchCount();
-    const timer = setInterval(fetchCount, 60_000);
-    return () => clearInterval(timer);
   }, []);
 
   // Close on outside click

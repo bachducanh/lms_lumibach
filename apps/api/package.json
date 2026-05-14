@@ -22,8 +22,10 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.1.20",
     "@nestjs/swagger": "^11.0.0",
     "@nestjs/throttler": "^6.4.0",
+    "@nestjs/websockets": "^11.1.20",
     "@sentry/node": "^9.0.0",
     "bcryptjs": "^3.0.3",
     "cache-manager": "^6.4.0",
@@ -36,6 +38,7 @@
     "pino-pretty": "^11.3.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
