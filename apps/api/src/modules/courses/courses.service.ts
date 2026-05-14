@@ -98,7 +98,7 @@ export class CoursesService {
 
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && existing.ownerId !== actor.id) {
+    if (actor.role !== 'ADMIN' && existing.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền sửa khoá học này');
     }
 
@@ -147,7 +147,7 @@ export class CoursesService {
 
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && existing.ownerId !== actor.id) {
+    if (actor.role !== 'ADMIN' && existing.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền xoá khoá học này');
     }
 

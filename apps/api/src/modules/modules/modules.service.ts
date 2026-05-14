@@ -29,7 +29,7 @@ export class ModulesService {
 
   private async assertCanManage(courseId: string, actor: AuthUser): Promise<void> {
     if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
-    if (actor.role === 'ADMIN' || actor.role === 'SUPERADMIN') return;
+    if (actor.role === 'ADMIN') return;
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Khoá học không tồn tại');
     if (course.ownerId !== actor.id)

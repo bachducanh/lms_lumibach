@@ -130,7 +130,7 @@ export class EnrollmentsService {
 
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && course.ownerId !== actor.id) {
+    if (actor.role !== 'ADMIN' && course.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
     }
 
@@ -197,7 +197,7 @@ export class EnrollmentsService {
 
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && course.ownerId !== actor.id) {
+    if (actor.role !== 'ADMIN' && course.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
     }
 
@@ -293,11 +293,7 @@ export class EnrollmentsService {
       include: { course: true },
     });
     if (!enrollment) throw new NotFoundException('Không tìm thấy');
-    if (
-      actor.role !== 'ADMIN' &&
-      actor.role !== 'SUPERADMIN' &&
-      enrollment.course.ownerId !== actor.id
-    ) {
+    if (actor.role !== 'ADMIN' && enrollment.course.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền');
     }
 
@@ -313,7 +309,7 @@ export class EnrollmentsService {
 
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && course.ownerId !== actor.id) {
+    if (actor.role !== 'ADMIN' && course.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
     }
 
@@ -362,7 +358,7 @@ export class EnrollmentsService {
       include: { course: true },
     });
     if (!ta) throw new NotFoundException('Không tìm thấy');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && ta.course.ownerId !== actor.id)
+    if (actor.role !== 'ADMIN' && ta.course.ownerId !== actor.id)
       throw new ForbiddenException('Bạn không có quyền');
     await this.prisma.teachingAssistant.delete({ where: { id: taId } });
   }
@@ -376,7 +372,7 @@ export class EnrollmentsService {
 
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && course.ownerId !== actor.id)
+    if (actor.role !== 'ADMIN' && course.ownerId !== actor.id)
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
 
     let resolvedId: string;
@@ -428,7 +424,7 @@ export class EnrollmentsService {
       include: { course: true },
     });
     if (!ct) throw new NotFoundException('Không tìm thấy');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && ct.course.ownerId !== actor.id)
+    if (actor.role !== 'ADMIN' && ct.course.ownerId !== actor.id)
       throw new ForbiddenException('Bạn không có quyền');
     await this.prisma.courseCoTeacher.delete({ where: { id: coTeacherId } });
   }
@@ -437,7 +433,7 @@ export class EnrollmentsService {
     if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && actor.role !== 'SUPERADMIN' && course.ownerId !== actor.id)
+    if (actor.role !== 'ADMIN' && course.ownerId !== actor.id)
       throw new ForbiddenException('Bạn không có quyền');
 
     const code = randomBytes(4).toString('hex').toUpperCase();

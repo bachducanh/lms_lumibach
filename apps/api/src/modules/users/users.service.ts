@@ -367,7 +367,7 @@ export class UsersService {
   ): Promise<{ id: string; name: string; slug: string }[]> {
     if (!hasMinRole(actor.role, 'TA')) throw new ForbiddenException('Không có quyền');
 
-    if (actor.role === 'ADMIN' || actor.role === 'SUPERADMIN') {
+    if (actor.role === 'ADMIN') {
       return this.prisma.course.findMany({
         where: { deletedAt: null },
         select: { id: true, name: true, slug: true },

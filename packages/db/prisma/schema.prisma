@@ -198,6 +198,7 @@ model User {
   taAssignments     TeachingAssistant[]
   coTeachingCourses CourseCoTeacher[]   @relation("CoTeacher")
   quizAttempts           QuizAttempt[]
+  submissions            Submission[]    @relation("SubmissionStudent")
   notifications          Notification[]
   notificationPreference NotificationPreference?
   forumTopics            ForumTopic[]            @relation("ForumTopicAuthor")
@@ -513,6 +514,7 @@ model Submission {
   updatedAt DateTime @updatedAt
 
   assignment   Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User             @relation("SubmissionStudent", fields: [studentId], references: [id])
   files        SubmissionFile[]
   rubricGrades RubricGrade[]
 
