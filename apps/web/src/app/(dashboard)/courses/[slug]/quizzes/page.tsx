@@ -3,13 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { listQuizzesByModuleAction } from '@/actions/quizzes';
+import type { CourseDetail, QuizzesByModule, QuizListItem } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { Brain, Clock, CheckCircle2, BookOpen, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
-import type { QuizListItem } from '@/actions/quizzes';
 
 export const metadata = { title: 'Quiz' };
 
@@ -109,7 +107,9 @@ export default async function QuizzesPage({ params }: { params: Promise<{ slug: 
   if (!role) redirect('/login');
 
   const isStaff = hasMinRole(role, 'TA');
-  const { groups, standalone } = await listQuizzesByModuleAction(course.id);
+  const { groups, standalone } = await api.get<QuizzesByModule>('/quizzes', {
+    query: { courseId: course.id },
+  });
   const total = groups.reduce((s, g) => s + g.quizzes.length, 0) + standalone.length;
 
   return (

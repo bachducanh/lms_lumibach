@@ -3,16 +3,20 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { getAssignmentAction, getSubmissionsAction } from '@/actions/assignments';
+import type {
+  CourseDetail,
+  AssignmentDetail,
+  SubmissionItem,
+  RubricData,
+  RubricGradeSelection,
+  CourseMembersResponse,
+} from '@lumibach/types';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { GradeForm } from '@/components/features/assignments/GradeForm';
 import { RubricGrader } from '@/components/features/assignments/RubricGrader';
 import { DeleteSubmissionButton } from '@/components/features/assignments/DeleteSubmissionButton';
-import { getRubricAction, getSubmissionRubricGradesAction } from '@/actions/rubric';
 import { hasMinRole } from '@/lib/permissions';
 import { ChevronLeft, CheckCircle2, Clock, Circle, CalendarCheck } from 'lucide-react';
-import { prisma } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
 
@@ -45,18 +49,21 @@ export default async function SubmissionsPage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const assignment = await getAssignmentAction(assignmentId);
+  const assignment = await api
+    .get<AssignmentDetail>(`/assignments/${assignmentId}`)
+    .catch(() => null);
   if (!assignment || assignment.courseId !== course.id) notFound();
 
-  const [submissions, rubric, enrollments] = await Promise.all([
-    getSubmissionsAction(assignmentId),
-    getRubricAction(assignmentId),
-    prisma.enrollment.findMany({
-      where: { courseId: course.id, status: 'ACTIVE' },
-      select: { userId: true, user: { select: { id: true, fullName: true, email: true } } },
-      orderBy: { user: { fullName: 'asc' } },
-    }),
+  const [submissions, rubric, membersData] = await Promise.all([
+    api.get<SubmissionItem[]>(`/assignments/${assignmentId}/submissions`),
+    api.get<RubricData>(`/rubrics/assignment/${assignmentId}`).catch(() => null),
+    api
+      .get<CourseMembersResponse>(`/courses/${course.id}/members`)
+      .catch(() => ({ enrollments: [], tas: [], coTeachers: [] })),
   ]);
+  const enrollments = membersData.enrollments
+    .filter((e) => e.status === 'ACTIVE')
+    .sort((a, b) => (a.user.fullName ?? '').localeCompare(b.user.fullName ?? ''));
 
   const submissionMap = new Map(submissions.map((s) => [s.studentId, s]));
   const selectedSub = selectedStudentId ? (submissionMap.get(selectedStudentId) ?? null) : null;
@@ -67,8 +74,12 @@ export default async function SubmissionsPage({
   const gradedCount = submissions.filter((s) => s.status === 'GRADED').length;
 
   // Fetch rubric grades for the currently selected submission (server-side)
-  const rubricGrades =
-    selectedSub && rubric ? await getSubmissionRubricGradesAction(selectedSub.id) : [];
+  const rubricGrades: RubricGradeSelection[] =
+    selectedSub && rubric
+      ? await api
+          .get<RubricGradeSelection[]>(`/rubrics/grades/submission/${selectedSub.id}`)
+          .catch(() => [])
+      : [];
 
   return (
     <div className="-mx-4 -mt-4 -mb-4 flex max-w-7xl flex-col md:-mx-6 md:-mt-6 md:-mb-6 md:h-[calc(100vh-3.5rem)] md:flex-row md:overflow-hidden">

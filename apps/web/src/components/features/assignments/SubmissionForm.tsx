@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { toast } from 'sonner';
-import { submitAssignmentAction } from '@/actions/assignments';
+import { apiClient } from '@/lib/api-client';
 
 type Props = {
   assignmentId: string;
@@ -22,12 +22,12 @@ export function SubmissionForm({ assignmentId, assignmentType, initialContent, i
 
   function handleAction(asDraft: boolean) {
     startTransition(async () => {
-      const res = await submitAssignmentAction(assignmentId, content, asDraft);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.post(`/assignments/${assignmentId}/submissions`, { content, asDraft });
+        toast.success(asDraft ? 'Đã lưu nháp.' : 'Đã nộp bài.');
         router.refresh();
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

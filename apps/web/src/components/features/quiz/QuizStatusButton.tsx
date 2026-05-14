@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
-import { setQuizStatusAction } from '@/actions/quizzes';
+import { apiClient } from '@/lib/api-client';
 
 type Props = {
   quizId: string;
@@ -18,12 +18,12 @@ export function QuizStatusButton({ quizId, isPublished }: Props) {
 
   function handleToggle() {
     startTransition(async () => {
-      const res = await setQuizStatusAction(quizId, !isPublished);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.patch(`/quizzes/${quizId}/status`, { publish: !isPublished });
+        toast.success(isPublished ? 'Đã huỷ đăng quiz.' : 'Đã đăng quiz.');
         router.refresh();
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

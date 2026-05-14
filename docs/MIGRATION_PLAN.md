@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Phase 0 + 0.5 docs + Phase 1 (1A→1F) + Phase 2 (2A→2E) + Phase 3 (3A→3D) + **Phase 4 (4A→4F) hoàn thành** (2026-05-13). Migrated 11 modules total. Core domain (users/courses/modules/lessons/enrollments/attachments) fully on NestJS. 7 action files deleted. Branch `feat/phase-3-low-risk-modules`. Sẵn sàng Phase 5 (Assessment Modules).
+**Trạng thái:** Phase 0–4 + **Phase 5 (Assessment Modules) hoàn thành** (2026-05-14). Migrated 17 modules total (+ 6 assessment: assignments, rubrics, questions, quizzes, attempts, gradebook). All FE server pages + client components migrated. 6 action files deleted. Branch `feat/phase-5-assessment-modules`. Judge0 integration via NestJS. Full assessment flow (quiz, code grading, rubrics, attempts) fully on NestJS.
 
 ---
 

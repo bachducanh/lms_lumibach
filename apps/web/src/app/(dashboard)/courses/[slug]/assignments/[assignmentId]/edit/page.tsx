@@ -2,12 +2,9 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { getAssignmentAction } from '@/actions/assignments';
+import type { CourseDetail, AssignmentDetail, RubricData, ModuleWithItems } from '@lumibach/types';
 import { AssignmentForm } from '@/components/features/assignments/AssignmentForm';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
-import { getRubricAction } from '@/actions/rubric';
-import { prisma } from '@/lib/db';
 import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Chỉnh sửa bài tập' };
@@ -29,16 +26,14 @@ export default async function EditAssignmentPage({
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
   if (!canManage) redirect(`/courses/${slug}/assignments`);
 
-  const assignment = await getAssignmentAction(assignmentId);
+  const assignment = await api
+    .get<AssignmentDetail>(`/assignments/${assignmentId}`)
+    .catch(() => null);
   if (!assignment || assignment.courseId !== course.id) notFound();
 
   const [modules, rubric] = await Promise.all([
-    prisma.module.findMany({
-      where: { courseId: course.id },
-      orderBy: { position: 'asc' },
-      select: { id: true, name: true },
-    }),
-    getRubricAction(assignment.id),
+    api.get<ModuleWithItems[]>('/modules', { query: { courseId: course.id } }),
+    api.get<RubricData>(`/rubrics/assignment/${assignment.id}`).catch(() => null),
   ]);
 
   return (

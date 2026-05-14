@@ -3,8 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { listQuestionsByCategoryAction } from '@/actions/questions';
+import type { CourseDetail, QuestionBankData } from '@lumibach/types';
 import { QuestionBankList } from '@/components/features/quiz/QuestionBankList';
 import { hasMinRole } from '@/lib/permissions';
 import { ArrowLeft } from 'lucide-react';
@@ -24,7 +23,9 @@ export default async function QuestionsPage({ params }: { params: Promise<{ slug
 
   const canManage =
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
-  const { categories, uncategorized } = await listQuestionsByCategoryAction(course.id);
+  const { categories, uncategorized } = await api.get<QuestionBankData>('/questions', {
+    query: { courseId: course.id },
+  });
   const totalQ = categories.reduce((s, c) => s + c.questions.length, 0) + uncategorized.length;
 
   return (

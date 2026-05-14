@@ -7,7 +7,7 @@ import type { CourseDetail } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { ScratchExerciseForm } from '@/components/features/scratch/ScratchExerciseForm';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
-import { getCodeExerciseRubricAction } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 import { Cat } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
@@ -44,7 +44,7 @@ export default async function EditScratchExercisePage({
   if (!ex || ex.courseId !== course.id) notFound();
   if (ex.language !== 'SCRATCH') redirect(`/courses/${slug}/exercises/${exerciseId}/edit`);
 
-  const rubric = await getCodeExerciseRubricAction(ex.id);
+  const rubric = await api.get<RubricData>(`/rubrics/code-exercise/${ex.id}`).catch(() => null);
 
   return (
     <div className="max-w-3xl space-y-5">

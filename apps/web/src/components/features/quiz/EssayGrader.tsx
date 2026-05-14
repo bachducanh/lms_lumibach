@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { gradeEssayAction } from '@/actions/attempts';
+import { apiClient } from '@/lib/api-client';
 
 type Props = {
   answerId: string;
@@ -30,12 +30,15 @@ export function EssayGrader({ answerId, maxPoints, initialScore, initialFeedback
       return;
     }
     startTransition(async () => {
-      const res = await gradeEssayAction(answerId, pts, feedback.trim() || null);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.patch(`/attempts/answers/${answerId}/grade`, {
+          score: pts,
+          feedback: feedback.trim() || null,
+        });
+        toast.success('Đã lưu điểm.');
         router.refresh();
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

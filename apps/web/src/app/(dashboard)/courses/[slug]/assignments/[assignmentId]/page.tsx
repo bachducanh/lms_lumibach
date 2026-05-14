@@ -3,10 +3,13 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail, CourseNavItem } from '@lumibach/types';
-import { getAssignmentAction, getMySubmissionAction } from '@/actions/assignments';
-import { logActivity } from '@/lib/activity';
-import { getRubricAction } from '@/actions/rubric';
+import type {
+  CourseDetail,
+  CourseNavItem,
+  AssignmentDetail,
+  SubmissionItem,
+  RubricData,
+} from '@lumibach/types';
 import { RubricView } from '@/components/features/assignments/RubricView';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { buttonVariants } from '@/components/ui/button';
@@ -52,7 +55,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string; assignmentId: string }>;
 }) {
   const { assignmentId } = await params;
-  const a = await getAssignmentAction(assignmentId);
+  const api = apiServerClient(await cookies());
+  const a = await api.get<AssignmentDetail>(`/assignments/${assignmentId}`).catch(() => null);
   return { title: a?.title ?? 'Bài tập' };
 }
 
@@ -104,18 +108,11 @@ export default async function AssignmentViewPage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const assignment = await getAssignmentAction(assignmentId);
+  const assignment = await api
+    .get<AssignmentDetail>(`/assignments/${assignmentId}`)
+    .catch(() => null);
   if (!assignment) notFound();
   if (assignment.courseId !== course.id) notFound();
-
-  logActivity({
-    userId,
-    courseId: course.id,
-    action: 'VIEW_ASSIGNMENT',
-    resourceType: 'assignment',
-    resourceId: assignmentId,
-    resourceName: assignment.title,
-  });
 
   const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
   const isStaff = hasMinRole(role, 'TA');
@@ -126,9 +123,12 @@ export default async function AssignmentViewPage({
 
   const [mySubmission, rubric, allNavItems, codeAssignment, myCodeSubs] = await Promise.all([
     role === 'STUDENT' && !isCodeAssignment
-      ? getMySubmissionAction(assignmentId)
+      ? api
+          .get<SubmissionItem[]>(`/assignments/${assignmentId}/my-submissions`)
+          .then((s) => s[0] ?? null)
+          .catch(() => null)
       : Promise.resolve(null),
-    getRubricAction(assignmentId),
+    api.get<RubricData>(`/rubrics/assignment/${assignmentId}`).catch(() => null),
     api
       .get<
         CourseNavItem[]
@@ -470,7 +470,7 @@ export default async function AssignmentViewPage({
                     )}
                     {mySubmission.files.length > 0 && (
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {mySubmission.files.map((f: { id: string; name: string; url: string }) => (
+                        {mySubmission.files.map((f) => (
                           <a
                             key={f.id}
                             href={f.url}

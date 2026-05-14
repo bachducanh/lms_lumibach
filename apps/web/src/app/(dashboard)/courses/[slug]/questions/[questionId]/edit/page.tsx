@@ -2,8 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { getQuestionAction } from '@/actions/questions';
+import type { CourseDetail, QuestionItem } from '@lumibach/types';
 import { QuestionForm } from '@/components/features/quiz/QuestionForm';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -29,7 +28,7 @@ export default async function EditQuestionPage({
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
   if (!canManage) redirect(`/courses/${slug}/questions`);
 
-  const question = await getQuestionAction(questionId);
+  const question = await api.get<QuestionItem>(`/questions/${questionId}`).catch(() => null);
   if (!question) notFound();
 
   return (

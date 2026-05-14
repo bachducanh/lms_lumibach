@@ -3,8 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { listAssignmentsByModuleAction } from '@/actions/assignments';
+import type { CourseDetail, AssignmentsByModule, AssignmentListItem } from '@lumibach/types';
 import { listCourseExercisesByModuleAction, type CodeExerciseListItem } from '@/actions/exercises';
 import { hasMinRole } from '@/lib/permissions';
 import {
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
-import type { AssignmentListItem } from '@/actions/assignments';
 
 export const metadata = { title: 'Bài tập' };
 
@@ -203,7 +201,7 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
     { groups: aGroups, standalone: aStandalone },
     { groups: eGroups, standalone: eStandalone },
   ] = await Promise.all([
-    listAssignmentsByModuleAction(course.id),
+    api.get<AssignmentsByModule>('/assignments', { query: { courseId: course.id } }),
     listCourseExercisesByModuleAction(course.id),
   ]);
 

@@ -20,13 +20,8 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import {
-  createCategoryAction,
-  updateCategoryAction,
-  deleteCategoryAction,
-  type QuestionItem,
-  type CategoryWithQuestions,
-} from '@/actions/questions';
+import { apiClient } from '@/lib/api-client';
+import type { QuestionItem, CategoryWithQuestions } from '@lumibach/types';
 // QuestionType extended beyond Prisma enum — use string
 
 const TYPE_BADGE: Record<string, string> = {
@@ -165,13 +160,16 @@ function CategorySection({
       return;
     }
     setPending(true);
-    const res = await updateCategoryAction(category.id, name);
-    setPending(false);
-    if (res.success) {
-      toast.success(res.message);
+    try {
+      await apiClient.patch(`/questions/categories/${category.id}`, { name });
+      toast.success('Đã đổi tên danh mục.');
       router.refresh();
       setEditing(false);
-    } else toast.error(res.error);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+    } finally {
+      setPending(false);
+    }
   }
 
   async function handleDelete() {
@@ -182,12 +180,15 @@ function CategorySection({
     )
       return;
     setPending(true);
-    const res = await deleteCategoryAction(category.id);
-    setPending(false);
-    if (res.success) {
-      toast.success(res.message);
+    try {
+      await apiClient.delete(`/questions/categories/${category.id}`);
+      toast.success('Đã xoá danh mục.');
       router.refresh();
-    } else toast.error(res.error);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -311,14 +312,17 @@ function NewCategoryForm({ courseId, onCreated }: { courseId: string; onCreated:
   async function handleCreate() {
     if (!name.trim()) return;
     setPending(true);
-    const res = await createCategoryAction(courseId, name);
-    setPending(false);
-    if (res.success) {
-      toast.success(res.message);
+    try {
+      await apiClient.post('/questions/categories', { courseId, name });
+      toast.success('Đã tạo danh mục.');
       setName('');
       setOpen(false);
       onCreated();
-    } else toast.error(res.error);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+    } finally {
+      setPending(false);
+    }
   }
 
   if (!open) {

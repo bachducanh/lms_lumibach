@@ -3,9 +3,7 @@ import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail, CourseNavItem } from '@lumibach/types';
-import { getQuizAction } from '@/actions/quizzes';
-import { listMyAttemptsAction } from '@/actions/attempts';
+import type { CourseDetail, CourseNavItem, QuizDetail, AttemptListItem } from '@lumibach/types';
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuizButton } from '@/components/features/quiz/DeleteQuizButton';
 import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
@@ -49,7 +47,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string; quizId: string }>;
 }) {
   const { quizId } = await params;
-  const quiz = await getQuizAction(quizId);
+  const api = apiServerClient(await cookies());
+  const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
   return { title: quiz?.title ?? 'Quiz' };
 }
 
@@ -101,7 +100,7 @@ export default async function QuizDetailPage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const quiz = await getQuizAction(quizId);
+  const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
   if (!quiz) notFound();
 
   const isStaff = role ? hasMinRole(role, 'TA') : false;
@@ -110,7 +109,11 @@ export default async function QuizDetailPage({
   if (!isStaff && quiz.status !== 'PUBLISHED') notFound();
 
   const [myAttempts, allNavItems] = await Promise.all([
-    !isStaff ? listMyAttemptsAction(quizId) : Promise.resolve([]),
+    !isStaff
+      ? api
+          .get<AttemptListItem[]>('/attempts/mine', { query: { quizId } })
+          .catch(() => [] as AttemptListItem[])
+      : Promise.resolve([] as AttemptListItem[]),
     api
       .get<
         CourseNavItem[]

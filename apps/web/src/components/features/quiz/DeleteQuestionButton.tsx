@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
-import { deleteQuestionAction } from '@/actions/questions';
+import { apiClient } from '@/lib/api-client';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 export function DeleteQuestionButton({ questionId }: { questionId: string }) {
@@ -20,15 +20,11 @@ export function DeleteQuestionButton({ questionId }: { questionId: string }) {
     if (!ok) return;
     setPending(true);
     try {
-      const res = await deleteQuestionAction(questionId);
-      if (res.success) {
-        toast.success(res.message);
-        router.refresh();
-      } else {
-        toast.error(res.error);
-      }
-    } catch {
-      toast.error('Có lỗi không mong muốn. Vui lòng thử lại.');
+      await apiClient.delete(`/questions/${questionId}`);
+      toast.success('Đã xoá câu hỏi.');
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi không mong muốn. Vui lòng thử lại.');
     } finally {
       setPending(false);
     }

@@ -3,8 +3,7 @@ import { auth } from '@/auth';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { getQuizAction, listQuizBanksAction } from '@/actions/quizzes';
+import type { CourseDetail, QuizDetail, QuizBankGroup } from '@lumibach/types';
 import { QuizBuilder } from '@/components/features/quiz/QuizBuilder';
 import { buttonVariants } from '@/components/ui/button';
 import { ArrowLeft, Brain } from 'lucide-react';
@@ -29,17 +28,20 @@ export default async function ManageQuizPage({
   const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
   if (!canManage) redirect(`/courses/${slug}/quizzes/${quizId}`);
 
-  const quiz = await getQuizAction(quizId);
+  const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
   if (!quiz) notFound();
 
   const quizQuestionIds = new Set(quiz.questions.map((qq) => qq.questionId));
-  const banks = await listQuizBanksAction(course.id);
+  const banks = await api.get<QuizBankGroup[]>('/quizzes/banks', {
+    query: { courseId: course.id },
+  });
   const filteredBanks = banks.map((b) => ({
     ...b,
     questions: b.questions.filter((q) => !quizQuestionIds.has(q.id)),
   }));
 
   const initialItems = quiz.questions.map((qq) => ({
+    id: qq.id,
     questionId: qq.questionId,
     position: qq.position,
     points: qq.points,

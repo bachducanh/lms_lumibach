@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { RubricData } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 
 type Props = {
   rubric: RubricData;

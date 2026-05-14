@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { toast } from 'sonner';
-import { gradeSubmissionAction } from '@/actions/assignments';
+import { apiClient } from '@/lib/api-client';
 
 type Props = {
   submissionId: string;
@@ -27,11 +27,16 @@ export function GradeForm({ submissionId, maxScore, currentScore, currentFeedbac
       return;
     }
     startTransition(async () => {
-      const res = await gradeSubmissionAction(submissionId, s, feedback);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.patch(`/assignments/submissions/${submissionId}/grade`, {
+          score: s,
+          feedback,
+        });
+        toast.success('Đã lưu điểm.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+      }
     });
   }
 

@@ -8,7 +8,7 @@ import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import { logActivity } from '@/lib/activity';
 import { hasMinRole } from '@/lib/permissions';
 import { listMyScratchSubmissionsAction, listScratchSubmissionsAction } from '@/actions/scratch';
-import { getCodeExerciseRubricAction } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
 import { ScratchTeacherPanel } from '@/components/features/scratch/ScratchTeacherPanel';
 import { buttonVariants } from '@/components/ui/button';
@@ -100,7 +100,9 @@ export default async function ScratchExercisePage({
       .catch(() => [] as CourseNavItem[]),
     listMyScratchSubmissionsAction(exerciseId),
     isTeacher ? listScratchSubmissionsAction(exerciseId) : Promise.resolve([]),
-    isTeacher ? getCodeExerciseRubricAction(exerciseId) : Promise.resolve(null),
+    isTeacher
+      ? api.get<RubricData>(`/rubrics/code-exercise/${exerciseId}`).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const currentIndex = allNavItems.findIndex((i) => i.codeExerciseId === exerciseId);

@@ -5,13 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Brain, CheckCircle2, Circle, Clock, Send, Play, Loader2, XCircle } from 'lucide-react';
-import {
-  saveAnswerAction,
-  submitAttemptAction,
-  type AttemptData,
-  type AnswerInput,
-} from '@/actions/attempts';
-import { checkQuizCodeAction, type TCCheckResult } from '@/actions/questions';
+import { apiClient } from '@/lib/api-client';
+import type { AttemptData, AnswerInput, TCCheckResult } from '@lumibach/types';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { ParsonsQuestion } from '@/components/features/quiz/ParsonsQuestion';
@@ -87,12 +82,12 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     }
     setCodeCheckPending((prev) => ({ ...prev, [questionId]: true }));
     try {
-      const res = await checkQuizCodeAction(questionId, code);
-      if (res.success) {
-        setCodeCheckResults((prev) => ({ ...prev, [questionId]: res.results }));
-      } else {
-        toast.error(res.error);
-      }
+      const results = await apiClient.post<TCCheckResult[]>(`/questions/${questionId}/check-code`, {
+        code,
+      });
+      setCodeCheckResults((prev) => ({ ...prev, [questionId]: results }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
     } finally {
       setCodeCheckPending((prev) => ({ ...prev, [questionId]: false }));
     }
@@ -122,7 +117,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
   // ── Save helpers ─────────────────────────────────────────────
   function fireSave(questionId: string, input: AnswerInput) {
-    void saveAnswerAction(attempt.id, questionId, input);
+    void apiClient.post(`/attempts/${attempt.id}/answers`, { questionId, ...input });
   }
 
   function handleMCQSingle(questionId: string, optId: string) {
@@ -172,13 +167,13 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     if (submitted.current) return;
     submitted.current = true;
     startSubmitTransition(async () => {
-      const res = await submitAttemptAction(attempt.id);
-      if (res.success) {
+      try {
+        await apiClient.post(`/attempts/${attempt.id}/submit`);
         toast.success('Đã nộp bài thành công!');
         router.push(`/courses/${courseSlug}/quizzes/${attempt.quizId}/attempt/${attempt.id}`);
-      } else {
+      } catch (e) {
         submitted.current = false;
-        if (!force) toast.error(res.error);
+        if (!force) toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

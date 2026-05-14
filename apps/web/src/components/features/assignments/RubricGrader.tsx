@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { gradeWithRubricAction, type RubricData } from '@/actions/rubric';
+import { apiClient } from '@/lib/api-client';
+import type { RubricData } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -57,11 +58,13 @@ export function RubricGrader({ submissionId, maxScore, rubric, initialGrades }: 
       levelId,
     }));
     startTransition(async () => {
-      const res = await gradeWithRubricAction(submissionId, sel);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.post(`/rubrics/grade/submission/${submissionId}`, { selections: sel });
+        toast.success('Đã lưu điểm rubric.');
         router.refresh();
-      } else toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+      }
     });
   }
 

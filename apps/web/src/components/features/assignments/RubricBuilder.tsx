@@ -4,13 +4,8 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
-import {
-  saveRubricAction,
-  deleteRubricAction,
-  saveCodeExerciseRubricAction,
-  deleteCodeExerciseRubricAction,
-  type RubricData,
-} from '@/actions/rubric';
+import { apiClient } from '@/lib/api-client';
+import type { RubricData } from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
 
@@ -164,12 +159,16 @@ export function RubricBuilder({ ownerKind, ownerId, maxScore, initialRubric }: P
           })),
         })),
       };
-      const res =
-        ownerKind === 'codeExercise'
-          ? await saveCodeExerciseRubricAction(ownerId, payload)
-          : await saveRubricAction(ownerId, payload);
-      if (res.success) toast.success(res.message);
-      else toast.error(res.error);
+      try {
+        const endpoint =
+          ownerKind === 'codeExercise'
+            ? `/rubrics/code-exercise/${ownerId}`
+            : `/rubrics/assignment/${ownerId}`;
+        await apiClient.post(endpoint, payload);
+        toast.success('Đã lưu rubric.');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+      }
     });
   }
 
@@ -177,14 +176,17 @@ export function RubricBuilder({ ownerKind, ownerId, maxScore, initialRubric }: P
     const ok = await openConfirm('Xoá rubric? Tất cả điểm rubric đã chấm sẽ bị xoá.');
     if (!ok) return;
     startTransition(async () => {
-      const res =
-        ownerKind === 'codeExercise'
-          ? await deleteCodeExerciseRubricAction(ownerId)
-          : await deleteRubricAction(ownerId);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        const endpoint =
+          ownerKind === 'codeExercise'
+            ? `/rubrics/code-exercise/${ownerId}`
+            : `/rubrics/assignment/${ownerId}`;
+        await apiClient.delete(endpoint);
+        toast.success('Đã xoá rubric.');
         setCriteria([]);
-      } else toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+      }
     });
   }
 

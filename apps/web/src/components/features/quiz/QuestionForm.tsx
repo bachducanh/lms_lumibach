@@ -16,14 +16,28 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
-import {
-  createQuestionAction,
-  updateQuestionAction,
-  runSolutionCodeForTCAction,
-  type QuestionItem,
-  type QuestionFormValues,
-  type QuestionTestCase,
-} from '@/actions/questions';
+import { apiClient } from '@/lib/api-client';
+import type { QuestionItem, QuestionTestCase } from '@lumibach/types';
+
+type QuestionFormValues = {
+  type: string;
+  content: string;
+  explanation: string | null | undefined;
+  points: number;
+  categoryId: string | null | undefined;
+  options: { content: string; isCorrect: boolean }[];
+  testCases: {
+    input: string;
+    expectedOutput: string;
+    isHidden: boolean;
+    points: number;
+    position: number;
+  }[];
+  starterCode: string | null | undefined;
+  solutionCode: string | null | undefined;
+  timeLimit: number | null | undefined;
+  memoryLimit: number | null | undefined;
+};
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { cn } from '@/lib/utils';
@@ -257,19 +271,20 @@ export function QuestionForm({
       type === 'CODE_PYTHON' || type === 'CODE_DEBUG_PYTHON' ? 'PYTHON3' : 'CPP17';
     setTcGenerating((prev) => ({ ...prev, [tcIndex]: true }));
     try {
-      const res = await runSolutionCodeForTCAction(
-        solutionCode,
-        lang,
-        tc.input,
-        Number(timeLimit) || 3,
-        (Number(memoryLimit) || 256) * 1024
+      const data = await apiClient.post<{ output: string }>(
+        `/questions/${question?.id ?? 'tmp'}/run-solution`,
+        {
+          code: solutionCode,
+          language: lang,
+          input: tc.input,
+          timeLimitSec: Number(timeLimit) || 3,
+          memoryLimitKB: (Number(memoryLimit) || 256) * 1024,
+        }
       );
-      if (res.success) {
-        updateTC(tcIndex, 'expectedOutput', res.output);
-        toast.success('Đã sinh expected output.');
-      } else {
-        toast.error(res.error);
-      }
+      updateTC(tcIndex, 'expectedOutput', data.output);
+      toast.success('Đã sinh expected output.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
     } finally {
       setTcGenerating((prev) => ({ ...prev, [tcIndex]: false }));
     }
@@ -373,20 +388,16 @@ export function QuestionForm({
 
     setPending(true);
     try {
-      const res = question
-        ? await updateQuestionAction(question.id, values)
-        : await createQuestionAction(courseId, values);
-
-      if (res.success) {
-        toast.success(res.message);
-        router.push(returnTo ?? `/courses/${courseSlug}/questions`);
-        router.refresh();
+      if (question) {
+        await apiClient.patch(`/questions/${question.id}`, values);
       } else {
-        toast.error(res.error);
+        await apiClient.post('/questions', { courseId, ...values });
       }
+      toast.success(question ? 'Đã lưu thay đổi.' : 'Đã tạo câu hỏi.');
+      router.push(returnTo ?? `/courses/${courseSlug}/questions`);
+      router.refresh();
     } catch (e) {
-      console.error(e);
-      toast.error('Có lỗi không mong muốn. Vui lòng thử lại.');
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
     } finally {
       setPending(false);
     }

@@ -3,9 +3,12 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { getQuizAction } from '@/actions/quizzes';
-import { listAllAttemptsDetailedAction } from '@/actions/attempts';
+import type {
+  CourseDetail,
+  QuizDetail,
+  AttemptDetailRow,
+  QuizQuestionBrief,
+} from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { AttemptsTable } from '@/components/features/quiz/AttemptsTable';
 import { Brain } from 'lucide-react';
@@ -27,10 +30,13 @@ export default async function AttemptsPage({
   if (!course) notFound();
   if (!role || !hasMinRole(role, 'TA')) redirect(`/courses/${slug}/quizzes/${quizId}`);
 
-  const quiz = await getQuizAction(quizId);
+  const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
   if (!quiz) notFound();
 
-  const { attempts, questions } = await listAllAttemptsDetailedAction(quizId);
+  const { attempts, questions } = await api.get<{
+    attempts: AttemptDetailRow[];
+    questions: QuizQuestionBrief[];
+  }>('/attempts/detailed', { query: { quizId } });
 
   const submitted = attempts.filter((a) => a.status !== 'IN_PROGRESS');
   const graded = attempts.filter((a) => a.status === 'GRADED');

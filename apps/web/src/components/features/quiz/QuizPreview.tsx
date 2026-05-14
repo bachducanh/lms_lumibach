@@ -13,12 +13,12 @@ import {
   RotateCcw,
   Minus,
 } from 'lucide-react';
-import { checkQuizCodeAction, type TCCheckResult } from '@/actions/questions';
+import { apiClient } from '@/lib/api-client';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { PreviewQuizData, PreviewQuizQuestion } from '@/actions/quizzes';
+import type { PreviewQuizData, TCCheckResult } from '@lumibach/types';
 import type { CodeLanguage } from '@lumibach/db';
 
 // ── Constants ──────────────────────────────────────────────────
@@ -145,9 +145,12 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
     }
     setCodeCheckPending((p) => ({ ...p, [qId]: true }));
     try {
-      const res = await checkQuizCodeAction(qId, code);
-      if (res.success) setCodeCheckResults((p) => ({ ...p, [qId]: res.results }));
-      else toast.error(res.error);
+      const results = await apiClient.post<TCCheckResult[]>(`/questions/${qId}/check-code`, {
+        code,
+      });
+      setCodeCheckResults((p) => ({ ...p, [qId]: results }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
     } finally {
       setCodeCheckPending((p) => ({ ...p, [qId]: false }));
     }

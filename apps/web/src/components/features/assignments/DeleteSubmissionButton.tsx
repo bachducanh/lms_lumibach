@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteSubmissionAction } from '@/actions/assignments';
+import { apiClient } from '@/lib/api-client';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 export function DeleteSubmissionButton({
@@ -25,12 +25,12 @@ export function DeleteSubmissionButton({
     );
     if (!ok) return;
     startTransition(async () => {
-      const res = await deleteSubmissionAction(submissionId);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete(`/assignments/submissions/${submissionId}`);
+        toast.success('Đã xoá bài nộp.');
         router.refresh();
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

@@ -18,6 +18,12 @@ import { ModulesModule } from './modules/modules/modules.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
 import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { AssignmentsModule } from './modules/assignments/assignments.module';
+import { RubricsModule } from './modules/rubrics/rubrics.module';
+import { QuestionsModule } from './modules/questions/questions.module';
+import { QuizzesModule } from './modules/quizzes/quizzes.module';
+import { AttemptsModule } from './modules/attempts/attempts.module';
+import { GradebookModule } from './modules/gradebook/gradebook.module';
 
 @Module({
   imports: [
@@ -74,6 +80,12 @@ import { AttachmentsModule } from './modules/attachments/attachments.module';
     LessonsModule,
     EnrollmentsModule,
     AttachmentsModule,
+    AssignmentsModule,
+    RubricsModule,
+    QuestionsModule,
+    QuizzesModule,
+    AttemptsModule,
+    GradebookModule,
   ],
   providers: [
     {

@@ -15,11 +15,23 @@ const RichTextEditor = dynamic(
   }
 );
 import { toast } from 'sonner';
-import {
-  createAssignmentAction,
-  updateAssignmentAction,
-  type AssignmentFormValues,
-} from '@/actions/assignments';
+import { apiClient } from '@/lib/api-client';
+
+type AssignmentFormValues = {
+  title: string;
+  instructions: string;
+  type: 'TEXT' | 'FILE' | 'BOTH' | 'CODE';
+  maxScore: number;
+  weight: number;
+  availableFrom: string | null;
+  dueDate: string | null;
+  lateDeadline: string | null;
+  latePolicy: 'NONE' | 'ALLOW' | 'DEDUCT';
+  latePenalty: number | null;
+  allowResubmit: boolean;
+  maxAttempts: number | null;
+  moduleId: string | null;
+};
 import { ChevronLeft, CalendarDays, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -111,20 +123,25 @@ export function AssignmentForm({
   function handleSubmit(publish: boolean) {
     startTransition(async () => {
       const values = buildValues();
-      const res =
-        mode === 'create'
-          ? await createAssignmentAction(courseId, values, publish)
-          : await updateAssignmentAction(assignment!.id, values, publish ? true : undefined);
-
-      if (res.success) {
-        toast.success(res.message);
-        if (mode === 'create' && res.data?.assignmentId) {
-          router.push(`/courses/${courseSlug}/assignments/${res.data.assignmentId}`);
+      try {
+        if (mode === 'create') {
+          const data = await apiClient.post<{ assignmentId: string }>('/assignments', {
+            courseId,
+            ...values,
+            publish,
+          });
+          toast.success('Đã tạo bài tập.');
+          router.push(`/courses/${courseSlug}/assignments/${data.assignmentId}`);
         } else {
+          await apiClient.patch(`/assignments/${assignment!.id}`, {
+            ...values,
+            publish: publish ? true : undefined,
+          });
+          toast.success('Đã cập nhật bài tập.');
           router.push(`/courses/${courseSlug}/assignments`);
         }
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

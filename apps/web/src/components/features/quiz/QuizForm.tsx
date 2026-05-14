@@ -4,7 +4,20 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { createQuizAction, updateQuizAction, type QuizFormValues } from '@/actions/quizzes';
+import { apiClient } from '@/lib/api-client';
+
+type QuizFormValues = {
+  title: string;
+  description: string | null;
+  timeLimit: number | null;
+  maxAttempts: number | null;
+  passingScore: number | null;
+  shuffleQuestions: boolean;
+  shuffleAnswers: boolean;
+  showResults: boolean;
+  availableFrom: string | null;
+  dueDate: string | null;
+};
 import type { QuizStatus } from '@lumibach/db';
 
 type ExistingQuiz = {
@@ -80,25 +93,21 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
     setPending(true);
     try {
       if (quiz) {
-        const res = await updateQuizAction(quiz.id, buildValues(), publish);
-        if (res.success) {
-          toast.success(res.message);
-          router.push(`/courses/${courseSlug}/quizzes/${quiz.id}`);
-        } else {
-          toast.error(res.error);
-        }
+        await apiClient.patch(`/quizzes/${quiz.id}`, { ...buildValues(), publish });
+        toast.success('Đã cập nhật quiz.');
+        router.push(`/courses/${courseSlug}/quizzes/${quiz.id}`);
       } else {
-        const res = await createQuizAction(courseId, buildValues(), publish ?? false, moduleId);
-        if (res.success) {
-          toast.success(res.message);
-          router.push(`/courses/${courseSlug}/quizzes/${res.data!.quizId}`);
-        } else {
-          toast.error(res.error);
-        }
+        const data = await apiClient.post<{ quizId: string }>('/quizzes', {
+          courseId,
+          ...buildValues(),
+          publish: publish ?? false,
+          moduleId,
+        });
+        toast.success('Đã tạo quiz.');
+        router.push(`/courses/${courseSlug}/quizzes/${data.quizId}`);
       }
     } catch (e) {
-      console.error(e);
-      toast.error('Có lỗi không mong muốn. Vui lòng thử lại.');
+      toast.error(e instanceof Error ? e.message : 'Có lỗi không mong muốn. Vui lòng thử lại.');
     } finally {
       setPending(false);
     }

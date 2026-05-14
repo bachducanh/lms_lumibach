@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail } from '@lumibach/types';
 import { getExerciseAction } from '@/actions/exercises';
-import { getCodeExerciseRubricAction } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 import { ExerciseSetup } from '@/components/features/code/ExerciseSetup';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
 import { buttonVariants } from '@/components/ui/button';
@@ -37,7 +37,9 @@ export default async function EditExercisePage({
   const exercise = await getExerciseAction(exerciseId);
   if (!exercise || exercise.courseId !== course.id) notFound();
 
-  const rubric = await getCodeExerciseRubricAction(exercise.id);
+  const rubric = await api
+    .get<RubricData>(`/rubrics/code-exercise/${exercise.id}`)
+    .catch(() => null);
 
   return (
     <div className="max-w-3xl">

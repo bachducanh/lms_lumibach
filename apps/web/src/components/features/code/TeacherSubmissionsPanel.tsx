@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { CodeLanguage, CodeSubmissionStatus } from '@lumibach/db';
 import { RubricGradePanel } from './RubricGradePanel';
-import type { RubricData } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 
 // ── Constants ─────────────────────────────────────────────────
 

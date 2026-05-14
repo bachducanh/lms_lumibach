@@ -3,8 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail } from '@lumibach/types';
-import { getGradebookAction } from '@/actions/gradebook';
+import type { CourseDetail, GradebookData } from '@lumibach/types';
 import { GradebookTable } from '@/components/features/courses/GradebookTable';
 import { hasMinRole } from '@/lib/permissions';
 import { ArrowLeft, TableProperties } from 'lucide-react';
@@ -27,7 +26,7 @@ export default async function GradebookPage({ params }: { params: Promise<{ slug
   if (!course) notFound();
   if (!role || !hasMinRole(role, 'TA')) redirect(`/courses/${slug}`);
 
-  const data = await getGradebookAction(course.id);
+  const data = await api.get<GradebookData>('/gradebook', { query: { courseId: course.id } });
 
   return (
     <div className="space-y-6">

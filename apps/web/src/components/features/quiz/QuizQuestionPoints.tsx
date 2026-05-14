@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { updateQuizQuestionPointsAction } from '@/actions/quizzes';
+import { apiClient } from '@/lib/api-client';
 
 type Props = {
   quizQuestionId: string;
@@ -34,13 +34,14 @@ export function QuizQuestionPoints({ quizQuestionId, initialPoints }: Props) {
     setSaving(true);
     const prev = display;
     setDisplay(num);
-    const res = await updateQuizQuestionPointsAction(quizQuestionId, num);
-    setSaving(false);
-    if (!res.success) {
-      toast.error(res.error ?? 'Lỗi khi lưu điểm.');
-      setDisplay(prev);
-    } else {
+    try {
+      await apiClient.patch(`/quizzes/quiz-questions/${quizQuestionId}/points`, { points: num });
       router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Lỗi khi lưu điểm.');
+      setDisplay(prev);
+    } finally {
+      setSaving(false);
     }
   }
 

@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { deleteAttemptsAction } from '@/actions/attempts';
-import type { AttemptDetailRow, QuizQuestionBrief } from '@/actions/attempts';
+import { apiClient } from '@/lib/api-client';
+import type { AttemptDetailRow, QuizQuestionBrief } from '@lumibach/types';
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -182,13 +182,13 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
   function handleDelete() {
     const ids = [...selected];
     startDelete(async () => {
-      const res = await deleteAttemptsAction(ids);
-      if (res.success) {
-        toast.success(res.message);
+      try {
+        await apiClient.delete('/attempts', { body: { ids } });
+        toast.success('Đã xoá bài làm.');
         setSelected(new Set());
         router.refresh();
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

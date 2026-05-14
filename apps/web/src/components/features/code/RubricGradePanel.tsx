@@ -3,11 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import {
-  gradeCodeSubmissionWithRubricAction,
-  getCodeSubmissionRubricGradesAction,
-  type RubricData,
-} from '@/actions/rubric';
+import { apiClient } from '@/lib/api-client';
+import type { RubricData } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import { Sparkles } from 'lucide-react';
 
@@ -32,12 +29,17 @@ export function RubricGradePanel({ rubric, codeSubmissionId, maxScore = 10, onGr
   // Load existing grades once
   useEffect(() => {
     let cancelled = false;
-    getCodeSubmissionRubricGradesAction(codeSubmissionId).then((rows) => {
-      if (cancelled) return;
-      const next: Record<string, string> = {};
-      for (const r of rows) next[r.criterionId] = r.levelId;
-      setSelections(next);
-    });
+    apiClient
+      .get<{ criterionId: string; levelId: string }[]>(
+        `/rubrics/grades/code-submission/${codeSubmissionId}`
+      )
+      .then((rows) => {
+        if (cancelled) return;
+        const next: Record<string, string> = {};
+        for (const r of rows) next[r.criterionId] = r.levelId;
+        setSelections(next);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -68,12 +70,15 @@ export function RubricGradePanel({ rubric, codeSubmissionId, maxScore = 10, onGr
     }
     const sel = rubric.criteria.map((c) => ({ criterionId: c.id, levelId: selections[c.id]! }));
     startTransition(async () => {
-      const res = await gradeCodeSubmissionWithRubricAction(codeSubmissionId, sel, maxScore);
-      if (res.success) {
-        toast.success(res.message);
-        onGraded?.(res.data?.score ?? total);
-      } else {
-        toast.error(res.error);
+      try {
+        const data = await apiClient.post<{ score: number }>(
+          `/rubrics/grade/code-submission/${codeSubmissionId}`,
+          { selections: sel, maxScore }
+        );
+        toast.success(`Đã chấm: ${data.score} điểm.`);
+        onGraded?.(data.score);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

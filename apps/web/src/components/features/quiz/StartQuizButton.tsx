@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PlayCircle } from 'lucide-react';
-import { startAttemptAction } from '@/actions/attempts';
+import { apiClient } from '@/lib/api-client';
 
 type Props = {
   quizId: string;
@@ -19,11 +19,11 @@ export function StartQuizButton({ quizId, courseSlug, label = 'Bắt đầu làm
 
   function handleStart() {
     startTransition(async () => {
-      const res = await startAttemptAction(quizId);
-      if (res.success && res.data) {
-        router.push(`/courses/${courseSlug}/quizzes/${quizId}/attempt/${res.data.attemptId}`);
-      } else if (!res.success) {
-        toast.error(res.error);
+      try {
+        const data = await apiClient.post<{ attemptId: string }>('/attempts', { quizId });
+        router.push(`/courses/${courseSlug}/quizzes/${quizId}/attempt/${data.attemptId}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

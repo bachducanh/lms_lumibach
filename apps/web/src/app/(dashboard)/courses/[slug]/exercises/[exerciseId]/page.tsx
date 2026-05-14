@@ -9,7 +9,7 @@ import {
   listMyExerciseSubmissionsAction,
   listExerciseSubmissionsAction,
 } from '@/actions/exercises';
-import { getCodeExerciseRubricAction } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 import { logActivity } from '@/lib/activity';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
@@ -99,7 +99,9 @@ export default async function ExerciseViewPage({
       .catch(() => [] as CourseNavItem[]),
     userId ? listMyExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
     isTeacher ? listExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
-    isTeacher ? getCodeExerciseRubricAction(exerciseId) : Promise.resolve(null),
+    isTeacher
+      ? api.get<RubricData>(`/rubrics/code-exercise/${exerciseId}`).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const currentIndex = allNavItems.findIndex((i) => i.codeExerciseId === exerciseId);

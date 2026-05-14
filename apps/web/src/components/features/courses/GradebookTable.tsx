@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Download, ChevronUp, ChevronDown } from 'lucide-react';
-import type { GbColumn, GbStudent } from '@/actions/gradebook';
+import type { GbColumn, GbStudent } from '@lumibach/types';
 
 function pct(score: number | null, max: number) {
   if (score === null || max === 0) return null;

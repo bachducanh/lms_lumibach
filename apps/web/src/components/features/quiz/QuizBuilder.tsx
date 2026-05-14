@@ -14,20 +14,13 @@ import {
   FolderOpen,
   Shuffle,
 } from 'lucide-react';
-import {
-  addQuestionToQuizAction,
-  removeQuestionFromQuizAction,
-  reorderQuizQuestionsAction,
-  setQuizQuestionPointsAction,
-  addMultipleQuestionsToQuizAction,
-  addRandomQuestionsToQuizAction,
-  type QuizBank,
-  type AddedQuizQuestion,
-} from '@/actions/quizzes';
+import { apiClient } from '@/lib/api-client';
+import type { QuizBankGroup } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { QuestionType } from '@lumibach/db';
 
 type QuizQItem = {
+  id: string;
   questionId: string;
   position: number;
   points: number | null;
@@ -42,7 +35,7 @@ type Props = {
   quizId: string;
   courseSlug: string;
   initialItems: QuizQItem[];
-  banks: QuizBank[];
+  banks: QuizBankGroup[];
 };
 
 const TYPE_BADGE: Record<string, string> = {
@@ -98,18 +91,22 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
     return sum + (isNaN(pts) ? 0 : pts);
   }, 0);
 
-  function runAction(fn: () => Promise<{ success: boolean; error?: string; message?: string }>) {
+  function runAction(fn: () => Promise<void>) {
     startTransition(async () => {
-      const res = await fn();
-      if (!res.success) toast.error(res.error ?? 'Có lỗi xảy ra.');
+      try {
+        await fn();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+      }
       router.refresh();
     });
   }
 
-  function handleAddOne(q: QuizBank['questions'][number]) {
+  function handleAddOne(q: QuizBankGroup['questions'][number]) {
     setItems((prev) => [
       ...prev,
       {
+        id: '',
         questionId: q.id,
         position: prev.length,
         points: null,
@@ -122,7 +119,9 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
       return n;
     });
     setPointInputs((prev) => ({ ...prev, [q.id]: '' }));
-    runAction(() => addQuestionToQuizAction(quizId, q.id));
+    runAction(async () => {
+      await apiClient.post(`/quizzes/${quizId}/questions`, { questionId: q.id });
+    });
   }
 
   function handleRemove(questionId: string) {
@@ -134,7 +133,9 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
       delete n[questionId];
       return n;
     });
-    runAction(() => removeQuestionFromQuizAction(quizId, questionId));
+    runAction(async () => {
+      await apiClient.delete(`/quizzes/${quizId}/questions/${questionId}`);
+    });
   }
 
   function handleDrop(dropIdx: number) {
@@ -146,19 +147,22 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
     const reindexed = newItems.map((item, i) => ({ ...item, position: i }));
     setItems(reindexed);
     dragSrcIdx.current = null;
-    runAction(() =>
-      reorderQuizQuestionsAction(
-        quizId,
-        reindexed.map((i) => i.questionId)
-      )
-    );
+    runAction(async () => {
+      await apiClient.patch(`/quizzes/${quizId}/questions/reorder`, {
+        orderedIds: reindexed.map((i) => i.questionId),
+      });
+    });
   }
 
   function handlePointsBlur(questionId: string) {
     const raw = pointInputs[questionId] ?? '';
     const pts = raw === '' ? null : Number(raw);
     if (pts !== null && isNaN(pts)) return;
-    runAction(() => setQuizQuestionPointsAction(quizId, questionId, pts));
+    const item = items.find((i) => i.questionId === questionId);
+    if (!item?.id) return;
+    runAction(async () => {
+      await apiClient.patch(`/quizzes/quiz-questions/${item.id}/points`, { points: pts });
+    });
   }
 
   function toggleSelect(id: string) {
@@ -176,6 +180,7 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
     setItems((prev) => [
       ...prev,
       ...toAdd.map((q, i) => ({
+        id: '',
         questionId: q.id,
         position: prev.length + i,
         points: null,
@@ -184,7 +189,9 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
     ]);
     toAdd.forEach((q) => setPointInputs((prev) => ({ ...prev, [q.id]: '' })));
     setSelected(new Set());
-    runAction(() => addMultipleQuestionsToQuizAction(quizId, ids));
+    runAction(async () => {
+      await apiClient.post(`/quizzes/${quizId}/questions`, { questionIds: ids });
+    });
   }
 
   async function handleAddRandom() {
@@ -192,29 +199,17 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
     if (!n || n < 1) return;
     if (pending) return;
     startTransition(async () => {
-      const res = await addRandomQuestionsToQuizAction(quizId, n, selectedBankId ?? undefined);
-      if (!res.success) {
-        toast.error(res.error ?? 'Có lỗi xảy ra.');
-        return;
+      try {
+        await apiClient.post(`/quizzes/${quizId}/questions`, {
+          random: true,
+          count: n,
+          fromCategoryId: selectedBankId ?? undefined,
+        });
+        toast.success(`Đã thêm ngẫu nhiên.`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      toast.success(res.message);
-      const added = (res as { data?: { added: AddedQuizQuestion[] } }).data?.added ?? [];
-      if (added.length > 0) {
-        setItems((prev) => [
-          ...prev,
-          ...added.map((a) => ({
-            questionId: a.questionId,
-            position: a.position,
-            points: a.points,
-            question: {
-              type: a.question.type as any,
-              content: a.question.content,
-              points: a.question.points,
-            },
-          })),
-        ]);
-        added.forEach((a) => setPointInputs((prev) => ({ ...prev, [a.questionId]: '' })));
-      }
+      router.refresh();
     });
   }
 

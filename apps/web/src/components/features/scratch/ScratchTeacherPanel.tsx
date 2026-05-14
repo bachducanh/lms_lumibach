@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { ScratchEditor } from './ScratchEditor';
 import { gradeScratchSubmissionAction } from '@/actions/scratch';
 import { RubricGradePanel } from '@/components/features/code/RubricGradePanel';
-import type { RubricData } from '@/actions/rubric';
+import type { RubricData } from '@lumibach/types';
 import { Users, CheckCircle2, Clock, Eye, Save, X } from 'lucide-react';
 
 type Submission = {
