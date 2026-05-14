@@ -594,19 +594,19 @@ Hiện tại `apps/web/src/actions/` có (sau Phase 0):
 
 ## 9. Bảng theo dõi tiến độ
 
-| Phase                             | Status  | Ngày bắt đầu | Ngày kết thúc | Performance check  | Note                                                  |
-| --------------------------------- | ------- | ------------ | ------------- | ------------------ | ----------------------------------------------------- |
-| 0 — Foundation + CI/CD            | ⬜ Chưa |              |               | —                  |                                                       |
-| 0.5 — Performance baseline        | ⬜      |              |               | Baseline number    |                                                       |
-| 1 — NestJS skeleton + Auth bridge | ⬜      |              |               | API p95 < 500ms    |                                                       |
-| 2 — Testing foundation            | ⬜      |              |               | —                  |                                                       |
-| 3 — Low-risk modules              | ⬜      |              |               | So sánh baseline   |                                                       |
-| 4 — Core domain                   | ⬜      |              |               | So sánh baseline   |                                                       |
-| 5 — Assessment                    | ✅ Done | 2026-05-14   | 2026-05-14    | So sánh baseline   | 6 modules, 6 actions deleted                          |
-| 6 — Code execution + jobs         | ✅ Done | 2026-05-14   | 2026-05-14    | Code exec p95 < 5s | code-exercises + sandbox + scratch, 4 actions deleted |
-| 6.5 — WebSocket gateway           | ⬜      |              |               | —                  |                                                       |
-| 7 — Auth migration                | ⬜      |              |               | —                  |                                                       |
-| 8 — Production deploy             | ⬜      |              |               | Full budget §15    |                                                       |
+| Phase                             | Status  | Ngày bắt đầu | Ngày kết thúc | Performance check  | Note                                                   |
+| --------------------------------- | ------- | ------------ | ------------- | ------------------ | ------------------------------------------------------ |
+| 0 — Foundation + CI/CD            | ⬜ Chưa |              |               | —                  |                                                        |
+| 0.5 — Performance baseline        | ⬜      |              |               | Baseline number    |                                                        |
+| 1 — NestJS skeleton + Auth bridge | ⬜      |              |               | API p95 < 500ms    |                                                        |
+| 2 — Testing foundation            | ⬜      |              |               | —                  |                                                        |
+| 3 — Low-risk modules              | ⬜      |              |               | So sánh baseline   |                                                        |
+| 4 — Core domain                   | ⬜      |              |               | So sánh baseline   |                                                        |
+| 5 — Assessment                    | ✅ Done | 2026-05-14   | 2026-05-14    | So sánh baseline   | 6 modules, 6 actions deleted                           |
+| 6 — Code execution + jobs         | ✅ Done | 2026-05-14   | 2026-05-14    | Code exec p95 < 5s | code-exercises + sandbox + scratch, 4 actions deleted  |
+| 6.5 — WebSocket gateway           | ✅ Done | 2026-05-14   | 2026-05-14    | —                  | NotificationGateway, CodeExecutionGateway, QuizGateway |
+| 7 — Auth Actions Migration        | ✅ Done | 2026-05-14   | 2026-05-14    | —                  | 7 endpoints /auth/\*, EmailService, auth.ts deleted    |
+| 8 — Production deploy             | ⬜      |              |               | Full budget §15    |                                                        |
 
 ---
 

@@ -26,29 +26,48 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        if (!parsed.success) {
+          console.error('[auth] invalid credentials shape:', parsed.error.issues);
+          return null;
+        }
 
         const { email, password } = parsed.data;
 
-        const user = await prisma.user.findUnique({
-          where: { email, deletedAt: null },
-          select: {
-            id: true,
-            email: true,
-            passwordHash: true,
-            firstName: true,
-            lastName: true,
-            fullName: true,
-            avatar: true,
-            role: true,
-            status: true,
-          },
-        });
+        let user;
+        try {
+          user = await prisma.user.findUnique({
+            where: { email, deletedAt: null },
+            select: {
+              id: true,
+              email: true,
+              passwordHash: true,
+              firstName: true,
+              lastName: true,
+              fullName: true,
+              avatar: true,
+              role: true,
+              status: true,
+            },
+          });
+        } catch (err) {
+          console.error('[auth] DB error:', err);
+          return null;
+        }
 
-        if (!user || user.status !== 'ACTIVE') return null;
+        if (!user) {
+          console.error('[auth] user not found:', email);
+          return null;
+        }
+        if (user.status !== 'ACTIVE') {
+          console.error('[auth] user status not ACTIVE:', user.status, email);
+          return null;
+        }
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
-        if (!isValid) return null;
+        if (!isValid) {
+          console.error('[auth] wrong password for:', email);
+          return null;
+        }
 
         await prisma.user.update({
           where: { id: user.id },

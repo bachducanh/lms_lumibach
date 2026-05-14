@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
   private readonly transporter: nodemailer.Transporter | null;
   private readonly from: string;
   private readonly appUrl: string;
@@ -42,7 +43,22 @@ export class EmailService {
       process.stdout.write('└─────────────────────────────────────────────────────┘\n\n');
       return;
     }
-    await this.transporter.sendMail({ from: this.from, to, subject, html });
+    try {
+      await this.transporter.sendMail({ from: this.from, to, subject, html });
+    } catch (err) {
+      this.logger.error(`SMTP send failed, falling back to stdout: ${(err as Error).message}`);
+      const links = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+      process.stdout.write('\n┌─────────────────────────────────────────────────────┐\n');
+      process.stdout.write('│  📧  EMAIL (SMTP FAILED — fallback stdout)          │\n');
+      process.stdout.write('├─────────────────────────────────────────────────────┤\n');
+      process.stdout.write(`│  To     : ${to.slice(0, 41).padEnd(41)}│\n`);
+      process.stdout.write(`│  Subject: ${subject.slice(0, 41).padEnd(41)}│\n`);
+      if (links[0]) {
+        process.stdout.write('├─────────────────────────────────────────────────────┤\n');
+        process.stdout.write(`│  🔗 ${links[0]}\n`);
+      }
+      process.stdout.write('└─────────────────────────────────────────────────────┘\n\n');
+    }
   }
 
   async sendVerificationEmail(email: string, token: string) {
