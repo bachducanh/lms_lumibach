@@ -11,6 +11,17 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingRoot: monorepoRoot,
   allowedDevOrigins: ['lumi.nextgentra.com', '*.nextgentra.com'],
+  async rewrites() {
+    // Proxy browser API calls through Next.js server so they work behind
+    // any tunnel/reverse-proxy (lumi.nextgentra.com) without CORS issues.
+    // Server-side requests bypass this rewrite and call API_INTERNAL_URL directly.
+    const internalBase =
+      process.env.API_INTERNAL_URL ??
+      process.env.NEXT_PUBLIC_API_URL ??
+      'http://localhost:4000/api/v1';
+    const apiRoot = internalBase.replace(/\/api\/v1$/, '');
+    return [{ source: '/api/v1/:path*', destination: `${apiRoot}/api/v1/:path*` }];
+  },
   images: {
     remotePatterns: [
       {

@@ -11,6 +11,7 @@
  */
 
 const DEFAULT_BASE = 'http://localhost:4000/api/v1';
+const DEFAULT_RELATIVE = '/api/v1';
 
 type ApiSuccess<T> = { success: true; data: T; meta?: unknown };
 type ApiFailure = {
@@ -47,17 +48,43 @@ type RequestOptions = {
 };
 
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_BASE;
+  if (typeof window !== 'undefined') {
+    // Browser: use relative path so requests go through Next.js rewrite.
+    // This works behind any tunnel/reverse-proxy without CORS issues.
+    return DEFAULT_RELATIVE;
+  }
+  // Server-side (Server Components, Route Handlers): call NestJS directly.
+  // API_INTERNAL_URL is preferred; falls back to NEXT_PUBLIC_API_URL.
+  return process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_BASE;
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
-  const url = new URL(`${getBaseUrl()}${path}`);
-  if (query) {
+  const base = getBaseUrl();
+  const combined = `${base}${path}`;
+
+  const applyQuery = (u: string) => {
+    if (!query) return u;
+    const params = new URLSearchParams();
     for (const [k, v] of Object.entries(query)) {
-      if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+      if (v !== undefined && v !== null) params.set(k, String(v));
     }
+    const qs = params.toString();
+    return qs ? `${u}?${qs}` : u;
+  };
+
+  // Absolute URL (server-side)
+  if (combined.startsWith('http')) {
+    const url = new URL(combined);
+    if (query) {
+      for (const [k, v] of Object.entries(query)) {
+        if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+      }
+    }
+    return url.toString();
   }
-  return url.toString();
+
+  // Relative URL (browser via rewrite)
+  return applyQuery(combined);
 }
 
 async function request<T>(method: Method, path: string, opts: RequestOptions = {}): Promise<T> {
