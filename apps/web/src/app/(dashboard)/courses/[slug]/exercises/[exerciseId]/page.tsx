@@ -4,11 +4,11 @@ import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, CourseNavItem } from '@lumibach/types';
-import {
-  getExerciseAction,
-  listMyExerciseSubmissionsAction,
-  listExerciseSubmissionsAction,
-} from '@/actions/exercises';
+import type {
+  CodeExerciseDetail,
+  MyExerciseSubmission,
+  ExerciseSubmissionDetail,
+} from '@lumibach/types';
 import type { RubricData } from '@lumibach/types';
 import { logActivity } from '@/lib/activity';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
@@ -44,7 +44,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string; exerciseId: string }>;
 }) {
   const { exerciseId } = await params;
-  const ex = await getExerciseAction(exerciseId);
+  const api = apiServerClient(await cookies());
+  const ex = await api.get<CodeExerciseDetail>(`/code-exercises/${exerciseId}`).catch(() => null);
   return { title: ex?.title ?? 'Bài tập code' };
 }
 
@@ -62,7 +63,9 @@ export default async function ExerciseViewPage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const exercise = await getExerciseAction(exerciseId);
+  const exercise = await api
+    .get<CodeExerciseDetail>(`/code-exercises/${exerciseId}`)
+    .catch(() => null);
   if (!exercise || exercise.courseId !== course.id) notFound();
 
   if (userId)
@@ -97,8 +100,16 @@ export default async function ExerciseViewPage({
         CourseNavItem[]
       >('/modules/nav', { query: { courseId: course.id, publishedOnly: role === 'STUDENT' } })
       .catch(() => [] as CourseNavItem[]),
-    userId ? listMyExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
-    isTeacher ? listExerciseSubmissionsAction(exerciseId) : Promise.resolve([]),
+    userId
+      ? api
+          .get<MyExerciseSubmission[]>(`/code-exercises/${exerciseId}/my-submissions`)
+          .catch(() => [] as MyExerciseSubmission[])
+      : Promise.resolve([] as MyExerciseSubmission[]),
+    isTeacher
+      ? api
+          .get<ExerciseSubmissionDetail[]>(`/code-exercises/${exerciseId}/submissions`)
+          .catch(() => [] as ExerciseSubmissionDetail[])
+      : Promise.resolve([] as ExerciseSubmissionDetail[]),
     isTeacher
       ? api.get<RubricData>(`/rubrics/code-exercise/${exerciseId}`).catch(() => null)
       : Promise.resolve(null),
@@ -276,9 +287,9 @@ export default async function ExerciseViewPage({
           exerciseId={exerciseId}
           language={exercise.language}
           starterCode={exercise.starterCode ?? ''}
-          starterHtml={(exercise as any).starterHtml ?? null}
-          starterCss={(exercise as any).starterCss ?? null}
-          starterJs={(exercise as any).starterJs ?? null}
+          starterHtml={exercise.starterHtml ?? null}
+          starterCss={exercise.starterCss ?? null}
+          starterJs={exercise.starterJs ?? null}
           initialSubs={mySubs}
         />
 
@@ -287,7 +298,7 @@ export default async function ExerciseViewPage({
           <TeacherSubmissionsPanel
             exerciseId={exerciseId}
             language={exercise.language}
-            initialSubs={allSubs as any}
+            initialSubs={allSubs}
             rubric={rubric}
           />
         )}

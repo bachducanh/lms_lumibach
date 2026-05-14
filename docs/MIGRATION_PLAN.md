@@ -5,7 +5,7 @@
 **Ngày tạo kế hoạch:** 2026-05-11
 **Người thực hiện:** Solo dev (giáo viên Tin học)
 **Ước lượng tổng:** 4-6 tháng (làm bán thời gian, song song với giảng dạy)
-**Trạng thái:** Phase 0–4 + **Phase 5 (Assessment Modules) hoàn thành** (2026-05-14). Migrated 17 modules total (+ 6 assessment: assignments, rubrics, questions, quizzes, attempts, gradebook). All FE server pages + client components migrated. 6 action files deleted. Branch `feat/phase-5-assessment-modules`. Judge0 integration via NestJS. Full assessment flow (quiz, code grading, rubrics, attempts) fully on NestJS.
+**Trạng thái:** Phase 0–5 + **Phase 6 (Code Execution Modules) hoàn thành** (2026-05-14). Migrated 21 modules total (+ code-exercises, sandbox, scratch). All FE server pages + client components migrated. 4 action files deleted (code, exercises, sandbox, scratch). Branch `feat/phase-5-assessment-modules`. Judge0 integration via NestJS. Code execution, sandbox, Scratch fully on NestJS. Only `auth.ts` action remains (Phase 7).
 
 ---
 
@@ -601,19 +601,19 @@ Hiện tại `apps/web/src/actions/` có (sau Phase 0):
 
 ## 9. Bảng theo dõi tiến độ
 
-| Phase                             | Status  | Ngày bắt đầu | Ngày kết thúc | Performance check  | Note |
-| --------------------------------- | ------- | ------------ | ------------- | ------------------ | ---- |
-| 0 — Foundation + CI/CD            | ⬜ Chưa |              |               | —                  |      |
-| 0.5 — Performance baseline        | ⬜      |              |               | Baseline number    |      |
-| 1 — NestJS skeleton + Auth bridge | ⬜      |              |               | API p95 < 500ms    |      |
-| 2 — Testing foundation            | ⬜      |              |               | —                  |      |
-| 3 — Low-risk modules              | ⬜      |              |               | So sánh baseline   |      |
-| 4 — Core domain                   | ⬜      |              |               | So sánh baseline   |      |
-| 5 — Assessment                    | ⬜      |              |               | So sánh baseline   |      |
-| 6 — Code execution + jobs         | ⬜      |              |               | Code exec p95 < 5s |      |
-| 6.5 — WebSocket gateway           | ⬜      |              |               | —                  |      |
-| 7 — Auth migration                | ⬜      |              |               | —                  |      |
-| 8 — Production deploy             | ⬜      |              |               | Full budget §15    |      |
+| Phase                             | Status  | Ngày bắt đầu | Ngày kết thúc | Performance check  | Note                                                  |
+| --------------------------------- | ------- | ------------ | ------------- | ------------------ | ----------------------------------------------------- |
+| 0 — Foundation + CI/CD            | ⬜ Chưa |              |               | —                  |                                                       |
+| 0.5 — Performance baseline        | ⬜      |              |               | Baseline number    |                                                       |
+| 1 — NestJS skeleton + Auth bridge | ⬜      |              |               | API p95 < 500ms    |                                                       |
+| 2 — Testing foundation            | ⬜      |              |               | —                  |                                                       |
+| 3 — Low-risk modules              | ⬜      |              |               | So sánh baseline   |                                                       |
+| 4 — Core domain                   | ⬜      |              |               | So sánh baseline   |                                                       |
+| 5 — Assessment                    | ✅ Done | 2026-05-14   | 2026-05-14    | So sánh baseline   | 6 modules, 6 actions deleted                          |
+| 6 — Code execution + jobs         | ✅ Done | 2026-05-14   | 2026-05-14    | Code exec p95 < 5s | code-exercises + sandbox + scratch, 4 actions deleted |
+| 6.5 — WebSocket gateway           | ⬜      |              |               | —                  |                                                       |
+| 7 — Auth migration                | ⬜      |              |               | —                  |                                                       |
+| 8 — Production deploy             | ⬜      |              |               | Full budget §15    |                                                       |
 
 ---
 

@@ -5,12 +5,8 @@ import { Play, Send, Loader2, CheckCircle2, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';
-import {
-  runCodeAction,
-  submitExerciseAction,
-  getExerciseSubmissionAction,
-  type RunCodeResult,
-} from '@/actions/exercises';
+import { apiClient } from '@/lib/api-client';
+import type { RunCodeResult, ExerciseSubmissionDetail } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage, CodeSubmissionStatus } from '@lumibach/db';
 
@@ -52,7 +48,7 @@ const STATUS_CLASS: Record<CodeSubmissionStatus, string> = {
 
 // ── Types ─────────────────────────────────────────────────────
 
-type Submission = NonNullable<Awaited<ReturnType<typeof getExerciseSubmissionAction>>>;
+type Submission = ExerciseSubmissionDetail;
 type SubSummary = {
   id: string;
   status: CodeSubmissionStatus;
@@ -185,34 +181,41 @@ export function ExerciseSubmitPanel({
   function handleRun() {
     startRun(async () => {
       setRunResult(null);
-      const res = await runCodeAction(exerciseId, code, language, stdin);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const result = await apiClient.post<RunCodeResult>(`/code-exercises/${exerciseId}/run`, {
+          code,
+          language,
+          stdin,
+        });
+        setRunResult(result);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      setRunResult(res.result);
     });
   }
 
   function handleSubmit() {
     const codeToSubmit = isWeb ? JSON.stringify(webCode) : code;
     startSub(async () => {
-      const res = await submitExerciseAction(exerciseId, codeToSubmit, language);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await apiClient.post<{ submissionId: string }>(
+          `/code-exercises/${exerciseId}/submit`,
+          { code: codeToSubmit, language }
+        );
+        toast.success('Đã nộp bài! Giáo viên sẽ xem và chấm điểm.');
+        const newSub: SubSummary = {
+          id: res.submissionId,
+          status: 'MANUAL_REVIEW',
+          score: null,
+          maxScore: null,
+          submittedAt: new Date(),
+          attemptNumber: (subs[0]?.attemptNumber ?? 0) + 1,
+          language,
+        };
+        setSubs((prev) => [newSub, ...prev]);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      toast.success('Đã nộp bài! Giáo viên sẽ xem và chấm điểm.');
-      const newSub: SubSummary = {
-        id: res.submissionId,
-        status: 'MANUAL_REVIEW',
-        score: null,
-        maxScore: null,
-        submittedAt: new Date(),
-        attemptNumber: (subs[0]?.attemptNumber ?? 0) + 1,
-        language,
-      };
-      setSubs((prev) => [newSub, ...prev]);
     });
   }
 
@@ -220,8 +223,12 @@ export function ExerciseSubmitPanel({
     setActiveSubId(subId);
     setActiveSub(null);
     startView(async () => {
-      const sub = await getExerciseSubmissionAction(subId);
-      setActiveSub(sub);
+      try {
+        const sub = await apiClient.get<Submission>(`/code-exercises/submissions/${subId}`);
+        setActiveSub(sub);
+      } catch {
+        setActiveSub(null);
+      }
     });
   }
 
@@ -490,12 +497,16 @@ function QuickRun({
   function handleRun() {
     startRun(async () => {
       setRunResult(null);
-      const res = await runCodeAction(exerciseId, code, language, stdin);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const result = await apiClient.post<RunCodeResult>(`/code-exercises/${exerciseId}/run`, {
+          code,
+          language,
+          stdin,
+        });
+        setRunResult(result);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      setRunResult(res.result);
     });
   }
 

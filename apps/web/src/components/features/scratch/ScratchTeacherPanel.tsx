@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ScratchEditor } from './ScratchEditor';
-import { gradeScratchSubmissionAction } from '@/actions/scratch';
+import { apiClient } from '@/lib/api-client';
 import { RubricGradePanel } from '@/components/features/code/RubricGradePanel';
 import type { RubricData } from '@lumibach/types';
 import { Users, CheckCircle2, Clock, Eye, Save, X } from 'lucide-react';
@@ -79,18 +79,17 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
     }
 
     startTransition(async () => {
-      const res = await gradeScratchSubmissionAction({
-        submissionId: s.id,
-        score,
-        maxScore: Number.isNaN(maxScore) ? 10 : maxScore,
-        feedback: feedbackInput[s.id] ?? s.feedback ?? '',
-      });
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        await apiClient.patch(`/scratch/submissions/${s.id}/grade`, {
+          score,
+          maxScore: Number.isNaN(maxScore) ? 10 : maxScore,
+          feedback: feedbackInput[s.id] ?? s.feedback ?? '',
+        });
+        toast.success('Đã chấm.');
+        router.refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      toast.success(res.message ?? 'Đã chấm.');
-      router.refresh();
     });
   }
 

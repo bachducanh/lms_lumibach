@@ -4,7 +4,7 @@ import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, AssignmentsByModule, AssignmentListItem } from '@lumibach/types';
-import { listCourseExercisesByModuleAction, type CodeExerciseListItem } from '@/actions/exercises';
+import type { CodeExerciseListItem, ExerciseModuleGroup } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import {
   ClipboardList,
@@ -202,7 +202,16 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
     { groups: eGroups, standalone: eStandalone },
   ] = await Promise.all([
     api.get<AssignmentsByModule>('/assignments', { query: { courseId: course.id } }),
-    listCourseExercisesByModuleAction(course.id),
+    api
+      .get<{ groups: ExerciseModuleGroup[]; standalone: CodeExerciseListItem[] }>(
+        '/code-exercises/by-module',
+        { query: { courseId: course.id } }
+      )
+      .then((r) => ({ groups: r.groups, standalone: r.standalone }))
+      .catch(() => ({
+        groups: [] as ExerciseModuleGroup[],
+        standalone: [] as CodeExerciseListItem[],
+      })),
   ]);
 
   // Merge module groups: combine assignments + exercises per module

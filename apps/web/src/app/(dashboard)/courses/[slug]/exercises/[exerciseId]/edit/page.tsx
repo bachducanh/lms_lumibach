@@ -4,7 +4,7 @@ import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail } from '@lumibach/types';
-import { getExerciseAction } from '@/actions/exercises';
+import type { CodeExerciseDetail } from '@lumibach/types';
 import type { RubricData } from '@lumibach/types';
 import { ExerciseSetup } from '@/components/features/code/ExerciseSetup';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
@@ -34,7 +34,9 @@ export default async function EditExercisePage({
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
   if (!canManage) redirect(`/courses/${slug}`);
 
-  const exercise = await getExerciseAction(exerciseId);
+  const exercise = await api
+    .get<CodeExerciseDetail>(`/code-exercises/${exerciseId}`)
+    .catch(() => null);
   if (!exercise || exercise.courseId !== course.id) notFound();
 
   const rubric = await api
@@ -69,9 +71,9 @@ export default async function EditExercisePage({
           status: exercise.status,
           starterCode: exercise.starterCode,
           solutionCode: exercise.solutionCode,
-          starterHtml: (exercise as any).starterHtml ?? null,
-          starterCss: (exercise as any).starterCss ?? null,
-          starterJs: (exercise as any).starterJs ?? null,
+          starterHtml: exercise.starterHtml ?? null,
+          starterCss: exercise.starterCss ?? null,
+          starterJs: exercise.starterJs ?? null,
           timeLimit: exercise.timeLimit,
           memoryLimit: exercise.memoryLimit,
           testCases: exercise.testCases.map((tc) => ({

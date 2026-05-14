@@ -16,7 +16,6 @@ import { buttonVariants } from '@/components/ui/button';
 import { SubmissionForm } from '@/components/features/assignments/SubmissionForm';
 import { CodeSubmitPanel } from '@/components/features/code/CodeSubmitPanel';
 import { CodeAssignmentSetup } from '@/components/features/code/CodeAssignmentSetup';
-import { getCodeAssignmentAction, listMyCodeSubmissionsAction } from '@/actions/code';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Clock,
@@ -134,10 +133,8 @@ export default async function AssignmentViewPage({
         CourseNavItem[]
       >('/modules/nav', { query: { courseId: course.id, publishedOnly: !isStaff } })
       .catch(() => [] as CourseNavItem[]),
-    isCodeAssignment ? getCodeAssignmentAction(assignmentId) : Promise.resolve(null),
-    role === 'STUDENT' && isCodeAssignment
-      ? listMyCodeSubmissionsAction(assignmentId)
-      : Promise.resolve([]),
+    Promise.resolve(null),
+    role === 'STUDENT' && isCodeAssignment ? Promise.resolve([]) : Promise.resolve([]),
   ]);
   const currentNavIndex = allNavItems.findIndex((item) => item.assignmentId === assignmentId);
   const prevNavItem = currentNavIndex > 0 ? (allNavItems[currentNavIndex - 1] ?? null) : null;

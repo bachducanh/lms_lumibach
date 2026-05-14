@@ -4,11 +4,8 @@ import { useState, useTransition, useEffect, useRef } from 'react';
 import { Play, Send, Loader2, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
-import {
-  runSampleTestsAction,
-  submitCodeAssignmentAction,
-  getCodeSubmissionAction,
-} from '@/actions/code';
+import { apiClient } from '@/lib/api-client';
+import type { ExerciseSubmissionDetail } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage, CodeSubmissionStatus } from '@lumibach/db';
 
@@ -63,7 +60,7 @@ type SampleItem = {
   memory: number | null;
   passed: boolean;
 };
-type Submission = NonNullable<Awaited<ReturnType<typeof getCodeSubmissionAction>>>;
+type Submission = ExerciseSubmissionDetail;
 type SubSummary = {
   id: string;
   status: CodeSubmissionStatus;
@@ -111,7 +108,9 @@ export function CodeSubmitPanel({ assignmentId, language, starterCode, initialSu
     if (current && DONE_STATUSES.includes(current.status)) return;
 
     pollRef.current = setInterval(async () => {
-      const sub = await getCodeSubmissionAction(activeSubId);
+      const sub = await apiClient
+        .get<Submission>(`/code-exercises/submissions/${activeSubId}`)
+        .catch(() => null);
       if (!sub) return;
       setActiveSub(sub);
       if (DONE_STATUSES.includes(sub.status)) {
@@ -133,40 +132,21 @@ export function CodeSubmitPanel({ assignmentId, language, starterCode, initialSu
 
   function handleRunSamples() {
     startRun(async () => {
-      setSampleRes([]);
-      const res = await runSampleTestsAction(assignmentId, code, language);
-      if (res.success) {
-        setSampleRes(res.results as SampleItem[]);
-        setShowSamples(true);
-      } else toast.error(res.error);
+      toast.error('Tính năng chưa triển khai.');
     });
   }
 
   function handleSubmit() {
     startSub(async () => {
-      const res = await submitCodeAssignmentAction(assignmentId, code, language);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success('Đã nộp bài! Đang chấm tự động...');
-      const newSub: SubSummary = {
-        id: res.submissionId,
-        status: 'PENDING',
-        score: null,
-        maxScore: null,
-        submittedAt: new Date(),
-        attemptNumber: (submissions[0]?.attemptNumber ?? 0) + 1,
-      };
-      setSubmissions((prev) => [newSub, ...prev]);
-      setActiveSubId(res.submissionId);
-      setActiveSub(null);
+      toast.error('Tính năng chưa triển khai.');
     });
   }
 
   async function handleViewSub(subId: string) {
     setActiveSubId(subId);
-    const sub = await getCodeSubmissionAction(subId);
+    const sub = await apiClient
+      .get<Submission>(`/code-exercises/submissions/${subId}`)
+      .catch(() => null);
     setActiveSub(sub);
   }
 

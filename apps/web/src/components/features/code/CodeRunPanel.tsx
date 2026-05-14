@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { Play, Loader2, ChevronDown } from 'lucide-react';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
-import { runCodeAction } from '@/actions/code';
+import { apiClient } from '@/lib/api-client';
+import type { SandboxRunResult } from '@lumibach/types';
 import { LANGUAGE_ID } from '@/lib/judge0';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +35,7 @@ const STATUS_CLASS: Record<number, string> = {
 
 // ── Types ─────────────────────────────────────────────────────
 
-type RunResult = Awaited<ReturnType<typeof runCodeAction>>;
+type RunResult = ({ success: true } & SandboxRunResult) | { success: false; error: string };
 
 type Props = {
   initialLanguage?: LangKey;
@@ -69,8 +70,16 @@ export function CodeRunPanel({
   function handleRun() {
     startRun(async () => {
       setResult(null);
-      const res = await runCodeAction(lang.judgeId, code, stdin);
-      setResult(res);
+      try {
+        const data = await apiClient.post<SandboxRunResult>('/sandbox/run', {
+          languageId: lang.judgeId,
+          sourceCode: code,
+          stdin,
+        });
+        setResult({ success: true, ...data });
+      } catch (e) {
+        setResult({ success: false, error: e instanceof Error ? e.message : 'Có lỗi xảy ra.' });
+      }
     });
   }
 

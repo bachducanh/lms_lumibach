@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import { Loader2, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createExerciseAction } from '@/actions/exercises';
+import { apiClient } from '@/lib/api-client';
 import type { CodeLanguage } from '@lumibach/db';
 
 const LANGUAGES: { key: CodeLanguage; label: string; icon: string }[] = [
@@ -34,13 +34,18 @@ export function ExerciseEditor({ courseId, courseSlug, moduleId }: Props) {
       return;
     }
     start(async () => {
-      const res = await createExerciseAction(courseId, { title: title.trim(), language, moduleId });
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await apiClient.post<{ exerciseId: string }>('/code-exercises', {
+          courseId,
+          title: title.trim(),
+          language,
+          moduleId,
+        });
+        toast.success('Đã tạo bài tập code!');
+        router.push(`/courses/${courseSlug}/exercises/${res.exerciseId}/edit`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      toast.success('Đã tạo bài tập code!');
-      router.push(`/courses/${courseSlug}/exercises/${res.exerciseId}/edit`);
     });
   }
 

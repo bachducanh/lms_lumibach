@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Sb3Upload } from './Sb3Upload';
-import { createScratchExerciseAction, updateScratchExerciseAction } from '@/actions/scratch';
+import { apiClient } from '@/lib/api-client';
 
 type Props =
   | {
@@ -47,35 +47,30 @@ export function ScratchExerciseForm(props: Props) {
       return;
     }
     startTransition(async () => {
-      if (props.mode === 'create') {
-        const res = await createScratchExerciseAction({
-          courseId: props.courseId,
-          title: title.trim(),
-          description: description.trim() || undefined,
-          starterFileUrl: starterUrl ?? null,
-          moduleId: props.moduleId,
-        });
-        if (!res.success) {
-          toast.error(res.error);
-          return;
+      try {
+        if (props.mode === 'create') {
+          const res = await apiClient.post<{ exerciseId: string }>('/scratch', {
+            courseId: props.courseId,
+            title: title.trim(),
+            description: description.trim() || undefined,
+            starterFileUrl: starterUrl ?? undefined,
+            moduleId: props.moduleId ?? undefined,
+          });
+          toast.success('Đã tạo.');
+          router.push(`/courses/${props.courseSlug}/scratch/${res.exerciseId}`);
+        } else {
+          await apiClient.patch(`/scratch/${props.exerciseId}`, {
+            title: title.trim(),
+            description: description.trim() || null,
+            starterFileUrl: starterUrl ?? null,
+            status,
+          });
+          toast.success('Đã cập nhật.');
+          router.push(`/courses/${props.courseSlug}/scratch/${props.exerciseId}`);
+          router.refresh();
         }
-        toast.success(res.message ?? 'Đã tạo.');
-        router.push(`/courses/${props.courseSlug}/scratch/${res.exerciseId}`);
-      } else {
-        const res = await updateScratchExerciseAction({
-          exerciseId: props.exerciseId,
-          title: title.trim(),
-          description: description.trim() || null,
-          starterFileUrl: starterUrl ?? null,
-          status,
-        });
-        if (!res.success) {
-          toast.error(res.error);
-          return;
-        }
-        toast.success(res.message ?? 'Đã cập nhật.');
-        router.push(`/courses/${props.courseSlug}/scratch/${props.exerciseId}`);
-        router.refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }

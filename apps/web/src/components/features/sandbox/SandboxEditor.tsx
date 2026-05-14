@@ -5,7 +5,8 @@ import { Play, Loader2, Terminal, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, DEFAULT_WEB, type WebCode } from '@/components/features/code/WebEditor';
-import { runSandboxAction, type SandboxRunResult } from '@/actions/sandbox';
+import { apiClient } from '@/lib/api-client';
+import { SANDBOX_LANGUAGE_ID, type SandboxRunResult } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage } from '@lumibach/db';
 
@@ -81,7 +82,7 @@ function TerminalPanel({ result, pending }: { result: SandboxRunResult | null; p
             <span className="text-xs text-[#555577] italic">(không có output)</span>
           )}
           <div className="flex items-center gap-3 border-t border-white/5 pt-1 text-xs text-[#555577]">
-            <span>{result.statusDesc}</span>
+            <span>{result.status.description}</span>
             {result.time && <span>⏱ {result.time}s</span>}
             {result.memory && <span>💾 {(result.memory / 1024).toFixed(1)} MB</span>}
           </div>
@@ -118,12 +119,16 @@ export function SandboxEditor() {
     if (!code.trim()) return;
     startRun(async () => {
       setRunResult(null);
-      const res = await runSandboxAction(code, language, stdin);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const result = await apiClient.post<SandboxRunResult>('/sandbox/run', {
+          languageId: SANDBOX_LANGUAGE_ID[language as keyof typeof SANDBOX_LANGUAGE_ID],
+          sourceCode: code,
+          stdin,
+        });
+        setRunResult(result);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      setRunResult(res.result);
     });
   }
 

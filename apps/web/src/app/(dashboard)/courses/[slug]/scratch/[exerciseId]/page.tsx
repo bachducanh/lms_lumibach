@@ -7,7 +7,7 @@ import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import { logActivity } from '@/lib/activity';
 import { hasMinRole } from '@/lib/permissions';
-import { listMyScratchSubmissionsAction, listScratchSubmissionsAction } from '@/actions/scratch';
+import type { MyScratchSubmission, ScratchSubmissionWithStudent } from '@lumibach/types';
 import type { RubricData } from '@lumibach/types';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
 import { ScratchTeacherPanel } from '@/components/features/scratch/ScratchTeacherPanel';
@@ -98,8 +98,14 @@ export default async function ScratchExercisePage({
         CourseNavItem[]
       >('/modules/nav', { query: { courseId: course.id, publishedOnly: role === 'STUDENT' } })
       .catch(() => [] as CourseNavItem[]),
-    listMyScratchSubmissionsAction(exerciseId),
-    isTeacher ? listScratchSubmissionsAction(exerciseId) : Promise.resolve([]),
+    api
+      .get<MyScratchSubmission[]>(`/scratch/${exerciseId}/my-submissions`)
+      .catch(() => [] as MyScratchSubmission[]),
+    isTeacher
+      ? api
+          .get<ScratchSubmissionWithStudent[]>(`/scratch/${exerciseId}/submissions`)
+          .catch(() => [] as ScratchSubmissionWithStudent[])
+      : Promise.resolve([] as ScratchSubmissionWithStudent[]),
     isTeacher
       ? api.get<RubricData>(`/rubrics/code-exercise/${exerciseId}`).catch(() => null)
       : Promise.resolve(null),

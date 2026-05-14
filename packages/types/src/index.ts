@@ -14,3 +14,6 @@ export * from './questions';
 export * from './quizzes';
 export * from './attempts';
 export * from './gradebook';
+export * from './code-exercises';
+export * from './sandbox';
+export * from './scratch';

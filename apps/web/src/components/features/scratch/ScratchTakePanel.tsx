@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ScratchEditor } from './ScratchEditor';
 import { Sb3Upload } from './Sb3Upload';
-import { submitScratchAction } from '@/actions/scratch';
+import { apiClient } from '@/lib/api-client';
 import { Send, Info, History, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -78,19 +78,18 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
       return;
     }
     startTransition(async () => {
-      const res = await submitScratchAction({
-        exerciseId,
-        sb3Url: pendingUrl,
-        filename: pendingName ?? undefined,
-      });
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        await apiClient.post(`/scratch/${exerciseId}/submit`, {
+          sb3Url: pendingUrl,
+          filename: pendingName ?? undefined,
+        });
+        toast.success('Đã nộp bài.');
+        setPendingUrl(null);
+        setPendingName(null);
+        router.refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      toast.success(res.message ?? 'Đã nộp bài.');
-      setPendingUrl(null);
-      setPendingName(null);
-      router.refresh();
     });
   }
 
@@ -118,15 +117,7 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
       }
 
       // 2. Create submission
-      const subRes = await submitScratchAction({
-        exerciseId,
-        sb3Url: upData.url,
-        filename,
-      });
-      if (!subRes.success) {
-        toast.error(subRes.error, { id: t });
-        return;
-      }
+      await apiClient.post(`/scratch/${exerciseId}/submit`, { sb3Url: upData.url, filename });
 
       toast.success('Đã nộp bài tự động!', { id: t });
       router.refresh();

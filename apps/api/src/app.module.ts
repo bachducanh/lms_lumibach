@@ -24,6 +24,9 @@ import { QuestionsModule } from './modules/questions/questions.module';
 import { QuizzesModule } from './modules/quizzes/quizzes.module';
 import { AttemptsModule } from './modules/attempts/attempts.module';
 import { GradebookModule } from './modules/gradebook/gradebook.module';
+import { CodeExercisesModule } from './modules/code-exercises/code-exercises.module';
+import { SandboxModule } from './modules/sandbox/sandbox.module';
+import { ScratchModule } from './modules/scratch/scratch.module';
 
 @Module({
   imports: [
@@ -86,6 +89,9 @@ import { GradebookModule } from './modules/gradebook/gradebook.module';
     QuizzesModule,
     AttemptsModule,
     GradebookModule,
+    CodeExercisesModule,
+    SandboxModule,
+    ScratchModule,
   ],
   providers: [
     {

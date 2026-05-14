@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';
 import { TestCaseBuilder } from './TestCaseBuilder';
-import { updateExerciseAction, saveExerciseTestCasesAction } from '@/actions/exercises';
+import { apiClient } from '@/lib/api-client';
 import type { CodeLanguage, ExerciseStatus } from '@lumibach/db';
 
 type TC = {
@@ -75,30 +75,26 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
       return;
     }
     start(async () => {
-      const isWeb = exercise.language === 'WEB';
-      const r1 = await updateExerciseAction(exercise.id, {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        status,
-        ...(isWeb
-          ? { starterHtml: webCode.html, starterCss: webCode.css, starterJs: webCode.js }
-          : { starterCode, solutionCode, timeLimit, memoryLimit: memoryLimit * 1024 }),
-      });
-      if (!r1.success) {
-        toast.error(r1.error);
-        return;
-      }
+      try {
+        const isWeb = exercise.language === 'WEB';
+        await apiClient.patch(`/code-exercises/${exercise.id}`, {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          status,
+          ...(isWeb
+            ? { starterHtml: webCode.html, starterCss: webCode.css, starterJs: webCode.js }
+            : { starterCode, solutionCode, timeLimit, memoryLimit: memoryLimit * 1024 }),
+        });
 
-      if (!isWeb) {
-        const r2 = await saveExerciseTestCasesAction(exercise.id, testCases);
-        if (!r2.success) {
-          toast.error(r2.error);
-          return;
+        if (!isWeb) {
+          await apiClient.put(`/code-exercises/${exercise.id}/test-cases`, { testCases });
         }
-      }
 
-      toast.success('Đã lưu cấu hình bài tập!');
-      router.push(`/courses/${courseSlug}/exercises/${exercise.id}`);
+        toast.success('Đã lưu cấu hình bài tập!');
+        router.push(`/courses/${courseSlug}/exercises/${exercise.id}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
+      }
     });
   }
 

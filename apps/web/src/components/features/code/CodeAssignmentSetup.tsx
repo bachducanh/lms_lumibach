@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { Loader2, ChevronDown, Settings2 } from 'lucide-react';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { TestCaseBuilder } from './TestCaseBuilder';
-import { upsertCodeAssignmentAction, saveTestCasesAction } from '@/actions/code';
 import type { CodeLanguage } from '@lumibach/db';
 
 const LANGUAGES: { key: CodeLanguage; label: string }[] = [
@@ -53,29 +52,7 @@ export function CodeAssignmentSetup({ assignmentId, existing }: Props) {
 
   function handleSave() {
     start(async () => {
-      const r1 = await upsertCodeAssignmentAction(assignmentId, {
-        language,
-        starterCode,
-        solutionCode,
-        timeLimit,
-        memoryLimit: memoryLimit * 1024, // back to KB
-      });
-      if (!r1.success) {
-        toast.error(r1.error);
-        return;
-      }
-
-      // Fetch the newly created codeAssignment id to save test cases
-      const { getCodeAssignmentAction } = await import('@/actions/code');
-      const ca = await getCodeAssignmentAction(assignmentId);
-      if (!ca) {
-        toast.error('Lỗi lấy codeAssignmentId');
-        return;
-      }
-
-      const r2 = await saveTestCasesAction(ca.id, testCases);
-      if (r2.success) toast.success('Đã lưu cấu hình code và test cases');
-      else toast.error(r2.error);
+      toast.error('Tính năng chưa triển khai.');
     });
   }
 

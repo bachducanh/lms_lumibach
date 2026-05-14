@@ -7,13 +7,8 @@ import { Button } from '@/components/ui/button';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, type WebCode } from './WebEditor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  getExerciseSubmissionAction,
-  gradeWebSubmissionAction,
-  deleteSubmissionAction,
-  runCodeAction,
-  type RunCodeResult,
-} from '@/actions/exercises';
+import { apiClient } from '@/lib/api-client';
+import type { RunCodeResult, ExerciseSubmissionDetail } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage, CodeSubmissionStatus } from '@lumibach/db';
 import { RubricGradePanel } from './RubricGradePanel';
@@ -58,7 +53,7 @@ const fmt = (d: Date | string) =>
 
 // ── Types ─────────────────────────────────────────────────────
 
-type Submission = NonNullable<Awaited<ReturnType<typeof getExerciseSubmissionAction>>>;
+type Submission = ExerciseSubmissionDetail;
 
 type SubRow = {
   id: string;
@@ -165,12 +160,16 @@ function GradeForm({
     startSave(async () => {
       const s = parseFloat(score) || 0;
       const m = parseFloat(maxScore) || 10;
-      const res = await gradeWebSubmissionAction(submissionId, s, m, feedback);
-      if (res.success) {
+      try {
+        await apiClient.patch(`/code-exercises/submissions/${submissionId}/grade`, {
+          score: s,
+          maxScore: m,
+          feedback,
+        });
         toast.success('Đã lưu điểm');
         onSaved(s, m, feedback);
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }
@@ -254,7 +253,9 @@ function SubmissionDialog({
   // Load detail on open
   useEffect(() => {
     startLoad(async () => {
-      const sub = await getExerciseSubmissionAction(row.id);
+      const sub = await apiClient
+        .get<Submission>(`/code-exercises/submissions/${row.id}`)
+        .catch(() => null);
       setDetail(sub ?? null);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,24 +265,28 @@ function SubmissionDialog({
     if (!detail) return;
     startRun(async () => {
       setRunResult(null);
-      const res = await runCodeAction(exerciseId, detail.code, detail.language, stdin);
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await apiClient.post<RunCodeResult>(`/code-exercises/${exerciseId}/run`, {
+          code: detail.code,
+          language: detail.language,
+          stdin,
+        });
+        setRunResult(res);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
-      setRunResult(res.result);
     });
   }
 
   function handleDelete() {
     startDelete(async () => {
-      const res = await deleteSubmissionAction(row.id);
-      if (res.success) {
+      try {
+        await apiClient.delete(`/code-exercises/submissions/${row.id}`);
         toast.success('Đã xoá bài nộp');
         onDeleted(row.id);
         onClose();
-      } else {
-        toast.error(res.error);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
     });
   }
@@ -417,7 +422,7 @@ function SubmissionDialog({
                     detail.id,
                     score,
                     Number(detail.maxScore) || 10,
-                    (detail as any).feedback ?? ''
+                    detail.feedback ?? '' ?? ''
                   );
                   onClose();
                 }}
@@ -430,7 +435,7 @@ function SubmissionDialog({
               initial={{
                 score: detail.score?.toString() ?? '',
                 maxScore: detail.maxScore?.toString() ?? '10',
-                feedback: (detail as any).feedback ?? '',
+                feedback: detail.feedback ?? '' ?? '',
               }}
               onSaved={(s, m, fb) => onGraded(detail.id, s, m, fb)}
             />
