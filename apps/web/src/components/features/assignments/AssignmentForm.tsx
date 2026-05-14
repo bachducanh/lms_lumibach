@@ -60,9 +60,9 @@ type Props =
         status: string;
         maxScore: number;
         weight: number;
-        availableFrom: Date | null;
-        dueDate: Date | null;
-        lateDeadline: Date | null;
+        availableFrom: string | null;
+        dueDate: string | null;
+        lateDeadline: string | null;
         latePolicy: string;
         latePenalty: number | null;
         allowResubmit: boolean;
@@ -70,7 +70,7 @@ type Props =
       };
     };
 
-function toInputDate(d: Date | null | undefined): string {
+function toInputDate(d: string | Date | null | undefined): string {
   if (!d) return '';
   const dt = new Date(d);
   const pad = (n: number) => String(n).padStart(2, '0');

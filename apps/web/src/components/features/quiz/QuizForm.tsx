@@ -31,8 +31,8 @@ type ExistingQuiz = {
   shuffleQuestions: boolean;
   shuffleAnswers: boolean;
   showResults: boolean;
-  availableFrom: Date | null;
-  dueDate: Date | null;
+  availableFrom: string | null;
+  dueDate: string | null;
 };
 
 type Props = {
@@ -42,7 +42,7 @@ type Props = {
   moduleId?: string;
 };
 
-function toInputValue(d: Date | null | undefined): string {
+function toInputValue(d: string | Date | null | undefined): string {
   if (!d) return '';
   const dt = new Date(d);
   // format as datetime-local value: YYYY-MM-DDTHH:MM

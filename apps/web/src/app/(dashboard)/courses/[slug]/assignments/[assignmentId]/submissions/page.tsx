@@ -22,7 +22,7 @@ import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Bài nộp' };
 
-function formatDate(d: Date | null | undefined) {
+function formatDate(d: string | Date | null | undefined) {
   if (!d) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',

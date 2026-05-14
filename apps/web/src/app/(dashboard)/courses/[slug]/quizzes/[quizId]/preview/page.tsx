@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail, QuizPreview } from '@lumibach/types';
+import type { CourseDetail, QuizPreview as QuizPreviewData } from '@lumibach/types';
 import { QuizPreview } from '@/components/features/quiz/QuizPreview';
 import { buttonVariants } from '@/components/ui/button';
 import { ArrowLeft, Brain } from 'lucide-react';
@@ -27,7 +27,7 @@ export default async function QuizPreviewPage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const quiz = await api.get<QuizPreview>(`/quizzes/${quizId}/preview`).catch(() => null);
+  const quiz = await api.get<QuizPreviewData>(`/quizzes/${quizId}/preview`).catch(() => null);
   if (!quiz) notFound();
 
   return (

@@ -1,7 +1,9 @@
+import type { QuestionType, QuizStatus } from '@lumibach/db';
+
 export type QuizListItem = {
   id: string;
   title: string;
-  status: string;
+  status: QuizStatus;
   timeLimit: number | null;
   dueDate: string | null;
   _count: { questions: number; attempts: number };
@@ -24,7 +26,7 @@ export type QuizDetail = {
   courseId: string;
   title: string;
   description: string | null;
-  status: string;
+  status: QuizStatus;
   timeLimit: number | null;
   maxAttempts: number | null;
   passingScore: number | null;
@@ -47,7 +49,7 @@ export type QuizQuestionItem = {
   points: number | null;
   question: {
     id: string;
-    type: string;
+    type: QuestionType;
     content: string;
     explanation: string | null;
     points: number;

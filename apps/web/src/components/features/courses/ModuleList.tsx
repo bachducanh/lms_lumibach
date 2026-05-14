@@ -534,14 +534,15 @@ function SortableItemRow({
     },
   };
 
-  let typeKey = 'lesson';
+  let typeKey: keyof typeof typeColors = 'lesson';
   if (isExternalUrl) typeKey = 'external';
   else if (isAssignment) typeKey = 'assignment';
   else if (isQuiz) typeKey = 'quiz';
   else if (isScratch) typeKey = 'scratch';
   else if (isCodeExercise) typeKey = 'code';
 
-  const colors = typeColors[typeKey];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const colors = typeColors[typeKey]!;
 
   return (
     <div

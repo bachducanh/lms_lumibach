@@ -1,4 +1,4 @@
-import type { CodeLanguage, ExerciseStatus } from '@lumibach/db';
+import type { CodeLanguage, CodeSubmissionStatus, ExerciseStatus } from '@lumibach/db';
 
 export type CodeExerciseDetail = {
   id: string;
@@ -52,7 +52,7 @@ export type ExerciseModuleGroup = {
 
 export type MyExerciseSubmission = {
   id: string;
-  status: string;
+  status: CodeSubmissionStatus;
   score: number | null;
   maxScore: number | null;
   submittedAt: Date;
@@ -62,7 +62,7 @@ export type MyExerciseSubmission = {
 
 export type ExerciseSubmissionResult = {
   id: string;
-  status: string;
+  status: CodeSubmissionStatus;
   score: number | null;
   time: number | null;
   memory: number | null;
@@ -80,11 +80,18 @@ export type ExerciseSubmissionDetail = {
   studentId: string;
   language: CodeLanguage;
   code: string;
-  status: string;
+  status: CodeSubmissionStatus;
   score: number | null;
   maxScore: number | null;
   feedback: string | null;
   submittedAt: Date;
   attemptNumber: number;
   results: ExerciseSubmissionResult[];
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string | null;
+    email: string;
+  };
 };

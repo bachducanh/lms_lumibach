@@ -18,7 +18,7 @@ import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { PreviewQuizData, TCCheckResult } from '@lumibach/types';
+import type { PreviewQuizData, PreviewQuizQuestion, TCCheckResult } from '@lumibach/types';
 import type { CodeLanguage } from '@lumibach/db';
 
 // ── Constants ──────────────────────────────────────────────────

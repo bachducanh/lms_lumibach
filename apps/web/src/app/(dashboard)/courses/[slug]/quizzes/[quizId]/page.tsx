@@ -75,7 +75,7 @@ const TYPE_SHORT: Record<string, string> = {
   ESSAY: 'TL',
 };
 
-function fmt(d: Date | null | undefined) {
+function fmt(d: string | Date | null | undefined) {
   if (!d) return null;
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',

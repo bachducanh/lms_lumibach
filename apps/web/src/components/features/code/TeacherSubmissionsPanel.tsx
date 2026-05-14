@@ -418,12 +418,7 @@ function SubmissionDialog({
                 codeSubmissionId={detail.id}
                 maxScore={Number(detail.maxScore) || 10}
                 onGraded={(score) => {
-                  onGraded(
-                    detail.id,
-                    score,
-                    Number(detail.maxScore) || 10,
-                    detail.feedback ?? '' ?? ''
-                  );
+                  onGraded(detail.id, score, Number(detail.maxScore) || 10, detail.feedback ?? '');
                   onClose();
                 }}
               />
@@ -435,7 +430,7 @@ function SubmissionDialog({
               initial={{
                 score: detail.score?.toString() ?? '',
                 maxScore: detail.maxScore?.toString() ?? '10',
-                feedback: detail.feedback ?? '' ?? '',
+                feedback: detail.feedback ?? '',
               }}
               onSaved={(s, m, fb) => onGraded(detail.id, s, m, fb)}
             />

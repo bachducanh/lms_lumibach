@@ -56,7 +56,7 @@ const LANG_LABEL: Record<string, string> = {
   WEB: 'Web',
 };
 
-function formatDate(d: Date | null | undefined) {
+function formatDate(d: string | Date | null | undefined) {
   if (!d) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',

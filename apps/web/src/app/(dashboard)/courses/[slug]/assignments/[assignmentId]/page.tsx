@@ -9,6 +9,7 @@ import type {
   AssignmentDetail,
   SubmissionItem,
   RubricData,
+  CodeExerciseDetail,
 } from '@lumibach/types';
 import { RubricView } from '@/components/features/assignments/RubricView';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
@@ -80,7 +81,7 @@ const STATUS_CLASS: Record<string, string> = {
   RETURNED: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
 };
 
-function formatDate(d: Date | null | undefined) {
+function formatDate(d: string | Date | null | undefined) {
   if (!d) return null;
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
@@ -133,7 +134,7 @@ export default async function AssignmentViewPage({
         CourseNavItem[]
       >('/modules/nav', { query: { courseId: course.id, publishedOnly: !isStaff } })
       .catch(() => [] as CourseNavItem[]),
-    Promise.resolve(null),
+    Promise.resolve(null) as Promise<CodeExerciseDetail | null>,
     role === 'STUDENT' && isCodeAssignment ? Promise.resolve([]) : Promise.resolve([]),
   ]);
   const currentNavIndex = allNavItems.findIndex((item) => item.assignmentId === assignmentId);

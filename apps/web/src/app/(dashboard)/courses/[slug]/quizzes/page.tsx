@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<string, string> = {
   CLOSED: 'Đã đóng',
 };
 
-function formatDate(d: Date | null | undefined) {
+function formatDate(d: string | Date | null | undefined) {
   if (!d) return null;
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
