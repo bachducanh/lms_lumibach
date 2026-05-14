@@ -1,5 +1,6 @@
 'use client';
 
+import '@/components/ui/editor/monaco-setup';
 import { useState, useEffect, useRef } from 'react';
 import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
 import { defineDraculaTheme } from '@/components/ui/editor/CodeEditor';

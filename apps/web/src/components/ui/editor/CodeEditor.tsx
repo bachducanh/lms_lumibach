@@ -1,5 +1,6 @@
 'use client';
 
+import '@/components/ui/editor/monaco-setup';
 // import { useTheme } from 'next-themes';
 import Editor from '@monaco-editor/react';
 

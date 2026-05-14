@@ -1,5 +1,6 @@
 'use client';
 
+import '@/components/ui/editor/monaco-setup';
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Globe } from 'lucide-react';
 import Editor from '@monaco-editor/react';
