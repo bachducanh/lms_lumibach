@@ -2,7 +2,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { BookOpen, Code2, ClipboardList, FileText, LogIn, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ACTION_LABELS } from '@/lib/activity-labels';
+import { ACTION_LABELS_VI } from '@/lib/activity-labels';
 import type { ActivityLogRow } from '@lumibach/types';
 import type { ActivityAction } from '@lumibach/db';
 
@@ -90,7 +90,7 @@ export function ActivityLogTable({ rows, showUser = true, showCourse = false }: 
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <Icon className={cn('h-3.5 w-3.5 shrink-0', meta.color)} />
-                    <span>{ACTION_LABELS[row.action]}</span>
+                    <span>{ACTION_LABELS_VI[row.action]}</span>
                   </div>
                 </td>
                 <td className="text-muted-foreground hidden max-w-[200px] truncate px-3 py-2.5 text-xs md:table-cell">

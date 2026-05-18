@@ -128,7 +128,7 @@ export function CodeSubmitPanel({ assignmentId, language, starterCode, initialSu
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [activeSubId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSubId]);
 
   function handleRunSamples() {
     startRun(async () => {

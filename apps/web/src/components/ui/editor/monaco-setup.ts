@@ -1,11 +1,12 @@
 'use client';
 
 import { loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
 
 // Configure workers BEFORE the monaco instance is used.
 // Without this, @monaco-editor/react would try to fetch Monaco from CDN
 // (jsDelivr) which can be blocked in restricted networks.
+// Monaco itself accesses `window` at module-load time, so we must
+// dynamic-import it only in the browser to avoid SSR crashes.
 if (typeof window !== 'undefined') {
   (self as unknown as Record<string, unknown>).MonacoEnvironment = {
     getWorker(_moduleId: string, label: string) {
@@ -30,6 +31,8 @@ if (typeof window !== 'undefined') {
       return new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url));
     },
   };
-}
 
-loader.config({ monaco });
+  void import('monaco-editor').then((monaco) => {
+    loader.config({ monaco });
+  });
+}

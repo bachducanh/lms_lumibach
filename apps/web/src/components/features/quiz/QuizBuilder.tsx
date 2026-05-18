@@ -18,6 +18,11 @@ import { apiClient } from '@/lib/api-client';
 import type { QuizBankGroup } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 import type { QuestionType } from '@lumibach/db';
+import {
+  QUESTION_TYPE_BADGE as TYPE_BADGE,
+  QUESTION_TYPE_SHORT as TYPE_SHORT,
+  QUESTION_TYPE_ICON as TYPE_ICON,
+} from '@/lib/question-type-labels';
 
 type QuizQItem = {
   id: string;
@@ -36,27 +41,6 @@ type Props = {
   courseSlug: string;
   initialItems: QuizQItem[];
   banks: QuizBankGroup[];
-};
-
-const TYPE_BADGE: Record<string, string> = {
-  MULTIPLE_CHOICE_SINGLE: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
-  MULTIPLE_CHOICE_MULTIPLE: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
-  TRUE_FALSE: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  TRUE_FALSE_MULTI: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
-  ESSAY: 'bg-green-500/10 text-green-700 dark:text-green-400',
-  CODE_PYTHON: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
-  CODE_CPP: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
-  CODE_WEB: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-};
-const TYPE_SHORT: Record<string, string> = {
-  MULTIPLE_CHOICE_SINGLE: 'TN-1',
-  MULTIPLE_CHOICE_MULTIPLE: 'TN-N',
-  TRUE_FALSE: 'Đ/S',
-  TRUE_FALSE_MULTI: 'Đ/S+',
-  ESSAY: 'TL',
-  CODE_PYTHON: 'PY',
-  CODE_CPP: 'C++',
-  CODE_WEB: 'Web',
 };
 
 export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) {
@@ -168,7 +152,11 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
@@ -260,10 +248,14 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
                   </span>
                   <span
                     className={cn(
-                      'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+                      'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                       TYPE_BADGE[item.question.type]
                     )}
                   >
+                    {(() => {
+                      const I = TYPE_ICON[item.question.type];
+                      return I ? <I className="h-3 w-3" /> : null;
+                    })()}
                     {TYPE_SHORT[item.question.type]}
                   </span>
                   <p className="line-clamp-1 min-w-0 flex-1 text-sm">{item.question.content}</p>
@@ -439,10 +431,14 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
                         </div>
                         <span
                           className={cn(
-                            'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+                            'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                             TYPE_BADGE[q.type] ?? ''
                           )}
                         >
+                          {(() => {
+                            const I = TYPE_ICON[q.type];
+                            return I ? <I className="h-3 w-3" /> : null;
+                          })()}
                           {TYPE_SHORT[q.type] ?? q.type}
                         </span>
                         <p className="text-muted-foreground line-clamp-1 min-w-0 flex-1 text-sm">

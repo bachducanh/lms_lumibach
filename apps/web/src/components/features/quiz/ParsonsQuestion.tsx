@@ -71,13 +71,14 @@ export function ParsonsQuestion({ initialLines, onChange, readOnly = false }: Pr
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setItems((prev) => {
-      const oldIndex = prev.findIndex((i) => i.id === active.id);
-      const newIndex = prev.findIndex((i) => i.id === over.id);
-      const next = arrayMove(prev, oldIndex, newIndex);
-      onChange(next.map((i) => i.id));
-      return next;
-    });
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const next = arrayMove(items, oldIndex, newIndex);
+    setItems(next);
+    // Notify parent *outside* the setState updater to avoid the
+    // "cannot update a component while rendering" warning.
+    onChange(next.map((i) => i.id));
   }
 
   if (readOnly) {

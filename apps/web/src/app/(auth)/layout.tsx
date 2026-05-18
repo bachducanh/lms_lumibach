@@ -58,7 +58,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             height={64}
             priority
             className="relative drop-shadow-[0_0_24px_rgb(253_8_93_/_30%)]"
-            style={{ height: 'auto' }}
+            style={{ width: 'auto', height: 'auto' }}
           />
         </div>
         <p className="text-primary/60 mt-1 text-[10px] font-semibold tracking-[0.3em] uppercase">

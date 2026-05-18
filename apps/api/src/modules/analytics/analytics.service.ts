@@ -444,4 +444,107 @@ export class AnalyticsService {
     await this.cache.set(key, fresh, CACHE_TTL_MS);
     return fresh;
   }
+
+  // ── Live: who is online + recent actions ───────────────────────
+  // Defines "online" as: has an ActivityLog (or LOGIN audit) in the last 5
+  // minutes. We don't cache because the whole point is real-time.
+
+  async getLiveSummary(actor: AuthUser, courseId?: string) {
+    const WINDOW_MIN = 5;
+    const since = new Date(Date.now() - WINDOW_MIN * 60_000);
+
+    // Course-scoped (Teacher/TA can only see their own courses).
+    // Admin can pass any courseId or omit to see global.
+    if (courseId && actor.role !== 'ADMIN') {
+      const allowed = await this.prisma.course.findFirst({
+        where: {
+          id: courseId,
+          deletedAt: null,
+          OR: [
+            { ownerId: actor.id },
+            { coTeachers: { some: { userId: actor.id } } },
+            { teachingAssistants: { some: { userId: actor.id } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!allowed) {
+        return { onlineUsers: [], recentActions: [], windowMinutes: WINDOW_MIN };
+      }
+    }
+    if (!courseId && actor.role !== 'ADMIN') {
+      // Non-admin without a courseId can't see global feed.
+      return { onlineUsers: [], recentActions: [], windowMinutes: WINDOW_MIN };
+    }
+
+    // Most recent activity per user in the window — gives lastActiveAt
+    const recent = await this.prisma.activityLog.findMany({
+      where: {
+        createdAt: { gte: since },
+        ...(courseId ? { courseId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        userId: true,
+        action: true,
+        resourceType: true,
+        resourceName: true,
+        ipAddress: true,
+        createdAt: true,
+        user: { select: { fullName: true, email: true, role: true } },
+        course: { select: { name: true } },
+      },
+    });
+
+    // Group by user → keep newest createdAt per user
+    const lastByUser = new Map<
+      string,
+      {
+        id: string;
+        fullName: string | null;
+        email: string;
+        role: string;
+        lastActiveAt: Date;
+      }
+    >();
+    for (const row of recent) {
+      const existing = lastByUser.get(row.userId);
+      if (!existing || existing.lastActiveAt < row.createdAt) {
+        lastByUser.set(row.userId, {
+          id: row.userId,
+          fullName: row.user.fullName,
+          email: row.user.email,
+          role: row.user.role,
+          lastActiveAt: row.createdAt,
+        });
+      }
+    }
+
+    const onlineUsers = [...lastByUser.values()]
+      .sort((a, b) => b.lastActiveAt.getTime() - a.lastActiveAt.getTime())
+      .map((u) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        role: u.role,
+        lastActiveAt: u.lastActiveAt.toISOString(),
+      }));
+
+    const recentActions = recent.slice(0, 30).map((r) => ({
+      id: r.id,
+      userName: r.user.fullName ?? r.user.email,
+      userEmail: r.user.email,
+      userRole: r.user.role,
+      action: r.action,
+      resourceType: r.resourceType,
+      resourceName: r.resourceName,
+      courseName: r.course?.name ?? null,
+      ipAddress: r.ipAddress,
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+    return { onlineUsers, recentActions, windowMinutes: WINDOW_MIN };
+  }
 }

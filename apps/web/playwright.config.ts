@@ -14,6 +14,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000';
+const CHROME_PATH = process.env.PLAYWRIGHT_CHROME_PATH;
 
 export default defineConfig({
   testDir: './e2e',
@@ -30,7 +31,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: CHROME_PATH ? { executablePath: CHROME_PATH } : undefined,
+      },
     },
   ],
   webServer: process.env.PLAYWRIGHT_WEB_SERVER

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
+import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import {
@@ -51,7 +52,13 @@ export async function POST(req: NextRequest) {
     const url = getPublicUrl(BUCKET_FILES, objectName);
 
     if (courseId) {
-      await prisma.course.update({ where: { id: courseId }, data: { thumbnail: url } });
+      const updated = await prisma.course.update({
+        where: { id: courseId },
+        data: { thumbnail: url },
+        select: { slug: true },
+      });
+      revalidatePath('/courses', 'layout');
+      revalidatePath(`/courses/${updated.slug}`);
     }
 
     return NextResponse.json({ url });

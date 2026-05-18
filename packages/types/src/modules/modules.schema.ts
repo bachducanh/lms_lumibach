@@ -48,13 +48,19 @@ export type AddModuleItemBody = z.infer<typeof AddModuleItemBodySchema>;
 
 export const ModulesQuerySchema = z.object({
   courseId: z.string().min(1),
-  publishedOnly: z.coerce.boolean().optional().default(false),
+  publishedOnly: z
+    .union([z.boolean(), z.string().transform((v) => v === 'true')])
+    .optional()
+    .default(false),
 });
 export type ModulesQuery = z.infer<typeof ModulesQuerySchema>;
 
 export const NavItemsQuerySchema = z.object({
   courseId: z.string().min(1),
-  publishedOnly: z.coerce.boolean().optional().default(false),
+  publishedOnly: z
+    .union([z.boolean(), z.string().transform((v) => v === 'true')])
+    .optional()
+    .default(false),
 });
 export type NavItemsQuery = z.infer<typeof NavItemsQuerySchema>;
 

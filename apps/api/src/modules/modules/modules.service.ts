@@ -36,9 +36,13 @@ export class ModulesService {
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
   }
 
-  private invalidate(courseId: string) {
-    this.cache.del(`modules:${courseId}`).catch(() => {});
-    this.cache.del(`modules:nav:${courseId}`).catch(() => {});
+  private async invalidate(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
   }
 
   async createModule(actor: AuthUser, body: CreateModuleBody): Promise<{ id: string }> {
@@ -60,7 +64,7 @@ export class ModulesService {
       },
     });
 
-    this.invalidate(body.courseId);
+    await this.invalidate(body.courseId);
     return { id: mod.id };
   }
 
@@ -73,7 +77,7 @@ export class ModulesService {
       where: { id: moduleId },
       data: { name: body.name, description: body.description ?? null },
     });
-    this.invalidate(mod.courseId);
+    await this.invalidate(mod.courseId);
   }
 
   async deleteModule(actor: AuthUser, moduleId: string): Promise<void> {
@@ -82,7 +86,7 @@ export class ModulesService {
     await this.assertCanManage(mod.courseId, actor);
 
     await this.prisma.module.delete({ where: { id: moduleId } });
-    this.invalidate(mod.courseId);
+    await this.invalidate(mod.courseId);
   }
 
   async toggleModulePublish(actor: AuthUser, moduleId: string): Promise<void> {
@@ -94,7 +98,7 @@ export class ModulesService {
       where: { id: moduleId },
       data: { isPublished: !mod.isPublished },
     });
-    this.invalidate(mod.courseId);
+    await this.invalidate(mod.courseId);
   }
 
   async reorderModules(actor: AuthUser, body: ReorderModulesBody): Promise<void> {
@@ -104,7 +108,7 @@ export class ModulesService {
         this.prisma.module.update({ where: { id }, data: { position: index } })
       )
     );
-    this.invalidate(body.courseId);
+    await this.invalidate(body.courseId);
   }
 
   async reorderModuleItems(
@@ -121,7 +125,7 @@ export class ModulesService {
         this.prisma.moduleItem.update({ where: { id }, data: { position: index } })
       )
     );
-    this.invalidate(mod.courseId);
+    await this.invalidate(mod.courseId);
   }
 
   async addModuleItem(
@@ -151,7 +155,7 @@ export class ModulesService {
       },
     });
 
-    this.invalidate(mod.courseId);
+    await this.invalidate(mod.courseId);
     return { id: item.id };
   }
 
@@ -167,7 +171,7 @@ export class ModulesService {
       where: { id: itemId },
       data: { isPublished: !item.isPublished },
     });
-    this.invalidate(item.module.courseId);
+    await this.invalidate(item.module.courseId);
   }
 
   async deleteModuleItem(actor: AuthUser, itemId: string): Promise<void> {
@@ -179,7 +183,7 @@ export class ModulesService {
     await this.assertCanManage(item.module.courseId, actor);
 
     await this.prisma.moduleItem.delete({ where: { id: itemId } });
-    this.invalidate(item.module.courseId);
+    await this.invalidate(item.module.courseId);
   }
 
   async listModules(courseId: string, publishedOnly: boolean): Promise<ModuleWithItems[]> {
@@ -190,7 +194,15 @@ export class ModulesService {
         orderBy: { position: 'asc' },
         include: {
           items: {
-            where: publishedOnly ? { isPublished: true } : undefined,
+            where: publishedOnly
+              ? {
+                  isPublished: true,
+                  OR: [
+                    { type: { not: 'CODE_EXERCISE' } },
+                    { type: 'CODE_EXERCISE', codeExercise: { status: 'PUBLISHED' } },
+                  ],
+                }
+              : undefined,
             orderBy: { position: 'asc' },
             include: {
               lesson: { select: { id: true, title: true, estimatedMinutes: true } },

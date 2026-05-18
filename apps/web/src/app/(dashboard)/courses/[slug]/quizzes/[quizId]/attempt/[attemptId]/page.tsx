@@ -558,7 +558,7 @@ export default async function AttemptPage({
                         fills = [];
                       }
                     }
-                    const template = (q.question as any).starterCode ?? '';
+                    const template = q.question.starterCode ?? '';
                     const parts = template.split('___');
                     return (
                       <div className="space-y-3 pl-9">

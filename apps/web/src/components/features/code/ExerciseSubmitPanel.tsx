@@ -75,7 +75,9 @@ function parseWebCode(raw: string | null | undefined): WebCode | null {
   try {
     const p = JSON.parse(raw);
     if (typeof p === 'object' && p !== null) return p as WebCode;
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 

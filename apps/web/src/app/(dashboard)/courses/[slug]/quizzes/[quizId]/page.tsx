@@ -66,13 +66,29 @@ const TYPE_BADGE: Record<string, string> = {
   MULTIPLE_CHOICE_SINGLE: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   MULTIPLE_CHOICE_MULTIPLE: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
   TRUE_FALSE: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  TRUE_FALSE_MULTI: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
   ESSAY: 'bg-green-500/10 text-green-500 border-green-500/20',
+  CODE_PYTHON: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+  CODE_CPP: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+  CODE_WEB: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+  PARSONS: 'bg-fuchsia-500/10 text-fuchsia-500 border-fuchsia-500/20',
+  CODE_FILL: 'bg-teal-500/10 text-teal-500 border-teal-500/20',
+  CODE_DEBUG_PYTHON: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  CODE_DEBUG_CPP: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
 };
 const TYPE_SHORT: Record<string, string> = {
   MULTIPLE_CHOICE_SINGLE: 'TN-1',
   MULTIPLE_CHOICE_MULTIPLE: 'TN-N',
   TRUE_FALSE: 'Đ/S',
+  TRUE_FALSE_MULTI: 'Đ/S+',
   ESSAY: 'TL',
+  CODE_PYTHON: 'PY',
+  CODE_CPP: 'C++',
+  CODE_WEB: 'Web',
+  PARSONS: 'Sắp',
+  CODE_FILL: 'Điền',
+  CODE_DEBUG_PYTHON: 'Debug-PY',
+  CODE_DEBUG_CPP: 'Debug-C++',
 };
 
 function fmt(d: string | Date | null | undefined) {

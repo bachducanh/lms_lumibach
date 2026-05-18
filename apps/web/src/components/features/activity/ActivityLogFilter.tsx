@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback } from 'react';
 import { Search } from 'lucide-react';
-import { ACTION_LABELS } from '@/lib/activity-labels';
+import { ACTION_LABELS_VI } from '@/lib/activity-labels';
 import type { ActivityAction } from '@lumibach/db';
 
 type StudentOption = { id: string; name: string };
@@ -16,7 +16,7 @@ type Props = {
   showCourse?: boolean;
 };
 
-const ALL_ACTIONS = Object.keys(ACTION_LABELS) as ActivityAction[];
+const ALL_ACTIONS = Object.keys(ACTION_LABELS_VI) as ActivityAction[];
 
 export function ActivityLogFilter({
   students,
@@ -97,7 +97,7 @@ export function ActivityLogFilter({
         <option value="">— Tất cả hoạt động —</option>
         {ALL_ACTIONS.map((a) => (
           <option key={a} value={a}>
-            {ACTION_LABELS[a]}
+            {ACTION_LABELS_VI[a]}
           </option>
         ))}
       </select>

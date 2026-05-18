@@ -294,3 +294,137 @@
               0 8px 32px oklch(0 0 0 / 0.35);
   transform: translateY(-2px);
 }
+
+/* ── Landing / system animations ────────────────────────────
+   Lightweight entrance + page-transition animations driven by
+   pure CSS. Timings tuned for a slow, cinematic feel — long
+   enough to feel intentional, short enough to not block work.
+   All animations respect prefers-reduced-motion. */
+
+@keyframes lb-fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lb-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes lb-page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* `lb-float-y` uses CSS custom properties for `--lift` so we can
+   stack multiple transforms (the hero card uses both fade-in AND
+   float — combining them in a single keyframe avoids the conflict
+   where `lb-scale-in` ended state was overwritten). */
+@keyframes lb-float-slow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%       { transform: translate3d(0, -8px, 0); }
+}
+
+@keyframes lb-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.lb-fade-up {
+  opacity: 0;
+  animation: lb-fade-up 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--lb-delay, 0ms);
+}
+
+.lb-fade-in {
+  opacity: 0;
+  animation: lb-fade-in 1s ease-out both;
+  animation-delay: var(--lb-delay, 0ms);
+}
+
+.lb-scale-in {
+  opacity: 0;
+  animation: lb-scale-in 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--lb-delay, 0ms);
+}
+
+/* Children inherit stagger delay from --i CSS var.
+   Step is 150ms — slow enough to feel choreographed. */
+.lb-stagger > * {
+  opacity: 0;
+  animation: lb-fade-up 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 150ms);
+}
+
+/* Apply on an INNER wrapper of the floating card so the parent
+   handles entrance opacity (lb-fade-in) while this one just floats. */
+.lb-float-slow {
+  animation: lb-float-slow 7s ease-in-out infinite;
+}
+
+/* Route transition — wrapped around children in app/template.tsx */
+.lb-page-enter {
+  animation: lb-page-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Scroll-triggered reveal: elements stay hidden until they enter
+   the viewport, then transition in. Children of `.lb-reveal-group`
+   stagger sequentially using their `--i` CSS var.
+
+   Usage:
+     <section className="lb-reveal-group">
+       <h2 className="lb-reveal" style={{ '--i': 0 }}>Title</h2>
+       <p  className="lb-reveal" style={{ '--i': 1 }}>Sub</p>
+     </section>
+
+   The ScrollRevealProvider client component toggles `.is-revealed`
+   when an element enters the viewport (once). */
+
+.lb-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 150ms),
+    transform 1.1s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 150ms);
+  will-change: opacity, transform;
+}
+
+.lb-reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+/* Mouse-tracking spotlight: a radial gradient that follows the
+   cursor, driven by --mx/--my CSS vars from React.
+   Element should be position: absolute over a relative parent. */
+.lb-mouse-glow {
+  background: radial-gradient(
+    600px circle at var(--mx, 50%) var(--my, 50%),
+    rgb(253 8 93 / 18%),
+    transparent 40%
+  );
+  transition: background 120ms ease;
+}
+
+/* Parallax helper — translateY driven by --py from React scroll listener. */
+.lb-parallax {
+  will-change: transform;
+  transform: translate3d(0, var(--py, 0px), 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-fade-up,
+  .lb-fade-in,
+  .lb-scale-in,
+  .lb-stagger > *,
+  .lb-page-enter,
+  .lb-float-slow,
+  .lb-parallax,
+  .lb-reveal {
+    animation: none;
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+  .lb-mouse-glow { background: none; }
+}

@@ -13,7 +13,6 @@ import {
   GraduationCap,
   LayoutDashboard,
   ScrollText,
-  Activity,
   Settings,
   Users,
   ChevronRight,
@@ -38,8 +37,7 @@ const mainNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { label: 'Người dùng', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
   { label: 'Phân tích', href: '/admin/analytics', icon: BarChart3, roles: ['ADMIN'] },
-  { label: 'Nhật ký hệ thống', href: '/admin/logs', icon: Activity, roles: ['ADMIN'] },
-  { label: 'Audit log', href: '/admin/audit-logs', icon: ScrollText, roles: ['ADMIN'] },
+  { label: 'Nhật ký hoạt động', href: '/admin/audit-logs', icon: ScrollText, roles: ['ADMIN'] },
 ];
 
 const bottomNavItems: NavItem[] = [

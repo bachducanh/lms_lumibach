@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -469,9 +469,9 @@ function SortableItemRow({
   const isAssignment = item.type === 'ASSIGNMENT';
   const isQuiz = item.type === 'QUIZ';
   const isCodeExercise = item.type === 'CODE_EXERCISE';
-  const quizId = (item as any).quiz?.id ?? (item as any).quizId;
-  const codeExId = (item as any).codeExercise?.id ?? (item as any).codeExerciseId;
-  const codeExLang = (item as any).codeExercise?.language as string | undefined;
+  const quizId = item.quiz?.id ?? item.quizId;
+  const codeExId = item.codeExercise?.id ?? item.codeExerciseId;
+  const codeExLang = item.codeExercise?.language;
   const isScratch = isCodeExercise && codeExLang === 'SCRATCH';
   const LANG_ICON: Record<string, string> = {
     PYTHON3: '/question_icon/python_icon.png',
@@ -780,7 +780,6 @@ function SortableModuleRow({
   onOpenUrlForm,
   onRefresh,
 }: ModuleRowProps) {
-  const router = useRouter();
   const [, startItemTransition] = useTransition();
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -811,7 +810,7 @@ function SortableModuleRow({
         await apiClient.patch(`/modules/${mod.id}/items/reorder`, {
           orderedIds: reordered.map((i) => i.id),
         });
-        router.refresh();
+        onRefresh();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Lỗi sắp xếp');
       }
@@ -916,8 +915,8 @@ function SortableModuleRow({
                 {localItems.map((item) => {
                   const isQuiz = item.type === 'QUIZ';
                   const isCodeExercise = item.type === 'CODE_EXERCISE';
-                  const quizId = (item as any).quiz?.id ?? (item as any).quizId;
-                  const codeExId = (item as any).codeExercise?.id ?? (item as any).codeExerciseId;
+                  const quizId = item.quiz?.id ?? item.quizId;
+                  const codeExId = item.codeExercise?.id ?? item.codeExerciseId;
                   const isDone =
                     (item.type === 'LESSON' && completedIds?.has(item.id)) ||
                     (item.type === 'ASSIGNMENT' &&
@@ -1009,7 +1008,13 @@ export function ModuleList({
   );
 
   function refresh() {
-    startTransition(() => router.refresh());
+    apiClient
+      .get<ModuleWithItems[]>('/modules', { query: { courseId, publishedOnly: !canManage } })
+      .then((fresh) => setLocalModules(fresh))
+      .catch(() => {});
+    // Also revalidate the Server Component so header counts (X chương,
+    // Y bài học) update without a manual page reload.
+    router.refresh();
   }
 
   function handleModuleDragEnd(event: DragEndEvent) {
@@ -1026,7 +1031,7 @@ export function ModuleList({
           courseId,
           orderedIds: reordered.map((m) => m.id),
         });
-        router.refresh();
+        refresh();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Lỗi sắp xếp chương');
       }
@@ -1038,23 +1043,29 @@ export function ModuleList({
       `Xoá chương "${name}"? Tất cả bài học trong chương cũng sẽ bị xoá.`
     );
     if (!ok) return;
+    setLocalModules((prev) => prev.filter((m) => m.id !== id));
     startTransition(async () => {
       try {
         await apiClient.delete(`/modules/${id}`);
         toast.success('Đã xoá chương.');
-        router.refresh();
+        refresh();
       } catch (err) {
+        refresh();
         toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá chương');
       }
     });
   }
 
   function handleTogglePublish(id: string) {
+    setLocalModules((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, isPublished: !m.isPublished } : m))
+    );
     startTransition(async () => {
       try {
         await apiClient.patch(`/modules/${id}/publish`);
-        router.refresh();
+        refresh();
       } catch (err) {
+        refresh();
         toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật trạng thái');
       }
     });
@@ -1063,23 +1074,34 @@ export function ModuleList({
   async function handleDeleteItem(id: string) {
     const ok = await openConfirm('Xoá mục này khỏi chương?');
     if (!ok) return;
+    setLocalModules((prev) =>
+      prev.map((m) => ({ ...m, items: m.items.filter((i) => i.id !== id) }))
+    );
     startTransition(async () => {
       try {
         await apiClient.delete(`/modules/items/${id}`);
         toast.success('Đã xoá mục.');
-        router.refresh();
+        refresh();
       } catch (err) {
+        refresh();
         toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá mục');
       }
     });
   }
 
   function handleToggleItemPublish(id: string) {
+    setLocalModules((prev) =>
+      prev.map((m) => ({
+        ...m,
+        items: m.items.map((i) => (i.id === id ? { ...i, isPublished: !i.isPublished } : i)),
+      }))
+    );
     startTransition(async () => {
       try {
         await apiClient.patch(`/modules/items/${id}/publish`);
-        router.refresh();
+        refresh();
       } catch (err) {
+        refresh();
         toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật trạng thái');
       }
     });
@@ -1122,25 +1144,35 @@ export function ModuleList({
           </div>
         )}
 
-        {localModules.length === 0 && !showAddModule && (
-          <div className="border-border/60 bg-card/30 flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 backdrop-blur-sm">
-            <div className="bg-muted/50 border-border/50 mb-4 flex h-16 w-16 items-center justify-center rounded-full border">
-              <FolderOpen className="text-muted-foreground/50 h-8 w-8" />
+        {localModules.length === 0 &&
+          (showAddModule ? (
+            <AddModuleForm
+              courseId={courseId}
+              onAdded={() => {
+                setShowAddModule(false);
+                refresh();
+              }}
+              onCancel={() => setShowAddModule(false)}
+            />
+          ) : (
+            <div className="border-border/60 bg-card/30 flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 backdrop-blur-sm">
+              <div className="bg-muted/50 border-border/50 mb-4 flex h-16 w-16 items-center justify-center rounded-full border">
+                <FolderOpen className="text-muted-foreground/50 h-8 w-8" />
+              </div>
+              <p className="text-base font-semibold">Khoá học chưa có nội dung</p>
+              <p className="text-muted-foreground mt-1 mb-6 text-sm">
+                Hãy bắt đầu bằng việc thêm chương đầu tiên.
+              </p>
+              {canManage && (
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgb(253_8_93_/_40%)]"
+                  onClick={() => setShowAddModule(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Thêm chương đầu tiên
+                </Button>
+              )}
             </div>
-            <p className="text-base font-semibold">Khoá học chưa có nội dung</p>
-            <p className="text-muted-foreground mt-1 mb-6 text-sm">
-              Hãy bắt đầu bằng việc thêm chương đầu tiên.
-            </p>
-            {canManage && (
-              <Button
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgb(253_8_93_/_40%)]"
-                onClick={() => setShowAddModule(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" /> Thêm chương đầu tiên
-              </Button>
-            )}
-          </div>
-        )}
+          ))}
 
         <DndContext
           id="module-dnd"
@@ -1179,7 +1211,7 @@ export function ModuleList({
           </SortableContext>
         </DndContext>
 
-        {canManage && (
+        {canManage && localModules.length > 0 && (
           <div className="pt-2">
             {showAddModule ? (
               <AddModuleForm

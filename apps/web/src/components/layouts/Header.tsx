@@ -37,7 +37,7 @@ function isId(s: string) {
   return s.length > 20 || /^[a-z0-9]{20,}$/.test(s);
 }
 
-export function Header() {
+export function Header({ showNotifications = true }: { showNotifications?: boolean }) {
   const pathname = usePathname();
   const { toggle } = useSidebar();
 
@@ -87,7 +87,7 @@ export function Header() {
 
       {/* Right controls */}
       <div className="flex shrink-0 items-center gap-2">
-        <NotificationBell />
+        {showNotifications && <NotificationBell />}
         <ThemeToggle />
         <div className="bg-border h-5 w-px" />
         <UserMenu />

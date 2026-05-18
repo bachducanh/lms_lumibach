@@ -16,28 +16,48 @@ import {
 import { apiClient } from '@/lib/api-client';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
+import nextDynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+
+// dnd-kit generates random IDs on mount which mismatch between SSR and CSR,
+// so load ParsonsQuestion client-only.
+const ParsonsQuestion = nextDynamic(
+  () =>
+    import('@/components/features/quiz/ParsonsQuestion').then((m) => ({
+      default: m.ParsonsQuestion,
+    })),
+  { ssr: false }
+);
 import { toast } from 'sonner';
 import type { PreviewQuizData, PreviewQuizQuestion, TCCheckResult } from '@lumibach/types';
 import type { CodeLanguage } from '@lumibach/db';
+import {
+  QUESTION_TYPE_LABEL as TYPE_LABEL,
+  QUESTION_TYPE_ICON as TYPE_ICON,
+} from '@/lib/question-type-labels';
 
 // ── Constants ──────────────────────────────────────────────────
 
 const CODE_LANG: Record<string, CodeLanguage> = {
   CODE_PYTHON: 'PYTHON3',
   CODE_CPP: 'CPP17',
+  CODE_DEBUG_PYTHON: 'PYTHON3',
+  CODE_DEBUG_CPP: 'CPP17',
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  MULTIPLE_CHOICE_SINGLE: 'Trắc nghiệm (1 đáp án)',
-  MULTIPLE_CHOICE_MULTIPLE: 'Trắc nghiệm (nhiều đáp án)',
-  TRUE_FALSE: 'Đúng / Sai',
-  TRUE_FALSE_MULTI: 'Đúng / Sai (nhiều phát biểu)',
-  ESSAY: 'Tự luận',
-  CODE_PYTHON: 'Code Python',
-  CODE_CPP: 'Code C++',
-  CODE_WEB: 'Code Web',
-};
+// Stable shuffle so the same Parsons question always shuffles the same way
+// during a single preview session (key = question id).
+function seededShuffle<T>(arr: T[], seed: string): T[] {
+  const out = [...arr];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  for (let i = out.length - 1; i > 0; i--) {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    const j = h % (i + 1);
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
 
 // ── Scoring helpers (mirrors submitAttemptAction logic) ────────
 
@@ -85,13 +105,51 @@ function computeScore(
     return { score, isCorrect: correct === opts.length };
   }
 
-  if (type === 'CODE_PYTHON' || type === 'CODE_CPP') {
+  if (
+    type === 'CODE_PYTHON' ||
+    type === 'CODE_CPP' ||
+    type === 'CODE_DEBUG_PYTHON' ||
+    type === 'CODE_DEBUG_CPP'
+  ) {
     const results = codeCheckResults[q.questionId];
     if (!results) return { score: 0, isCorrect: null, unchecked: true };
     const passed = results.filter((r) => r.passed).length;
     const total = results.length;
     const score = total > 0 ? Math.round((passed / total) * pts * 10) / 10 : 0;
     return { score, isCorrect: passed === total };
+  }
+
+  if (type === 'PARSONS') {
+    const raw = texts[q.questionId];
+    if (!raw) return { score: 0, isCorrect: false };
+    try {
+      const order = JSON.parse(raw) as string[];
+      const correct = [...opts].sort((a, b) => a.position - b.position).map((o) => o.id);
+      const ok = order.length === correct.length && order.every((id, i) => id === correct[i]);
+      return { score: ok ? pts : 0, isCorrect: ok };
+    } catch {
+      return { score: 0, isCorrect: false };
+    }
+  }
+
+  if (type === 'CODE_FILL') {
+    const raw = texts[q.questionId];
+    if (!raw) return { score: 0, isCorrect: false };
+    try {
+      const fills = JSON.parse(raw) as string[];
+      const expected = [...opts]
+        .sort((a, b) => a.position - b.position)
+        .map((o) => o.content.trim());
+      let correctCount = 0;
+      for (let i = 0; i < expected.length; i++) {
+        if ((fills[i] ?? '').trim() === expected[i]) correctCount++;
+      }
+      const score =
+        expected.length > 0 ? Math.round((correctCount / expected.length) * pts * 10) / 10 : 0;
+      return { score, isCorrect: correctCount === expected.length };
+    } catch {
+      return { score: 0, isCorrect: false };
+    }
   }
 
   // ESSAY, CODE_WEB
@@ -217,7 +275,12 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
             const opts = q.question.options;
             const sr = scores[idx]!;
             const isManual = qType === 'ESSAY' || qType === 'CODE_WEB';
-            const isCodeAuto = qType === 'CODE_PYTHON' || qType === 'CODE_CPP';
+            const isCodeAuto =
+              qType === 'CODE_PYTHON' ||
+              qType === 'CODE_CPP' ||
+              qType === 'CODE_DEBUG_PYTHON' ||
+              qType === 'CODE_DEBUG_CPP';
+            const TypeIcon = TYPE_ICON[qType];
 
             // Derive per-question selected state
             const selectedIds = selected[q.questionId] ?? [];
@@ -252,6 +315,7 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                      {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
                       <span>{TYPE_LABEL[qType] ?? qType}</span>
                       <span>·</span>
                       <span
@@ -478,6 +542,139 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
                   </div>
                 )}
 
+                {/* PARSONS review */}
+                {qType === 'PARSONS' &&
+                  (() => {
+                    const correctOrder = [...opts]
+                      .sort((a, b) => a.position - b.position)
+                      .map((o) => o.id);
+                    let studentOrder: string[] = [];
+                    try {
+                      if (textVal) studentOrder = JSON.parse(textVal) as string[];
+                    } catch {
+                      /**/
+                    }
+                    return (
+                      <div className="space-y-3 pl-10">
+                        <div>
+                          <p className="text-muted-foreground mb-1 text-xs font-medium">
+                            Thứ tự bạn sắp:
+                          </p>
+                          {studentOrder.length === 0 ? (
+                            <p className="text-muted-foreground text-xs italic">Chưa sắp xếp.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {studentOrder.map((id, oi) => {
+                                const opt = opts.find((o) => o.id === id);
+                                const correctPos = correctOrder.indexOf(id);
+                                const ok = correctPos === oi;
+                                return (
+                                  <div
+                                    key={id}
+                                    className={cn(
+                                      'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs',
+                                      ok
+                                        ? 'border-green-500/30 bg-green-500/5'
+                                        : 'border-red-400/30 bg-red-400/5'
+                                    )}
+                                  >
+                                    <span className="text-muted-foreground w-5 shrink-0 text-right tabular-nums">
+                                      {oi + 1}
+                                    </span>
+                                    <pre className="flex-1 font-mono whitespace-pre">
+                                      {opt?.content ?? '?'}
+                                    </pre>
+                                    {ok ? (
+                                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                                    ) : (
+                                      <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        {sr.isCorrect === false && (
+                          <div>
+                            <p className="text-muted-foreground mb-1 text-xs font-medium">
+                              Đáp án đúng:
+                            </p>
+                            <div className="space-y-1.5">
+                              {correctOrder.map((id, oi) => {
+                                const opt = opts.find((o) => o.id === id);
+                                return (
+                                  <div
+                                    key={id}
+                                    className="border-border bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs"
+                                  >
+                                    <span className="text-muted-foreground w-5 shrink-0 text-right tabular-nums">
+                                      {oi + 1}
+                                    </span>
+                                    <pre className="flex-1 font-mono whitespace-pre">
+                                      {opt?.content ?? '?'}
+                                    </pre>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                {/* CODE_FILL review */}
+                {qType === 'CODE_FILL' &&
+                  (() => {
+                    const expected = [...opts].sort((a, b) => a.position - b.position);
+                    let fills: string[] = [];
+                    try {
+                      if (textVal) fills = JSON.parse(textVal) as string[];
+                    } catch {
+                      /**/
+                    }
+                    return (
+                      <div className="space-y-2 pl-10">
+                        {expected.map((opt, bi) => {
+                          const given = (fills[bi] ?? '').trim();
+                          const correct = opt.content.trim();
+                          const ok = given === correct;
+                          return (
+                            <div
+                              key={opt.id}
+                              className={cn(
+                                'flex items-center gap-3 rounded-lg border px-3 py-1.5 text-xs',
+                                ok
+                                  ? 'border-green-500/30 bg-green-500/5'
+                                  : 'border-red-400/30 bg-red-400/5'
+                              )}
+                            >
+                              <span className="min-w-[2rem] shrink-0 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-center font-bold text-violet-700 dark:text-violet-400">
+                                [{bi + 1}]
+                              </span>
+                              <span className="text-muted-foreground font-mono">bạn điền:</span>
+                              <code className="font-mono">{given || '(trống)'}</code>
+                              {!ok && (
+                                <>
+                                  <span className="text-muted-foreground font-mono">· đúng:</span>
+                                  <code className="font-mono text-green-600 dark:text-green-400">
+                                    {correct}
+                                  </code>
+                                </>
+                              )}
+                              {ok ? (
+                                <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-green-500" />
+                              ) : (
+                                <XCircle className="ml-auto h-3.5 w-3.5 text-red-400" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                 {/* Explanation */}
                 {q.question.explanation && !isManual && (
                   <div className="pl-10">
@@ -539,12 +736,24 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
               qType === 'ESSAY' ||
               qType === 'CODE_PYTHON' ||
               qType === 'CODE_CPP' ||
-              qType === 'CODE_WEB'
+              qType === 'CODE_WEB' ||
+              qType === 'CODE_DEBUG_PYTHON' ||
+              qType === 'CODE_DEBUG_CPP'
             )
               return (texts[q.questionId] ?? '').trim().length > 0;
             if (qType === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
+            if (qType === 'PARSONS') return (texts[q.questionId] ?? '').length > 0;
+            if (qType === 'CODE_FILL') {
+              try {
+                const fills = JSON.parse(texts[q.questionId] ?? '[]') as string[];
+                return fills.some((s) => (s ?? '').trim().length > 0);
+              } catch {
+                return false;
+              }
+            }
             return (selected[q.questionId]?.length ?? 0) > 0;
           })();
+          const TypeIcon = TYPE_ICON[qType];
 
           return (
             <div
@@ -565,6 +774,7 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                    {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
                     <span>{TYPE_LABEL[qType] ?? qType}</span>
                     <span>·</span>
                     <span>{q.points} điểm</span>
@@ -875,6 +1085,164 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
                   />
                 </div>
               )}
+
+              {/* CODE_DEBUG_PYTHON / CODE_DEBUG_CPP — same UX as CODE_PYTHON/CPP */}
+              {(qType === 'CODE_DEBUG_PYTHON' || qType === 'CODE_DEBUG_CPP') && codeLang && (
+                <div className="space-y-2 pl-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-muted-foreground text-xs">
+                      Tìm và sửa lỗi trong đoạn code{' '}
+                      {qType === 'CODE_DEBUG_PYTHON' ? 'Python' : 'C++'} — nhấn Kiểm tra.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPending}
+                      onClick={() => void handleCheckCode(q.questionId, texts[q.questionId] ?? '')}
+                      className="h-7 gap-1.5 rounded-lg text-xs"
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                      {isPending ? 'Đang chạy...' : 'Kiểm tra'}
+                    </Button>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-orange-500/40">
+                    <CodeEditor
+                      value={texts[q.questionId] ?? q.question.starterCode ?? ''}
+                      onChange={(v) => handleText(q.questionId, v)}
+                      language={codeLang}
+                      height={260}
+                    />
+                  </div>
+                  {checkResults && (
+                    <div className="border-border bg-muted/20 rounded-xl border p-3 text-xs">
+                      {(() => {
+                        const passed = checkResults.filter((r) => r.passed).length;
+                        const total = checkResults.length;
+                        return (
+                          <div
+                            className={cn(
+                              'flex items-center gap-2 font-semibold',
+                              passed === total
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            )}
+                          >
+                            {passed === total ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <Minus className="h-4 w-4" />
+                            )}
+                            {passed}/{total} test case đúng
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PARSONS — drag-and-drop line ordering */}
+              {qType === 'PARSONS' &&
+                (() => {
+                  const sortedLines = [...opts].sort((a, b) => a.position - b.position);
+                  const savedRaw = texts[q.questionId];
+                  let initialLines: typeof sortedLines;
+                  if (savedRaw) {
+                    try {
+                      const ids = JSON.parse(savedRaw) as string[];
+                      const restored = ids
+                        .map((id) => sortedLines.find((o) => o.id === id))
+                        .filter((o): o is (typeof sortedLines)[number] => Boolean(o));
+                      initialLines =
+                        restored.length === sortedLines.length
+                          ? restored
+                          : seededShuffle(sortedLines, q.questionId);
+                    } catch {
+                      initialLines = seededShuffle(sortedLines, q.questionId);
+                    }
+                  } else {
+                    initialLines = seededShuffle(sortedLines, q.questionId);
+                  }
+                  return (
+                    <div className="space-y-2 pl-4">
+                      <p className="text-muted-foreground text-xs">
+                        Kéo thả các dòng để sắp xếp đúng thứ tự.
+                      </p>
+                      <ParsonsQuestion
+                        initialLines={initialLines.map((o) => ({
+                          id: o.id,
+                          content: o.content,
+                        }))}
+                        onChange={(orderedIds) => {
+                          setTexts((prev) => ({
+                            ...prev,
+                            [q.questionId]: JSON.stringify(orderedIds),
+                          }));
+                        }}
+                      />
+                    </div>
+                  );
+                })()}
+
+              {/* CODE_FILL — fill-in-the-blank */}
+              {qType === 'CODE_FILL' &&
+                (() => {
+                  const template = q.question.starterCode ?? '';
+                  const blankCount = opts.length;
+                  let fills: string[] = Array(blankCount).fill('');
+                  if (texts[q.questionId]) {
+                    try {
+                      fills = JSON.parse(texts[q.questionId]!) as string[];
+                    } catch {
+                      /**/
+                    }
+                  }
+                  const parts = template.split('___');
+                  return (
+                    <div className="space-y-4 pl-4">
+                      {/* Template with numbered placeholders */}
+                      <div className="border-border bg-muted/20 overflow-x-auto rounded-xl border p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                        {parts.map((part: string, pi: number) => (
+                          <span key={pi}>
+                            {part}
+                            {pi < parts.length - 1 && (
+                              <span className="mx-0.5 inline-flex items-center rounded bg-violet-500/20 px-1.5 py-0.5 text-xs font-bold text-violet-700 not-italic dark:text-violet-300">
+                                [{pi + 1}]
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      {/* Input fields */}
+                      <div className="space-y-2">
+                        {Array.from({ length: blankCount }, (_, bi) => (
+                          <div key={bi} className="flex items-center gap-3">
+                            <span className="min-w-[2rem] shrink-0 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-center text-xs font-bold text-violet-700 dark:text-violet-400">
+                              [{bi + 1}]
+                            </span>
+                            <input
+                              value={fills[bi] ?? ''}
+                              onChange={(e) => {
+                                const next = [...fills];
+                                next[bi] = e.target.value;
+                                setTexts((prev) => ({
+                                  ...prev,
+                                  [q.questionId]: JSON.stringify(next),
+                                }));
+                              }}
+                              placeholder={`Điền vào ô số ${bi + 1}...`}
+                              className="border-input bg-background focus:ring-ring flex-1 rounded-lg border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
             </div>
           );
         })}

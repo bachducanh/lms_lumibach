@@ -86,7 +86,9 @@ function parseWebCode(raw: string | null | undefined): WebCode | null {
   try {
     const p = JSON.parse(raw);
     if (typeof p === 'object' && p !== null) return p as WebCode;
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 
@@ -258,7 +260,6 @@ function SubmissionDialog({
         .catch(() => null);
       setDetail(sub ?? null);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id]);
 
   function handleRun() {

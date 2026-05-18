@@ -1,4 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 
@@ -31,7 +33,19 @@ function logActivity(
 
 @Injectable()
 export class AssignmentsService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache
+  ) {}
+
+  private async invalidateModuleCache(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
+  }
 
   private async canManage(userId: string, role: string, courseId: string) {
     if (role === 'ADMIN') return true;
@@ -192,6 +206,7 @@ export class AssignmentsService {
       return a;
     });
 
+    if (moduleId) await this.invalidateModuleCache(courseId);
     return { assignmentId: assignment.id };
   }
 
@@ -251,6 +266,7 @@ export class AssignmentsService {
       },
     });
 
+    await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã cập nhật bài tập.' };
   }
 
@@ -266,6 +282,7 @@ export class AssignmentsService {
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.assignment.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xóa bài tập.' };
   }
 

@@ -78,4 +78,5 @@ uploads/
 
 # Self-hosted scratch-gui — cloned source + build output
 external/scratch-gui/
+apps/web/external/scratch-gui/
 apps/web/public/scratch-gui/

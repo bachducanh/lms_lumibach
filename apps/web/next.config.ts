@@ -10,17 +10,21 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   outputFileTracingRoot: monorepoRoot,
+  serverExternalPackages: ['@lumibach/db'],
   allowedDevOrigins: ['lumi.nextgentra.com', '*.nextgentra.com'],
   async rewrites() {
-    // Proxy browser API calls through Next.js server so they work behind
-    // any tunnel/reverse-proxy (lumi.nextgentra.com) without CORS issues.
-    // Server-side requests bypass this rewrite and call API_INTERNAL_URL directly.
     const internalBase =
       process.env.API_INTERNAL_URL ??
       process.env.NEXT_PUBLIC_API_URL ??
       'http://localhost:4000/api/v1';
     const apiRoot = internalBase.replace(/\/api\/v1$/, '');
-    return [{ source: '/api/v1/:path*', destination: `${apiRoot}/api/v1/:path*` }];
+    const minioInternal = `http://${process.env.MINIO_INTERNAL_ENDPOINT ?? 'localhost'}:${process.env.MINIO_INTERNAL_PORT ?? '9000'}`;
+    return [
+      // Proxy NestJS API calls so they work behind any tunnel/reverse-proxy
+      { source: '/api/v1/:path*', destination: `${apiRoot}/api/v1/:path*` },
+      // Proxy MinIO storage so images work on HTTPS domains (avoids Mixed Content)
+      { source: '/storage/:path*', destination: `${minioInternal}/:path*` },
+    ];
   },
   images: {
     remotePatterns: [

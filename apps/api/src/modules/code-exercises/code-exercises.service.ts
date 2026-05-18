@@ -1,11 +1,14 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { Judge0Service } from '../../common/judge0/judge0.service';
@@ -23,13 +26,23 @@ const LANG_MAP: Record<string, number> = { PYTHON3: 71, JAVASCRIPT: 63, CPP17: 5
 @Injectable()
 export class CodeExercisesService {
   private readonly logger = new Logger(CodeExercisesService.name);
-  private readonly prisma = new PrismaClient();
 
   constructor(
+    private readonly prisma: PrismaClient,
     private readonly judge0: Judge0Service,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
     @Optional() private readonly gateway: CodeExecutionGateway | null = null,
     @Optional() private readonly notifications: NotificationsService | null = null
   ) {}
+
+  private async invalidateModuleCache(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
+  }
 
   // ── CRUD ──────────────────────────────────────────────────────
 
@@ -65,6 +78,7 @@ export class CodeExercisesService {
           isPublished: true,
         },
       });
+      await this.invalidateModuleCache(body.courseId);
     }
 
     return { exerciseId: exercise.id };

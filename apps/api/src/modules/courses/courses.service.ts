@@ -74,6 +74,7 @@ export class CoursesService {
         endDate: body.endDate ? new Date(body.endDate) : null,
         ownerId: actor.id,
         publishedAt: body.status === 'PUBLISHED' ? new Date() : null,
+        thumbnail: body.thumbnail || null,
       },
     });
 
@@ -125,10 +126,11 @@ export class CoursesService {
         endDate: body.endDate ? new Date(body.endDate) : null,
         publishedAt,
         archivedAt,
+        ...(body.thumbnail !== undefined ? { thumbnail: body.thumbnail || null } : {}),
       },
     });
 
-    await this.cache.del(`courses:detail:${courseId}`);
+    await this.cache.del(`courses:detail:slug:${course.slug}`);
 
     this.audit.log({
       userId: actor.id,
@@ -156,8 +158,7 @@ export class CoursesService {
       data: { deletedAt: new Date() },
     });
 
-    await this.cache.del(`courses:detail:${courseId}`);
-    await this.cache.del(`courses:list:${actor.id}`);
+    await this.cache.del(`courses:detail:slug:${existing.slug}`);
 
     this.audit.log({
       userId: actor.id,
@@ -192,7 +193,16 @@ export class CoursesService {
             },
           }
         : {}),
-      ...(actor.role === 'TA' ? { status: 'PUBLISHED' } : {}),
+      ...(actor.role === 'TA'
+        ? {
+            teachingAssistants: { some: { userId: actor.id } },
+          }
+        : {}),
+      ...(actor.role === 'TEACHER'
+        ? {
+            OR: [{ ownerId: actor.id }, { coTeachers: { some: { userId: actor.id } } }],
+          }
+        : {}),
       ...(ownOnly ? { ownerId: actor.id } : {}),
     };
 
@@ -239,38 +249,72 @@ export class CoursesService {
 
   async getCourseBySlug(actor: AuthUser, slug: string): Promise<CourseDetail> {
     const cacheKey = `courses:detail:slug:${slug}`;
-    return this.cached(cacheKey, 300_000, async () => {
-      const course = await this.prisma.course.findFirst({
+    const cached = await this.cached(cacheKey, 300_000, async () => {
+      const c = await this.prisma.course.findFirst({
         where: { slug, deletedAt: null },
-        include: {
-          owner: { select: OWNER_SELECT },
-          _count: { select: { enrollments: true, teachingAssistants: true } },
-        },
+        include: { owner: { select: OWNER_SELECT } },
       });
-      if (!course) throw new NotFoundException('Khoá học không tồn tại');
+      if (!c) throw new NotFoundException('Khoá học không tồn tại');
 
       return {
-        id: course.id,
-        name: course.name,
-        shortName: course.shortName,
-        slug: course.slug,
-        thumbnail: course.thumbnail,
-        subject: course.subject,
-        gradeLevel: course.gradeLevel,
-        status: course.status as string,
-        isPublic: course.isPublic,
-        description: course.description,
-        enrollmentCode: course.enrollmentCode,
-        ownerId: course.ownerId,
-        startDate: course.startDate?.toISOString() ?? null,
-        endDate: course.endDate?.toISOString() ?? null,
-        publishedAt: course.publishedAt?.toISOString() ?? null,
-        archivedAt: course.archivedAt?.toISOString() ?? null,
-        createdAt: course.createdAt.toISOString(),
-        owner: course.owner,
-        _count: course._count,
-      } as CourseDetail;
+        id: c.id,
+        name: c.name,
+        shortName: c.shortName,
+        slug: c.slug,
+        thumbnail: c.thumbnail,
+        subject: c.subject,
+        gradeLevel: c.gradeLevel,
+        status: c.status as string,
+        isPublic: c.isPublic,
+        description: c.description,
+        enrollmentCode: c.enrollmentCode,
+        ownerId: c.ownerId,
+        startDate: c.startDate?.toISOString() ?? null,
+        endDate: c.endDate?.toISOString() ?? null,
+        publishedAt: c.publishedAt?.toISOString() ?? null,
+        archivedAt: c.archivedAt?.toISOString() ?? null,
+        createdAt: c.createdAt.toISOString(),
+        owner: c.owner,
+      };
     });
+
+    if (!(await this.canViewCourse(actor, cached.id))) {
+      throw new NotFoundException('Khoá học không tồn tại');
+    }
+
+    // Counts change frequently (enrollments, TA assignments), so fetch fresh
+    // each time rather than caching with the rest of the detail.
+    const [enrollmentCount, taCount] = await Promise.all([
+      this.prisma.enrollment.count({ where: { courseId: cached.id } }),
+      this.prisma.teachingAssistant.count({ where: { courseId: cached.id } }),
+    ]);
+
+    return {
+      ...cached,
+      _count: { enrollments: enrollmentCount, teachingAssistants: taCount },
+    } as CourseDetail;
+  }
+
+  private async canViewCourse(actor: AuthUser, courseId: string): Promise<boolean> {
+    if (actor.role === 'ADMIN') return true;
+    const found = await this.prisma.course.findFirst({
+      where: {
+        id: courseId,
+        deletedAt: null,
+        OR: [
+          { ownerId: actor.id },
+          { coTeachers: { some: { userId: actor.id } } },
+          { teachingAssistants: { some: { userId: actor.id } } },
+          {
+            enrollments: {
+              some: { userId: actor.id, status: { in: ['ACTIVE', 'COMPLETED'] } },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    return found !== null;
   }
 
   private async cached<T>(key: string, ttlMs: number, factory: () => Promise<T>): Promise<T> {

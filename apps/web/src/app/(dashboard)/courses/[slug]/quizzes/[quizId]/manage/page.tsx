@@ -9,7 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { ArrowLeft, Brain } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
-export const metadata = { title: 'Quản lý câu hỏi' };
+export const metadata = { title: 'Quản lý câu hỏi - Quiz' };
 
 export default async function ManageQuizPage({
   params,

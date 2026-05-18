@@ -33,18 +33,20 @@ export default async function VerifyEmailPage({
   }
 
   const api = apiServerClient(await cookies());
-  let success = false;
-  let message = '';
+  let result: { success: boolean; message: string };
 
   try {
     const res = await api.post<{ message: string }>('/auth/verify-email', { token });
-    success = true;
-    message = res.message;
+    result = { success: true, message: res.message };
   } catch (err) {
-    success = false;
-    message =
-      err instanceof Error ? err.message : 'Liên kết xác thực không hợp lệ hoặc đã hết hạn.';
+    result = {
+      success: false,
+      message:
+        err instanceof Error ? err.message : 'Liên kết xác thực không hợp lệ hoặc đã hết hạn.',
+    };
   }
+
+  const { success, message } = result;
 
   return (
     <Card className="w-full max-w-sm">

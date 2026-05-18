@@ -14,6 +14,7 @@ export const CreateCourseBodySchema = z.object({
   isPublic: z.boolean().default(false),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  thumbnail: z.string().optional(),
 });
 export type CreateCourseBody = z.infer<typeof CreateCourseBodySchema>;
 
@@ -25,7 +26,7 @@ export const CoursesQuerySchema = z.object({
   status: CourseStatusSchema.optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   pageSize: z.coerce.number().int().positive().max(100).optional().default(12),
-  ownOnly: z.coerce.boolean().optional(),
+  ownOnly: z.union([z.boolean(), z.string().transform((v) => v === 'true')]).optional(),
 });
 export type CoursesQuery = z.infer<typeof CoursesQuerySchema>;
 

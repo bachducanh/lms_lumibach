@@ -86,6 +86,23 @@ export class EnrollmentsService {
   }
 
   async listCourseMembers(actor: AuthUser, courseId: string): Promise<CourseMembersResponse> {
+    if (!hasMinRole(actor.role, 'TA')) throw new ForbiddenException('Không có quyền');
+
+    if (actor.role !== 'ADMIN') {
+      const [course, isTA, isCoTeacher] = await Promise.all([
+        this.prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } }),
+        this.prisma.teachingAssistant.findUnique({
+          where: { userId_courseId: { userId: actor.id, courseId } },
+        }),
+        this.prisma.courseCoTeacher.findUnique({
+          where: { userId_courseId: { userId: actor.id, courseId } },
+        }),
+      ]);
+      const isCourseStaff = course?.ownerId === actor.id || !!isTA || !!isCoTeacher;
+      if (!isCourseStaff)
+        throw new ForbiddenException('Bạn không có quyền xem thành viên khoá học này');
+    }
+
     const [enrollments, tas, coTeachers] = await Promise.all([
       this.prisma.enrollment.findMany({
         where: { courseId },

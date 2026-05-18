@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Roles } from '../../common/auth/decorators/roles.decorator';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
@@ -15,6 +15,13 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'System-wide dashboard metrics (ADMIN only)' })
   getAdminOverview() {
     return this.service.getAdminOverview();
+  }
+
+  @Roles('ADMIN', 'TEACHER', 'TA')
+  @Get('live')
+  @ApiOperation({ summary: 'Live online users + recent activity' })
+  getLive(@CurrentUser() user: AuthUser, @Query('courseId') courseId?: string) {
+    return this.service.getLiveSummary(user, courseId);
   }
 
   @Roles('TA', 'TEACHER')

@@ -10,13 +10,6 @@ const internalPort = parseInt(
   10
 );
 
-// Public endpoint: base URL written into the DB and served to browsers.
-// May differ from the internal endpoint when behind a CDN / reverse proxy.
-const publicEndpoint =
-  process.env.MINIO_PUBLIC_ENDPOINT ?? process.env.MINIO_ENDPOINT ?? 'localhost';
-const publicPort = parseInt(process.env.MINIO_PUBLIC_PORT ?? process.env.MINIO_PORT ?? '9000', 10);
-const publicSSL = process.env.MINIO_PUBLIC_SSL === 'true';
-
 export const BUCKET_AVATARS = process.env.MINIO_BUCKET_AVATARS ?? 'lumibach-avatars';
 export const BUCKET_FILES = process.env.MINIO_BUCKET_FILES ?? 'lumibach-files';
 
@@ -52,8 +45,7 @@ export async function ensureBucket(bucket: string): Promise<void> {
 }
 
 export function getPublicUrl(bucket: string, objectName: string): string {
-  const protocol = publicSSL ? 'https' : 'http';
-  const portSuffix =
-    (publicSSL && publicPort === 443) || (!publicSSL && publicPort === 80) ? '' : `:${publicPort}`;
-  return `${protocol}://${publicEndpoint}${portSuffix}/${bucket}/${objectName}`;
+  // Return a relative /storage/... URL so it works on any domain (localhost, lumi.nextgentra.com).
+  // Next.js rewrites /storage/:path* → MinIO internally, avoiding Mixed Content on HTTPS.
+  return `/storage/${bucket}/${objectName}`;
 }

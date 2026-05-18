@@ -310,6 +310,15 @@ export class UsersService {
 
     const { q = '', courseId = '', page = 1 } = opts;
 
+    const scopedCourseWhere =
+      actor.role === 'TEACHER'
+        ? {
+            OR: [{ ownerId: actor.id }, { coTeachers: { some: { userId: actor.id } } }],
+          }
+        : actor.role === 'TA'
+          ? { teachingAssistants: { some: { userId: actor.id } } }
+          : null;
+
     const where = {
       role: 'STUDENT' as const,
       deletedAt: null,
@@ -324,7 +333,15 @@ export class UsersService {
             ],
           }
         : {}),
-      ...(courseId ? { enrollments: { some: { courseId } } } : {}),
+      ...(courseId
+        ? {
+            enrollments: {
+              some: scopedCourseWhere ? { courseId, course: scopedCourseWhere } : { courseId },
+            },
+          }
+        : scopedCourseWhere
+          ? { enrollments: { some: { course: scopedCourseWhere } } }
+          : {}),
     };
 
     const [students, total] = await Promise.all([

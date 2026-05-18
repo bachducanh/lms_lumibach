@@ -1,4 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type {
   CreateLessonBody,
@@ -17,7 +19,19 @@ function hasMinRole(userRole: string, minRole: Role): boolean {
 
 @Injectable()
 export class LessonsService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache
+  ) {}
+
+  private async invalidateModuleCache(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
+  }
 
   async createLesson(
     actor: AuthUser,
@@ -54,6 +68,7 @@ export class LessonsService {
       },
     });
 
+    await this.invalidateModuleCache(body.courseId);
     return { lessonId: lesson.id, itemId: item.id };
   }
 
@@ -74,6 +89,12 @@ export class LessonsService {
         ? [this.prisma.moduleItem.updateMany({ where: { lessonId }, data: { title: body.title } })]
         : []),
     ]);
+
+    const item = await this.prisma.moduleItem.findFirst({
+      where: { lessonId },
+      select: { module: { select: { courseId: true } } },
+    });
+    if (item) await this.invalidateModuleCache(item.module.courseId);
   }
 
   async getLesson(_actor: AuthUser, lessonId: string): Promise<LessonDetail> {

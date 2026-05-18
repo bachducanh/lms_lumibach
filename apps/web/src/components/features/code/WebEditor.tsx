@@ -5,12 +5,14 @@ import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Globe } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { useTheme } from 'next-themes';
+import type * as Monaco from 'monaco-editor';
 import { defineDraculaTheme } from '@/components/ui/editor/CodeEditor';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────
 
 type Tab = 'html' | 'css' | 'js';
+type MonacoInstance = typeof Monaco;
 
 export type WebCode = { html: string; css: string; js: string };
 
@@ -79,8 +81,8 @@ function registerEmmetAndTheme(
   emmetReady = true;
   import('emmet-monaco-es')
     .then(({ emmetHTML, emmetCSS }) => {
-      emmetHTML(monaco as any);
-      emmetCSS(monaco as any);
+      emmetHTML(monaco as MonacoInstance);
+      emmetCSS(monaco as MonacoInstance);
     })
     .catch(() => {
       /* graceful degradation */
@@ -140,7 +142,7 @@ export function WebEditor({
       `  el.textContent='JS Error: '+e;`,
       `  document.body.appendChild(el);`,
       `}`,
-      '<\/script>',
+      '</script>',
       '</body>',
       '</html>',
     ].join('\n');
@@ -158,13 +160,13 @@ export function WebEditor({
     firstRef.current = false;
     const t = setTimeout(applyDoc, delay);
     return () => clearTimeout(t);
-  }, [html, css, js, auto]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [html, css, js, auto]);
 
   // ── Notify parent ──────────────────────────────────────────
 
   useEffect(() => {
     onChange?.({ html, css, js });
-  }, [html, css, js]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [html, css, js]);
 
   // ── Layout ────────────────────────────────────────────────
 

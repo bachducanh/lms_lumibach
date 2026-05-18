@@ -115,9 +115,10 @@ export default async function AdminAnalyticsPage() {
           </div>
           <LineChart
             data={data.dailyActivity30}
-            height={140}
+            height={180}
             showAxis
             color="oklch(0.7 0.18 220)"
+            yLabel="sự kiện / ngày"
           />
         </div>
 
@@ -133,9 +134,10 @@ export default async function AdminAnalyticsPage() {
           </div>
           <LineChart
             data={data.dailyActiveUsers30}
-            height={140}
+            height={180}
             showAxis
             color="oklch(0.68 0.21 305)"
+            yLabel="người dùng / ngày"
           />
         </div>
 
@@ -151,9 +153,10 @@ export default async function AdminAnalyticsPage() {
           </div>
           <LineChart
             data={data.dailySubmissions30}
-            height={140}
+            height={180}
             showAxis
             color="oklch(0.7 0.18 140)"
+            yLabel="bài nộp / ngày"
           />
         </div>
       </div>
@@ -169,11 +172,12 @@ export default async function AdminAnalyticsPage() {
           {data.actionBreakdown.length > 0 ? (
             <BarChart
               data={data.actionBreakdown.slice(0, 8).map((a) => ({
-                label: (ACTION_LABEL[a.action] ?? a.action).slice(0, 8),
+                label: ACTION_LABEL[a.action] ?? a.action,
                 value: a.count,
               }))}
-              height={180}
+              height={220}
               color="oklch(0.78 0.16 75)"
+              yLabel="số lượt"
             />
           ) : (
             <p className="text-muted-foreground text-xs">Chưa có dữ liệu.</p>

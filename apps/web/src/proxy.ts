@@ -1,9 +1,15 @@
 import { auth } from '@/auth';
+import type { NextAuthRequest } from 'next-auth';
+import type { NextFetchEvent, NextMiddleware, NextRequest } from 'next/server';
 
-export const proxy = (req: any) => {
+const authProxy: NextMiddleware = auth(
+  (_req: NextAuthRequest, _event: NextFetchEvent): ReturnType<NextMiddleware> => undefined
+);
+
+export const proxy = (req: NextRequest, event: NextFetchEvent) => {
   // Bỏ qua nếu là Server Action để tránh lỗi 'Failed to fetch'
   if (req.headers.get('next-action')) return;
-  return auth(req);
+  return authProxy(req, event);
 };
 
 export const config = {

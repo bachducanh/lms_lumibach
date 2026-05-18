@@ -1,4 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 
@@ -10,7 +12,19 @@ function hasMinRole(r: string, min: Role) {
 
 @Injectable()
 export class ScratchService {
-  private readonly prisma = new PrismaClient();
+  constructor(
+    private readonly prisma: PrismaClient,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache
+  ) {}
+
+  private async invalidateModuleCache(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
+  }
 
   async create(
     user: AuthUser,
@@ -60,6 +74,7 @@ export class ScratchService {
           isPublished: true,
         },
       });
+      await this.invalidateModuleCache(body.courseId);
     }
 
     return { exerciseId: exercise.id };

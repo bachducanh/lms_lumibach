@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
@@ -23,19 +23,23 @@ export function NotificationBell() {
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
   // Fetch unread count on mount
   useEffect(() => {
-    startTransition(async () => {
+    let cancelled = false;
+    (async () => {
       try {
         const res = await apiClient.get<UnreadCount>('/notifications/unread-count');
-        setCount(res.count);
+        if (!cancelled) setCount(res.count);
       } catch {
         /* silent */
       }
-    });
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Real-time notifications via WebSocket
@@ -68,45 +72,48 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const handleOpen = () => {
+  const handleOpen = async () => {
     setOpen((o) => !o);
     if (!loaded) {
-      startTransition(async () => {
-        try {
-          const rows = await apiClient.get<NotificationItem[]>('/notifications', {
-            query: { limit: 20 },
-          });
-          setItems(rows);
-          setLoaded(true);
-        } catch {
-          setLoaded(true);
-        }
-      });
+      setPending(true);
+      try {
+        const rows = await apiClient.get<NotificationItem[]>('/notifications', {
+          query: { limit: 20 },
+        });
+        setItems(rows);
+      } catch {
+        /* ignore */
+      } finally {
+        setLoaded(true);
+        setPending(false);
+      }
     }
   };
 
-  const handleMarkRead = (id: string) => {
-    startTransition(async () => {
-      try {
-        await apiClient.post(`/notifications/${id}/read`);
-        setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-        setCount((c) => Math.max(0, c - 1));
-      } catch {
-        /* ignore */
-      }
-    });
+  const handleMarkRead = async (id: string) => {
+    setPending(true);
+    try {
+      await apiClient.post(`/notifications/${id}/read`);
+      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+      setCount((c) => Math.max(0, c - 1));
+    } catch {
+      /* ignore */
+    } finally {
+      setPending(false);
+    }
   };
 
-  const handleMarkAll = () => {
-    startTransition(async () => {
-      try {
-        await apiClient.post('/notifications/read-all');
-        setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
-        setCount(0);
-      } catch {
-        /* ignore */
-      }
-    });
+  const handleMarkAll = async () => {
+    setPending(true);
+    try {
+      await apiClient.post('/notifications/read-all');
+      setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setCount(0);
+    } catch {
+      /* ignore */
+    } finally {
+      setPending(false);
+    }
   };
 
   return (

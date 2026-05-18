@@ -1,4 +1,6 @@
 import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
@@ -151,11 +153,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           )}
           {canViewPeople && (
             <Link
-              href={`/courses/${slug}/analytics`}
+              href={`/courses/${slug}/reports`}
               className={buttonVariants({ variant: 'outline', size: 'sm' })}
             >
               <BarChart3 className="mr-1.5 h-4 w-4 text-cyan-500" />
-              Phân tích
+              Báo cáo
             </Link>
           )}
           {canViewPeople && (

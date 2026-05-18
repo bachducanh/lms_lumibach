@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { apiServerClient } from '@/lib/api-client';
-import { ModuleList } from '@/components/features/courses/ModuleList';
 import { ArrowLeft, Layers, Zap } from 'lucide-react';
 import type { CourseDetail, ModuleWithItems } from '@lumibach/types';
 import type { UserRole, SubmissionStatus, AttemptStatus } from '@lumibach/db';
+import { ModuleListClient } from '@/components/features/courses/ModuleListClient';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -156,7 +158,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
       </div>
 
       <div className="mx-auto w-full max-w-4xl">
-        <ModuleList
+        <ModuleListClient
           courseSlug={slug}
           courseId={course.id}
           modules={modules}

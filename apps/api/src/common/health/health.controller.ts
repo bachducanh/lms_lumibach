@@ -9,10 +9,9 @@ export class HealthController {
   @Public()
   @Get()
   async check() {
-    let db: 'up' | 'down' = 'down';
+    let db: 'up' | 'down' = 'up';
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-      db = 'up';
     } catch {
       db = 'down';
     }

@@ -10,7 +10,17 @@ import { createSocket } from '@/lib/socket';
 import type { AttemptData, AnswerInput, TCCheckResult } from '@lumibach/types';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
-import { ParsonsQuestion } from '@/components/features/quiz/ParsonsQuestion';
+import nextDynamic from 'next/dynamic';
+
+// dnd-kit generates IDs on mount which mismatch between SSR and CSR,
+// so load ParsonsQuestion client-only.
+const ParsonsQuestion = nextDynamic(
+  () =>
+    import('@/components/features/quiz/ParsonsQuestion').then((m) => ({
+      default: m.ParsonsQuestion,
+    })),
+  { ssr: false }
+);
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
 import type { CodeLanguage } from '@lumibach/db';
@@ -677,7 +687,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     Viết code HTML/CSS/JS — giáo viên sẽ xem và chấm điểm sau khi nộp.
                   </p>
                   <WebCodeEditor
-                    value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
+                    value={texts[q.questionId] ?? q.question.starterCode ?? ''}
                     onChange={(v) => handleCode(q.questionId, v)}
                   />
                 </div>
@@ -720,7 +730,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                       </div>
                       <div className="overflow-hidden rounded-xl border border-orange-500/40">
                         <CodeEditor
-                          value={texts[q.questionId] ?? (q.question as any).starterCode ?? ''}
+                          value={texts[q.questionId] ?? q.question.starterCode ?? ''}
                           onChange={(v) => handleCode(q.questionId, v)}
                           language={debugLang}
                           height={280}
@@ -858,7 +868,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
               {/* CODE_FILL — fill-in-the-blank */}
               {qType === 'CODE_FILL' &&
                 (() => {
-                  const template = (q.question as any).starterCode ?? '';
+                  const template = q.question.starterCode ?? '';
                   const blankCount = q.question.options.length;
                   let fills: string[] = Array(blankCount).fill('');
                   if (texts[q.questionId]) {

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ImagePlus } from 'lucide-react';
-import { apiClient, ApiError } from '@/lib/api-client';
+import { createCourseAction, updateCourseAction } from '@/app/(dashboard)/courses/actions';
 import type { CreateCourseBody, CourseDetail } from '@lumibach/types';
 
 type CourseFormValues = CreateCourseBody;
@@ -74,23 +74,23 @@ export function CourseForm({ mode, course }: Props) {
     e.preventDefault();
     startTransition(async () => {
       try {
-        if (mode === 'create') {
-          const data = await apiClient.post<{ slug: string }>('/courses', {
-            ...values,
-            thumbnail: thumbnailUrl || undefined,
-          });
-          toast.success('Tạo khoá học thành công.');
-          router.push(`/courses/${data.slug}`);
-        } else {
-          const data = await apiClient.patch<{ slug: string }>(`/courses/${course!.id}`, {
-            ...values,
-            thumbnail: thumbnailUrl || undefined,
-          });
-          toast.success('Cập nhật khoá học thành công.');
-          router.push(`/courses/${data.slug}`);
+        const payload = { ...values, thumbnail: thumbnailUrl || undefined };
+        const result =
+          mode === 'create'
+            ? await createCourseAction(payload)
+            : await updateCourseAction(course!.id, payload);
+
+        if ('error' in result) {
+          toast.error(result.error);
+          return;
         }
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Lỗi lưu khoá học');
+
+        toast.success(
+          mode === 'create' ? 'Tạo khoá học thành công.' : 'Cập nhật khoá học thành công.'
+        );
+        window.location.href = `/courses/${result.slug}`;
+      } catch {
+        toast.error('Lỗi lưu khoá học');
       }
     });
   }
@@ -259,10 +259,21 @@ export function CourseForm({ mode, course }: Props) {
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Đang lưu...' : mode === 'create' ? 'Tạo khoá học' : 'Lưu thay đổi'}
+        <Button type="submit" disabled={pending || uploading}>
+          {uploading
+            ? 'Đang upload ảnh...'
+            : pending
+              ? 'Đang lưu...'
+              : mode === 'create'
+                ? 'Tạo khoá học'
+                : 'Lưu thay đổi'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={pending || uploading}
+        >
           Huỷ
         </Button>
       </div>

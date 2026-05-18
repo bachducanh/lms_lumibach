@@ -1,4 +1,6 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 
@@ -15,7 +17,19 @@ function toDate(s: string | null | undefined): Date | null {
 
 @Injectable()
 export class QuizzesService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache
+  ) {}
+
+  private async invalidateModuleCache(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
+  }
 
   private async canManage(userId: string, role: string, courseId: string) {
     if (role === 'ADMIN') return true;
@@ -234,6 +248,7 @@ export class QuizzesService {
           quizId: quiz.id,
         },
       });
+      await this.invalidateModuleCache(body.courseId);
     }
 
     return { quizId: quiz.id };
@@ -289,6 +304,7 @@ export class QuizzesService {
       },
     });
 
+    await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã cập nhật quiz.' };
   }
 
@@ -308,6 +324,7 @@ export class QuizzesService {
         publishedAt: publish && existing.status !== 'PUBLISHED' ? new Date() : undefined,
       },
     });
+    await this.invalidateModuleCache(existing.courseId);
     return { message: publish ? 'Đã đăng quiz.' : 'Đã chuyển về nháp.' };
   }
 
@@ -321,6 +338,7 @@ export class QuizzesService {
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.quiz.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xoá quiz.' };
   }
 
