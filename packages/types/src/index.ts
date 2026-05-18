@@ -3,6 +3,7 @@ export * from './analytics';
 export * from './notifications';
 export * from './forum';
 export * from './users';
+export * from './categories';
 export * from './courses';
 export * from './modules';
 export * from './lessons';

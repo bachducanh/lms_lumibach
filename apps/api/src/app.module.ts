@@ -13,6 +13,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ForumModule } from './modules/forum/forum.module';
 import { UsersModule } from './modules/users/users.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { CoursesModule } from './modules/courses/courses.module';
 import { ModulesModule } from './modules/modules/modules.module';
 import { LessonsModule } from './modules/lessons/lessons.module';
@@ -79,6 +80,7 @@ import { UserAuthModule } from './modules/auth/auth.module';
     NotificationsModule,
     ForumModule,
     UsersModule,
+    CategoriesModule,
     CoursesModule,
     ModulesModule,
     LessonsModule,
