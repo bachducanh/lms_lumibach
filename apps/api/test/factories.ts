@@ -37,21 +37,46 @@ export async function createTestUser(input: CreateUserInput = {}) {
   });
 }
 
+export type CreateCategoryInput = {
+  name?: string;
+  parentId?: string | null;
+  sortOrder?: number;
+};
+
+export async function createTestCategory(input: CreateCategoryInput = {}) {
+  const stamp = uniq();
+  const name = input.name ?? `Test Category ${stamp}`;
+  return testPrisma.courseCategory.create({
+    data: {
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, '-') + '-' + stamp,
+      parentId: input.parentId ?? null,
+      sortOrder: input.sortOrder ?? 0,
+    },
+  });
+}
+
 export type CreateCourseInput = {
   ownerId: string;
   name?: string;
   slug?: string;
   status?: CourseStatus;
+  categoryId?: string;
 };
 
 export async function createTestCourse(input: CreateCourseInput) {
   const stamp = uniq();
+  // Auto-create a leaf category if caller doesn't supply one — courses now
+  // require categoryId since the categories module landed.
+  const categoryId =
+    input.categoryId ?? (await createTestCategory({ name: `Auto Cat ${stamp}` })).id;
   return testPrisma.course.create({
     data: {
       name: input.name ?? `Test Course ${stamp}`,
       slug: input.slug ?? `test-course-${stamp}`,
       status: input.status ?? 'DRAFT',
       ownerId: input.ownerId,
+      categoryId,
     },
   });
 }

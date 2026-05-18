@@ -264,6 +264,28 @@ model AuditLog {
 // COURSE MODULE
 // ============================================================
 
+model CourseCategory {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String
+  description String? @db.Text
+  sortOrder   Int     @default(0)
+
+  parentId String?
+  parent   CourseCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children CourseCategory[] @relation("CategoryHierarchy")
+
+  courses Course[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([parentId, slug])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
 model Course {
   id             String       @id @default(cuid())
   name           String
@@ -272,7 +294,6 @@ model Course {
   description    String?      @db.Text
   thumbnail      String?
   subject        String?
-  gradeLevel     String?
   status         CourseStatus @default(DRAFT)
   isPublic       Boolean      @default(false)
   enrollmentCode String?      @unique
@@ -280,6 +301,9 @@ model Course {
   startDate DateTime?
   endDate   DateTime?
   settings  Json?
+
+  categoryId String
+  category   CourseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   ownerId String
   owner   User   @relation("CourseOwner", fields: [ownerId], references: [id])
@@ -304,6 +328,7 @@ model Course {
 
   @@index([slug])
   @@index([ownerId])
+  @@index([categoryId])
   @@index([status])
   @@index([deletedAt])
 }

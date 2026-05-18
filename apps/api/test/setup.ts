@@ -2,6 +2,22 @@ import { afterAll, beforeAll, beforeEach, vi } from 'vitest';
 import { testPrisma } from './db';
 
 /**
+ * Mock @sentry/node — Sentry SDK chain-loads @sentry/node-core which transitively
+ * imports @opentelemetry/context-async-hooks via a hard-coded build path that
+ * Vitest's ESM resolver cannot reconcile (path drops `/build/src/` after exports
+ * normalization). Production runtime works fine (Node handles it), but tests
+ * blow up at module load. We never need real telemetry in tests, so stub the
+ * surface area: Sentry.init, integration factories, and captureException.
+ */
+vi.mock('@sentry/node', () => ({
+  init: vi.fn(),
+  httpIntegration: () => ({}),
+  requestDataIntegration: () => ({}),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+}));
+
+/**
  * Test lifecycle hooks (Vitest globals = false → import explicitly).
  *
  * beforeAll: chỉ connect Prisma. Migration đã chạy ngoài qua `pnpm test:db:up`

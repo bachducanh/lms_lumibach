@@ -3,7 +3,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../helpers/app';
 import { cookieHeader, signTestToken } from '../helpers/sign-test-token';
-import { createTestUser } from '../factories';
+import { createTestCategory, createTestUser } from '../factories';
 import { testPrisma } from '../db';
 
 describe('Forum API', () => {
@@ -18,12 +18,14 @@ describe('Forum API', () => {
   });
 
   async function seedCourse(ownerId: string) {
+    const category = await createTestCategory();
     return testPrisma.course.create({
       data: {
         name: 'Test Course',
         slug: `course-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         description: 'desc',
         ownerId,
+        categoryId: category.id,
       },
     });
   }
