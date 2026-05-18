@@ -9,7 +9,7 @@ export default async function NewCoursePage() {
   const session = await auth();
   const role = session?.user?.role as UserRole;
 
-  if (role !== 'ADMIN' && role !== 'TEACHER') {
+  if (role !== 'ADMIN') {
     redirect('/courses');
   }
 

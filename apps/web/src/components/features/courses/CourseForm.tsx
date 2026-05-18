@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ImagePlus } from 'lucide-react';
 import { createCourseAction, updateCourseAction } from '@/app/(dashboard)/courses/actions';
+import { CategoryTreePicker } from '@/components/features/categories/CategoryTreePicker';
 import type { CreateCourseBody, CourseDetail } from '@lumibach/types';
 
 type CourseFormValues = CreateCourseBody;
@@ -20,7 +21,6 @@ type Props = {
 };
 
 const SUBJECT_OPTIONS = ['Tin học', 'Lập trình', 'Toán', 'Vật lý', 'Khác'];
-const GRADE_OPTIONS = ['Lớp 6', 'Lớp 7', 'Lớp 8', 'Lớp 9', 'Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
 const STATUS_OPTIONS = [
   { value: 'DRAFT', label: 'Nháp' },
   { value: 'PUBLISHED', label: 'Đang mở' },
@@ -40,7 +40,7 @@ export function CourseForm({ mode, course }: Props) {
     shortName: course?.shortName ?? '',
     description: course?.description ?? '',
     subject: course?.subject ?? '',
-    gradeLevel: course?.gradeLevel ?? '',
+    categoryId: course?.categoryId ?? '',
     status: (course?.status as CourseFormValues['status']) ?? 'DRAFT',
     isPublic: course?.isPublic ?? false,
     startDate: course?.startDate ? new Date(course.startDate).toISOString().slice(0, 10) : '',
@@ -72,6 +72,10 @@ export function CourseForm({ mode, course }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!values.categoryId) {
+      toast.error('Vui lòng chọn danh mục (lớp học) cho khoá học');
+      return;
+    }
     startTransition(async () => {
       try {
         const payload = { ...values, thumbnail: thumbnailUrl || undefined };
@@ -170,39 +174,38 @@ export function CourseForm({ mode, course }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="subject">Môn học</Label>
-              <select
-                id="subject"
-                value={values.subject ?? ''}
-                onChange={(e) => set('subject', e.target.value)}
-                className="border-input bg-background text-foreground dark:bg-card w-full rounded-md border px-3 py-2 text-sm"
-              >
-                <option value="">— Chọn môn —</option>
-                {SUBJECT_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="gradeLevel">Khối lớp</Label>
-              <select
-                id="gradeLevel"
-                value={values.gradeLevel ?? ''}
-                onChange={(e) => set('gradeLevel', e.target.value)}
-                className="border-input bg-background text-foreground dark:bg-card w-full rounded-md border px-3 py-2 text-sm"
-              >
-                <option value="">— Chọn khối —</option>
-                {GRADE_OPTIONS.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="space-y-1.5">
+            <Label>Danh mục (lớp học) *</Label>
+            <CategoryTreePicker
+              value={values.categoryId || null}
+              onChange={(id) => set('categoryId', id ?? '')}
+              leafOnly
+              placeholder="Chọn lớp học (vd: 10E1)"
+            />
+            <p className="text-muted-foreground text-xs">
+              Khoá học phải gắn vào danh mục cấp lá (lớp cụ thể). Admin quản lý cây danh mục ở{' '}
+              <a href="/admin/categories" className="text-primary underline">
+                /admin/categories
+              </a>
+              .
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="subject">Môn học</Label>
+            <select
+              id="subject"
+              value={values.subject ?? ''}
+              onChange={(e) => set('subject', e.target.value)}
+              className="border-input bg-background text-foreground dark:bg-card w-full rounded-md border px-3 py-2 text-sm"
+            >
+              <option value="">— Chọn môn —</option>
+              {SUBJECT_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

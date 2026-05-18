@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CategoryTreePicker } from '@/components/features/categories/CategoryTreePicker';
 import type { UserRole } from '@lumibach/db';
 
 type Props = { role: UserRole };
@@ -22,6 +23,7 @@ export function CourseFilterBar({ role }: Props) {
   const [q, setQ] = useState(sp.get('q') ?? '');
 
   const currentStatus = sp.get('status') ?? '';
+  const currentCategoryId = sp.get('categoryId') ?? null;
   const showStatusFilter = role === 'ADMIN' || role === 'TEACHER' || role === 'TA';
 
   // Debounce search
@@ -44,6 +46,19 @@ export function CourseFilterBar({ role }: Props) {
     startTransition(() => router.push(`/courses?${params.toString()}`));
   }
 
+  function handleCategory(id: string | null) {
+    const params = new URLSearchParams(sp.toString());
+    if (id) {
+      params.set('categoryId', id);
+      params.set('includeSubcategories', 'true');
+    } else {
+      params.delete('categoryId');
+      params.delete('includeSubcategories');
+    }
+    params.delete('page');
+    startTransition(() => router.push(`/courses?${params.toString()}`));
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* Search */}
@@ -55,6 +70,17 @@ export function CourseFilterBar({ role }: Props) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring focus:border-primary/50 h-9 w-56 rounded-full border pr-3 pl-8 text-sm transition-colors focus:ring-1 focus:outline-none"
+        />
+      </div>
+
+      {/* Category picker */}
+      <div className="w-56">
+        <CategoryTreePicker
+          value={currentCategoryId}
+          onChange={handleCategory}
+          leafOnly={false}
+          allowClear
+          placeholder="Lọc theo danh mục"
         />
       </div>
 

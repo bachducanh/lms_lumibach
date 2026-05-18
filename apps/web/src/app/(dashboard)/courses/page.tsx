@@ -25,17 +25,22 @@ export default async function CoursesPage({
 }) {
   const session = await auth();
   const role = session?.user?.role as UserRole;
-  const canCreate = role === 'ADMIN' || role === 'TEACHER';
+  const canCreate = role === 'ADMIN';
 
   const sp = await searchParams;
   const q = typeof sp.q === 'string' ? sp.q : '';
   const status = typeof sp.status === 'string' ? sp.status : '';
+  const categoryId = typeof sp.categoryId === 'string' ? sp.categoryId : '';
+  const includeSubcategories =
+    typeof sp.includeSubcategories === 'string' ? sp.includeSubcategories : '';
   const page = typeof sp.page === 'string' ? Math.max(1, parseInt(sp.page)) : 1;
 
   const api = apiServerClient(await cookies());
   const qp = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
   if (q) qp.set('q', q);
   if (status) qp.set('status', status);
+  if (categoryId) qp.set('categoryId', categoryId);
+  if (includeSubcategories) qp.set('includeSubcategories', includeSubcategories);
   const { courses, total, totalPages } = await api
     .get<{
       courses: CourseListItem[];
@@ -44,7 +49,12 @@ export default async function CoursesPage({
     }>(`/courses?${qp.toString()}`)
     .catch(() => ({ courses: [] as CourseListItem[], total: 0, totalPages: 0 }));
 
-  const baseParams = { ...(q ? { q } : {}), ...(status ? { status } : {}) };
+  const baseParams = {
+    ...(q ? { q } : {}),
+    ...(status ? { status } : {}),
+    ...(categoryId ? { categoryId } : {}),
+    ...(includeSubcategories ? { includeSubcategories } : {}),
+  };
 
   return (
     <div>

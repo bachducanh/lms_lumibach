@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Zap,
   BarChart3,
+  FolderTree,
 } from 'lucide-react';
 
 type NavItem = {
@@ -36,6 +37,7 @@ const mainNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
   { label: 'Người dùng', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
+  { label: 'Danh mục khoá học', href: '/admin/categories', icon: FolderTree, roles: ['ADMIN'] },
   { label: 'Phân tích', href: '/admin/analytics', icon: BarChart3, roles: ['ADMIN'] },
   { label: 'Nhật ký hoạt động', href: '/admin/audit-logs', icon: ScrollText, roles: ['ADMIN'] },
 ];

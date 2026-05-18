@@ -152,7 +152,7 @@ export function CourseCard({ course }: Props) {
 
       {/* ── Card body ──────────────────────────────────────── */}
       <div className="flex flex-1 flex-col gap-3 p-4">
-        {/* Subject + grade chips */}
+        {/* Subject + category chips */}
         <div className="flex flex-wrap gap-1.5">
           {course.subject && (
             <span
@@ -164,9 +164,12 @@ export function CourseCard({ course }: Props) {
               {course.subject}
             </span>
           )}
-          {course.gradeLevel && (
-            <span className="border-border bg-secondary/50 text-secondary-foreground inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium">
-              {course.gradeLevel}
+          {course.category && (
+            <span
+              title={course.category.breadcrumb.map((b) => b.name).join(' / ')}
+              className="border-border bg-secondary/50 text-secondary-foreground inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium"
+            >
+              {course.category.name}
             </span>
           )}
         </div>

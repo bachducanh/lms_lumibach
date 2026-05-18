@@ -116,9 +116,13 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
                 {course.subject}
               </Badge>
             )}
-            {course.gradeLevel && (
-              <Badge variant="outline" className="text-xs">
-                {course.gradeLevel}
+            {course.category && (
+              <Badge
+                variant="outline"
+                className="text-xs"
+                title={course.category.breadcrumb.map((b) => b.name).join(' / ')}
+              >
+                {course.category.breadcrumb.map((b) => b.name).join(' / ')}
               </Badge>
             )}
             {course.isPublic && (
