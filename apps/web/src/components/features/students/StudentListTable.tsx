@@ -22,7 +22,7 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 function displayName(s: StudentRow) {
-  return s.fullName || `${s.firstName} ${s.lastName}`.trim();
+  return s.fullName || `${s.firstName} ${s.lastName}`.trim() || s.email;
 }
 
 function fmtDate(d: Date | string | null) {
@@ -32,14 +32,21 @@ function fmtDate(d: Date | string | null) {
 
 type Props = {
   students: StudentRow[];
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
-export function StudentListTable({ students }: Props) {
+export function StudentListTable({ students, emptyTitle, emptyDescription }: Props) {
   if (students.length === 0) {
     return (
-      <div className="border-border bg-card flex flex-col items-center justify-center gap-3 rounded-xl border py-16">
+      <div className="border-border bg-card flex flex-col items-center justify-center gap-3 rounded-xl border px-5 py-16 text-center">
         <UserX className="text-muted-foreground/40 h-10 w-10" />
-        <p className="text-muted-foreground text-sm">Không tìm thấy học sinh nào</p>
+        <div>
+          <p className="font-medium">{emptyTitle ?? 'Không tìm thấy học sinh nào'}</p>
+          {emptyDescription && (
+            <p className="text-muted-foreground mt-1 max-w-md text-sm">{emptyDescription}</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -108,7 +115,7 @@ export function StudentListTable({ students }: Props) {
               </td>
               <td className="hidden px-4 py-3.5 sm:table-cell">
                 <span className="text-sm font-medium tabular-nums">{s._count.enrollments}</span>
-                <span className="text-muted-foreground ml-1 text-xs">lớp</span>
+                <span className="text-muted-foreground ml-1 text-xs"> lớp</span>
               </td>
               <td className="text-muted-foreground hidden px-4 py-3.5 text-xs lg:table-cell">
                 {fmtDate(s.lastLoginAt)}

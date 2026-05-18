@@ -81,7 +81,7 @@ export function StudentDetailClient({
         <div className="flex items-center gap-2">
           <BookOpen className="text-muted-foreground h-4 w-4" />
           <h2 className="text-base font-semibold">
-            Khóa học đang tham gia
+            Khóa học đang tham gia{' '}
             <span className="bg-muted text-muted-foreground ml-2 rounded-full px-2 py-0.5 text-xs font-normal">
               {enrollments.length}
             </span>

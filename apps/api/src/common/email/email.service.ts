@@ -63,6 +63,10 @@ export class EmailService {
 
   async sendVerificationEmail(email: string, token: string) {
     const url = `${this.appUrl}/verify-email?token=${token}`;
+    // Always log the verification URL so admins can debug delivery
+    // issues (Gmail spam folder, blocked domain, etc.) without
+    // exposing the token in logs we wouldn't otherwise have.
+    process.stdout.write(`[email] verify URL for ${email}: ${url}\n`);
     await this.send(
       email,
       'Xác thực email - LumiBach',

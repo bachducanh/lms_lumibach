@@ -312,8 +312,16 @@
 }
 
 @keyframes lb-page-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.985);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
 }
 
 /* `lb-float-y` uses CSS custom properties for `--lift` so we can
@@ -362,9 +370,10 @@
   animation: lb-float-slow 7s ease-in-out infinite;
 }
 
-/* Route transition — wrapped around children in app/template.tsx */
+/* Route transition — wrapped around children in app/template.tsx.
+   Plays on every navigation thanks to template.tsx re-mounting. */
 .lb-page-enter {
-  animation: lb-page-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: lb-page-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Scroll-triggered reveal: elements stay hidden until they enter
@@ -394,6 +403,45 @@
   transform: none;
 }
 
+/* `lb-reveal-children`: any direct children inherit the same hidden
+   state and reveal together with a small stagger when the parent
+   enters the viewport. Avoids having to add `lb-reveal` + `--i` to
+   every card on every page.
+
+   Usage:
+     <div className="lb-reveal lb-reveal-children grid ...">
+       <Card />
+       <Card />
+       <Card />
+     </div>
+
+   Up to 12 children get explicit stagger; anything past that just
+   reveals with the last delay (graceful fallback). */
+.lb-reveal-children > * {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.lb-reveal-children.is-revealed > * {
+  opacity: 1;
+  transform: none;
+}
+.lb-reveal-children.is-revealed > *:nth-child(1)  { transition-delay: 0ms; }
+.lb-reveal-children.is-revealed > *:nth-child(2)  { transition-delay: 80ms; }
+.lb-reveal-children.is-revealed > *:nth-child(3)  { transition-delay: 160ms; }
+.lb-reveal-children.is-revealed > *:nth-child(4)  { transition-delay: 240ms; }
+.lb-reveal-children.is-revealed > *:nth-child(5)  { transition-delay: 320ms; }
+.lb-reveal-children.is-revealed > *:nth-child(6)  { transition-delay: 400ms; }
+.lb-reveal-children.is-revealed > *:nth-child(7)  { transition-delay: 480ms; }
+.lb-reveal-children.is-revealed > *:nth-child(8)  { transition-delay: 560ms; }
+.lb-reveal-children.is-revealed > *:nth-child(9)  { transition-delay: 640ms; }
+.lb-reveal-children.is-revealed > *:nth-child(10) { transition-delay: 720ms; }
+.lb-reveal-children.is-revealed > *:nth-child(11) { transition-delay: 800ms; }
+.lb-reveal-children.is-revealed > *:nth-child(12) { transition-delay: 880ms; }
+
 /* Mouse-tracking spotlight: a radial gradient that follows the
    cursor, driven by --mx/--my CSS vars from React.
    Element should be position: absolute over a relative parent. */
@@ -420,11 +468,13 @@
   .lb-page-enter,
   .lb-float-slow,
   .lb-parallax,
-  .lb-reveal {
+  .lb-reveal,
+  .lb-reveal-children > * {
     animation: none;
     transition: none;
     transform: none;
     opacity: 1;
+    filter: none;
   }
   .lb-mouse-glow { background: none; }
 }

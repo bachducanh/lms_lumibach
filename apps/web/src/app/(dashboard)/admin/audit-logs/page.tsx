@@ -101,15 +101,18 @@ export default async function AuditLogsPage({
   const tab: TabKey = rawTab === 'live' ? 'live' : 'logs';
 
   return (
-    <div className="space-y-5">
-      <div>
+    <div className="lb-stagger space-y-5">
+      <div style={{ ['--i' as string]: 0 }}>
         <h1 className="text-2xl font-bold">Nhật ký hoạt động</h1>
         <p className="text-muted-foreground text-sm">
           Theo dõi lịch sử hoạt động hệ thống và hoạt động trực tiếp.
         </p>
       </div>
 
-      <div className="border-border flex flex-wrap items-center gap-2 border-b pb-3">
+      <div
+        className="border-border flex flex-wrap items-center gap-2 border-b pb-3"
+        style={{ ['--i' as string]: 1 }}
+      >
         {TABS.map((item) => {
           const Icon = item.icon;
           const isActive = item.key === tab;
@@ -131,7 +134,9 @@ export default async function AuditLogsPage({
         })}
       </div>
 
-      {tab === 'live' ? <LiveLogsClient /> : <LogsPanel searchParams={sp} />}
+      <div style={{ ['--i' as string]: 2 }}>
+        {tab === 'live' ? <LiveLogsClient /> : <LogsPanel searchParams={sp} />}
+      </div>
     </div>
   );
 }

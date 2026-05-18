@@ -46,8 +46,22 @@ export function ScrollRevealProvider() {
       intersectionObserver.observe(el);
     }
 
-    // Pick up everything currently on the page.
-    document.querySelectorAll<HTMLElement>('.lb-reveal:not(.is-revealed)').forEach(observe);
+    // Defer initial observation until React 19 has fully committed and
+    // hydrated. Adding `.is-revealed` too early races hydration and
+    // produces "tree hydrated but attributes didn't match" warnings.
+    // 80ms is empirically safe — long enough for hydration even on
+    // larger trees, short enough that users perceive entrance as
+    // immediate.
+    let timer: number | undefined;
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        timer = window.setTimeout(() => {
+          document.querySelectorAll<HTMLElement>('.lb-reveal:not(.is-revealed)').forEach(observe);
+        }, 80);
+      });
+    });
 
     // Pick up anything React adds later.
     const mutationObserver = new MutationObserver((mutations) => {
@@ -62,6 +76,9 @@ export function ScrollRevealProvider() {
     mutationObserver.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      if (timer !== undefined) clearTimeout(timer);
       intersectionObserver.disconnect();
       mutationObserver.disconnect();
     };

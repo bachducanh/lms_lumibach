@@ -144,6 +144,7 @@ export function Sidebar() {
                 alt="LumiBach"
                 width={28}
                 height={28}
+                priority
                 className="relative shrink-0 rounded-sm"
               />
             </div>

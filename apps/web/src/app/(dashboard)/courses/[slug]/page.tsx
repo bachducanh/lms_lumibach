@@ -89,7 +89,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const statusStyle = STATUS_STYLE[course.status] ?? STATUS_STYLE.ARCHIVED!;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="lb-reveal lb-reveal-children max-w-3xl space-y-6">
       {/* ── Back link ──────────────────────────────────────── */}
       <Link
         href="/courses"

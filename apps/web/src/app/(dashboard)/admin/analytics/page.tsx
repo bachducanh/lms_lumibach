@@ -53,7 +53,7 @@ export default async function AdminAnalyticsPage() {
   if (!data) redirect('/dashboard');
 
   return (
-    <div className="max-w-[1400px] space-y-6">
+    <div className="lb-reveal lb-reveal-children max-w-[1400px] space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10">

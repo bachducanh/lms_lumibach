@@ -69,8 +69,11 @@ export default async function AdminUsersPage({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="lb-stagger space-y-6">
+      <div
+        className="flex flex-wrap items-start justify-between gap-3"
+        style={{ ['--i' as string]: 0 }}
+      >
         <div>
           <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
           <p className="text-muted-foreground text-sm">Tổng: {total} tài khoản</p>
@@ -85,9 +88,13 @@ export default async function AdminUsersPage({
         </div>
       </div>
 
-      <UserFilterBar q={q} role={role} status={status} />
+      <div style={{ ['--i' as string]: 1 }}>
+        <UserFilterBar q={q} role={role} status={status} />
+      </div>
 
-      <UserTable users={users} />
+      <div style={{ ['--i' as string]: 2 }}>
+        <UserTable users={users} />
+      </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">

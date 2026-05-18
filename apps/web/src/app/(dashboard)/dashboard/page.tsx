@@ -66,9 +66,12 @@ export default async function DashboardPage() {
   const visibleLinks = QUICK_LINKS.filter((l) => !l.roles || l.roles.includes(role));
 
   return (
-    <div className="space-y-8">
+    <div className="lb-stagger space-y-8">
       {/* ── Welcome hero — Unity dark + orange glow ─────────── */}
-      <div className="border-border bg-card relative overflow-hidden rounded-xl border">
+      <div
+        className="border-border bg-card relative overflow-hidden rounded-xl border"
+        style={{ ['--i' as string]: 0 }}
+      >
         {/* Tech grid background */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04]"
@@ -154,7 +157,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Quick links ─────────────────────────────────────── */}
-      <div>
+      <div style={{ ['--i' as string]: 1 }}>
         <div className="mb-4 flex items-center gap-3">
           <h2 className="text-muted-foreground text-[11px] font-bold tracking-[0.2em] uppercase">
             Truy cập nhanh
@@ -162,7 +165,7 @@ export default async function DashboardPage() {
           <div className="bg-border h-px flex-1" />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="lb-reveal lb-reveal-children grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleLinks.map((link) => {
             const Icon = link.icon;
             return (
@@ -198,7 +201,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Stats placeholder — Unity terminal style ─────────── */}
-      <div className="border-border bg-card/40 relative overflow-hidden rounded-xl border border-dashed px-8 py-10 text-center">
+      <div
+        className="border-border bg-card/40 relative overflow-hidden rounded-xl border border-dashed px-8 py-10 text-center"
+        style={{ ['--i' as string]: 2 }}
+      >
         <div className="pointer-events-none absolute inset-0 opacity-[0.03]">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-full w-full">
             <defs>

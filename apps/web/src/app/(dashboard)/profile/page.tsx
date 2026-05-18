@@ -28,12 +28,14 @@ export default async function ProfilePage() {
   if (!user) redirect('/login');
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div>
+    <div className="lb-stagger mx-auto max-w-lg space-y-6">
+      <div style={{ ['--i' as string]: 0 }}>
         <h1 className="text-2xl font-bold">Hồ sơ của tôi</h1>
         <p className="text-muted-foreground text-sm">{user.email}</p>
       </div>
-      <ProfileForm user={user} />
+      <div style={{ ['--i' as string]: 1 }}>
+        <ProfileForm user={user} />
+      </div>
     </div>
   );
 }

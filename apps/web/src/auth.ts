@@ -91,6 +91,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role as UserRole;
+        // Persist the avatar from DB into the JWT on sign-in so the
+        // header's Avatar shows the existing image right after login
+        // (NextAuth v5 doesn't auto-copy `image` → `picture` anymore).
+        token.picture = user.image ?? null;
       }
       if (trigger === 'update' && session?.image !== undefined) {
         token.picture = session.image as string | null;
@@ -100,7 +104,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session({ session, token }) {
       if (token.id) session.user.id = token.id as string;
       if (token.role) session.user.role = token.role as UserRole;
-      if (token.picture !== undefined) session.user.image = token.picture as string | null;
+      // `token.picture` may legitimately be `null` (no avatar yet) — we
+      // still want that mirrored into the session so the UI clears stale
+      // images. Use `in` rather than `!== undefined` to detect "set".
+      if ('picture' in token) session.user.image = token.picture as string | null;
       return session;
     },
   },
