@@ -1,0 +1,17 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: lumibach-postgres-test
+    environment:
+      POSTGRES_USER: lumibach_test
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: lumibach_test
+    ports:
+      - '5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lumibach_test']
+      interval: 3s
+      timeout: 3s
+      retries: 10

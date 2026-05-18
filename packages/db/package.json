@@ -1,0 +1,42 @@
+{
+  "name": "@lumibach/db",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json --watch",
+    "type-check": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:migrate:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "db:push": "dotenv -e ../../.env -- prisma db push",
+    "db:studio": "dotenv -e ../../.env -- prisma studio",
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "db:format": "prisma format"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5"
+  },
+  "devDependencies": {
+    "@lumibach/config": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^20",
+    "bcryptjs": "^3.0.3",
+    "dotenv-cli": "^7.4.2",
+    "prisma": "^5",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

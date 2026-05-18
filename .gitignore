@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# dependencies (monorepo)
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -11,14 +11,24 @@
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
+dist/
+
+# turbo
+.turbo/
+
+# generated Prisma client (regenerated on install)
+packages/db/generated/
+# compiled package output (built on install)
+packages/db/dist/
+packages/types/dist/
 
 # misc
 .DS_Store
@@ -35,6 +45,7 @@ yarn-error.log*
 .env.local
 .env.*.local
 !.env.example
+!.env.test
 
 # IDE
 .idea/
@@ -57,7 +68,7 @@ uploads/
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+**/next-env.d.ts
 
 # Claude Code
 .claude/
@@ -66,5 +77,6 @@ next-env.d.ts
 /scratch/
 
 # Self-hosted scratch-gui — cloned source + build output
-/external/scratch-gui/
-/public/scratch-gui/
+external/scratch-gui/
+apps/web/external/scratch-gui/
+apps/web/public/scratch-gui/
