@@ -6,18 +6,13 @@ import type {
   CoursesQuery,
   CourseListItem,
   CourseDetail,
+  CourseCategoryRef,
   CreateCourseBody,
   UpdateCourseBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { AuditService } from '../../common/audit/audit.service';
-
-const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
-type Role = (typeof ROLE_ORDER)[number];
-
-function hasMinRole(userRole: string, minRole: Role): boolean {
-  return ROLE_ORDER.indexOf(userRole as Role) >= ROLE_ORDER.indexOf(minRole);
-}
+import { CategoriesService } from '../categories/categories.service';
 
 function slugify(text: string): string {
   return text
@@ -39,16 +34,27 @@ const OWNER_SELECT = {
   avatar: true,
 } as const;
 
+const CATEGORY_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+} as const;
+
 @Injectable()
 export class CoursesService {
   constructor(
     private readonly prisma: PrismaClient,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly categories: CategoriesService
   ) {}
 
   async createCourse(actor: AuthUser, body: CreateCourseBody): Promise<{ slug: string }> {
-    if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
+    if (actor.role !== 'ADMIN') {
+      throw new ForbiddenException('Chỉ ADMIN mới được tạo khoá học');
+    }
+
+    await this.categories.assertLeafCategory(body.categoryId);
 
     const baseSlug = slugify(body.name);
     if (!baseSlug) throw new ForbiddenException('Tên khoá học không hợp lệ');
@@ -67,7 +73,7 @@ export class CoursesService {
         slug,
         description: body.description || null,
         subject: body.subject || null,
-        gradeLevel: body.gradeLevel || null,
+        categoryId: body.categoryId,
         status: (body.status ?? 'DRAFT') as any,
         isPublic: body.isPublic ?? false,
         startDate: body.startDate ? new Date(body.startDate) : null,
@@ -84,7 +90,7 @@ export class CoursesService {
       action: 'COURSE_CREATE',
       resource: 'Course',
       resourceId: course.id,
-      changes: { name: body.name, slug, status: body.status },
+      changes: { name: body.name, slug, status: body.status, categoryId: body.categoryId },
     });
 
     return { slug: course.slug };
@@ -95,12 +101,14 @@ export class CoursesService {
     courseId: string,
     body: UpdateCourseBody
   ): Promise<{ slug: string }> {
-    if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
-
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
     if (actor.role !== 'ADMIN' && existing.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền sửa khoá học này');
+    }
+
+    if (body.categoryId !== undefined && body.categoryId !== existing.categoryId) {
+      await this.categories.assertLeafCategory(body.categoryId);
     }
 
     const publishedAt =
@@ -115,15 +123,19 @@ export class CoursesService {
     const course = await this.prisma.course.update({
       where: { id: courseId },
       data: {
-        name: body.name,
-        shortName: body.shortName || null,
-        description: body.description || null,
-        subject: body.subject || null,
-        gradeLevel: body.gradeLevel || null,
-        status: body.status as any,
-        isPublic: body.isPublic,
-        startDate: body.startDate ? new Date(body.startDate) : null,
-        endDate: body.endDate ? new Date(body.endDate) : null,
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.shortName !== undefined ? { shortName: body.shortName || null } : {}),
+        ...(body.description !== undefined ? { description: body.description || null } : {}),
+        ...(body.subject !== undefined ? { subject: body.subject || null } : {}),
+        ...(body.categoryId !== undefined ? { categoryId: body.categoryId } : {}),
+        ...(body.status !== undefined ? { status: body.status as any } : {}),
+        ...(body.isPublic !== undefined ? { isPublic: body.isPublic } : {}),
+        ...(body.startDate !== undefined
+          ? { startDate: body.startDate ? new Date(body.startDate) : null }
+          : {}),
+        ...(body.endDate !== undefined
+          ? { endDate: body.endDate ? new Date(body.endDate) : null }
+          : {}),
         publishedAt,
         archivedAt,
         ...(body.thumbnail !== undefined ? { thumbnail: body.thumbnail || null } : {}),
@@ -138,15 +150,13 @@ export class CoursesService {
       action: 'COURSE_UPDATE',
       resource: 'Course',
       resourceId: courseId,
-      changes: { name: body.name, status: body.status },
+      changes: { name: body.name, status: body.status, categoryId: body.categoryId },
     });
 
     return { slug: course.slug };
   }
 
   async deleteCourse(actor: AuthUser, courseId: string): Promise<void> {
-    if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
-
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
     if (actor.role !== 'ADMIN' && existing.ownerId !== actor.id) {
@@ -179,12 +189,31 @@ export class CoursesService {
     pageSize: number;
     totalPages: number;
   }> {
-    const { q, status, page = 1, pageSize = 12, ownOnly } = params;
+    const {
+      q,
+      status,
+      categoryId,
+      includeSubcategories,
+      page = 1,
+      pageSize = 12,
+      ownOnly,
+    } = params;
+
+    let categoryFilter: { categoryId?: { in: string[] } | string } = {};
+    if (categoryId) {
+      if (includeSubcategories) {
+        const ids = await this.categories.getDescendantIds(categoryId);
+        categoryFilter = { categoryId: { in: ids } };
+      } else {
+        categoryFilter = { categoryId };
+      }
+    }
 
     const where: any = {
       deletedAt: null,
       ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
       ...(status ? { status } : {}),
+      ...categoryFilter,
       ...(actor.role === 'STUDENT'
         ? {
             status: 'PUBLISHED',
@@ -220,7 +249,8 @@ export class CoursesService {
           slug: true,
           thumbnail: true,
           subject: true,
-          gradeLevel: true,
+          categoryId: true,
+          category: { select: CATEGORY_SELECT },
           status: true,
           isPublic: true,
           startDate: true,
@@ -232,9 +262,17 @@ export class CoursesService {
       }),
     ]);
 
+    const breadcrumbs = await this.bulkBreadcrumb(courses.map((c) => c.categoryId));
+
     return {
       courses: courses.map((c) => ({
         ...c,
+        category: {
+          id: c.category.id,
+          name: c.category.name,
+          slug: c.category.slug,
+          breadcrumb: breadcrumbs.get(c.categoryId) ?? [],
+        },
         startDate: c.startDate?.toISOString() ?? null,
         endDate: c.endDate?.toISOString() ?? null,
         createdAt: c.createdAt.toISOString(),
@@ -252,9 +290,20 @@ export class CoursesService {
     const cached = await this.cached(cacheKey, 300_000, async () => {
       const c = await this.prisma.course.findFirst({
         where: { slug, deletedAt: null },
-        include: { owner: { select: OWNER_SELECT } },
+        include: {
+          owner: { select: OWNER_SELECT },
+          category: { select: CATEGORY_SELECT },
+        },
       });
       if (!c) throw new NotFoundException('Khoá học không tồn tại');
+
+      const breadcrumb = await this.categories.buildBreadcrumb(c.categoryId);
+      const categoryRef: CourseCategoryRef = {
+        id: c.category.id,
+        name: c.category.name,
+        slug: c.category.slug,
+        breadcrumb,
+      };
 
       return {
         id: c.id,
@@ -263,7 +312,8 @@ export class CoursesService {
         slug: c.slug,
         thumbnail: c.thumbnail,
         subject: c.subject,
-        gradeLevel: c.gradeLevel,
+        categoryId: c.categoryId,
+        category: categoryRef,
         status: c.status as string,
         isPublic: c.isPublic,
         description: c.description,
@@ -315,6 +365,19 @@ export class CoursesService {
       select: { id: true },
     });
     return found !== null;
+  }
+
+  private async bulkBreadcrumb(
+    categoryIds: string[]
+  ): Promise<Map<string, { id: string; name: string; slug: string }[]>> {
+    const unique = Array.from(new Set(categoryIds));
+    const map = new Map<string, { id: string; name: string; slug: string }[]>();
+    await Promise.all(
+      unique.map(async (id) => {
+        map.set(id, await this.categories.buildBreadcrumb(id));
+      })
+    );
+    return map;
   }
 
   private async cached<T>(key: string, ttlMs: number, factory: () => Promise<T>): Promise<T> {

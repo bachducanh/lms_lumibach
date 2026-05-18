@@ -34,7 +34,7 @@ export class CoursesController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Tạo khoá học (TEACHER+)' })
+  @ApiOperation({ summary: 'Tạo khoá học (ADMIN only)' })
   createCourse(
     @CurrentUser() user: AuthUser,
     @Body(zodBody(CreateCourseBodySchema)) body: CreateCourseBody
