@@ -56,9 +56,9 @@ export class UsersController {
 
   @Delete(':id')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Xoá mềm tài khoản (ADMIN)' })
-  softDeleteUser(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.service.softDeleteUser(user, id);
+  @ApiOperation({ summary: 'Xoá cứng tài khoản (ADMIN)' })
+  deleteUser(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.deleteUser(user, id);
   }
 
   @Post(':id/reset-password')

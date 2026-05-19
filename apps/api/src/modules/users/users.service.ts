@@ -140,19 +140,55 @@ export class UsersService {
     });
   }
 
-  // ── Admin: soft delete ─────────────────────────────────────────
+  // ── Admin: hard delete ─────────────────────────────────────────
 
-  async softDeleteUser(actor: AuthUser, userId: string): Promise<void> {
+  /**
+   * Xoá CỨNG người dùng: prisma.user.delete() — xóa hẳn record, các quan hệ
+   * `onDelete: Cascade` trong schema sẽ tự xoá theo (accounts, sessions,
+   * enrollments, TA, co-teachers, notifications, etc.).
+   *
+   * Các quan hệ KHÔNG có cascade sẽ block xoá ở DB level (Prisma throw
+   * P2003 foreign key violation). Để báo lỗi sớm và rõ ràng cho admin,
+   * kiểm tra trước các bảng:
+   *   - Course.owner (CourseOwner)
+   *   - AssignmentSubmission.student
+   *   - QuizAttempt.student
+   *   - ForumTopic.author / ForumPost.author
+   *
+   * Nếu có blocker, throw ConflictException kèm danh sách → admin xử lý
+   * (bàn giao course, xoá submissions trước) hoặc dùng soft-delete API
+   * cũ nếu vẫn muốn giữ data.
+   */
+  async deleteUser(actor: AuthUser, userId: string): Promise<void> {
     if (!hasMinRole(actor.role, 'ADMIN')) throw new ForbiddenException('Không có quyền');
     if (actor.id === userId) throw new ForbiddenException('Không thể xóa chính tài khoản của bạn');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.deletedAt) throw new NotFoundException('Không tìm thấy người dùng');
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { deletedAt: new Date(), status: 'INACTIVE' },
-    });
+    const [ownedCourses, submissions, quizAttempts, forumTopics, forumPosts] = await Promise.all([
+      this.prisma.course.count({ where: { ownerId: userId, deletedAt: null } }),
+      this.prisma.submission.count({ where: { studentId: userId } }),
+      this.prisma.quizAttempt.count({ where: { studentId: userId } }),
+      this.prisma.forumTopic.count({ where: { authorId: userId } }),
+      this.prisma.forumPost.count({ where: { authorId: userId } }),
+    ]);
+
+    const blockers: string[] = [];
+    if (ownedCourses > 0) blockers.push(`${ownedCourses} khoá học đang sở hữu`);
+    if (submissions > 0) blockers.push(`${submissions} bài nộp assignment`);
+    if (quizAttempts > 0) blockers.push(`${quizAttempts} lượt làm quiz`);
+    if (forumTopics > 0) blockers.push(`${forumTopics} chủ đề diễn đàn`);
+    if (forumPosts > 0) blockers.push(`${forumPosts} bài viết diễn đàn`);
+
+    if (blockers.length) {
+      throw new ConflictException(
+        `Không thể xoá cứng: người dùng còn ${blockers.join(', ')}. ` +
+          `Cần bàn giao/xoá dữ liệu liên quan trước, hoặc dùng xoá mềm.`
+      );
+    }
+
+    await this.prisma.user.delete({ where: { id: userId } });
 
     this.audit.log({
       userId: actor.id,
@@ -160,6 +196,7 @@ export class UsersService {
       action: 'DELETE_USER',
       resource: 'User',
       resourceId: userId,
+      metadata: { hard: true, email: user.email, fullName: user.fullName },
     });
   }
 
