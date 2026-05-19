@@ -72,6 +72,7 @@ uploads/
 
 # Claude Code
 .claude/
+.codex-artifacts/
 
 # Scratch files
 /scratch/

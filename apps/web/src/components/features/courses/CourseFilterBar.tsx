@@ -26,8 +26,15 @@ export function CourseFilterBar({ role }: Props) {
   const currentCategoryId = sp.get('categoryId') ?? null;
   const showStatusFilter = role === 'ADMIN' || role === 'TEACHER' || role === 'TA';
 
+  useEffect(() => {
+    setQ(sp.get('q') ?? '');
+  }, [sp]);
+
   // Debounce search
   useEffect(() => {
+    const currentQ = sp.get('q') ?? '';
+    if (q === currentQ) return;
+
     const timer = setTimeout(() => {
       const params = new URLSearchParams(sp.toString());
       if (q) params.set('q', q);
@@ -36,7 +43,7 @@ export function CourseFilterBar({ role }: Props) {
       startTransition(() => router.push(`/courses?${params.toString()}`));
     }, 350);
     return () => clearTimeout(timer);
-  }, [q]);
+  }, [q, router, sp, startTransition]);
 
   function handleStatus(val: string) {
     const params = new URLSearchParams(sp.toString());

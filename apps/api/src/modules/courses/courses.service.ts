@@ -114,11 +114,15 @@ export class CoursesService {
     const publishedAt =
       body.status === 'PUBLISHED' && existing.status !== 'PUBLISHED'
         ? new Date()
-        : existing.publishedAt;
+        : body.status !== undefined && body.status !== 'PUBLISHED'
+          ? null
+          : existing.publishedAt;
     const archivedAt =
       body.status === 'ARCHIVED' && existing.status !== 'ARCHIVED'
         ? new Date()
-        : existing.archivedAt;
+        : body.status !== undefined && body.status !== 'ARCHIVED'
+          ? null
+          : existing.archivedAt;
 
     const course = await this.prisma.course.update({
       where: { id: courseId },

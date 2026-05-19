@@ -18,7 +18,7 @@ import {
   createCategoryAction,
   updateCategoryAction,
 } from '@/app/(dashboard)/admin/categories/actions';
-import type { CategoryListItem } from '@lumibach/types';
+import type { CategoryListItem, CategoryTreeNode } from '@lumibach/types';
 
 type Mode =
   | { mode: 'create'; parentId: string | null }
@@ -29,9 +29,10 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   config: Mode;
   onSuccess?: () => void;
+  categoryTree?: CategoryTreeNode[];
 };
 
-export function CategoryFormDialog({ open, onOpenChange, config, onSuccess }: Props) {
+export function CategoryFormDialog({ open, onOpenChange, config, onSuccess, categoryTree }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [parentId, setParentId] = useState<string | null>(null);
@@ -126,6 +127,7 @@ export function CategoryFormDialog({ open, onOpenChange, config, onSuccess }: Pr
               onChange={setParentId}
               leafOnly={false}
               allowClear
+              initialTree={categoryTree}
               placeholder="(Không có — đặt làm danh mục gốc)"
             />
             <p className="text-muted-foreground text-xs">

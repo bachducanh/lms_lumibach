@@ -1,7 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, Tag, Search, X } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Tag,
+  Search,
+  X,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +34,9 @@ type Props = {
   placeholder?: string;
   allowClear?: boolean;
   disabled?: boolean;
+  initialTree?: CategoryTreeNode[];
+  initialLabel?: string;
+  emptyMessage?: string;
 };
 
 export function CategoryTreePicker({
@@ -33,37 +46,43 @@ export function CategoryTreePicker({
   placeholder = 'Chọn danh mục...',
   allowClear = false,
   disabled = false,
+  initialTree,
+  initialLabel,
+  emptyMessage = 'Chưa có danh mục nào',
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [tree, setTree] = useState<CategoryTreeNode[] | null>(null);
+  const [tree, setTree] = useState<CategoryTreeNode[] | null>(initialTree ?? null);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(() =>
+    initialTree ? collectExpandableIds(initialTree) : new Set()
+  );
 
   useEffect(() => {
-    if (!open || tree !== null) return;
+    if (!initialTree) return;
+    setTree(initialTree);
+    setExpanded(collectExpandableIds(initialTree));
+  }, [initialTree]);
+
+  useEffect(() => {
+    if ((!open && !value) || tree !== null) return;
     setLoading(true);
+    setFetchError(null);
     apiClient
       .get<CategoryTreeNode[]>('/categories/tree')
       .then((data) => {
         setTree(data);
-        const allIds = new Set<string>();
-        const collect = (nodes: CategoryTreeNode[]) => {
-          for (const n of nodes) {
-            if (n.children.length > 0) {
-              allIds.add(n.id);
-              collect(n.children);
-            }
-          }
-        };
-        collect(data);
-        setExpanded(allIds);
+        setExpanded(collectExpandableIds(data));
       })
-      .catch(() => setTree([]))
+      .catch((err: unknown) => {
+        setFetchError(err instanceof Error ? err.message : 'Không tải được danh mục');
+        setTree([]);
+      })
       .finally(() => setLoading(false));
-  }, [open, tree]);
+  }, [open, tree, value]);
 
-  const selectedLabel = useSelectedLabel(tree, value);
+  const selectedLabel = useSelectedLabel(tree, value, initialLabel);
 
   const filteredTree = useMemo(() => {
     if (!tree) return [];
@@ -98,6 +117,12 @@ export function CategoryTreePicker({
       else next.add(id);
       return next;
     });
+  }
+
+  function reloadTree() {
+    setTree(null);
+    setFetchError(null);
+    setSearch('');
   }
 
   return (
@@ -161,12 +186,23 @@ export function CategoryTreePicker({
 
         <div className="max-h-[50vh] overflow-y-auto rounded border p-2">
           {loading && <p className="text-muted-foreground py-6 text-center text-sm">Đang tải...</p>}
-          {!loading && filteredTree.length === 0 && (
+          {!loading && fetchError && (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <AlertCircle className="text-destructive h-5 w-5" />
+              <p className="text-muted-foreground text-sm">{fetchError}</p>
+              <Button type="button" size="sm" variant="outline" onClick={reloadTree}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Thử lại
+              </Button>
+            </div>
+          )}
+          {!loading && !fetchError && filteredTree.length === 0 && (
             <p className="text-muted-foreground py-6 text-center text-sm">
-              {search ? 'Không tìm thấy danh mục' : 'Chưa có danh mục nào'}
+              {search ? 'Không tìm thấy danh mục' : emptyMessage}
             </p>
           )}
           {!loading &&
+            !fetchError &&
             filteredTree.map((node) => (
               <TreeNode
                 key={node.id}
@@ -279,9 +315,28 @@ function TreeNode({
   );
 }
 
-function useSelectedLabel(tree: CategoryTreeNode[] | null, id: string | null): string {
+function collectExpandableIds(tree: CategoryTreeNode[]): Set<string> {
+  const allIds = new Set<string>();
+  const collect = (nodes: CategoryTreeNode[]) => {
+    for (const n of nodes) {
+      if (n.children.length > 0) {
+        allIds.add(n.id);
+        collect(n.children);
+      }
+    }
+  };
+  collect(tree);
+  return allIds;
+}
+
+function useSelectedLabel(
+  tree: CategoryTreeNode[] | null,
+  id: string | null,
+  initialLabel?: string
+): string {
   return useMemo(() => {
-    if (!id || !tree) return '';
+    if (!id) return '';
+    if (!tree) return initialLabel ?? '';
     const findPath = (nodes: CategoryTreeNode[], path: string[]): string[] | null => {
       for (const n of nodes) {
         const nextPath = [...path, n.name];
@@ -292,6 +347,6 @@ function useSelectedLabel(tree: CategoryTreeNode[] | null, id: string | null): s
       return null;
     };
     const path = findPath(tree, []);
-    return path ? path.join(' / ') : '';
-  }, [tree, id]);
+    return path ? path.join(' / ') : (initialLabel ?? '');
+  }, [tree, id, initialLabel]);
 }

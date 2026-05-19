@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { SessionProvider } from 'next-auth/react';
 import { auth } from '@/auth';
+import { prisma } from '@/lib/db';
 import { Sidebar } from '@/components/layouts/Sidebar';
 import { Header } from '@/components/layouts/Header';
 import { SidebarProvider } from '@/components/layouts/SidebarContext';
@@ -10,6 +11,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // All routes nested under (dashboard) require auth — bounce anonymous
   // visitors to the login page (landing page is at `/`).
   if (!session?.user) redirect('/login');
+
+  // Defensive check: the session JWT may reference a user that no longer
+  // exists in the database (DB reset, account deleted, env switched, …).
+  // Every downstream API call would then fail with "User not found" and
+  // the UI shows confusing errors. Verify the user exists here, and bounce
+  // to a route handler that clears the stale cookies then redirects to
+  // /login (we can't delete cookies from a Server Component directly).
+  // Only Prisma errors are caught — `redirect()` throws by design.
+  let userOk: boolean | null = null;
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id, deletedAt: null },
+      select: { id: true, status: true },
+    });
+    userOk = !!dbUser && dbUser.status === 'ACTIVE';
+  } catch {
+    // DB unreachable — render normally so user sees the API error rather
+    // than getting trapped in a /login that also can't authenticate.
+    userOk = null;
+  }
+  if (userOk === false) {
+    redirect('/api/auth/stale-bounce?reason=session-stale');
+  }
 
   return (
     <SessionProvider session={session}>

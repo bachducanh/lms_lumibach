@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -44,16 +45,24 @@ const STATUS_LABELS: Record<UserStatus, string> = {
 };
 
 export function UserTable({ users }: { users: User[] }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [localUsers, setLocalUsers] = useState(users);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState<{ name: string; password: string } | null>(null);
+
+  useEffect(() => {
+    setLocalUsers(users);
+  }, [users]);
 
   function handleDelete(userId: string) {
     startTransition(async () => {
       try {
         await apiClient.delete(`/users/${userId}`);
+        setLocalUsers((current) => current.filter((user) => user.id !== userId));
         toast.success('Đã xóa người dùng.');
         setConfirmDelete(null);
+        router.refresh();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Lỗi xóa người dùng');
       }
@@ -74,7 +83,7 @@ export function UserTable({ users }: { users: User[] }) {
     });
   }
 
-  if (users.length === 0) {
+  if (localUsers.length === 0) {
     return (
       <div className="ring-foreground/10 text-muted-foreground rounded-xl py-16 text-center ring-1">
         Không có người dùng nào.
@@ -89,7 +98,7 @@ export function UserTable({ users }: { users: User[] }) {
           <div className="bg-card ring-foreground/10 w-80 space-y-4 rounded-xl p-6 shadow-xl ring-1">
             <p className="font-medium">Xóa người dùng này?</p>
             <p className="text-muted-foreground text-sm">
-              Tài khoản sẽ bị vô hiệu hóa và không thể đăng nhập.
+              Tài khoản sẽ bị xoá vĩnh viễn khỏi cơ sở dữ liệu.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(null)}>
@@ -138,7 +147,7 @@ export function UserTable({ users }: { users: User[] }) {
             </tr>
           </thead>
           <tbody className="divide-border divide-y">
-            {users.map((user) => {
+            {localUsers.map((user) => {
               const displayName = user.fullName ?? `${user.firstName} ${user.lastName}`;
               return (
                 <tr key={user.id} className="hover:bg-muted/30 transition-colors">

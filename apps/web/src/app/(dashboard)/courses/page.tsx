@@ -1,11 +1,11 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { auth } from '@/auth';
-import { apiServerClient } from '@/lib/api-client';
+import { apiServerClient, ApiError } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
 import { CourseCard } from '@/components/features/courses/CourseCard';
 import { CourseFilterBar } from '@/components/features/courses/CourseFilterBar';
-import { Plus, BookOpen, Layers } from 'lucide-react';
+import { Plus, BookOpen, Layers, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 import type { CourseListItem } from '@lumibach/types';
 
@@ -41,13 +41,24 @@ export default async function CoursesPage({
   if (status) qp.set('status', status);
   if (categoryId) qp.set('categoryId', categoryId);
   if (includeSubcategories) qp.set('includeSubcategories', includeSubcategories);
-  const { courses, total, totalPages } = await api
-    .get<{
+  let courses: CourseListItem[] = [];
+  let total = 0;
+  let totalPages = 0;
+  let loadError: string | null = null;
+
+  try {
+    const data = await api.get<{
       courses: CourseListItem[];
       total: number;
       totalPages: number;
-    }>(`/courses?${qp.toString()}`)
-    .catch(() => ({ courses: [] as CourseListItem[], total: 0, totalPages: 0 }));
+    }>(`/courses?${qp.toString()}`);
+    courses = data.courses;
+    total = data.total;
+    totalPages = data.totalPages;
+  } catch (err) {
+    loadError =
+      err instanceof ApiError ? err.message : 'Không tải được danh sách khoá học từ máy chủ.';
+  }
 
   const baseParams = {
     ...(q ? { q } : {}),
@@ -137,7 +148,21 @@ export default async function CoursesPage({
       </div>
 
       {/* ── Course grid ────────────────────────────────────── */}
-      {courses.length === 0 ? (
+      {loadError ? (
+        <div className="border-destructive/30 bg-destructive/5 flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed py-20 text-center">
+          <div className="bg-destructive/10 flex h-14 w-14 items-center justify-center rounded-2xl">
+            <AlertTriangle className="text-destructive h-7 w-7" />
+          </div>
+          <div>
+            <p className="text-foreground font-semibold">Không tải được danh sách khoá học</p>
+            <p className="text-muted-foreground mt-1 text-sm">{loadError}</p>
+          </div>
+          <Link href="/courses" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+            <RefreshCw className="mr-1.5 h-4 w-4" />
+            Thử lại
+          </Link>
+        </div>
+      ) : courses.length === 0 ? (
         <div className="border-border bg-card/40 flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed py-24 text-center">
           <div
             className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-2xl"

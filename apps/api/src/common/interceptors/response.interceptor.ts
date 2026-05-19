@@ -13,7 +13,8 @@ import { map, type Observable } from 'rxjs';
  * Nếu controller trả về `{ data, meta }` rõ ràng (vd pagination) thì
  * giữ nguyên meta. Còn lại wrap data trực tiếp.
  *
- * KHÔNG wrap nếu response đã có shape `{ success, ... }` (vd filter đã handle).
+ * KHÔNG wrap nếu response đã có shape `{ success: boolean, ... }` (vd filter đã handle).
+ * DTO có field `success` khác kiểu vẫn được wrap như data bình thường.
  */
 @Injectable()
 export class ResponseInterceptor<T = unknown> implements NestInterceptor<T> {
@@ -23,7 +24,7 @@ export class ResponseInterceptor<T = unknown> implements NestInterceptor<T> {
         if (
           body !== null &&
           typeof body === 'object' &&
-          'success' in (body as Record<string, unknown>)
+          typeof (body as Record<string, unknown>).success === 'boolean'
         ) {
           return body;
         }

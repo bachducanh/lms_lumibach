@@ -1,19 +1,28 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { useEffect, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  ChevronRight,
+  AlertTriangle,
+  Archive,
   ChevronDown,
+  ChevronRight,
+  Eye,
   Folder,
   FolderOpen,
-  Tag,
-  Plus,
+  GraduationCap,
+  MoreVertical,
   Pencil,
+  Plus,
+  RefreshCw,
+  RotateCcw,
   Trash2,
-  BookOpen,
+  Users,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -27,10 +36,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { deleteCategoryAction } from '@/app/(dashboard)/admin/categories/actions';
-import { useRouter } from 'next/navigation';
-import type { CategoryListItem, CategoryTreeNode } from '@lumibach/types';
+import { deleteCourseAction, updateCourseAction } from '@/app/(dashboard)/courses/actions';
+import type { CategoryListItem, CategoryTreeNode, CourseListItem } from '@lumibach/types';
 
-type Props = { initialTree: CategoryTreeNode[] };
+type Props = {
+  initialTree: CategoryTreeNode[];
+  selectedCategoryId: string | null;
+  selectedCategoryTitle: string;
+  selectedCategoryBreadcrumb: string[];
+  canCreateCourseInSelected: boolean;
+  courses: CourseListItem[];
+  courseTotal: number;
+  courseLoadError: string | null;
+};
 
 type DialogState =
   | { type: 'create-root' }
@@ -38,12 +56,43 @@ type DialogState =
   | { type: 'edit'; category: CategoryListItem }
   | null;
 
-export function CategoryTreeManager({ initialTree }: Props) {
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: 'Nháp',
+  PUBLISHED: 'Đang mở',
+  ARCHIVED: 'Lưu trữ',
+};
+
+const STATUS_VARIANT: Record<string, 'warning' | 'success' | 'secondary'> = {
+  DRAFT: 'warning',
+  PUBLISHED: 'success',
+  ARCHIVED: 'secondary',
+};
+
+export function CategoryTreeManager({
+  initialTree,
+  selectedCategoryId,
+  selectedCategoryTitle,
+  selectedCategoryBreadcrumb,
+  canCreateCourseInSelected,
+  courses,
+  courseTotal,
+  courseLoadError,
+}: Props) {
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(() => collectAllIds(initialTree));
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [deleting, setDeleting] = useState<CategoryListItem | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [deletingCategory, setDeletingCategory] = useState<CategoryListItem | null>(null);
+  const [deletingCourse, setDeletingCourse] = useState<CourseListItem | null>(null);
+  const [categoryPending, startCategoryTransition] = useTransition();
+  const [coursePending, startCourseTransition] = useTransition();
+
+  useEffect(() => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      for (const id of collectAllIds(initialTree)) next.add(id);
+      return next;
+    });
+  }, [initialTree]);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -54,56 +103,159 @@ export function CategoryTreeManager({ initialTree }: Props) {
     });
   }
 
-  function handleDelete(cat: CategoryListItem) {
-    startTransition(async () => {
+  function handleDeleteCategory(cat: CategoryListItem) {
+    startCategoryTransition(async () => {
       const result = await deleteCategoryAction(cat.id);
       if ('error' in result) {
         toast.error(result.error);
         return;
       }
       toast.success('Đã xoá danh mục');
-      setDeleting(null);
+      setDeletingCategory(null);
       router.refresh();
     });
   }
 
+  function handleDeleteCourse(course: CourseListItem) {
+    startCourseTransition(async () => {
+      const result = await deleteCourseAction(course.id);
+      if ('error' in result) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success('Đã xoá khoá học');
+      setDeletingCourse(null);
+      router.refresh();
+    });
+  }
+
+  function handleArchiveCourse(course: CourseListItem) {
+    const nextStatus = course.status === 'ARCHIVED' ? 'DRAFT' : 'ARCHIVED';
+    startCourseTransition(async () => {
+      const result = await updateCourseAction(course.id, { status: nextStatus });
+      if ('error' in result) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(nextStatus === 'ARCHIVED' ? 'Đã lưu trữ khoá học' : 'Đã khôi phục khoá học');
+      router.refresh();
+    });
+  }
+
+  const createCourseHref =
+    selectedCategoryId && canCreateCourseInSelected
+      ? `/courses/new?categoryId=${selectedCategoryId}`
+      : '/courses/new';
+
   return (
     <>
-      <div className="border-border bg-card rounded-xl border">
-        <div className="border-border flex items-center justify-between border-b px-4 py-3">
-          <p className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
-            Cây danh mục
-          </p>
-          <Button size="sm" onClick={() => setDialog({ type: 'create-root' })}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Tạo danh mục gốc
-          </Button>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.95fr)_minmax(480px,1.05fr)]">
+        <section className="min-w-0">
+          <div className="border-border border-b pb-2">
+            <h2 className="text-2xl font-bold tracking-tight">Danh mục khoá học</h2>
+          </div>
 
-        <div className="p-3">
-          {initialTree.length === 0 ? (
-            <div className="py-12 text-center">
-              <Folder className="text-muted-foreground/30 mx-auto h-10 w-10" />
-              <p className="text-muted-foreground mt-3 text-sm">Chưa có danh mục nào</p>
-              <p className="text-muted-foreground/70 mt-1 text-xs">
-                Tạo danh mục gốc (vd: Năm học 2025-2026) để bắt đầu.
-              </p>
+          <div className="flex justify-center py-5">
+            <Button onClick={() => setDialog({ type: 'create-root' })}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Tạo danh mục mới
+            </Button>
+          </div>
+
+          <div className="border-border bg-card overflow-hidden border">
+            {initialTree.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <Folder className="text-muted-foreground/30 mx-auto h-10 w-10" />
+                <p className="text-muted-foreground mt-3 text-sm">Chưa có danh mục nào</p>
+                <p className="text-muted-foreground/70 mt-1 text-xs">
+                  Tạo danh mục gốc để bắt đầu quản lý khoá học.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-border divide-y">
+                {initialTree.map((node) => (
+                  <TreeRow
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    expanded={expanded}
+                    selectedId={selectedCategoryId}
+                    onToggle={toggle}
+                    onAddChild={(parentId) => setDialog({ type: 'create-child', parentId })}
+                    onEdit={(c) => setDialog({ type: 'edit', category: c })}
+                    onDelete={(c) => setDeletingCategory(c)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="min-w-0">
+          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b pb-2">
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-bold tracking-tight">
+                {selectedCategoryTitle}
+              </h2>
+              {selectedCategoryBreadcrumb.length > 1 && (
+                <p className="text-muted-foreground mt-1 truncate text-xs">
+                  {selectedCategoryBreadcrumb.join(' / ')}
+                </p>
+              )}
             </div>
-          ) : (
-            initialTree.map((node) => (
-              <TreeRow
-                key={node.id}
-                node={node}
-                depth={0}
-                expanded={expanded}
-                onToggle={toggle}
-                onAddChild={(parentId) => setDialog({ type: 'create-child', parentId })}
-                onEdit={(c) => setDialog({ type: 'edit', category: c })}
-                onDelete={(c) => setDeleting(c)}
-              />
-            ))
+            <div className="flex items-center gap-2">
+              <Link href={createCourseHref} className={buttonVariants()}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Tạo khoá học mới
+              </Link>
+            </div>
+          </div>
+
+          {!canCreateCourseInSelected && selectedCategoryId && (
+            <div className="border-border bg-muted/30 text-muted-foreground mt-4 rounded-md border px-3 py-2 text-sm">
+              Danh mục này đang có danh mục con. Khi tạo khoá học mới, hãy chọn một danh mục cấp lá.
+            </div>
           )}
-        </div>
+
+          <div className="border-border bg-card mt-5 overflow-hidden border">
+            {!selectedCategoryId ? (
+              <EmptyCoursesState message="Chọn hoặc tạo một danh mục để quản lý khoá học." />
+            ) : courseLoadError ? (
+              <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+                <AlertTriangle className="text-destructive h-8 w-8" />
+                <p className="font-semibold">Không tải được danh sách khoá học</p>
+                <p className="text-muted-foreground max-w-md text-sm">{courseLoadError}</p>
+                <Link
+                  href={`/admin/categories?categoryId=${selectedCategoryId}`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  <RefreshCw className="mr-1.5 h-4 w-4" />
+                  Thử lại
+                </Link>
+              </div>
+            ) : courses.length === 0 ? (
+              <EmptyCoursesState message="Danh mục này chưa có khoá học nào." />
+            ) : (
+              <div className="divide-border divide-y">
+                {courses.map((course) => (
+                  <CourseRow
+                    key={course.id}
+                    course={course}
+                    pending={coursePending}
+                    onArchive={handleArchiveCourse}
+                    onDelete={setDeletingCourse}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {courseTotal > courses.length && (
+            <p className="text-muted-foreground mt-3 text-center text-xs">
+              Đang hiển thị {courses.length}/{courseTotal} khoá học gần nhất trong danh mục này.
+            </p>
+          )}
+        </section>
       </div>
 
       {dialog && (
@@ -118,31 +270,56 @@ export function CategoryTreeManager({ initialTree }: Props) {
                   parentId: dialog.type === 'create-child' ? dialog.parentId : null,
                 }
           }
+          categoryTree={initialTree}
           onSuccess={() => router.refresh()}
         />
       )}
 
-      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+      <AlertDialog open={!!deletingCategory} onOpenChange={(o) => !o && setDeletingCategory(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Xoá danh mục?</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc muốn xoá <span className="font-semibold">{deleting?.name}</span>? Hành
-              động này không thể hoàn tác. Danh mục đang chứa khoá học hoặc danh mục con sẽ không
-              xoá được.
+              Bạn có chắc muốn xoá <span className="font-semibold">{deletingCategory?.name}</span>?
+              Danh mục đang chứa khoá học hoặc danh mục con sẽ không xoá được.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Huỷ</AlertDialogCancel>
+            <AlertDialogCancel disabled={categoryPending}>Huỷ</AlertDialogCancel>
             <AlertDialogAction
-              disabled={pending}
+              disabled={categoryPending}
               onClick={(e) => {
                 e.preventDefault();
-                if (deleting) handleDelete(deleting);
+                if (deletingCategory) handleDeleteCategory(deletingCategory);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {pending ? 'Đang xoá...' : 'Xoá'}
+              {categoryPending ? 'Đang xoá...' : 'Xoá'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingCourse} onOpenChange={(o) => !o && setDeletingCourse(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá khoá học?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xoá <span className="font-semibold">{deletingCourse?.name}</span>?
+              Hành động này sẽ ẩn khoá học khỏi danh sách quản lý.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={coursePending}>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={coursePending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deletingCourse) handleDeleteCourse(deletingCourse);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {coursePending ? 'Đang xoá...' : 'Xoá'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -155,6 +332,7 @@ function TreeRow({
   node,
   depth,
   expanded,
+  selectedId,
   onToggle,
   onAddChild,
   onEdit,
@@ -163,6 +341,7 @@ function TreeRow({
   node: CategoryTreeNode;
   depth: number;
   expanded: Set<string>;
+  selectedId: string | null;
   onToggle: (id: string) => void;
   onAddChild: (parentId: string) => void;
   onEdit: (cat: CategoryListItem) => void;
@@ -170,6 +349,7 @@ function TreeRow({
 }) {
   const isLeaf = node.children.length === 0;
   const isOpen = expanded.has(node.id);
+  const isSelected = selectedId === node.id;
   const canDelete = node._count.children === 0 && node._count.courses === 0;
 
   const { children: _children, ...rest } = node;
@@ -178,8 +358,13 @@ function TreeRow({
   return (
     <div>
       <div
-        className="group hover:bg-accent/40 flex items-center gap-1.5 rounded px-1.5 py-1.5 text-sm"
-        style={{ paddingLeft: `${depth * 18 + 6}px` }}
+        className={cn(
+          'group relative flex min-h-12 items-center gap-2 border-l-4 py-2.5 pr-3 text-sm transition-colors',
+          isSelected
+            ? 'border-l-primary bg-primary/5'
+            : 'hover:border-l-primary/40 hover:bg-accent/40 border-l-transparent'
+        )}
+        style={{ paddingLeft: `${depth * 18 + 12}px` }}
       >
         {isLeaf ? (
           <span className="w-5" />
@@ -187,75 +372,68 @@ function TreeRow({
           <button
             type="button"
             onClick={() => onToggle(node.id)}
-            className="hover:bg-accent rounded p-0.5"
+            className="hover:bg-accent text-muted-foreground hover:text-foreground rounded p-0.5"
             aria-label={isOpen ? 'Thu gọn' : 'Mở rộng'}
           >
-            {isOpen ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
 
         {isLeaf ? (
-          <Tag className="text-primary/70 h-3.5 w-3.5 shrink-0" />
+          <GraduationCap className="text-primary/70 h-4 w-4 shrink-0" />
         ) : isOpen ? (
-          <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <FolderOpen className="h-4 w-4 shrink-0 text-amber-500" />
         ) : (
-          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <Folder className="h-4 w-4 shrink-0 text-amber-500" />
         )}
 
-        <span className="flex-1 truncate font-medium">{node.name}</span>
-
-        {/* Counts */}
-        <div className="text-muted-foreground hidden items-center gap-3 text-xs sm:flex">
-          {node._count.children > 0 && (
-            <span className="flex items-center gap-1">
-              <Folder className="h-3 w-3" />
-              {node._count.children}
-            </span>
+        <Link
+          href={`/admin/categories?categoryId=${node.id}`}
+          className={cn(
+            'min-w-0 flex-1 truncate font-medium text-blue-700 hover:underline dark:text-blue-400',
+            isSelected && 'text-primary dark:text-primary'
           )}
-          {node._count.courses > 0 && (
-            <span className="flex items-center gap-1">
-              <BookOpen className="h-3 w-3" />
-              {node._count.courses}
-            </span>
-          )}
-        </div>
+        >
+          {node.name}
+        </Link>
 
-        {/* Actions */}
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <span className="text-muted-foreground hidden shrink-0 items-center gap-1 text-xs sm:inline-flex">
+          {node._count.courses}
+          <GraduationCap className="h-3.5 w-3.5" />
+        </span>
+
+        <div className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => onAddChild(node.id)}
             title="Tạo danh mục con"
-            className="hover:bg-accent text-muted-foreground hover:text-foreground rounded p-1"
+            className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => onEdit(asListItem)}
-            title="Sửa"
-            className="hover:bg-accent text-muted-foreground hover:text-foreground rounded p-1"
+            title="Sửa danh mục"
+            className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => onDelete(asListItem)}
             disabled={!canDelete}
-            title={canDelete ? 'Xoá' : 'Còn chứa danh mục con/khoá học, không xoá được'}
+            title={canDelete ? 'Xoá danh mục' : 'Còn chứa danh mục con/khoá học, không xoá được'}
             className={cn(
-              'rounded p-1 transition-colors',
+              'rounded p-1.5 transition-colors',
               canDelete
-                ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+                ? 'hover:bg-destructive/10 hover:text-destructive text-blue-700 dark:text-blue-400'
                 : 'text-muted-foreground/30 cursor-not-allowed'
             )}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </button>
+          <MoreVertical className="text-muted-foreground h-4 w-4" />
         </div>
       </div>
 
@@ -267,6 +445,7 @@ function TreeRow({
               node={child}
               depth={depth + 1}
               expanded={expanded}
+              selectedId={selectedId}
               onToggle={onToggle}
               onAddChild={onAddChild}
               onEdit={onEdit}
@@ -275,6 +454,100 @@ function TreeRow({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function CourseRow({
+  course,
+  pending,
+  onArchive,
+  onDelete,
+}: {
+  course: CourseListItem;
+  pending: boolean;
+  onArchive: (course: CourseListItem) => void;
+  onDelete: (course: CourseListItem) => void;
+}) {
+  const statusVariant = STATUS_VARIANT[course.status] ?? 'secondary';
+  const statusLabel = STATUS_LABEL[course.status] ?? course.status;
+  const ownerName =
+    course.owner.fullName ?? `${course.owner.firstName} ${course.owner.lastName}`.trim();
+
+  return (
+    <div className="hover:bg-accent/35 flex min-h-14 items-center gap-3 px-4 py-2.5 text-sm transition-colors">
+      <span className="text-muted-foreground grid h-6 w-6 shrink-0 place-items-center">
+        <GraduationCap className="h-4 w-4" />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Link
+            href={`/courses/${course.slug}`}
+            className="truncate font-medium text-blue-700 hover:underline dark:text-blue-400"
+          >
+            {course.name}
+          </Link>
+          <Badge variant={statusVariant} className="shrink-0">
+            {statusLabel}
+          </Badge>
+        </div>
+        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-3 text-xs">
+          <span className="truncate">{ownerName}</span>
+          <span className="inline-flex items-center gap-1">
+            <Users className="h-3.5 w-3.5" />
+            {course._count.enrollments} học sinh
+          </span>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-0.5">
+        <Link
+          href={`/courses/${course.slug}/edit`}
+          title="Sửa khoá học"
+          className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
+        >
+          <Pencil className="h-4 w-4" />
+        </Link>
+        <Link
+          href={`/courses/${course.slug}`}
+          title="Xem khoá học"
+          className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
+        >
+          <Eye className="h-4 w-4" />
+        </Link>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => onArchive(course)}
+          title={course.status === 'ARCHIVED' ? 'Khôi phục khoá học' : 'Lưu trữ khoá học'}
+          className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 disabled:opacity-50 dark:text-blue-400"
+        >
+          {course.status === 'ARCHIVED' ? (
+            <RotateCcw className="h-4 w-4" />
+          ) : (
+            <Archive className="h-4 w-4" />
+          )}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => onDelete(course)}
+          title="Xoá khoá học"
+          className="hover:bg-destructive/10 hover:text-destructive rounded p-1.5 text-blue-700 transition-colors disabled:opacity-50 dark:text-blue-400"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EmptyCoursesState({ message }: { message: string }) {
+  return (
+    <div className="px-6 py-12 text-center">
+      <GraduationCap className="text-muted-foreground/30 mx-auto h-10 w-10" />
+      <p className="text-muted-foreground mt-3 text-sm">{message}</p>
     </div>
   );
 }

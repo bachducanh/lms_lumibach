@@ -18,6 +18,8 @@ type CourseFormValues = CreateCourseBody;
 type Props = {
   mode: 'create' | 'edit';
   course?: CourseDetail;
+  initialCategoryId?: string;
+  initialCategoryLabel?: string;
 };
 
 const SUBJECT_OPTIONS = ['Tin học', 'Lập trình', 'Toán', 'Vật lý', 'Khác'];
@@ -27,7 +29,7 @@ const STATUS_OPTIONS = [
   { value: 'ARCHIVED', label: 'Lưu trữ' },
 ] as const;
 
-export function CourseForm({ mode, course }: Props) {
+export function CourseForm({ mode, course, initialCategoryId, initialCategoryLabel }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [thumbnailUrl, setThumbnailUrl] = useState<string>(course?.thumbnail ?? '');
@@ -40,7 +42,7 @@ export function CourseForm({ mode, course }: Props) {
     shortName: course?.shortName ?? '',
     description: course?.description ?? '',
     subject: course?.subject ?? '',
-    categoryId: course?.categoryId ?? '',
+    categoryId: course?.categoryId ?? initialCategoryId ?? '',
     status: (course?.status as CourseFormValues['status']) ?? 'DRAFT',
     isPublic: course?.isPublic ?? false,
     startDate: course?.startDate ? new Date(course.startDate).toISOString().slice(0, 10) : '',
@@ -180,7 +182,11 @@ export function CourseForm({ mode, course }: Props) {
               value={values.categoryId || null}
               onChange={(id) => set('categoryId', id ?? '')}
               leafOnly
+              initialLabel={
+                course?.category?.breadcrumb.map((c) => c.name).join(' / ') ?? initialCategoryLabel
+              }
               placeholder="Chọn lớp học (vd: 10E1)"
+              emptyMessage="Chưa có danh mục nào. Admin cần tạo danh mục ở /admin/categories trước."
             />
             <p className="text-muted-foreground text-xs">
               Khoá học phải gắn vào danh mục cấp lá (lớp cụ thể). Admin quản lý cây danh mục ở{' '}
