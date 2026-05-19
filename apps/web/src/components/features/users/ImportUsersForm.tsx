@@ -192,7 +192,7 @@ export function ImportUsersForm() {
                       )}
                       {e.missing.length > 0 && (
                         <span className="ml-2 text-amber-400">
-                          ⚠ slug sai: {e.missing.join(', ')}
+                          ⚠ không tìm thấy khoá học: {e.missing.join(', ')}
                         </span>
                       )}
                     </div>
@@ -276,8 +276,9 @@ export function ImportUsersForm() {
               <li>Password (tuỳ chọn — bỏ trống để hệ thống tạo random)</li>
               <li>Role: ADMIN / TEACHER / TA / STUDENT (mặc định STUDENT)</li>
               <li>
-                <strong>Course 1, Course 2, Course 3...</strong> — slug khoá học (vd{' '}
-                <code>tin-hoc-10</code>) để enroll luôn vào lớp
+                <strong>Course 1, Course 2, Course 3...</strong> — slug, tên viết tắt, hoặc tên đầy
+                đủ của khoá học (vd <code>tin-hoc-10</code>, <code>TH10</code>, hoặc{' '}
+                <code>Tin học 10</code>) để enroll luôn vào lớp. Không phân biệt hoa thường.
               </li>
             </ul>
           </div>

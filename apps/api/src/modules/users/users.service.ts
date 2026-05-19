@@ -193,7 +193,9 @@ export class UsersService {
 
     const result: ImportResult = { success: 0, errors: [], passwords: [], enrollments: [] };
 
-    const allSlugs = [
+    // Cho phép nhập slug, tên viết tắt (shortName), hoặc tên đầy đủ (name) —
+    // match case-insensitive để giáo viên không phải nhớ chính xác slug.
+    const allRefs = [
       ...new Set(
         rows
           .flatMap((r) => r.courseSlugs ?? [])
@@ -201,13 +203,29 @@ export class UsersService {
           .filter(Boolean)
       ),
     ];
-    const courses = allSlugs.length
+    const courses = allRefs.length
       ? await this.prisma.course.findMany({
-          where: { slug: { in: allSlugs }, deletedAt: null },
-          select: { id: true, slug: true },
+          where: {
+            deletedAt: null,
+            OR: [
+              { slug: { in: allRefs } },
+              ...allRefs.flatMap((s) => [
+                { shortName: { equals: s, mode: 'insensitive' as const } },
+                { name: { equals: s, mode: 'insensitive' as const } },
+              ]),
+            ],
+          },
+          select: { id: true, slug: true, shortName: true, name: true },
         })
       : [];
-    const courseBySlug = new Map(courses.map((c) => [c.slug, c]));
+    // Map lookup: lowercase(slug | shortName | name) → course. Khi user nhập
+    // bất kỳ dạng nào, lookup theo lowercase sẽ match.
+    const courseByRef = new Map<string, { id: string; slug: string }>();
+    for (const c of courses) {
+      courseByRef.set(c.slug.toLowerCase(), { id: c.id, slug: c.slug });
+      if (c.shortName) courseByRef.set(c.shortName.toLowerCase(), { id: c.id, slug: c.slug });
+      courseByRef.set(c.name.toLowerCase(), { id: c.id, slug: c.slug });
+    }
 
     for (const [i, row] of rows.entries()) {
       const rowNum = i + 2;
@@ -253,19 +271,19 @@ export class UsersService {
       const wanted = (row.courseSlugs ?? []).map((s) => s.trim()).filter(Boolean);
       const enrolled: string[] = [];
       const missing: string[] = [];
-      for (const slug of wanted) {
-        const c = courseBySlug.get(slug);
+      for (const ref of wanted) {
+        const c = courseByRef.get(ref.toLowerCase());
         if (!c) {
-          missing.push(slug);
+          missing.push(ref);
           continue;
         }
         try {
           await this.prisma.enrollment.create({
             data: { userId: created.id, courseId: c.id, status: 'ACTIVE' },
           });
-          enrolled.push(slug);
+          enrolled.push(c.slug);
         } catch {
-          enrolled.push(slug);
+          enrolled.push(c.slug);
         }
       }
       if (wanted.length) result.enrollments.push({ email: row.email, enrolled, missing });
