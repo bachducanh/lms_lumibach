@@ -15,6 +15,7 @@ import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { GradeForm } from '@/components/features/assignments/GradeForm';
 import { RubricGrader } from '@/components/features/assignments/RubricGrader';
 import { DeleteSubmissionButton } from '@/components/features/assignments/DeleteSubmissionButton';
+import { SubmissionFiles } from '@/components/features/assignments/SubmissionFiles';
 import { hasMinRole } from '@/lib/permissions';
 import { ChevronLeft, CheckCircle2, Clock, Circle, CalendarCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -217,17 +218,7 @@ export default async function SubmissionsPage({
             {selectedSub.files.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">File đính kèm</p>
-                {selectedSub.files.map((f) => (
-                  <a
-                    key={f.id}
-                    href={f.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="border-border bg-muted/30 hover:bg-muted flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors"
-                  >
-                    {f.name}
-                  </a>
-                ))}
+                <SubmissionFiles files={selectedSub.files} />
               </div>
             )}
 

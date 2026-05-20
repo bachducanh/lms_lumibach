@@ -22,7 +22,7 @@ const ACCEPTED = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ];
 
-const MAX_SIZE = 20 * 1024 * 1024;
+const DEFAULT_MAX_MB = 20;
 
 type UploadState =
   | { phase: 'idle' }
@@ -34,16 +34,35 @@ type Props = {
   extraFields?: Record<string, string>;
   onSuccess: (data: unknown) => void;
   className?: string;
+  /** Cho phép mọi định dạng file (bỏ kiểm tra ACCEPTED). */
+  acceptAll?: boolean;
+  /** Giới hạn dung lượng (MB). Mặc định 20 MB. */
+  maxSizeMb?: number;
+  /** Dòng mô tả tuỳ chỉnh dưới vùng kéo thả. */
+  hint?: string;
+  /** Vô hiệu hoá vùng upload (ví dụ đã đạt số file tối đa). */
+  disabled?: boolean;
 };
 
-export function FileUploader({ uploadUrl, extraFields = {}, onSuccess, className }: Props) {
+export function FileUploader({
+  uploadUrl,
+  extraFields = {},
+  onSuccess,
+  className,
+  acceptAll = false,
+  maxSizeMb = DEFAULT_MAX_MB,
+  hint,
+  disabled = false,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>({ phase: 'idle' });
   const [dragging, setDragging] = useState(false);
+  const maxBytes = maxSizeMb * 1024 * 1024;
 
   function validate(file: File): string | null {
-    if (!ACCEPTED.includes(file.type)) return 'Định dạng không được hỗ trợ';
-    if (file.size > MAX_SIZE) return 'File tối đa 20 MB';
+    if (!acceptAll && !ACCEPTED.includes(file.type)) return 'Định dạng không được hỗ trợ';
+    if (file.size > maxBytes) return `File tối đa ${maxSizeMb} MB`;
+    if (file.size === 0) return 'File rỗng';
     return null;
   }
 
@@ -113,18 +132,18 @@ export function FileUploader({ uploadUrl, extraFields = {}, onSuccess, className
           dragging
             ? 'border-primary bg-primary/5'
             : 'border-border hover:border-primary/50 hover:bg-muted/30',
-          state.phase === 'uploading' && 'pointer-events-none opacity-60'
+          (state.phase === 'uploading' || disabled) && 'pointer-events-none opacity-60'
         )}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !disabled && inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
-          setDragging(true);
+          if (!disabled) setDragging(true);
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          handleFiles(e.dataTransfer.files);
+          if (!disabled) handleFiles(e.dataTransfer.files);
         }}
       >
         <Upload className="text-muted-foreground mb-2 h-6 w-6" />
@@ -132,13 +151,14 @@ export function FileUploader({ uploadUrl, extraFields = {}, onSuccess, className
           Kéo thả hoặc <span className="text-primary font-medium">chọn file</span>
         </p>
         <p className="text-muted-foreground/70 mt-1 text-xs">
-          PDF, Word, Excel, PowerPoint, ảnh, ZIP — tối đa 20 MB
+          {hint ?? `PDF, Word, Excel, PowerPoint, ảnh, ZIP — tối đa ${maxSizeMb} MB`}
         </p>
         <input
           ref={inputRef}
           type="file"
-          accept={ACCEPTED.join(',')}
+          accept={acceptAll ? undefined : ACCEPTED.join(',')}
           className="hidden"
+          disabled={disabled}
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>

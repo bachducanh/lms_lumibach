@@ -58,6 +58,8 @@ export default async function EditAssignmentPage({
           latePenalty: assignment.latePenalty,
           allowResubmit: assignment.allowResubmit,
           maxAttempts: assignment.maxAttempts,
+          maxFileSizeMb: assignment.maxFileSizeMb,
+          maxFiles: assignment.maxFiles,
         }}
       />
 

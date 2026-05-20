@@ -15,6 +15,7 @@ import { RubricView } from '@/components/features/assignments/RubricView';
 import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { buttonVariants } from '@/components/ui/button';
 import { SubmissionForm } from '@/components/features/assignments/SubmissionForm';
+import { SubmissionFiles } from '@/components/features/assignments/SubmissionFiles';
 import { CodeSubmitPanel } from '@/components/features/code/CodeSubmitPanel';
 import { CodeAssignmentSetup } from '@/components/features/code/CodeAssignmentSetup';
 import { hasMinRole } from '@/lib/permissions';
@@ -467,22 +468,7 @@ export default async function AssignmentViewPage({
                       </div>
                     )}
                     {mySubmission.files.length > 0 && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {mySubmission.files.map((f) => (
-                          <a
-                            key={f.id}
-                            href={f.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="border-border bg-card hover:border-primary/40 hover:bg-muted group flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-200"
-                          >
-                            <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-110">
-                              <Download className="h-4 w-4" />
-                            </div>
-                            <span className="flex-1 truncate">{f.name}</span>
-                          </a>
-                        ))}
-                      </div>
+                      <SubmissionFiles files={mySubmission.files} />
                     )}
                   </div>
                 </div>
@@ -495,6 +481,9 @@ export default async function AssignmentViewPage({
                     assignmentId={assignmentId}
                     assignmentType={assignment.type}
                     initialContent={mySubmission?.content ?? ''}
+                    initialFiles={mySubmission?.files ?? []}
+                    maxFiles={assignment.maxFiles}
+                    maxFileSizeMb={assignment.maxFileSizeMb}
                     isEdit={hasEditableSubmission && mySubmission?.status !== 'DRAFT'}
                   />
                 </div>

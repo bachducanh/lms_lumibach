@@ -39,6 +39,8 @@ export type AssignmentDetail = {
   latePenalty: number | null;
   allowResubmit: boolean;
   maxAttempts: number | null;
+  maxFileSizeMb: number | null;
+  maxFiles: number | null;
   publishedAt: string | null;
   createdAt: string;
   moduleItems: { id: string; moduleId: string; module: { name: string } }[];
@@ -57,7 +59,7 @@ export type SubmissionItem = {
   submittedAt: string | null;
   gradedAt: string | null;
   gradedBy: string | null;
-  files: { id: string; name: string; url: string; size: number }[];
+  files: { id: string; name: string; url: string; size: number; mimeType: string }[];
   student?: {
     id: string;
     fullName: string | null;

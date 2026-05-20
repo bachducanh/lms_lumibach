@@ -30,6 +30,8 @@ type AssignmentFormValues = {
   latePenalty: number | null;
   allowResubmit: boolean;
   maxAttempts: number | null;
+  maxFileSizeMb: number | null;
+  maxFiles: number | null;
   moduleId: string | null;
 };
 import { ChevronLeft, CalendarDays, Clock } from 'lucide-react';
@@ -67,6 +69,8 @@ type Props =
         latePenalty: number | null;
         allowResubmit: boolean;
         maxAttempts: number | null;
+        maxFileSizeMb: number | null;
+        maxFiles: number | null;
       };
     };
 
@@ -100,6 +104,8 @@ export function AssignmentForm({
   const [latePenalty, setLatePenalty] = useState(String(assignment?.latePenalty ?? ''));
   const [allowResubmit, setAllowResubmit] = useState(assignment?.allowResubmit ?? false);
   const [maxAttempts, setMaxAttempts] = useState(String(assignment?.maxAttempts ?? ''));
+  const [maxFileSizeMb, setMaxFileSizeMb] = useState(String(assignment?.maxFileSizeMb ?? ''));
+  const [maxFiles, setMaxFiles] = useState(String(assignment?.maxFiles ?? ''));
   const [moduleId, setModuleId] = useState(defaultModuleId ?? '');
 
   function buildValues(): AssignmentFormValues {
@@ -116,6 +122,8 @@ export function AssignmentForm({
       latePenalty: latePenalty ? Number(latePenalty) : null,
       allowResubmit,
       maxAttempts: maxAttempts ? Number(maxAttempts) : null,
+      maxFileSizeMb: maxFileSizeMb ? Number(maxFileSizeMb) : null,
+      maxFiles: maxFiles ? Number(maxFiles) : null,
       moduleId: moduleId || null,
     };
   }
@@ -354,6 +362,46 @@ export function AssignmentForm({
             )}
           </label>
         </div>
+
+        {/* File submission settings */}
+        {(type === 'FILE' || type === 'BOTH') && (
+          <div className="border-border bg-muted/20 space-y-3 rounded-lg border p-4">
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Cấu hình nộp file
+            </p>
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Dung lượng tối đa / file</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={maxFileSizeMb}
+                  onChange={(e) => setMaxFileSizeMb(e.target.value)}
+                  placeholder="50"
+                  className="border-input bg-background focus:ring-ring w-20 rounded-md border px-2 py-1 text-center focus:ring-1 focus:outline-none"
+                />
+                <span className="text-muted-foreground">MB</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Số file tối đa</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={maxFiles}
+                  onChange={(e) => setMaxFiles(e.target.value)}
+                  placeholder="∞"
+                  className="border-input bg-background focus:ring-ring w-16 rounded-md border px-2 py-1 text-center focus:ring-1 focus:outline-none"
+                />
+              </div>
+            </div>
+            <p className="text-muted-foreground/70 text-xs">
+              Để trống = mặc định (50 MB/file, không giới hạn số file). Học sinh nộp được mọi định
+              dạng; ảnh, PDF, audio xem trực tiếp, các loại khác tải xuống.
+            </p>
+          </div>
+        )}
 
         {/* Instructions */}
         <div className="space-y-2">

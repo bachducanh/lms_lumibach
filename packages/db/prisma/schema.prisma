@@ -504,6 +504,10 @@ model Assignment {
   allowResubmit Boolean @default(false)
   maxAttempts   Int?
 
+  // Giới hạn upload file khi nộp bài (type FILE/BOTH). null = dùng mặc định hệ thống.
+  maxFileSizeMb Int?
+  maxFiles      Int?
+
   createdBy   String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

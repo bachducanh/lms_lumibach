@@ -57,6 +57,34 @@ export class AssignmentsService {
     return c?.ownerId === userId;
   }
 
+  // Validate the file list a student submits. Files are uploaded separately via the
+  // Next.js upload route; here we only trust metadata that points back into our own
+  // storage (relative /storage/… URL) to block javascript: hrefs / external links.
+  private sanitizeSubmissionFiles(
+    input: { name: string; url: string; mimeType: string; size: number }[] | undefined,
+    maxFiles: number | null
+  ): { name: string; url: string; mimeType: string; size: number }[] {
+    const files = Array.isArray(input) ? input : [];
+    if (files.length === 0) return [];
+
+    const HARD_CAP = 30;
+    const limit = maxFiles && maxFiles > 0 ? Math.min(maxFiles, HARD_CAP) : HARD_CAP;
+    if (files.length > limit) throw new ForbiddenException(`Chỉ được nộp tối đa ${limit} file.`);
+
+    return files.map((f) => {
+      if (!f || typeof f.url !== 'string' || !f.url.startsWith('/storage/'))
+        throw new ForbiddenException('File không hợp lệ.');
+      const name =
+        typeof f.name === 'string' && f.name.trim() ? f.name.trim().slice(0, 255) : 'file';
+      const mimeType =
+        typeof f.mimeType === 'string' && f.mimeType
+          ? f.mimeType.slice(0, 150)
+          : 'application/octet-stream';
+      const size = Number.isFinite(f.size) && f.size >= 0 ? Math.floor(f.size) : 0;
+      return { name, url: f.url, mimeType, size };
+    });
+  }
+
   // ── List (grouped by module) ─────────────────────────────────
 
   async listByModule(user: AuthUser, courseId: string) {
@@ -155,6 +183,8 @@ export class AssignmentsService {
       latePenalty?: number | null;
       allowResubmit?: boolean;
       maxAttempts?: number | null;
+      maxFileSizeMb?: number | null;
+      maxFiles?: number | null;
       moduleId?: string | null;
       publish?: boolean;
     }
@@ -181,6 +211,8 @@ export class AssignmentsService {
           latePenalty: data.latePenalty ?? null,
           allowResubmit: data.allowResubmit ?? false,
           maxAttempts: data.maxAttempts ?? null,
+          maxFileSizeMb: data.maxFileSizeMb ?? null,
+          maxFiles: data.maxFiles ?? null,
           createdBy: user.id,
           publishedAt: publish ? new Date() : null,
         },
@@ -228,6 +260,8 @@ export class AssignmentsService {
       latePenalty?: number | null;
       allowResubmit?: boolean;
       maxAttempts?: number | null;
+      maxFileSizeMb?: number | null;
+      maxFiles?: number | null;
       publish?: boolean;
     }
   ) {
@@ -261,6 +295,8 @@ export class AssignmentsService {
         ...(body.latePenalty !== undefined && { latePenalty: body.latePenalty }),
         ...(body.allowResubmit !== undefined && { allowResubmit: body.allowResubmit }),
         ...(body.maxAttempts !== undefined && { maxAttempts: body.maxAttempts }),
+        ...(body.maxFileSizeMb !== undefined && { maxFileSizeMb: body.maxFileSizeMb }),
+        ...(body.maxFiles !== undefined && { maxFiles: body.maxFiles }),
         publishedAt:
           newStatus === 'PUBLISHED' && existing.status !== 'PUBLISHED' ? new Date() : undefined,
       },
@@ -292,7 +328,9 @@ export class AssignmentsService {
     return this.prisma.submission.findMany({
       where: { assignmentId, studentId: user.id },
       orderBy: { attemptNumber: 'desc' },
-      include: { files: { select: { id: true, name: true, url: true, size: true } } },
+      include: {
+        files: { select: { id: true, name: true, url: true, size: true, mimeType: true } },
+      },
     });
   }
 
@@ -321,7 +359,11 @@ export class AssignmentsService {
   async submitAssignment(
     user: AuthUser,
     assignmentId: string,
-    body: { content: string; asDraft?: boolean }
+    body: {
+      content: string;
+      asDraft?: boolean;
+      files?: { name: string; url: string; mimeType: string; size: number }[];
+    }
   ) {
     const assignment = await this.prisma.assignment.findUnique({
       where: { id: assignmentId, deletedAt: null },
@@ -329,13 +371,17 @@ export class AssignmentsService {
         courseId: true,
         title: true,
         status: true,
+        type: true,
         dueDate: true,
         lateDeadline: true,
         latePolicy: true,
+        maxFiles: true,
       },
     });
     if (!assignment) throw new NotFoundException('Bài tập không tồn tại.');
     if (assignment.status !== 'PUBLISHED') throw new ForbiddenException('Bài tập chưa được đăng.');
+
+    const files = this.sanitizeSubmissionFiles(body.files, assignment.maxFiles);
 
     const existing = await this.prisma.submission.findFirst({
       where: { assignmentId, studentId: user.id },
@@ -356,24 +402,37 @@ export class AssignmentsService {
 
     const status = asDraft ? 'DRAFT' : isLate ? 'LATE' : 'SUBMITTED';
 
-    let sub;
-    if (existing) {
-      sub = await this.prisma.submission.update({
-        where: { id: existing.id },
-        data: { content: body.content, status, submittedAt: asDraft ? existing.submittedAt : now },
-      });
-    } else {
-      sub = await this.prisma.submission.create({
-        data: {
-          assignmentId,
-          studentId: user.id,
-          content: body.content,
-          status,
-          attemptNumber: 1,
-          submittedAt: asDraft ? null : now,
-        },
-      });
-    }
+    const sub = await this.prisma.$transaction(async (tx) => {
+      const saved = existing
+        ? await tx.submission.update({
+            where: { id: existing.id },
+            data: {
+              content: body.content,
+              status,
+              submittedAt: asDraft ? existing.submittedAt : now,
+            },
+          })
+        : await tx.submission.create({
+            data: {
+              assignmentId,
+              studentId: user.id,
+              content: body.content,
+              status,
+              attemptNumber: 1,
+              submittedAt: asDraft ? null : now,
+            },
+          });
+
+      // Replace the file set with the list the client sent (its source of truth).
+      await tx.submissionFile.deleteMany({ where: { submissionId: saved.id } });
+      if (files.length > 0) {
+        await tx.submissionFile.createMany({
+          data: files.map((f) => ({ submissionId: saved.id, uploadedBy: user.id, ...f })),
+        });
+      }
+
+      return saved;
+    });
 
     if (!asDraft) {
       logActivity(this.prisma, {

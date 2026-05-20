@@ -64,7 +64,12 @@ export class AssignmentsController {
   submit(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() body: { content: string; asDraft?: boolean }
+    @Body()
+    body: {
+      content: string;
+      asDraft?: boolean;
+      files?: { name: string; url: string; mimeType: string; size: number }[];
+    }
   ) {
     return this.service.submitAssignment(user, id, body);
   }
