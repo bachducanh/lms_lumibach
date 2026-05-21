@@ -16,6 +16,7 @@ import { GradeForm } from '@/components/features/assignments/GradeForm';
 import { RubricGrader } from '@/components/features/assignments/RubricGrader';
 import { DeleteSubmissionButton } from '@/components/features/assignments/DeleteSubmissionButton';
 import { SubmissionFiles } from '@/components/features/assignments/SubmissionFiles';
+import { DownloadAllButton } from '@/components/features/assignments/DownloadAllButton';
 import { hasMinRole } from '@/lib/permissions';
 import { ChevronLeft, CheckCircle2, Clock, Circle, CalendarCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -102,6 +103,13 @@ export default async function SubmissionsPage({
           <p className="text-muted-foreground text-xs">
             {submittedCount}/{enrollments.length} đã nộp · {gradedCount} đã chấm
           </p>
+          {submittedCount > 0 && (
+            <DownloadAllButton
+              assignmentId={assignmentId}
+              count={submittedCount}
+              className="mt-3"
+            />
+          )}
         </div>
 
         <nav className="flex-1 space-y-0.5 p-2">

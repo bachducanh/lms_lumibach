@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   outputFileTracingRoot: monorepoRoot,
-  serverExternalPackages: ['@lumibach/db'],
+  serverExternalPackages: ['@lumibach/db', 'archiver'],
   allowedDevOrigins: ['lumi.nextgentra.com', '*.nextgentra.com'],
   async rewrites() {
     const internalBase =
