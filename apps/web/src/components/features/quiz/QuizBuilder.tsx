@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { QuizBankGroup } from '@lumibach/types';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 import type { QuestionType } from '@lumibach/db';
 import {
   QUESTION_TYPE_BADGE as TYPE_BADGE,
@@ -258,7 +258,9 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
                     })()}
                     {TYPE_SHORT[item.question.type]}
                   </span>
-                  <p className="line-clamp-1 min-w-0 flex-1 text-sm">{item.question.content}</p>
+                  <p className="line-clamp-1 min-w-0 flex-1 text-sm">
+                    {stripHtml(item.question.content)}
+                  </p>
                   <div className="flex shrink-0 items-center gap-1">
                     <input
                       type="number"
@@ -442,7 +444,7 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
                           {TYPE_SHORT[q.type] ?? q.type}
                         </span>
                         <p className="text-muted-foreground line-clamp-1 min-w-0 flex-1 text-sm">
-                          {q.content}
+                          {stripHtml(q.content)}
                         </p>
                         <span className="text-muted-foreground shrink-0 text-xs">{q.points}đ</span>
                         <Button

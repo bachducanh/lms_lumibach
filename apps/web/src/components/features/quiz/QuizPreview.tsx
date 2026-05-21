@@ -18,6 +18,7 @@ import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import nextDynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
 
 // dnd-kit generates random IDs on mount which mismatch between SSR and CSR,
 // so load ParsonsQuestion client-only.
@@ -162,7 +163,7 @@ type Props = { quiz: PreviewQuizData; courseSlug: string };
 
 // ── Main component ─────────────────────────────────────────────
 
-export function QuizPreview({ quiz, courseSlug }: Props) {
+export function QuizPreview({ quiz }: Props) {
   const [phase, setPhase] = useState<'answering' | 'review'>('answering');
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   const [booleans, setBooleans] = useState<Record<string, boolean>>({});
@@ -337,9 +338,10 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
                             : `${sr.score}/${q.points}đ`}
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed font-medium whitespace-pre-wrap">
-                      {q.question.content}
-                    </p>
+                    <RichTextView
+                      html={q.question.content}
+                      className="text-sm leading-relaxed font-medium"
+                    />
                   </div>
                 </div>
 
@@ -779,9 +781,10 @@ export function QuizPreview({ quiz, courseSlug }: Props) {
                     <span>·</span>
                     <span>{q.points} điểm</span>
                   </div>
-                  <p className="text-sm leading-relaxed font-medium whitespace-pre-wrap">
-                    {q.question.content}
-                  </p>
+                  <RichTextView
+                    html={q.question.content}
+                    className="text-sm leading-relaxed font-medium"
+                  />
                 </div>
               </div>
 

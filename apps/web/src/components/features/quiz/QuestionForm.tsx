@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
@@ -17,7 +18,7 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
-import type { QuestionItem, QuestionTestCase } from '@lumibach/types';
+import type { QuestionItem } from '@lumibach/types';
 
 type QuestionFormValues = {
   type: string;
@@ -40,7 +41,16 @@ type QuestionFormValues = {
 };
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
-import { cn } from '@/lib/utils';
+import { cn, richTextIsEmpty } from '@/lib/utils';
+
+const RichTextEditor = dynamic(
+  () =>
+    import('@/components/ui/editor/RichTextEditor').then((m) => ({ default: m.RichTextEditor })),
+  {
+    ssr: false,
+    loading: () => <div className="bg-muted/30 h-40 animate-pulse rounded-xl" />,
+  }
+);
 
 type QType =
   | 'MULTIPLE_CHOICE_SINGLE'
@@ -145,7 +155,6 @@ export function QuestionForm({
     ['CODE_PYTHON', 'CODE_CPP', 'CODE_DEBUG_PYTHON', 'CODE_DEBUG_CPP'].includes(initType)
   );
   const [tcGenerating, setTcGenerating] = useState<Record<number, boolean>>({});
-  const [, startGenTransition] = useTransition();
   const [parsonsCode, setParsonsCode] = useState('');
   const [parsonsLang, setParsonsLang] = useState<'PYTHON3' | 'JAVASCRIPT' | 'CPP17'>('PYTHON3');
   const [fillLang, setFillLang] = useState<'PYTHON3' | 'JAVASCRIPT' | 'CPP17'>('PYTHON3');
@@ -293,7 +302,7 @@ export function QuestionForm({
   // ── Validate ───────────────────────────────────────────────
 
   function validate(): string | null {
-    if (!content.trim()) return 'Nội dung câu hỏi không được để trống.';
+    if (richTextIsEmpty(content)) return 'Nội dung câu hỏi không được để trống.';
     if (type === 'MULTIPLE_CHOICE_SINGLE' || type === 'MULTIPLE_CHOICE_MULTIPLE') {
       if (options.some((o) => !o.content.trim())) return 'Tất cả đáp án phải có nội dung.';
       if (!options.some((o) => o.isCorrect)) return 'Phải có ít nhất 1 đáp án đúng.';
@@ -451,14 +460,13 @@ export function QuestionForm({
         <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
           {isTFMulti ? 'Nội dung / Ngữ cảnh câu hỏi' : 'Nội dung câu hỏi'}
         </label>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+        <RichTextEditor
+          content={content}
+          onChange={setContent}
           placeholder={
             isTFMulti ? 'Nhập ngữ cảnh / đề bài (các phát biểu bên dưới)...' : 'Nhập câu hỏi...'
           }
-          rows={isTFMulti ? 4 : 3}
-          className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          compact
         />
       </div>
 

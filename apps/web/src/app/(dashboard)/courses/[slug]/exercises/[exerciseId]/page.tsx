@@ -14,6 +14,7 @@ import { logActivity } from '@/lib/activity';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
 import { buttonVariants } from '@/components/ui/button';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { ChevronLeft, ChevronRight, Code2, Pencil, Clock, Cpu } from 'lucide-react';
 import { hasMinRole } from '@/lib/permissions';
 import type { UserRole } from '@lumibach/db';
@@ -224,9 +225,7 @@ export default async function ExerciseViewPage({
             {exercise.description && (
               <div>
                 <h2 className="mb-3 text-base font-semibold">Đề bài</h2>
-                <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-                  {exercise.description}
-                </p>
+                <RichTextView html={exercise.description} className="text-muted-foreground" />
               </div>
             )}
 

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { Loader2, ChevronDown, Settings2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,17 @@ import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';
 import { TestCaseBuilder } from './TestCaseBuilder';
 import { apiClient } from '@/lib/api-client';
+import { richTextIsEmpty } from '@/lib/utils';
 import type { CodeLanguage, ExerciseStatus } from '@lumibach/db';
+
+const RichTextEditor = dynamic(
+  () =>
+    import('@/components/ui/editor/RichTextEditor').then((m) => ({ default: m.RichTextEditor })),
+  {
+    ssr: false,
+    loading: () => <div className="bg-muted/30 h-40 animate-pulse rounded-xl" />,
+  }
+);
 
 type TC = {
   id?: string;
@@ -79,7 +90,7 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
         const isWeb = exercise.language === 'WEB';
         await apiClient.patch(`/code-exercises/${exercise.id}`, {
           title: title.trim(),
-          description: description.trim() || undefined,
+          description: richTextIsEmpty(description) ? undefined : description,
           status,
           ...(isWeb
             ? { starterHtml: webCode.html, starterCss: webCode.css, starterJs: webCode.js }
@@ -122,12 +133,11 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
           <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Mô tả / Đề bài
           </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
+          <RichTextEditor
+            content={description}
+            onChange={setDescription}
             placeholder="Mô tả đề bài, yêu cầu, ví dụ..."
-            className="border-input bg-background focus:ring-ring w-full resize-y rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+            compact
           />
         </div>
 

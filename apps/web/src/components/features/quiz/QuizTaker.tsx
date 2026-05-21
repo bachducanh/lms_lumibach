@@ -23,6 +23,7 @@ const ParsonsQuestion = nextDynamic(
 );
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
 import type { CodeLanguage } from '@lumibach/db';
 
 // ── Seeded shuffle ─────────────────────────────────────────────
@@ -370,9 +371,10 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     <span>·</span>
                     <span>{q.points} điểm</span>
                   </div>
-                  <p className="text-sm leading-relaxed font-medium whitespace-pre-wrap">
-                    {q.question.content}
-                  </p>
+                  <RichTextView
+                    html={q.question.content}
+                    className="text-sm leading-relaxed font-medium"
+                  />
                 </div>
               </div>
 
@@ -476,7 +478,6 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                   </p>
                   {shuffledOpts.map((opt, oi) => {
                     const dongSelected = (selected[q.questionId] ?? []).includes(opt.id);
-                    const hasAnswer = dongSelected || (selected[q.questionId] ?? []).length > 0;
                     return (
                       <div
                         key={opt.id}

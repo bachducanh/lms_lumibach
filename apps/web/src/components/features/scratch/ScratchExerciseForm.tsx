@@ -2,10 +2,21 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Sb3Upload } from './Sb3Upload';
 import { apiClient } from '@/lib/api-client';
+import { richTextIsEmpty } from '@/lib/utils';
+
+const RichTextEditor = dynamic(
+  () =>
+    import('@/components/ui/editor/RichTextEditor').then((m) => ({ default: m.RichTextEditor })),
+  {
+    ssr: false,
+    loading: () => <div className="bg-muted/30 h-40 animate-pulse rounded-xl" />,
+  }
+);
 
 type Props =
   | {
@@ -52,7 +63,7 @@ export function ScratchExerciseForm(props: Props) {
           const res = await apiClient.post<{ exerciseId: string }>('/scratch', {
             courseId: props.courseId,
             title: title.trim(),
-            description: description.trim() || undefined,
+            description: richTextIsEmpty(description) ? undefined : description,
             starterFileUrl: starterUrl ?? undefined,
             moduleId: props.moduleId ?? undefined,
           });
@@ -61,7 +72,7 @@ export function ScratchExerciseForm(props: Props) {
         } else {
           await apiClient.patch(`/scratch/${props.exerciseId}`, {
             title: title.trim(),
-            description: description.trim() || null,
+            description: richTextIsEmpty(description) ? null : description,
             starterFileUrl: starterUrl ?? null,
             status,
           });
@@ -95,12 +106,11 @@ export function ScratchExerciseForm(props: Props) {
         <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
           Mô tả / Đề bài (tuỳ chọn)
         </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={4}
+        <RichTextEditor
+          content={description}
+          onChange={setDescription}
           placeholder="Yêu cầu của bài, gợi ý..."
-          className="border-input bg-background focus:ring-ring w-full resize-y rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          compact
         />
       </div>
 

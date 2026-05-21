@@ -12,6 +12,7 @@ import type { RubricData } from '@lumibach/types';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
 import { ScratchTeacherPanel } from '@/components/features/scratch/ScratchTeacherPanel';
 import { buttonVariants } from '@/components/ui/button';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { Cat, ChevronLeft, ChevronRight, Pencil, Sparkles } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
@@ -207,9 +208,7 @@ export default async function ScratchExercisePage({
         {exercise.description && (
           <div className="border-border/60 bg-card/40 rounded-2xl border p-6 backdrop-blur-md">
             <h2 className="mb-3 text-base font-semibold">Đề bài</h2>
-            <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap">
-              {exercise.description}
-            </p>
+            <RichTextView html={exercise.description} className="text-muted-foreground" />
           </div>
         )}
 

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuestionButton } from '@/components/features/quiz/DeleteQuestionButton';
 import { toast } from 'sonner';
@@ -59,7 +60,7 @@ function QuestionRow({
           {TypeIcon && <TypeIcon className="h-3 w-3" />}
           {TYPE_SHORT[q.type]}
         </span>
-        <p className="line-clamp-1 min-w-0 flex-1 text-sm">{q.content}</p>
+        <p className="line-clamp-1 min-w-0 flex-1 text-sm">{stripHtml(q.content)}</p>
         <div className="flex shrink-0 items-center gap-2">
           <span className="text-muted-foreground text-xs">{q.points}đ</span>
           {canManage && (
@@ -86,7 +87,7 @@ function QuestionRow({
 
       {expanded && (
         <div className="border-border bg-muted/20 space-y-3 border-t px-5 py-4">
-          <p className="text-sm">{q.content}</p>
+          <RichTextView html={q.content} className="text-sm" />
           {q.options.length > 0 && (
             <div className="space-y-1.5">
               {q.options.map((opt) => (
