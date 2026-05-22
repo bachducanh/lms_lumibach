@@ -381,6 +381,7 @@ export class QuestionsService {
       })
     );
 
-    return { results };
+    // Frontend (QuizPreview/QuizTaker) mong đợi mảng TCCheckResult[] trực tiếp.
+    return results;
   }
 }
