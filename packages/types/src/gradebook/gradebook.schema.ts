@@ -8,7 +8,7 @@ export type GbColumn = {
   id: string;
   title: string;
   maxScore: number;
-  type: 'ASSIGNMENT' | 'QUIZ';
+  type: 'ASSIGNMENT' | 'QUIZ' | 'CODE' | 'PRACTICE';
 };
 
 export type GbStudent = {

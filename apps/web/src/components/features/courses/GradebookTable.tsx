@@ -162,7 +162,13 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
                       <span
                         className={cn(
                           'inline-block h-1.5 w-1.5 shrink-0 rounded-full',
-                          col.type === 'QUIZ' ? 'bg-violet-500' : 'bg-primary'
+                          col.type === 'QUIZ'
+                            ? 'bg-violet-500'
+                            : col.type === 'CODE'
+                              ? 'bg-fuchsia-500'
+                              : col.type === 'PRACTICE'
+                                ? 'bg-cyan-500'
+                                : 'bg-primary'
                         )}
                       />
                       <SortIcon col={col.id} />
@@ -261,10 +267,16 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
           <span className="h-2 w-2 rounded-full bg-red-500" /> &lt; 60%
         </span>
         <span className="flex items-center gap-1">
+          <span className="bg-primary h-2 w-2 rounded-full" /> Bài tập
+        </span>
+        <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-violet-500" /> Quiz
         </span>
         <span className="flex items-center gap-1">
-          <span className="bg-primary h-2 w-2 rounded-full" /> Bài tập
+          <span className="h-2 w-2 rounded-full bg-fuchsia-500" /> Bài code
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-cyan-500" /> Đề luyện tập
         </span>
       </div>
     </div>

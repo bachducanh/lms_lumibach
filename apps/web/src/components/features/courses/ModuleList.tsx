@@ -797,8 +797,8 @@ function SortableItemRow({
         )}
       </div>
 
-      {/* Controlled dialog: chỉ mount khi mở để không chiếm chỗ trong flex layout (mobile) */}
-      {canManage && groupDialogOpen && (
+      {/* Controlled dialog "Cài đặt nhóm" — luôn mount để open prop có thể chuyển false→true */}
+      {canManage && (
         <ActivityGroupModeButton
           courseId={courseId}
           moduleItemId={item.id}

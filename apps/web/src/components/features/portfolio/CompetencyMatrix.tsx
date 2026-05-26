@@ -25,7 +25,9 @@ const LEVEL_BY_VALUE: Map<CompetencyLevelValue, (typeof COMPETENCY_LEVELS)[numbe
   COMPETENCY_LEVELS.map((level) => [level.value, level] as const)
 );
 
-// Url đến trang teacher xem bài của HS theo loại hoạt động.
+// Url tới trang chính của hoạt động (luôn tồn tại). Với assignment có thêm
+// query student để focus đúng HS. Quiz / practice-test mở trang chi tiết
+// (có sẵn danh sách bài làm trong sidebar/teacher panel).
 function activityHref(
   slug: string,
   type: ActivityType,
@@ -36,11 +38,11 @@ function activityHref(
     case 'assignment':
       return `/courses/${slug}/assignments/${activityId}/submissions?student=${studentId}`;
     case 'quiz':
-      return `/courses/${slug}/quizzes/${activityId}/attempts`;
+      return `/courses/${slug}/quizzes/${activityId}`;
     case 'code-exercise':
       return `/courses/${slug}/exercises/${activityId}`;
     case 'practice-test':
-      return `/courses/${slug}/practice-tests/${activityId}/attempts`;
+      return `/courses/${slug}/practice-tests/${activityId}`;
   }
 }
 

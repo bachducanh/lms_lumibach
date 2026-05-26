@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Download, FileSpreadsheet, Users } from 'lucide-react';
+import { Download, FileSpreadsheet, Users, ChevronDown } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { exportSheetsToExcel, safeExcelFileName } from '@/lib/export-excel';
 import {
@@ -123,6 +123,7 @@ export function PortfolioExportButton({ courseId, courseName, portfolio }: Props
       await exportSheetsToExcel({ sheets, fileName });
       toast.success('Đã xuất hồ sơ học tập.');
     } catch (err) {
+      console.error('exportSingle error:', err);
       toast.error(err instanceof Error ? err.message : 'Lỗi xuất file');
     } finally {
       setBusy(null);
@@ -229,7 +230,8 @@ export function PortfolioExportButton({ courseId, courseName, portfolio }: Props
       });
       toast.success(`Đã xuất hồ sơ ${students.length} học sinh.`, { id: toastId });
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Lỗi xuất file');
+      console.error('exportAll error:', err);
+      toast.error(err instanceof Error ? err.message : 'Lỗi xuất file');
     } finally {
       setBusy(null);
     }
@@ -243,7 +245,10 @@ export function PortfolioExportButton({ courseId, courseName, portfolio }: Props
         disabled={busy !== null}
       >
         <Download className="h-4 w-4" />
-        {busy === 'single' ? 'Đang xuất…' : busy === 'all' ? 'Đang xuất tất cả…' : 'Xuất XLSX'}
+        <span>
+          {busy === 'single' ? 'Đang xuất…' : busy === 'all' ? 'Đang xuất tất cả…' : 'Xuất XLSX'}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">

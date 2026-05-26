@@ -31,6 +31,21 @@ export function safeExcelFileName(value: string): string {
   return normalized || 'du-lieu';
 }
 
+// xlsx được build CJS — đôi khi với Turbopack/ESM interop, namespace import
+// không có .utils trực tiếp mà nằm trong .default. Hàm này lấy đúng object.
+async function loadXLSX() {
+  const mod: { utils?: unknown; default?: unknown } = (await import('xlsx')) as unknown as {
+    utils?: unknown;
+    default?: unknown;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const x: any = (mod as any).utils ? mod : ((mod as any).default ?? mod);
+  if (!x?.utils || typeof x.writeFile !== 'function') {
+    throw new Error('Không thể tải thư viện xlsx (utils/writeFile bị thiếu).');
+  }
+  return x as typeof import('xlsx');
+}
+
 export async function exportRowsToExcel({
   rows,
   fileName,
@@ -40,7 +55,7 @@ export async function exportRowsToExcel({
   fileName: string;
   sheetName?: string;
 }) {
-  const XLSX = await import('xlsx');
+  const XLSX = await loadXLSX();
   const normalizedRows = rows.map((row) => row.map(toSheetValue));
   const worksheet = XLSX.utils.aoa_to_sheet(normalizedRows);
   const columnCount = Math.max(0, ...rows.map((row) => row.length));
@@ -63,7 +78,7 @@ export async function exportSheetsToExcel({
   sheets: { name: string; rows: ExcelCellValue[][] }[];
   fileName: string;
 }) {
-  const XLSX = await import('xlsx');
+  const XLSX = await loadXLSX();
   const workbook = XLSX.utils.book_new();
   const usedNames = new Set<string>();
 
