@@ -754,7 +754,7 @@ function SortableItemRow({
               <DropdownMenuTrigger
                 type="button"
                 aria-label="Mở menu thao tác"
-                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none sm:hidden"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none md:hidden"
               >
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -794,20 +794,7 @@ function SortableItemRow({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Controlled dialog: cài đặt nhóm — share giữa mobile menu item và desktop button */}
-            <ActivityGroupModeButton
-              courseId={courseId}
-              moduleItemId={item.id}
-              currentMode={itemGroupMode}
-              currentGroupingId={itemGroupingId}
-              currentGroupIds={itemVisibleGroupIds}
-              showTrigger={false}
-              open={groupDialogOpen}
-              onOpenChange={setGroupDialogOpen}
-              onChanged={onRefresh}
-            />
-
-            <div className="hidden items-center gap-0.5 transition-opacity sm:flex sm:opacity-0 sm:group-hover/item:opacity-100">
+            <div className="hidden items-center gap-0.5 transition-opacity md:flex md:opacity-0 md:group-hover/item:opacity-100">
               {editHref && (
                 <Link
                   href={editHref}
@@ -848,6 +835,21 @@ function SortableItemRow({
           </>
         )}
       </div>
+
+      {/* Controlled dialog: chỉ mount khi mở để không chiếm chỗ trong flex layout (mobile) */}
+      {canManage && groupDialogOpen && (
+        <ActivityGroupModeButton
+          courseId={courseId}
+          moduleItemId={item.id}
+          currentMode={itemGroupMode}
+          currentGroupingId={itemGroupingId}
+          currentGroupIds={itemVisibleGroupIds}
+          showTrigger={false}
+          open={groupDialogOpen}
+          onOpenChange={setGroupDialogOpen}
+          onChanged={onRefresh}
+        />
+      )}
     </div>
   );
 }
@@ -1000,7 +1002,7 @@ function SortableModuleRow({
               <DropdownMenuTrigger
                 type="button"
                 aria-label="Mở menu thao tác chương"
-                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors outline-none sm:hidden"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors outline-none md:hidden"
               >
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -1029,7 +1031,7 @@ function SortableModuleRow({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="border-border/50 hidden items-center gap-0.5 border-l pl-1.5 sm:flex sm:gap-1 sm:pl-3">
+            <div className="border-border/50 hidden items-center gap-0.5 border-l pl-1.5 md:flex md:gap-1 md:pl-3">
               <button
                 onClick={() => onTogglePublish(mod.id)}
                 title={mod.isPublished ? 'Ẩn chương' : 'Xuất bản chương'}
