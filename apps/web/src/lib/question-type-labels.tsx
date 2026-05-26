@@ -15,6 +15,8 @@ import {
   ArrowDownUp,
   PenSquare,
   Bug,
+  ListOrdered,
+  Link2,
 } from 'lucide-react';
 
 export const QUESTION_TYPE_BADGE: Record<string, string> = {
@@ -30,6 +32,8 @@ export const QUESTION_TYPE_BADGE: Record<string, string> = {
   CODE_FILL: 'bg-teal-500/10 text-teal-700 dark:text-teal-400',
   CODE_DEBUG_PYTHON: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
   CODE_DEBUG_CPP: 'bg-pink-500/10 text-pink-700 dark:text-pink-400',
+  ORDERING: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  MATCHING: 'bg-lime-500/10 text-lime-700 dark:text-lime-400',
 };
 
 export const QUESTION_TYPE_SHORT: Record<string, string> = {
@@ -45,6 +49,8 @@ export const QUESTION_TYPE_SHORT: Record<string, string> = {
   CODE_FILL: 'Điền',
   CODE_DEBUG_PYTHON: 'Debug-PY',
   CODE_DEBUG_CPP: 'Debug-C++',
+  ORDERING: 'Thứ tự',
+  MATCHING: 'Ghép',
 };
 
 export const QUESTION_TYPE_LABEL: Record<string, string> = {
@@ -60,6 +66,8 @@ export const QUESTION_TYPE_LABEL: Record<string, string> = {
   CODE_FILL: 'Điền vào chỗ trống',
   CODE_DEBUG_PYTHON: 'Debug Python',
   CODE_DEBUG_CPP: 'Debug C++',
+  ORDERING: 'Sắp xếp thứ tự',
+  MATCHING: 'Ghép nối',
 };
 
 export const QUESTION_TYPE_ICON: Record<string, LucideIcon> = {
@@ -75,4 +83,6 @@ export const QUESTION_TYPE_ICON: Record<string, LucideIcon> = {
   CODE_FILL: PenSquare,
   CODE_DEBUG_PYTHON: Bug,
   CODE_DEBUG_CPP: Bug,
+  ORDERING: ListOrdered,
+  MATCHING: Link2,
 };

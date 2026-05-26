@@ -21,6 +21,13 @@ const ParsonsQuestion = nextDynamic(
     })),
   { ssr: false }
 );
+const MatchingQuestion = nextDynamic(
+  () =>
+    import('@/components/features/quiz/MatchingQuestion').then((m) => ({
+      default: m.MatchingQuestion,
+    })),
+  { ssr: false }
+);
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
@@ -47,6 +54,24 @@ const CODE_LANG: Record<string, CodeLanguage> = {
   CODE_DEBUG_PYTHON: 'PYTHON3',
   CODE_DEBUG_CPP: 'CPP17',
 };
+
+// MATCHING options each store one pair as JSON {left,right}; position = display order.
+function parseMatchPairs(options: { id: string; content: string; position: number }[]) {
+  return [...options]
+    .sort((a, b) => a.position - b.position)
+    .map((o) => {
+      let left = '';
+      let right = '';
+      try {
+        const p = JSON.parse(o.content) as { left?: string; right?: string };
+        left = p.left ?? '';
+        right = p.right ?? '';
+      } catch {
+        /* malformed pair — leave blank */
+      }
+      return { id: o.id, left, right };
+    });
+}
 
 type Props = { attempt: AttemptData; courseSlug: string };
 
@@ -221,9 +246,16 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
       ];
       if (codeTypes.includes(t)) return (texts[q.questionId] ?? '').trim().length > 0;
       if (t === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
-      if (t === 'PARSONS') {
+      if (t === 'PARSONS' || t === 'ORDERING') {
         try {
           return (JSON.parse(texts[q.questionId] ?? '[]') as string[]).length > 0;
+        } catch {
+          return false;
+        }
+      }
+      if (t === 'MATCHING') {
+        try {
+          return Object.keys(JSON.parse(texts[q.questionId] ?? '{}') as object).length > 0;
         } catch {
           return false;
         }
@@ -269,6 +301,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     CODE_FILL: 'Điền vào chỗ trống',
     CODE_DEBUG_PYTHON: 'Debug Python',
     CODE_DEBUG_CPP: 'Debug C++',
+    ORDERING: 'Sắp xếp thứ tự',
+    MATCHING: 'Ghép nối',
   };
 
   return (
@@ -328,9 +362,16 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
             ];
             if (codeTypes.includes(qType)) return (texts[q.questionId] ?? '').trim().length > 0;
             if (qType === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
-            if (qType === 'PARSONS') {
+            if (qType === 'PARSONS' || qType === 'ORDERING') {
               try {
                 return (JSON.parse(texts[q.questionId] ?? '[]') as string[]).length > 0;
+              } catch {
+                return false;
+              }
+            }
+            if (qType === 'MATCHING') {
+              try {
+                return Object.keys(JSON.parse(texts[q.questionId] ?? '{}') as object).length > 0;
               } catch {
                 return false;
               }
@@ -920,6 +961,74 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  );
+                })()}
+
+              {/* ORDERING — drag-and-drop item ordering */}
+              {qType === 'ORDERING' &&
+                (() => {
+                  const sortedItems = [...q.question.options].sort(
+                    (a, b) => a.position - b.position
+                  );
+                  const savedRaw = texts[q.questionId];
+                  let initialItems;
+                  if (savedRaw) {
+                    try {
+                      const ids = JSON.parse(savedRaw) as string[];
+                      initialItems = ids
+                        .map((id) => sortedItems.find((o) => o.id === id)!)
+                        .filter(Boolean);
+                      if (initialItems.length !== sortedItems.length) throw new Error('mismatch');
+                    } catch {
+                      initialItems = seededShuffle(sortedItems, attempt.id + q.questionId);
+                    }
+                  } else {
+                    initialItems = seededShuffle(sortedItems, attempt.id + q.questionId);
+                  }
+                  return (
+                    <div className="space-y-2 pl-4">
+                      <p className="text-muted-foreground text-xs">
+                        Kéo thả để sắp xếp đúng thứ tự.
+                      </p>
+                      <ParsonsQuestion
+                        plainText
+                        initialLines={initialItems.map((o) => ({ id: o.id, content: o.content }))}
+                        onChange={(orderedIds) => {
+                          const json = JSON.stringify(orderedIds);
+                          setTexts((prev) => ({ ...prev, [q.questionId]: json }));
+                          fireSave(q.questionId, { type: 'ESSAY', textAnswer: json });
+                        }}
+                      />
+                    </div>
+                  );
+                })()}
+
+              {/* MATCHING — drag-to-pair */}
+              {qType === 'MATCHING' &&
+                (() => {
+                  const matchPairs = parseMatchPairs(q.question.options);
+                  let assign: Record<string, string> = {};
+                  try {
+                    assign = JSON.parse(texts[q.questionId] ?? '{}') as Record<string, string>;
+                  } catch {
+                    /* malformed — start empty */
+                  }
+                  return (
+                    <div className="space-y-2 pl-4">
+                      <p className="text-muted-foreground text-xs">
+                        Kéo đáp án ở cột phải sang ghép với mục ở cột trái.
+                      </p>
+                      <MatchingQuestion
+                        pairs={matchPairs}
+                        value={assign}
+                        shuffleSeed={attempt.id + q.questionId}
+                        onChange={(next) => {
+                          const json = JSON.stringify(next);
+                          setTexts((prev) => ({ ...prev, [q.questionId]: json }));
+                          fireSave(q.questionId, { type: 'ESSAY', textAnswer: json });
+                        }}
+                      />
                     </div>
                   );
                 })()}

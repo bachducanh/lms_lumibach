@@ -27,6 +27,8 @@ import {
   TableProperties,
   MessageSquare,
   BarChart3,
+  Target,
+  FolderKanban,
 } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
@@ -89,7 +91,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const statusStyle = STATUS_STYLE[course.status] ?? STATUS_STYLE.ARCHIVED!;
 
   return (
-    <div className="lb-reveal lb-reveal-children max-w-3xl space-y-6">
+    <div className="lb-reveal lb-reveal-children mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
       {/* ── Back link ──────────────────────────────────────── */}
       <Link
         href="/courses"
@@ -145,7 +147,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
           {canViewPeople && (
             <Link
               href={`/courses/${slug}/gradebook`}
@@ -232,11 +234,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           <ChevronRight className="h-5 w-5 shrink-0 text-white/70 transition-transform duration-200 group-hover:translate-x-1" />
         </Link>
 
-        {/* Secondary links — 3-column grid */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Secondary links — responsive shortcut grid */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Link
             href={`/courses/${slug}/assignments`}
-            className="border-border bg-card hover:border-primary/40 group flex items-center gap-3 rounded-xl border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            className="border-border bg-card hover:border-primary/40 group flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:flex-col sm:items-start sm:gap-3 sm:py-4 md:flex-row md:items-center"
           >
             <div className="bg-primary/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
               <ClipboardList className="text-primary h-5 w-5" />
@@ -249,7 +251,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
 
           <Link
             href={`/courses/${slug}/quizzes`}
-            className="border-border bg-card group flex items-center gap-3 rounded-xl border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-500/40 hover:shadow-lg"
+            className="border-border bg-card group flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-500/40 hover:shadow-lg sm:flex-col sm:items-start sm:gap-3 sm:py-4 md:flex-row md:items-center"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
               <Brain className="h-5 w-5 text-violet-500" />
@@ -262,7 +264,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
 
           <Link
             href={`/courses/${slug}/forum`}
-            className="border-border bg-card group flex items-center gap-3 rounded-xl border px-4 py-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-500/40 hover:shadow-lg"
+            className="border-border bg-card group flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-sky-500/40 hover:shadow-lg sm:flex-col sm:items-start sm:gap-3 sm:py-4 md:flex-row md:items-center"
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
               <MessageSquare className="h-5 w-5 text-sky-400" />
@@ -284,6 +286,13 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           >
             <HelpCircle className="text-muted-foreground h-4 w-4" />
             <span className="font-medium">Ngân hàng câu hỏi</span>
+          </Link>
+          <Link
+            href={`/courses/${slug}/competencies`}
+            className="border-border bg-card hover:bg-accent/40 flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors"
+          >
+            <Target className="text-muted-foreground h-4 w-4" />
+            <span className="font-medium">Năng lực</span>
           </Link>
         </div>
       )}
@@ -317,7 +326,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
       </div>
 
       {/* ── Role-aware sections ─────────────────────────────── */}
-      {role === 'STUDENT' && <StudentView enrollments={enrollments} userId={userId} />}
+      {role === 'STUDENT' && <StudentView enrollments={enrollments} userId={userId} slug={slug} />}
 
       {(role === 'TEACHER' || role === 'TA' || role === 'ADMIN') && (
         <TeacherView enrollments={enrollments} tas={tas} />
@@ -361,7 +370,15 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function StudentView({ enrollments, userId }: { enrollments: CourseMember[]; userId?: string }) {
+function StudentView({
+  enrollments,
+  userId,
+  slug,
+}: {
+  enrollments: CourseMember[];
+  userId?: string;
+  slug: string;
+}) {
   const myEnrollment = enrollments.find((e) => e.userId === userId);
   if (!myEnrollment) return null;
 
@@ -390,6 +407,14 @@ function StudentView({ enrollments, userId }: { enrollments: CourseMember[]; use
           {progress}%
         </span>
       </div>
+      <Link
+        href={`/courses/${slug}/portfolio`}
+        className="border-border hover:border-primary/40 hover:bg-accent/40 mt-1 flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors"
+      >
+        <FolderKanban className="text-primary h-4 w-4" />
+        <span className="font-medium">Hồ sơ học tập của tôi</span>
+        <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" />
+      </Link>
     </div>
   );
 }
@@ -407,7 +432,7 @@ function TeacherView({ enrollments, tas }: { enrollments: CourseMember[]; tas: C
       <p className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
         Thống kê lớp học
       </p>
-      <div className="grid grid-cols-3 gap-4 text-center">
+      <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3 sm:gap-4">
         <div className="bg-primary/10 border-primary/20 rounded-lg border py-3">
           <p
             className="text-primary text-2xl font-extrabold"

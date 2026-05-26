@@ -6,6 +6,13 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
   GripVertical,
@@ -14,12 +21,14 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  MoreVertical,
   BookOpen,
   CheckCircle2,
   Link2,
   X,
   ClipboardList,
   ExternalLink,
+  FileQuestion,
   Brain,
   Sparkles,
   FolderOpen,
@@ -59,6 +68,7 @@ type Props = {
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;
+  submittedPracticeTestIds?: Set<string>;
   submittedCodeExerciseIds?: Set<string>;
 };
 
@@ -97,6 +107,14 @@ const ACTIVITY_DEFS: ActivityDef[] = [
     icon: <Brain className="h-7 w-7 text-violet-400" />,
     iconBg: 'bg-violet-500/10',
     borderGlow: 'hover:border-violet-500/40 hover:shadow-[0_0_15px_rgba(139,92,246,0.2)]',
+  },
+  {
+    id: 'practice_test',
+    label: 'Đề luyện tập',
+    description: 'Tải đề PDF, cấu hình phiếu trả lời và chấm tự động',
+    icon: <FileQuestion className="h-7 w-7 text-cyan-400" />,
+    iconBg: 'bg-cyan-500/10',
+    borderGlow: 'hover:border-cyan-500/40 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]',
   },
   {
     id: 'code_exercise',
@@ -145,6 +163,7 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectUrl }: ModalP
     lesson: `/courses/${courseSlug}/lessons/new?moduleId=${moduleId}`,
     assignment: `/courses/${courseSlug}/assignments/new?moduleId=${moduleId}`,
     quiz: `/courses/${courseSlug}/quizzes/new?moduleId=${moduleId}`,
+    practice_test: `/courses/${courseSlug}/practice-tests/new?moduleId=${moduleId}`,
     code_exercise: `/courses/${courseSlug}/exercises/new?moduleId=${moduleId}`,
     scratch: `/courses/${courseSlug}/scratch/new?moduleId=${moduleId}`,
   };
@@ -235,26 +254,33 @@ function EditableModuleName({
   id,
   name,
   onSaved,
+  editing,
+  onEditingChange,
 }: {
   id: string;
   name: string;
   onSaved: () => void;
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!editing) setValue(name);
+  }, [editing, name]);
 
   function save() {
     startTransition(async () => {
       try {
         await apiClient.patch(`/modules/${id}`, { name: value });
         toast.success('Đã cập nhật tên chương.');
-        setEditing(false);
+        onEditingChange(false);
         onSaved();
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật');
         setValue(name);
-        setEditing(false);
+        onEditingChange(false);
       }
     });
   }
@@ -270,7 +296,7 @@ function EditableModuleName({
           if (e.key === 'Enter') save();
           if (e.key === 'Escape') {
             setValue(name);
-            setEditing(false);
+            onEditingChange(false);
           }
         }}
         disabled={pending}
@@ -282,7 +308,7 @@ function EditableModuleName({
   return (
     <h3
       className="hover:text-primary line-clamp-2 flex-1 cursor-pointer text-base font-bold transition-colors sm:text-lg"
-      onClick={() => setEditing(true)}
+      onClick={() => onEditingChange(true)}
     >
       {name}
     </h3>
@@ -454,6 +480,7 @@ function SortableItemRow({
   onDelete,
 }: ItemRowProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const router = useRouter();
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -468,8 +495,10 @@ function SortableItemRow({
   const isExternalUrl = item.type === 'EXTERNAL_URL';
   const isAssignment = item.type === 'ASSIGNMENT';
   const isQuiz = item.type === 'QUIZ';
+  const isPracticeTest = item.type === 'PRACTICE_TEST';
   const isCodeExercise = item.type === 'CODE_EXERCISE';
   const quizId = item.quiz?.id ?? item.quizId;
+  const practiceTestId = item.practiceTest?.id ?? item.practiceTestId;
   const codeExId = item.codeExercise?.id ?? item.codeExerciseId;
   const codeExLang = item.codeExercise?.language;
   const isScratch = isCodeExercise && codeExLang === 'SCRATCH';
@@ -508,6 +537,14 @@ function SortableItemRow({
       glowColor: 'rgb(139, 92, 246)',
       bgRgba: 'rgba(139, 92, 246, 0.15)',
     },
+    practice: {
+      border: 'border-l-cyan-500',
+      bg: 'bg-cyan-500/15',
+      icon: 'text-cyan-500',
+      text: 'Đề luyện tập',
+      glowColor: 'rgb(6, 182, 212)',
+      bgRgba: 'rgba(6, 182, 212, 0.15)',
+    },
     code: {
       border: 'border-l-fuchsia-500',
       bg: 'bg-fuchsia-500/15',
@@ -538,11 +575,25 @@ function SortableItemRow({
   if (isExternalUrl) typeKey = 'external';
   else if (isAssignment) typeKey = 'assignment';
   else if (isQuiz) typeKey = 'quiz';
+  else if (isPracticeTest) typeKey = 'practice';
   else if (isScratch) typeKey = 'scratch';
   else if (isCodeExercise) typeKey = 'code';
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const colors = typeColors[typeKey]!;
+  const editHref = item.lessonId
+    ? `/courses/${courseSlug}/lessons/${item.lessonId}/edit`
+    : item.assignmentId
+      ? `/courses/${courseSlug}/assignments/${item.assignmentId}/edit`
+      : isQuiz && quizId
+        ? `/courses/${courseSlug}/quizzes/${quizId}/edit`
+        : isPracticeTest && practiceTestId
+          ? `/courses/${courseSlug}/practice-tests/${practiceTestId}/edit`
+          : isCodeExercise && codeExId
+            ? isScratch
+              ? `/courses/${courseSlug}/scratch/${codeExId}/edit`
+              : `/courses/${courseSlug}/exercises/${codeExId}/edit`
+            : null;
 
   return (
     <div
@@ -557,14 +608,14 @@ function SortableItemRow({
             boxShadow: `0 0 0 1.5px ${colors.glowColor}40, inset 0 0 0 0.5px ${colors.glowColor}30, 0 0 25px ${colors.glowColor}15`,
           }),
       }}
-      className={`relative flex items-center gap-3 border-l-4 ${colors.border} bg-card group/item overflow-hidden rounded-r-lg px-4 py-3.5 transition-all duration-200 ${isDragging ? 'ring-primary/30 z-50 scale-95 opacity-40 shadow-xl ring-2' : 'hover:-translate-x-0.5 hover:shadow-md'}`}
+      className={`relative flex items-center gap-2.5 border-l-4 ${colors.border} bg-card group/item overflow-hidden rounded-r-lg px-3 py-3 transition-all duration-200 sm:gap-3 sm:px-4 sm:py-3.5 ${isDragging ? 'ring-primary/30 z-50 scale-95 opacity-40 shadow-xl ring-2' : 'hover:-translate-x-0.5 hover:shadow-md'}`}
     >
       {/* Drag handle */}
       {canManage && (
         <button
           {...attributes}
           {...listeners}
-          className="text-muted-foreground/40 hover:text-muted-foreground/70 flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center transition-colors active:cursor-grabbing"
+          className="text-muted-foreground/40 hover:text-muted-foreground/70 flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center transition-colors active:cursor-grabbing sm:w-6"
           tabIndex={-1}
           aria-label="Kéo để sắp xếp"
         >
@@ -574,7 +625,7 @@ function SortableItemRow({
 
       {/* Icon with colored background */}
       <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${colors.bg} border border-current/10 shadow-sm transition-transform group-hover/item:scale-110`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 ${colors.bg} border border-current/10 shadow-sm transition-transform group-hover/item:scale-110`}
       >
         {isExternalUrl ? (
           <Link2 className={`h-5 w-5 ${colors.icon}`} />
@@ -582,6 +633,8 @@ function SortableItemRow({
           <ClipboardList className={`h-5 w-5 ${colors.icon}`} />
         ) : isQuiz ? (
           <Brain className={`h-5 w-5 ${colors.icon}`} />
+        ) : isPracticeTest ? (
+          <FileQuestion className={`h-5 w-5 ${colors.icon}`} />
         ) : isScratch ? (
           <Cat className={`h-5 w-5 ${colors.icon}`} />
         ) : isCodeExercise && codeExLang && LANG_ICON[codeExLang] ? (
@@ -603,21 +656,28 @@ function SortableItemRow({
       <div className="min-w-0 flex-1">
         {isExternalUrl && item.externalUrl ? (
           <a href={item.externalUrl} target="_blank" rel="noopener noreferrer" className="block">
-            <p className="group-hover/item:text-primary truncate text-sm font-semibold transition-colors">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
             <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
           </a>
         ) : isAssignment && item.assignmentId ? (
           <Link href={`/courses/${courseSlug}/assignments/${item.assignmentId}`} className="block">
-            <p className="group-hover/item:text-primary truncate text-sm font-semibold transition-colors">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
             <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
           </Link>
         ) : isQuiz && quizId ? (
           <Link href={`/courses/${courseSlug}/quizzes/${quizId}`} className="block">
-            <p className="group-hover/item:text-primary truncate text-sm font-semibold transition-colors">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
+              {item.title}
+            </p>
+            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+          </Link>
+        ) : isPracticeTest && practiceTestId ? (
+          <Link href={`/courses/${courseSlug}/practice-tests/${practiceTestId}`} className="block">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
             <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
@@ -631,14 +691,14 @@ function SortableItemRow({
             }
             className="block"
           >
-            <p className="group-hover/item:text-primary truncate text-sm font-semibold transition-colors">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
             <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
           </Link>
         ) : item.lessonId ? (
           <Link href={`/courses/${courseSlug}/lessons/${item.lessonId}`} className="block">
-            <p className="group-hover/item:text-primary truncate text-sm font-semibold transition-colors">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
             {item.lesson?.estimatedMinutes && (
@@ -649,7 +709,7 @@ function SortableItemRow({
           </Link>
         ) : (
           <div className="block">
-            <p className="truncate text-sm font-semibold">{item.title}</p>
+            <p className="line-clamp-2 text-sm font-semibold">{item.title}</p>
             <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
           </div>
         )}
@@ -676,63 +736,73 @@ function SortableItemRow({
 
         {/* Teacher actions toolbar */}
         {canManage && (
-          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/item:opacity-100">
-            {item.lessonId && (
-              <Link
-                href={`/courses/${courseSlug}/lessons/${item.lessonId}/edit`}
-                className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                type="button"
+                aria-label="Mở menu thao tác"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none sm:hidden"
               >
-                <Pencil className="h-3.5 w-3.5" />
-              </Link>
-            )}
-            {item.assignmentId && (
-              <Link
-                href={`/courses/${courseSlug}/assignments/${item.assignmentId}/edit`}
-                className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Link>
-            )}
-            {isQuiz && quizId && (
-              <Link
-                href={`/courses/${courseSlug}/quizzes/${quizId}/edit`}
-                className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Link>
-            )}
-            {isCodeExercise && codeExId && (
-              <Link
-                href={
-                  isScratch
-                    ? `/courses/${courseSlug}/scratch/${codeExId}/edit`
-                    : `/courses/${courseSlug}/exercises/${codeExId}/edit`
-                }
-                className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Link>
-            )}
-            {(item.lessonId || item.assignmentId || isQuiz || isCodeExercise) && (
-              <div className="bg-border/30 mx-0.5 h-5 w-px" />
-            )}
-            <button
-              onClick={() => onTogglePublish(item.id)}
-              className={`rounded-md p-1.5 transition-all ${item.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
-            >
-              {item.isPublished ? (
-                <Eye className="h-3.5 w-3.5" />
-              ) : (
-                <EyeOff className="h-3.5 w-3.5" />
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-40">
+                {editHref && (
+                  <DropdownMenuItem onClick={() => router.push(editHref)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Chỉnh sửa
+                  </DropdownMenuItem>
+                )}
+                {editHref && <DropdownMenuSeparator />}
+                <DropdownMenuItem onClick={() => onTogglePublish(item.id)}>
+                  {item.isPublished ? (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {item.isPublished ? 'Ẩn' : 'Hiển thị'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDelete(item.id)}
+                  variant="destructive"
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Xoá
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="hidden items-center gap-0.5 transition-opacity sm:flex sm:opacity-0 sm:group-hover/item:opacity-100">
+              {editHref && (
+                <Link
+                  href={editHref}
+                  title="Chỉnh sửa"
+                  className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Link>
               )}
-            </button>
-            <button
-              onClick={() => onDelete(item.id)}
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md p-1.5 transition-all"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
+              {editHref && <div className="bg-border/30 mx-0.5 h-5 w-px" />}
+              <button
+                onClick={() => onTogglePublish(item.id)}
+                title={item.isPublished ? 'Ẩn' : 'Hiển thị'}
+                className={`rounded-md p-1.5 transition-all ${item.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+              >
+                {item.isPublished ? (
+                  <Eye className="h-3.5 w-3.5" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5" />
+                )}
+              </button>
+              <button
+                onClick={() => onDelete(item.id)}
+                title="Xoá"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md p-1.5 transition-all"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -748,6 +818,7 @@ type ModuleRowProps = {
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;
+  submittedPracticeTestIds?: Set<string>;
   submittedCodeExerciseIds?: Set<string>;
   openUrlFormId: string | null;
   isCollapsed: boolean;
@@ -768,6 +839,7 @@ function SortableModuleRow({
   completedIds,
   submittedAssignmentIds,
   submittedQuizIds,
+  submittedPracticeTestIds,
   submittedCodeExerciseIds,
   openUrlFormId,
   isCollapsed,
@@ -781,6 +853,7 @@ function SortableModuleRow({
   onRefresh,
 }: ModuleRowProps) {
   const [, startItemTransition] = useTransition();
+  const [isEditingName, setIsEditingName] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: mod.id,
@@ -830,7 +903,7 @@ function SortableModuleRow({
       className={`border-border bg-card group/module overflow-hidden rounded-lg border transition-all duration-200 ${isDragging ? 'ring-primary/20 opacity-40 shadow-xl ring-2' : 'hover:border-primary/30 hover:shadow-md'}`}
     >
       {/* Module Header */}
-      <div className="bg-card border-border/50 hover:bg-muted/20 flex items-center gap-3 border-b px-4 py-4 transition-colors sm:px-5 sm:py-5">
+      <div className="bg-card border-border/50 hover:bg-muted/20 flex items-center gap-2 border-b px-3 py-3.5 transition-colors sm:gap-3 sm:px-5 sm:py-5">
         {/* Drag handle */}
         {canManage && (
           <button
@@ -858,34 +931,76 @@ function SortableModuleRow({
         {/* Module name */}
         <div className="min-w-0 flex-1">
           {canManage ? (
-            <EditableModuleName id={mod.id} name={mod.name} onSaved={onRefresh} />
+            <EditableModuleName
+              id={mod.id}
+              name={mod.name}
+              editing={isEditingName}
+              onEditingChange={setIsEditingName}
+              onSaved={onRefresh}
+            />
           ) : (
             <h3 className="line-clamp-2 text-base font-bold sm:text-lg">{mod.name}</h3>
           )}
         </div>
 
         {/* Item count */}
-        <div className="bg-primary/10 border-primary/20 flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5">
+        <div className="bg-primary/10 border-primary/20 flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1 sm:px-3 sm:py-1.5">
           <span className="text-primary text-xs font-semibold sm:text-sm">{mod.items.length}</span>
         </div>
 
         {/* Teacher controls */}
         {canManage && (
-          <div className="border-border/50 flex items-center gap-1 border-l pl-3">
-            <button
-              onClick={() => onTogglePublish(mod.id)}
-              title={mod.isPublished ? 'Ẩn chương' : 'Xuất bản chương'}
-              className={`rounded-lg p-2 transition-all ${mod.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
-            >
-              {mod.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            </button>
-            <button
-              onClick={() => onDelete(mod.id, mod.name)}
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg p-2 transition-all"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                type="button"
+                aria-label="Mở menu thao tác chương"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors outline-none sm:hidden"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuItem onClick={() => setIsEditingName(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Chỉnh sửa
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onTogglePublish(mod.id)}>
+                  {mod.isPublished ? (
+                    <EyeOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Eye className="mr-2 h-4 w-4" />
+                  )}
+                  {mod.isPublished ? 'Ẩn' : 'Hiển thị'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDelete(mod.id, mod.name)}
+                  variant="destructive"
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Xoá
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="border-border/50 hidden items-center gap-0.5 border-l pl-1.5 sm:flex sm:gap-1 sm:pl-3">
+              <button
+                onClick={() => onTogglePublish(mod.id)}
+                title={mod.isPublished ? 'Ẩn chương' : 'Xuất bản chương'}
+                className={`rounded-lg p-2 transition-all ${mod.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
+              >
+                {mod.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              </button>
+              <button
+                onClick={() => onDelete(mod.id, mod.name)}
+                title="Xoá chương"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg p-2 transition-all"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </>
         )}
       </div>
 
@@ -914,8 +1029,10 @@ function SortableModuleRow({
               >
                 {localItems.map((item) => {
                   const isQuiz = item.type === 'QUIZ';
+                  const isPracticeTest = item.type === 'PRACTICE_TEST';
                   const isCodeExercise = item.type === 'CODE_EXERCISE';
                   const quizId = item.quiz?.id ?? item.quizId;
+                  const practiceTestId = item.practiceTest?.id ?? item.practiceTestId;
                   const codeExId = item.codeExercise?.id ?? item.codeExerciseId;
                   const isDone =
                     (item.type === 'LESSON' && completedIds?.has(item.id)) ||
@@ -923,6 +1040,9 @@ function SortableModuleRow({
                       item.assignmentId &&
                       submittedAssignmentIds?.has(item.assignmentId)) ||
                     (isQuiz && quizId && submittedQuizIds?.has(quizId)) ||
+                    (isPracticeTest &&
+                      practiceTestId &&
+                      submittedPracticeTestIds?.has(practiceTestId)) ||
                     (isCodeExercise && codeExId && submittedCodeExerciseIds?.has(codeExId));
 
                   return (
@@ -978,6 +1098,7 @@ export function ModuleList({
   completedIds,
   submittedAssignmentIds,
   submittedQuizIds,
+  submittedPracticeTestIds,
   submittedCodeExerciseIds,
 }: Props) {
   const router = useRouter();
@@ -1194,6 +1315,7 @@ export function ModuleList({
                   completedIds={completedIds}
                   submittedAssignmentIds={submittedAssignmentIds}
                   submittedQuizIds={submittedQuizIds}
+                  submittedPracticeTestIds={submittedPracticeTestIds}
                   submittedCodeExerciseIds={submittedCodeExerciseIds}
                   openUrlFormId={openUrlFormId}
                   isCollapsed={collapsedIds.has(mod.id)}

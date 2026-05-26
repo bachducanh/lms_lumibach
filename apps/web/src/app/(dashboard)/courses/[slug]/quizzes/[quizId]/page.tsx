@@ -9,12 +9,12 @@ import { DeleteQuizButton } from '@/components/features/quiz/DeleteQuizButton';
 import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
 import { QuizQuestionPoints } from '@/components/features/quiz/QuizQuestionPoints';
 import { StartQuizButton } from '@/components/features/quiz/StartQuizButton';
+import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Brain,
   Clock,
   Pencil,
-  CheckCircle2,
   Calendar,
   RotateCcw,
   HelpCircle,
@@ -25,7 +25,7 @@ import {
   Target,
   Eye,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
 
 function navItemUrl(item: CourseNavItem, slug: string): string {
@@ -33,6 +33,8 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'ASSIGNMENT' && item.assignmentId)
     return `/courses/${slug}/assignments/${item.assignmentId}`;
   if (item.type === 'QUIZ' && item.quizId) return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'PRACTICE_TEST' && item.practiceTestId)
+    return `/courses/${slug}/practice-tests/${item.practiceTestId}`;
   if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
     return item.codeExercise?.language === 'SCRATCH'
       ? `/courses/${slug}/scratch/${item.codeExerciseId}`
@@ -463,7 +465,7 @@ export default async function QuizDetailPage({
                         {TYPE_SHORT[qq.question.type] ?? qq.question.type}
                       </span>
                       <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium">
-                        {qq.question.content}
+                        {stripHtml(qq.question.content)}
                       </p>
                       {canManage ? (
                         <QuizQuestionPoints
@@ -481,6 +483,16 @@ export default async function QuizDetailPage({
               )}
             </div>
           </div>
+        )}
+
+        {/* Competency assessment — staff only */}
+        {isStaff && (
+          <ActivityCompetencyPanel
+            courseId={course.id}
+            activityType="quiz"
+            activityId={quizId}
+            canManage={canManage}
+          />
         )}
 
         {/* Prev / Next navigation */}

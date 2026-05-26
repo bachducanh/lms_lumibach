@@ -44,6 +44,7 @@ enum ModuleItemType {
   ASSIGNMENT
   QUIZ
   CODE_EXERCISE
+  PRACTICE_TEST
   FILE
   EXTERNAL_URL
 }
@@ -113,6 +114,18 @@ enum QuizStatus {
   CLOSED
 }
 
+enum PracticeTestStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum PracticeQuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE_MULTI
+  SHORT_ANSWER
+}
+
 enum QuestionType {
   MULTIPLE_CHOICE_SINGLE
   MULTIPLE_CHOICE_MULTIPLE
@@ -126,6 +139,8 @@ enum QuestionType {
   CODE_FILL
   CODE_DEBUG_PYTHON
   CODE_DEBUG_CPP
+  ORDERING
+  MATCHING
 }
 
 enum AttemptStatus {
@@ -149,6 +164,9 @@ enum ActivityAction {
   VIEW_LESSON
   START_QUIZ
   SUBMIT_QUIZ
+  VIEW_PRACTICE_TEST
+  START_PRACTICE_TEST
+  SUBMIT_PRACTICE_TEST
   VIEW_ASSIGNMENT
   SUBMIT_ASSIGNMENT
   SUBMIT_CODE
@@ -156,23 +174,39 @@ enum ActivityAction {
   LOGIN
 }
 
+// Mức độ thành thạo năng lực (thứ tự tăng dần). Điểm quy đổi map ở @lumibach/types.
+enum CompetencyLevel {
+  NO_EVIDENCE // Không có minh chứng
+  BEGINNING // Chưa thành thạo
+  APPROACHING // Gần thành thạo
+  PROFICIENT // Thành thạo
+  ADVANCED // Vượt thành thạo
+}
+
+// Chế độ tương tác nhóm của khoá học.
+enum GroupMode {
+  NO_GROUPS // Không có nhóm
+  SEPARATE_GROUPS // Nhóm riêng biệt (chỉ thấy nhóm mình)
+  VISIBLE_GROUPS // Nhóm hiện hữu (thấy nhóm khác, chỉ xem)
+}
+
 // ============================================================
 // AUTHENTICATION MODELS
 // ============================================================
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  username     String?    @unique
+  id           String  @id @default(cuid())
+  email        String  @unique
+  username     String? @unique
   passwordHash String
 
   // Thông tin cá nhân
-  firstName    String
-  lastName     String
-  fullName     String?   // tên đầy đủ kiểu Việt Nam: "Nguyễn Văn A"
-  avatar       String?   // URL ảnh trên MinIO
-  phone        String?
-  dateOfBirth  DateTime?
+  firstName   String
+  lastName    String
+  fullName    String? // tên đầy đủ kiểu Việt Nam: "Nguyễn Văn A"
+  avatar      String? // URL ảnh trên MinIO
+  phone       String?
+  dateOfBirth DateTime?
 
   // Vai trò và trạng thái
   role          UserRole   @default(STUDENT)
@@ -182,27 +216,31 @@ model User {
   // Metadata
   lastLoginAt DateTime?
   loginCount  Int       @default(0)
-  preferences Json?     // theme, language, notifications
+  preferences Json? // theme, language, notifications
 
   // Timestamps
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  passwordResets    PasswordReset[]
-  emailTokens       EmailVerificationToken[]
-  auditLogs         AuditLog[]
-  activityLogs      ActivityLog[]
-  ownedCourses      Course[]           @relation("CourseOwner")
-  enrollments       Enrollment[]
-  taAssignments     TeachingAssistant[]
-  coTeachingCourses CourseCoTeacher[]   @relation("CoTeacher")
+  passwordResets         PasswordReset[]
+  emailTokens            EmailVerificationToken[]
+  auditLogs              AuditLog[]
+  activityLogs           ActivityLog[]
+  ownedCourses           Course[]                 @relation("CourseOwner")
+  enrollments            Enrollment[]
+  taAssignments          TeachingAssistant[]
+  coTeachingCourses      CourseCoTeacher[]        @relation("CoTeacher")
   quizAttempts           QuizAttempt[]
-  submissions            Submission[]    @relation("SubmissionStudent")
+  practiceTestAttempts   PracticeTestAttempt[]
+  submissions            Submission[]             @relation("SubmissionStudent")
   notifications          Notification[]
   notificationPreference NotificationPreference?
-  forumTopics            ForumTopic[]            @relation("ForumTopicAuthor")
-  forumPosts             ForumPost[]             @relation("ForumPostAuthor")
+  forumTopics            ForumTopic[]             @relation("ForumTopicAuthor")
+  forumPosts             ForumPost[]              @relation("ForumPostAuthor")
+  competencyAssessments  CompetencyAssessment[]
+  groupMemberships       GroupMember[]
+  portfolioReflections   PortfolioReflection[]
 
   @@index([email])
   @@index([username])
@@ -246,7 +284,7 @@ model AuditLog {
   action     String
   resource   String?
   resourceId String?
-  changes    Json?    // before/after state
+  changes    Json? // before/after state
   metadata   Json?
   ipAddress  String?
   userAgent  String?
@@ -297,6 +335,7 @@ model Course {
   status         CourseStatus @default(DRAFT)
   isPublic       Boolean      @default(false)
   enrollmentCode String?      @unique
+  groupMode      GroupMode    @default(NO_GROUPS)
 
   startDate DateTime?
   endDate   DateTime?
@@ -314,17 +353,22 @@ model Course {
   archivedAt  DateTime?
   deletedAt   DateTime?
 
-  enrollments         Enrollment[]
-  teachingAssistants  TeachingAssistant[]
-  coTeachers          CourseCoTeacher[]
-  modules             Module[]
-  assignments         Assignment[]
-  quizzes             Quiz[]
-  questions           Question[]
-  questionCategories  QuestionCategory[]
-  exercises           CodeExercise[]
-  activityLogs        ActivityLog[]
-  forumTopics         ForumTopic[]
+  enrollments          Enrollment[]
+  teachingAssistants   TeachingAssistant[]
+  coTeachers           CourseCoTeacher[]
+  modules              Module[]
+  assignments          Assignment[]
+  quizzes              Quiz[]
+  practiceTests        PracticeTest[]
+  questions            Question[]
+  questionCategories   QuestionCategory[]
+  exercises            CodeExercise[]
+  activityLogs         ActivityLog[]
+  forumTopics          ForumTopic[]
+  competencyCategories CompetencyCategory[]
+  groups               Group[]
+  groupings            Grouping[]
+  portfolioReflections PortfolioReflection[]
 
   @@index([slug])
   @@index([ownerId])
@@ -339,10 +383,10 @@ model Enrollment {
   courseId String
   status   EnrollmentStatus @default(ACTIVE)
 
-  enrolledAt    DateTime  @default(now())
-  completedAt   DateTime?
-  progress      Float     @default(0)
-  lastAccessAt  DateTime?
+  enrolledAt   DateTime  @default(now())
+  completedAt  DateTime?
+  progress     Float     @default(0)
+  lastAccessAt DateTime?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -389,12 +433,12 @@ model CourseCoTeacher {
 // ============================================================
 
 model Module {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   courseId    String
   name        String
-  description String?  @db.Text
+  description String?   @db.Text
   position    Int
-  isPublished Boolean  @default(false)
+  isPublished Boolean   @default(false)
   unlockAt    DateTime?
 
   createdAt DateTime @default(now())
@@ -408,39 +452,41 @@ model Module {
 }
 
 model ModuleItem {
-  id          String         @id @default(cuid())
-  moduleId    String
-  type        ModuleItemType
-  position    Int
-  title       String
-  lessonId    String?
-  externalUrl String?
-  isPublished Boolean        @default(false)
-  requireCompletion Boolean  @default(false)
+  id                String         @id @default(cuid())
+  moduleId          String
+  type              ModuleItemType
+  position          Int
+  title             String
+  lessonId          String?
+  externalUrl       String?
+  isPublished       Boolean        @default(false)
+  requireCompletion Boolean        @default(false)
   completionType    CompletionType @default(VIEW)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assignmentId     String?
-  quizId           String?
-  codeExerciseId   String?
+  assignmentId   String?
+  quizId         String?
+  codeExerciseId String?
+  practiceTestId String?
 
-  module        Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  lesson        Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  assignment    Assignment?   @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
-  quiz          Quiz?         @relation(fields: [quizId], references: [id], onDelete: SetNull)
-  codeExercise  CodeExercise? @relation(fields: [codeExerciseId], references: [id], onDelete: SetNull)
-  completions   ModuleItemCompletion[]
+  module       Module                 @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson       Lesson?                @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  assignment   Assignment?            @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  quiz         Quiz?                  @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  codeExercise CodeExercise?          @relation(fields: [codeExerciseId], references: [id], onDelete: SetNull)
+  practiceTest PracticeTest?          @relation(fields: [practiceTestId], references: [id], onDelete: SetNull)
+  completions  ModuleItemCompletion[]
 
   @@index([moduleId])
   @@index([moduleId, position])
 }
 
 model Lesson {
-  id               String   @id @default(cuid())
+  id               String @id @default(cuid())
   title            String
-  content          String   @db.Text
+  content          String @db.Text
   estimatedMinutes Int?
   createdBy        String
 
@@ -452,7 +498,7 @@ model Lesson {
 }
 
 model LessonAttachment {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   lessonId   String
   name       String
   url        String
@@ -492,8 +538,8 @@ model Assignment {
   type         AssignmentType   @default(TEXT)
   status       AssignmentStatus @default(DRAFT)
 
-  maxScore    Float  @default(100)
-  weight      Float  @default(1)
+  maxScore Float @default(100)
+  weight   Float @default(1)
 
   availableFrom DateTime?
   dueDate       DateTime?
@@ -508,16 +554,23 @@ model Assignment {
   maxFileSizeMb Int?
   maxFiles      Int?
 
+  // Nộp bài theo nhóm: 1 thành viên nộp = cả nhóm tính đã nộp, chấm 1 lần cho cả nhóm.
+  groupSubmission Boolean @default(false)
+  groupingId      String?
+
   createdBy   String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
   deletedAt   DateTime?
 
-  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  moduleItems     ModuleItem[]
-  submissions     Submission[]
-  rubric          Rubric?
+  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  grouping              Grouping?              @relation(fields: [groupingId], references: [id], onDelete: SetNull)
+  moduleItems           ModuleItem[]
+  submissions           Submission[]
+  rubric                Rubric?
+  competencyLinks       ActivityCompetency[]
+  competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
   @@index([status])
@@ -539,11 +592,15 @@ model Submission {
   gradedAt    DateTime?
   gradedBy    String?
 
+  // Khi nộp theo nhóm: nhóm mà bài nộp này đại diện (mọi thành viên dùng chung).
+  groupId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   assignment   Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student      User             @relation("SubmissionStudent", fields: [studentId], references: [id])
+  group        Group?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
   files        SubmissionFile[]
   rubricGrades RubricGrade[]
 
@@ -551,6 +608,7 @@ model Submission {
   @@index([assignmentId])
   @@index([studentId])
   @@index([status])
+  @@index([groupId])
 }
 
 // ── Rubric ───────────────────────────────────────────────────
@@ -562,7 +620,7 @@ model Rubric {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  assignment   Assignment?       @relation(fields: [assignmentId],   references: [id], onDelete: Cascade)
+  assignment   Assignment?       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   codeExercise CodeExercise?     @relation(fields: [codeExerciseId], references: [id], onDelete: Cascade)
   criteria     RubricCriterion[]
   // App invariant: exactly one of (assignmentId, codeExerciseId) is non-null.
@@ -605,12 +663,12 @@ model RubricGrade {
   gradedBy         String
   gradedAt         DateTime @default(now())
 
-  submission     Submission?     @relation(fields: [submissionId],     references: [id], onDelete: Cascade)
+  submission     Submission?     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   codeSubmission CodeSubmission? @relation(fields: [codeSubmissionId], references: [id], onDelete: Cascade)
-  criterion      RubricCriterion @relation(fields: [criterionId],      references: [id])
-  level          RubricLevel     @relation(fields: [levelId],          references: [id])
+  criterion      RubricCriterion @relation(fields: [criterionId], references: [id])
+  level          RubricLevel     @relation(fields: [levelId], references: [id])
 
-  @@unique([submissionId,     criterionId])
+  @@unique([submissionId, criterionId])
   @@unique([codeSubmissionId, criterionId])
   @@index([submissionId])
   @@index([codeSubmissionId])
@@ -642,26 +700,28 @@ model Quiz {
   description String?    @db.Text
   status      QuizStatus @default(DRAFT)
 
-  timeLimit        Int?     // phút, null = không giới hạn
-  maxAttempts      Int?     // null = không giới hạn
-  passingScore     Float?   // null = không yêu cầu
-  shuffleQuestions Boolean  @default(false)
-  shuffleAnswers   Boolean  @default(false)
-  showResults      Boolean  @default(true)
+  timeLimit        Int? // phút, null = không giới hạn
+  maxAttempts      Int? // null = không giới hạn
+  passingScore     Float? // null = không yêu cầu
+  shuffleQuestions Boolean @default(false)
+  shuffleAnswers   Boolean @default(false)
+  showResults      Boolean @default(true)
 
   availableFrom DateTime?
   dueDate       DateTime?
 
   createdBy   String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
   deletedAt   DateTime?
 
-  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  questions   QuizQuestion[]
-  attempts    QuizAttempt[]
-  moduleItems ModuleItem[]
+  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions             QuizQuestion[]
+  attempts              QuizAttempt[]
+  moduleItems           ModuleItem[]
+  competencyLinks       ActivityCompetency[]
+  competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
   @@index([status])
@@ -697,17 +757,17 @@ model Question {
   deletedAt DateTime?
 
   // For CODE_* question types
-  starterCode   String?  @db.Text
-  solutionCode  String?  @db.Text
-  timeLimit     Int?               // seconds per test case
-  memoryLimit   Int?               // KB
+  starterCode  String? @db.Text
+  solutionCode String? @db.Text
+  timeLimit    Int? // seconds per test case
+  memoryLimit  Int? // KB
 
-  course     Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  category   QuestionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  options    QuestionOption[]
-  quizzes    QuizQuestion[]
-  answers    Answer[]
-  testCases  QuestionTestCase[]
+  course    Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category  QuestionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  options   QuestionOption[]
+  quizzes   QuizQuestion[]
+  answers   Answer[]
+  testCases QuestionTestCase[]
 
   @@index([courseId])
   @@index([categoryId])
@@ -785,29 +845,31 @@ model CodeExercise {
   status      ExerciseStatus @default(DRAFT)
 
   // For PYTHON3 / JAVASCRIPT / CPP17
-  starterCode  String?  @db.Text
-  solutionCode String?  @db.Text
-  timeLimit    Int      @default(3)      // seconds per test case
-  memoryLimit  Int      @default(262144) // KB = 256 MB
+  starterCode  String? @db.Text
+  solutionCode String? @db.Text
+  timeLimit    Int     @default(3) // seconds per test case
+  memoryLimit  Int     @default(262144) // KB = 256 MB
 
   // For WEB (HTML + CSS + JS)
-  starterHtml String?  @db.Text
-  starterCss  String?  @db.Text
-  starterJs   String?  @db.Text
+  starterHtml String? @db.Text
+  starterCss  String? @db.Text
+  starterJs   String? @db.Text
 
   // For SCRATCH (.sb3 file URL on MinIO)
   starterFileUrl String?
 
   createdBy String
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  moduleItems ModuleItem[]
-  testCases   TestCase[]
-  submissions CodeSubmission[]
-  rubric      Rubric?
+  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleItems           ModuleItem[]
+  testCases             TestCase[]
+  submissions           CodeSubmission[]
+  rubric                Rubric?
+  competencyLinks       ActivityCompetency[]
+  competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
   @@index([status])
@@ -815,14 +877,14 @@ model CodeExercise {
 }
 
 model TestCase {
-  id               String  @id @default(cuid())
-  codeExerciseId   String
-  label            String?
-  input            String  @db.Text
-  expectedOutput   String  @db.Text
-  isHidden         Boolean @default(true)
-  points           Float   @default(1)
-  position         Int     @default(0)
+  id             String  @id @default(cuid())
+  codeExerciseId String
+  label          String?
+  input          String  @db.Text
+  expectedOutput String  @db.Text
+  isHidden       Boolean @default(true)
+  points         Float   @default(1)
+  position       Int     @default(0)
 
   codeExercise CodeExercise     @relation(fields: [codeExerciseId], references: [id], onDelete: Cascade)
   results      TestCaseResult[]
@@ -835,7 +897,7 @@ model CodeSubmission {
   codeExerciseId String
   studentId      String
   language       CodeLanguage
-  code           String               @db.Text  // JSON for WEB: {html,css,js}
+  code           String               @db.Text // JSON for WEB: {html,css,js}
   status         CodeSubmissionStatus @default(PENDING)
   score          Float?
   maxScore       Float?
@@ -861,8 +923,8 @@ model TestCaseResult {
   stdout        String?              @db.Text
   stderr        String?              @db.Text
   compileOutput String?              @db.Text
-  time          Float?               // seconds
-  memory        Int?                 // KB
+  time          Float? // seconds
+  memory        Int? // KB
   score         Float?
   judge0Token   String?
 
@@ -878,19 +940,118 @@ model Answer {
   attemptId  String
   questionId String
 
-  selectedOptionIds String?  // JSON: ["optId1","optId2"] cho MCQ
+  selectedOptionIds String? // JSON: ["optId1","optId2"] cho MCQ
   booleanAnswer     Boolean? // cho TRUE_FALSE
   textAnswer        String?  @db.Text // cho ESSAY
 
   isCorrect Boolean?
   score     Float?
-  feedback  String? @db.Text
+  feedback  String?  @db.Text
 
   attempt  QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   question Question    @relation(fields: [questionId], references: [id])
 
   @@unique([attemptId, questionId])
   @@index([attemptId])
+}
+
+// ============================================================
+// PRACTICE TEST MODULE
+// ============================================================
+
+model PracticeTest {
+  id          String             @id @default(cuid())
+  courseId    String
+  title       String
+  description String?            @db.Text
+  status      PracticeTestStatus @default(DRAFT)
+
+  pdfUrl      String
+  pdfName     String
+  pdfMimeType String @default("application/pdf")
+  pdfSize     Int    @default(0)
+
+  timeLimit   Int?
+  maxAttempts Int?
+  showResults Boolean @default(true)
+
+  availableFrom DateTime?
+  dueDate       DateTime?
+
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  deletedAt   DateTime?
+
+  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleItems           ModuleItem[]
+  questions             PracticeTestQuestion[]
+  attempts              PracticeTestAttempt[]
+  competencyLinks       ActivityCompetency[]
+  competencyAssessments CompetencyAssessment[]
+
+  @@index([courseId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model PracticeTestQuestion {
+  id             String               @id @default(cuid())
+  practiceTestId String
+  type           PracticeQuestionType
+  position       Int                  @default(0)
+  prompt         String?              @db.Text
+  points         Float                @default(1)
+  optionCount    Int                  @default(4)
+  statementCount Int                  @default(4)
+  correctAnswer  Json
+  caseSensitive  Boolean              @default(false)
+
+  practiceTest PracticeTest         @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+  answers      PracticeTestAnswer[]
+
+  @@index([practiceTestId])
+  @@index([type])
+}
+
+model PracticeTestAttempt {
+  id             String        @id @default(cuid())
+  practiceTestId String
+  studentId      String
+  status         AttemptStatus @default(GRADED)
+
+  startedAt   DateTime @default(now())
+  submittedAt DateTime @default(now())
+  score       Float?
+  maxScore    Float?
+
+  practiceTest PracticeTest         @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+  student      User                 @relation(fields: [studentId], references: [id])
+  answers      PracticeTestAnswer[]
+
+  @@index([practiceTestId])
+  @@index([studentId])
+}
+
+model PracticeTestAnswer {
+  id         String @id @default(cuid())
+  attemptId  String
+  questionId String
+
+  selectedOption   String?
+  statementAnswers Json?
+  textAnswer       String? @db.Text
+
+  isCorrect Boolean?
+  score     Float?
+
+  attempt  PracticeTestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question PracticeTestQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
 }
 
 // ============================================================
@@ -938,9 +1099,9 @@ model ActivityLog {
   userId       String
   courseId     String?
   action       ActivityAction
-  resourceType String?        // "lesson" | "quiz" | "assignment" | "exercise"
+  resourceType String? // "lesson" | "quiz" | "assignment" | "exercise"
   resourceId   String?
-  resourceName String?        // denormalized title for display
+  resourceName String? // denormalized title for display
   metadata     Json?
   ipAddress    String?
   createdAt    DateTime       @default(now())
@@ -968,16 +1129,19 @@ model ForumTopic {
   isPinned  Boolean  @default(false)
   isLocked  Boolean  @default(false)
   viewCount Int      @default(0)
+  groupId   String? // chủ đề thuộc nhóm nào (theo chế độ nhóm của khoá học)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   course Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
   author User        @relation("ForumTopicAuthor", fields: [authorId], references: [id])
+  group  Group?      @relation(fields: [groupId], references: [id], onDelete: SetNull)
   posts  ForumPost[]
 
   @@index([courseId])
   @@index([authorId])
   @@index([courseId, createdAt])
+  @@index([groupId])
 }
 
 model ForumPost {
@@ -998,4 +1162,195 @@ model ForumPost {
   @@index([topicId])
   @@index([authorId])
   @@index([topicId, createdAt])
+}
+
+// ============================================================
+// COMPETENCY MODULE — chấm điểm năng lực (CBE)
+// ============================================================
+
+// Danh mục năng lực — khởi tạo trong từng khoá học.
+model CompetencyCategory {
+  id          String   @id @default(cuid())
+  courseId    String
+  name        String
+  description String?  @db.Text
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course     Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  indicators CompetencyIndicator[]
+
+  @@index([courseId])
+}
+
+// Chỉ báo năng lực — thuộc một danh mục.
+model CompetencyIndicator {
+  id          String   @id @default(cuid())
+  categoryId  String
+  code        String? // mã chỉ báo (tuỳ chọn), vd "1.1"
+  name        String   @db.Text // nội dung chỉ báo
+  description String?  @db.Text
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category      CompetencyCategory     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  activityLinks ActivityCompetency[]
+  assessments   CompetencyAssessment[]
+
+  @@index([categoryId])
+}
+
+// Liên kết chỉ báo ↔ hoạt động học tập (đa hình: đúng 1 trong 4 FK non-null).
+model ActivityCompetency {
+  id          String   @id @default(cuid())
+  indicatorId String
+  createdAt   DateTime @default(now())
+
+  assignmentId   String?
+  quizId         String?
+  codeExerciseId String?
+  practiceTestId String?
+
+  indicator    CompetencyIndicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  assignment   Assignment?         @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  quiz         Quiz?               @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  codeExercise CodeExercise?       @relation(fields: [codeExerciseId], references: [id], onDelete: Cascade)
+  practiceTest PracticeTest?       @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+
+  @@unique([indicatorId, assignmentId])
+  @@unique([indicatorId, quizId])
+  @@unique([indicatorId, codeExerciseId])
+  @@unique([indicatorId, practiceTestId])
+  @@index([indicatorId])
+  @@index([assignmentId])
+  @@index([quizId])
+  @@index([codeExerciseId])
+  @@index([practiceTestId])
+}
+
+// Đánh giá năng lực của 1 học sinh cho 1 chỉ báo trên 1 hoạt động.
+// loại minh chứng (evidenceType) tham chiếu danh sách 5 nhóm ở @lumibach/types.
+model CompetencyAssessment {
+  id           String          @id @default(cuid())
+  indicatorId  String
+  studentId    String
+  level        CompetencyLevel
+  evidenceType String? // key thuộc EVIDENCE_TYPES
+  note         String?         @db.Text
+
+  assignmentId   String?
+  quizId         String?
+  codeExerciseId String?
+  practiceTestId String?
+
+  gradedBy  String
+  gradedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  indicator    CompetencyIndicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  student      User                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignment   Assignment?         @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  quiz         Quiz?               @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  codeExercise CodeExercise?       @relation(fields: [codeExerciseId], references: [id], onDelete: Cascade)
+  practiceTest PracticeTest?       @relation(fields: [practiceTestId], references: [id], onDelete: Cascade)
+
+  @@unique([indicatorId, studentId, assignmentId])
+  @@unique([indicatorId, studentId, quizId])
+  @@unique([indicatorId, studentId, codeExerciseId])
+  @@unique([indicatorId, studentId, practiceTestId])
+  @@index([studentId])
+  @@index([indicatorId])
+  @@index([assignmentId])
+  @@index([quizId])
+  @@index([codeExerciseId])
+  @@index([practiceTestId])
+}
+
+// ============================================================
+// GROUP MODULE — phân nhóm trong khoá học
+// ============================================================
+
+// Nhóm — thuộc một khoá học. Một học sinh có thể ở nhiều nhóm (qua nhiều grouping).
+model Group {
+  id          String   @id @default(cuid())
+  courseId    String
+  name        String
+  description String?  @db.Text
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course        Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  members       GroupMember[]
+  groupingLinks GroupingGroup[]
+  submissions   Submission[]
+  forumTopics   ForumTopic[]
+
+  @@index([courseId])
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+// Phân nhóm — tập hợp nhiều Nhóm lại để giao chung một hoạt động.
+model Grouping {
+  id          String   @id @default(cuid())
+  courseId    String
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groups      GroupingGroup[]
+  assignments Assignment[]
+
+  @@index([courseId])
+}
+
+model GroupingGroup {
+  id         String @id @default(cuid())
+  groupingId String
+  groupId    String
+
+  grouping Grouping @relation(fields: [groupingId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupingId, groupId])
+  @@index([groupingId])
+  @@index([groupId])
+}
+
+// ============================================================
+// PORTFOLIO MODULE — hồ sơ học tập cá nhân
+// ============================================================
+
+// Tự đánh giá / phản ánh của học sinh (một phần của hồ sơ học tập).
+model PortfolioReflection {
+  id        String   @id @default(cuid())
+  courseId  String
+  studentId String
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, studentId])
 }

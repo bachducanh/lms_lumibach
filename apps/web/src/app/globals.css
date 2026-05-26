@@ -164,12 +164,46 @@
   html {
     @apply font-sans;
   }
+  /* Unified dropdown look across the whole app: drop the inconsistent native
+     arrow for a custom chevron, add room for it, and give every <select> a
+     consistent radius + hover/focus treatment. Per-element Tailwind utilities
+     (border, bg, px-left…) still layer on top; only the right padding is forced
+     so text never runs under the chevron. */
   select {
-    @apply bg-background text-foreground cursor-pointer;
+    @apply bg-background text-foreground cursor-pointer rounded-md;
     color-scheme: light dark;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.55rem center;
+    background-size: 0.95rem;
+    padding-right: 2rem !important;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background-color 0.15s ease;
+  }
+  select:hover {
+    border-color: color-mix(in oklch, var(--ring) 55%, var(--border));
+  }
+  select:focus,
+  select:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 22%, transparent);
+  }
+  select:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
   .dark select {
     @apply bg-card;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  }
+  select option {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
   }
   button:not(:disabled) {
     cursor: pointer;
@@ -215,13 +249,78 @@
   font-style: italic;
 }
 
+/* Content text follows the app theme in both light & dark. Driven by our
+   own tokens so it never gets stuck on the typography palette — this is
+   what makes lesson text flip colour correctly in dark mode. (Inline
+   colours picked in the editor still win, by design.) */
+.ProseMirror {
+  color: var(--foreground);
+}
+.ProseMirror :is(h1, h2, h3, h4, h5, h6),
+.ProseMirror strong {
+  color: var(--foreground);
+}
+.ProseMirror a {
+  color: var(--primary);
+}
+
+/* Dark mode: content pasted from Word/Google Docs wraps every run in an inline
+   `color: black`, which beats our themed .ProseMirror colour and leaves the
+   text near-invisible on the dark surface. Neutralise pure-black (and Word's
+   `windowtext`) inline colours back to the theme foreground. Deliberate
+   non-black colours picked in the editor are left untouched. */
+.dark .ProseMirror [style*="color: rgb(0, 0, 0)"],
+.dark .ProseMirror [style*="color:rgb(0,0,0)"],
+.dark .ProseMirror [style*="color: #000000"],
+.dark .ProseMirror [style*="color:#000000"],
+.dark .ProseMirror [style*="color: #000;"],
+.dark .ProseMirror [style*="color:#000;"],
+.dark .ProseMirror [style*="color: black"],
+.dark .ProseMirror [style*="color:black"],
+.dark .ProseMirror [style*="windowtext"] {
+  color: var(--foreground) !important;
+}
+
 /* ── TipTap editor — table styles ──────────────────────────── */
+/* Wrapper added by the Table extension — lets wide tables scroll
+   horizontally instead of squashing columns (esp. on mobile). */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 1rem 0;
+}
+
 .ProseMirror table {
   border-collapse: collapse;
   width: 100%;
   margin: 1rem 0;
   table-layout: fixed;
   overflow: hidden;
+}
+
+/* Inside the scroll wrapper the table already owns its margin */
+.ProseMirror .tableWrapper table {
+  margin: 0;
+}
+
+/* Cursor shown while dragging a column edge to resize */
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Read-only view (lesson page): size columns to their content like Word,
+   instead of the fixed layout the editor needs for column-resizing. Without
+   this, a stored wide column (colwidth) crushes the others into one
+   character per line on narrow screens. The .tableWrapper scrolls if the
+   content-sized table is wider than the screen. */
+.ProseMirror[contenteditable='false'] table {
+  table-layout: auto;
+}
+.ProseMirror[contenteditable='false'] table td,
+.ProseMirror[contenteditable='false'] table th {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .ProseMirror table td,
@@ -257,6 +356,29 @@
   width: 4px;
   background-color: var(--primary);
   pointer-events: none;
+}
+
+/* On phones, keep a sensible min-width so columns stay readable and the
+   wrapper scrolls horizontally instead of crushing the text. Tighter
+   padding + smaller text make tables look intentional, not broken. */
+@media (max-width: 640px) {
+  /* On phones, size columns to content (auto) even in the editor so text
+     stays readable. Precise column-resizing is a desktop interaction; on
+     touch we favour legibility. The .tableWrapper scrolls horizontally. */
+  .ProseMirror table {
+    table-layout: auto;
+    min-width: 30rem;
+  }
+  .ProseMirror table td,
+  .ProseMirror table th {
+    padding: 0.375rem 0.5rem;
+    min-width: 4rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
 }
 
 .ProseMirror .youtube-embed,
@@ -376,9 +498,10 @@
   animation: lb-page-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Scroll-triggered reveal: elements stay hidden until they enter
-   the viewport, then transition in. Children of `.lb-reveal-group`
-   stagger sequentially using their `--i` CSS var.
+/* Scroll-triggered reveal: elements remain visible in the SSR HTML,
+   then ScrollRevealProvider plays Web Animations as they enter the
+   viewport. Keeping the baseline visible avoids hydration mismatches
+   if a slow mobile device is still hydrating when the animation starts.
 
    Usage:
      <section className="lb-reveal-group">
@@ -386,12 +509,12 @@
        <p  className="lb-reveal" style={{ '--i': 1 }}>Sub</p>
      </section>
 
-   The ScrollRevealProvider client component toggles `.is-revealed`
-   when an element enters the viewport (once). */
+   The `.is-revealed` rules remain as a compatibility fallback for
+   any older markup that still uses class-based reveal. */
 
 .lb-reveal {
-  opacity: 0;
-  transform: translateY(28px);
+  opacity: 1;
+  transform: none;
   transition:
     opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 150ms),
     transform 1.1s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 150ms);
@@ -418,8 +541,8 @@
    Up to 12 children get explicit stagger; anything past that just
    reveals with the last delay (graceful fallback). */
 .lb-reveal-children > * {
-  opacity: 0;
-  transform: translateY(20px);
+  opacity: 1;
+  transform: none;
   transition:
     opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);

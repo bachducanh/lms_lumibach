@@ -29,7 +29,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   } catch {
     // DB unreachable — render normally so user sees the API error rather
     // than getting trapped in a /login that also can't authenticate.
-    userOk = null;
   }
   if (userOk === false) {
     redirect('/api/auth/stale-bounce?reason=session-stale');
@@ -38,11 +37,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <SessionProvider session={session}>
       <SidebarProvider>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-dvh overflow-hidden">
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <Header showNotifications={!!session?.user} />
-            <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+            <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">{children}</main>
           </div>
         </div>
       </SidebarProvider>

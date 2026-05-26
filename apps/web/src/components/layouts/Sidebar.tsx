@@ -53,15 +53,25 @@ const ROLE_LABEL: Record<string, string> = {
   STUDENT: 'Học sinh',
 };
 
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavLink({
+  item,
+  pathname,
+  collapsed,
+}: {
+  item: NavItem;
+  pathname: string;
+  collapsed: boolean;
+}) {
   const Icon = item.icon;
   const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
   return (
     <Link
       href={item.href}
+      title={collapsed ? item.label : undefined}
       className={cn(
-        'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+        'group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
+        collapsed ? 'justify-center px-2' : 'gap-3 px-3',
         isActive
           ? 'bg-sidebar-primary/15 text-sidebar-primary'
           : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
@@ -83,9 +93,9 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
         )}
       />
 
-      <span className="flex-1 tracking-wide">{item.label}</span>
+      {!collapsed && <span className="flex-1 tracking-wide">{item.label}</span>}
 
-      {isActive && <ChevronRight className="h-3 w-3 opacity-60" />}
+      {isActive && !collapsed && <ChevronRight className="h-3 w-3 opacity-60" />}
     </Link>
   );
 }
@@ -93,7 +103,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { isOpen, close } = useSidebar();
+  const { isOpen, isCollapsed, close } = useSidebar();
   const role = session?.user?.role;
   const user = session?.user;
 
@@ -130,14 +140,23 @@ export function Sidebar() {
           'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           // Desktop: always visible in normal flow
-          'md:relative md:translate-x-0 md:transition-none'
+          'md:relative md:translate-x-0 md:transition-[width]',
+          isCollapsed ? 'md:w-16' : 'md:w-60'
         )}
         style={{ boxShadow: '1px 0 0 0 oklch(1 0 0 / 5%)' }}
         aria-label="Điều hướng chính"
       >
         {/* ── Logo ─────────────────────────────────────────────── */}
-        <div className="border-sidebar-border flex h-14 shrink-0 items-center border-b px-4">
-          <Link href="/dashboard" className="group flex items-center gap-2.5">
+        <div
+          className={cn(
+            'border-sidebar-border flex h-14 shrink-0 items-center border-b px-4',
+            isCollapsed && 'md:justify-center md:px-2'
+          )}
+        >
+          <Link
+            href="/dashboard"
+            className={cn('group flex items-center gap-2.5', isCollapsed && 'md:gap-0')}
+          >
             {/* Logo icon with glow */}
             <div className="relative shrink-0">
               <div className="bg-sidebar-primary absolute inset-0 rounded-sm opacity-0 blur-[6px] transition-opacity duration-300 group-hover:opacity-20" />
@@ -151,7 +170,7 @@ export function Sidebar() {
               />
             </div>
 
-            <div className="flex flex-col leading-none">
+            <div className={cn('flex flex-col leading-none', isCollapsed && 'md:hidden')}>
               <span className="text-sidebar-foreground text-sm font-bold tracking-wide">
                 LumiBach
               </span>
@@ -166,34 +185,45 @@ export function Sidebar() {
         {/* ── Main nav ─────────────────────────────────────────── */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
           {visibleMain.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} collapsed={isCollapsed} />
           ))}
 
           {visibleAdmin.length > 0 && (
             <>
               {/* Section divider */}
-              <div className="my-4 flex items-center gap-2 px-3">
+              <div className={cn('my-4 flex items-center gap-2 px-3', isCollapsed && 'md:px-1')}>
                 <span className="text-sidebar-foreground/60 text-[10px] font-bold tracking-[0.2em] uppercase">
-                  Quản trị
+                  {isCollapsed ? '' : 'Quản trị'}
                 </span>
                 <div className="bg-sidebar-foreground/10 h-px flex-1" />
               </div>
               {visibleAdmin.map((item) => (
-                <NavLink key={item.href} item={item} pathname={pathname} />
+                <NavLink key={item.href} item={item} pathname={pathname} collapsed={isCollapsed} />
               ))}
             </>
           )}
         </nav>
 
         {/* ── Bottom section ───────────────────────────────────── */}
-        <div className="border-sidebar-border shrink-0 space-y-0.5 border-t px-3 py-3">
+        <div
+          className={cn(
+            'border-sidebar-border shrink-0 space-y-0.5 border-t px-3 py-3',
+            isCollapsed && 'md:px-2'
+          )}
+        >
           {bottomNavItems.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} collapsed={isCollapsed} />
           ))}
 
           {/* User profile card */}
           {user && (
-            <div className="hover:bg-sidebar-accent mt-2 flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors">
+            <div
+              className={cn(
+                'hover:bg-sidebar-accent mt-2 flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors',
+                isCollapsed && 'md:justify-center md:px-2'
+              )}
+              title={isCollapsed ? (user.name ?? user.email ?? '') : undefined}
+            >
               {/* Avatar with orange ring */}
               <div
                 className="text-sidebar-primary bg-sidebar-primary/20 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
@@ -202,7 +232,7 @@ export function Sidebar() {
                 {initials}
               </div>
 
-              <div className="min-w-0 flex-1">
+              <div className={cn('min-w-0 flex-1', isCollapsed && 'md:hidden')}>
                 <p className="text-sidebar-foreground truncate text-xs font-semibold">
                   {user.name ?? user.email}
                 </p>

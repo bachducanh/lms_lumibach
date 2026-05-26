@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { Bell, CheckCheck, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { createSocket } from '@/lib/socket';
 import type { NotificationItem, UnreadCount } from '@lumibach/types';
@@ -134,11 +134,11 @@ export function NotificationBell() {
 
       {/* Dropdown */}
       {open && (
-        <div className="border-border bg-popover absolute top-full right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border shadow-lg">
+        <div className="border-border bg-popover fixed top-14 right-3 left-3 z-50 overflow-hidden rounded-xl border shadow-lg sm:absolute sm:top-full sm:right-0 sm:left-auto sm:mt-2 sm:w-80">
           {/* Header */}
-          <div className="border-border flex items-center justify-between border-b px-4 py-2.5">
+          <div className="border-border flex items-center justify-between gap-2 border-b px-3 py-2.5 sm:px-4">
             <span className="text-sm font-semibold">Thông báo</span>
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               {count > 0 && (
                 <button
                   onClick={handleMarkAll}
@@ -160,7 +160,7 @@ export function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto">
             {!loaded && (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
@@ -200,7 +200,7 @@ function NotifRow({
 
   const inner = (
     <div
-      className={`hover:bg-muted/50 group flex cursor-pointer gap-3 px-4 py-3 transition-colors ${!item.isRead ? 'bg-violet-500/5' : ''}`}
+      className={`hover:bg-muted/50 group flex cursor-pointer gap-3 px-3 py-3 transition-colors sm:px-4 ${!item.isRead ? 'bg-violet-500/5' : ''}`}
       onClick={() => {
         if (!item.isRead) onRead(item.id);
       }}

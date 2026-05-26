@@ -262,6 +262,8 @@ export class AssignmentsService {
       maxAttempts?: number | null;
       maxFileSizeMb?: number | null;
       maxFiles?: number | null;
+      groupSubmission?: boolean;
+      groupingId?: string | null;
       publish?: boolean;
     }
   ) {
@@ -272,6 +274,15 @@ export class AssignmentsService {
     if (!existing) throw new NotFoundException('Không tìm thấy.');
     if (!(await this.canManage(user.id, user.role, existing.courseId)))
       throw new ForbiddenException('Không có quyền.');
+
+    // Validate grouping thuộc đúng khoá học nếu được đặt.
+    if (body.groupingId) {
+      const grouping = await this.prisma.grouping.findFirst({
+        where: { id: body.groupingId, courseId: existing.courseId },
+        select: { id: true },
+      });
+      if (!grouping) throw new ForbiddenException('Phân nhóm không thuộc khoá học.');
+    }
 
     let newStatus = existing.status;
     if (body.publish === true) newStatus = 'PUBLISHED';
@@ -297,6 +308,8 @@ export class AssignmentsService {
         ...(body.maxAttempts !== undefined && { maxAttempts: body.maxAttempts }),
         ...(body.maxFileSizeMb !== undefined && { maxFileSizeMb: body.maxFileSizeMb }),
         ...(body.maxFiles !== undefined && { maxFiles: body.maxFiles }),
+        ...(body.groupSubmission !== undefined && { groupSubmission: body.groupSubmission }),
+        ...(body.groupingId !== undefined && { groupingId: body.groupingId }),
         publishedAt:
           newStatus === 'PUBLISHED' && existing.status !== 'PUBLISHED' ? new Date() : undefined,
       },
@@ -376,6 +389,8 @@ export class AssignmentsService {
         lateDeadline: true,
         latePolicy: true,
         maxFiles: true,
+        groupSubmission: true,
+        groupingId: true,
       },
     });
     if (!assignment) throw new NotFoundException('Bài tập không tồn tại.');
@@ -402,6 +417,24 @@ export class AssignmentsService {
 
     const status = asDraft ? 'DRAFT' : isLate ? 'LATE' : 'SUBMITTED';
 
+    // Nộp theo nhóm: tìm nhóm của học sinh trong grouping đã gán.
+    let groupId: string | null = null;
+    let teammateIds: string[] = [];
+    if (assignment.groupSubmission && assignment.groupingId) {
+      const group = await this.prisma.group.findFirst({
+        where: {
+          courseId: assignment.courseId,
+          members: { some: { userId: user.id } },
+          groupingLinks: { some: { groupingId: assignment.groupingId } },
+        },
+        select: { id: true, members: { select: { userId: true } } },
+      });
+      if (group) {
+        groupId = group.id;
+        teammateIds = group.members.map((m) => m.userId).filter((uid) => uid !== user.id);
+      }
+    }
+
     const sub = await this.prisma.$transaction(async (tx) => {
       const saved = existing
         ? await tx.submission.update({
@@ -410,6 +443,7 @@ export class AssignmentsService {
               content: body.content,
               status,
               submittedAt: asDraft ? existing.submittedAt : now,
+              groupId,
             },
           })
         : await tx.submission.create({
@@ -420,6 +454,7 @@ export class AssignmentsService {
               status,
               attemptNumber: 1,
               submittedAt: asDraft ? null : now,
+              groupId,
             },
           });
 
@@ -429,6 +464,39 @@ export class AssignmentsService {
         await tx.submissionFile.createMany({
           data: files.map((f) => ({ submissionId: saved.id, uploadedBy: user.id, ...f })),
         });
+      }
+
+      // Nhân bản bài nộp cho các thành viên còn lại của nhóm (chỉ khi nộp thật, không phải nháp).
+      if (!asDraft && groupId && teammateIds.length > 0) {
+        for (const memberId of teammateIds) {
+          const memberExisting = await tx.submission.findFirst({
+            where: { assignmentId, studentId: memberId },
+            orderBy: { attemptNumber: 'desc' },
+          });
+          if (memberExisting?.status === 'GRADED') continue; // không ghi đè bài đã chấm
+          const memberSub = memberExisting
+            ? await tx.submission.update({
+                where: { id: memberExisting.id },
+                data: { content: body.content, status, submittedAt: now, groupId },
+              })
+            : await tx.submission.create({
+                data: {
+                  assignmentId,
+                  studentId: memberId,
+                  content: body.content,
+                  status,
+                  attemptNumber: 1,
+                  submittedAt: now,
+                  groupId,
+                },
+              });
+          await tx.submissionFile.deleteMany({ where: { submissionId: memberSub.id } });
+          if (files.length > 0) {
+            await tx.submissionFile.createMany({
+              data: files.map((f) => ({ submissionId: memberSub.id, uploadedBy: user.id, ...f })),
+            });
+          }
+        }
       }
 
       return saved;
@@ -458,17 +526,34 @@ export class AssignmentsService {
   ) {
     if (!hasMinRole(user.role, 'TA')) throw new ForbiddenException('Không có quyền.');
 
-    await this.prisma.submission.update({
+    const target = await this.prisma.submission.findUnique({
       where: { id: submissionId },
-      data: {
-        score: body.score,
-        feedback: body.feedback,
-        status: 'GRADED',
-        gradedAt: new Date(),
-        gradedBy: user.id,
+      select: {
+        assignmentId: true,
+        groupId: true,
+        assignment: { select: { groupSubmission: true } },
       },
     });
+    if (!target) throw new NotFoundException('Không tìm thấy bài nộp.');
 
+    const data = {
+      score: body.score,
+      feedback: body.feedback,
+      status: 'GRADED' as const,
+      gradedAt: new Date(),
+      gradedBy: user.id,
+    };
+
+    // Nộp theo nhóm: chấm 1 lần lan điểm cho toàn nhóm.
+    if (target.assignment.groupSubmission && target.groupId) {
+      const res = await this.prisma.submission.updateMany({
+        where: { assignmentId: target.assignmentId, groupId: target.groupId },
+        data,
+      });
+      return { message: `Đã lưu điểm cho cả nhóm (${res.count} bài).` };
+    }
+
+    await this.prisma.submission.update({ where: { id: submissionId }, data });
     return { message: 'Đã lưu điểm.' };
   }
 

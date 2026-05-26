@@ -44,7 +44,7 @@ export function RubricView({ rubric }: Props) {
         )}
 
         {/* Criteria rows */}
-        {rubric.criteria.map((c, ci) => (
+        {rubric.criteria.map((c) => (
           <div
             key={c.id}
             className={cn(

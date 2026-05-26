@@ -16,8 +16,10 @@ import {
   Loader2,
   ArrowUp,
   ArrowDown,
+  ArrowRight,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { QuestionTypeSelect } from '@/components/features/quiz/QuestionTypeSelect';
 import type { QuestionItem } from '@lumibach/types';
 
 type QuestionFormValues = {
@@ -64,22 +66,9 @@ type QType =
   | 'PARSONS'
   | 'CODE_FILL'
   | 'CODE_DEBUG_PYTHON'
-  | 'CODE_DEBUG_CPP';
-
-const TYPE_LABEL: Record<QType, string> = {
-  MULTIPLE_CHOICE_SINGLE: 'Trắc nghiệm (1 đáp án)',
-  MULTIPLE_CHOICE_MULTIPLE: 'Trắc nghiệm (nhiều đáp án)',
-  TRUE_FALSE: 'Đúng / Sai',
-  TRUE_FALSE_MULTI: 'Đúng / Sai (nhiều phát biểu)',
-  ESSAY: 'Tự luận',
-  CODE_PYTHON: 'Code Python (tự chấm)',
-  CODE_CPP: 'Code C++ (tự chấm)',
-  CODE_WEB: 'Code Web (chấm tay)',
-  PARSONS: 'Sắp xếp code (Parsons)',
-  CODE_FILL: 'Điền vào chỗ trống',
-  CODE_DEBUG_PYTHON: 'Debug Python',
-  CODE_DEBUG_CPP: 'Debug C++',
-};
+  | 'CODE_DEBUG_CPP'
+  | 'ORDERING'
+  | 'MATCHING';
 
 const CODE_LANG_MAP: Partial<Record<QType, 'PYTHON3' | 'CPP17' | 'WEB'>> = {
   CODE_PYTHON: 'PYTHON3',
@@ -91,6 +80,20 @@ const CODE_LANG_MAP: Partial<Record<QType, 'PYTHON3' | 'CPP17' | 'WEB'>> = {
 
 type Option = { content: string; isCorrect: boolean };
 type TCInput = { input: string; expectedOutput: string; isHidden: boolean; points: number };
+
+// MATCHING stores each pair in one option as JSON {left,right}; position = order.
+type Pair = { left: string; right: string };
+function emptyPair(): Option {
+  return { content: JSON.stringify({ left: '', right: '' }), isCorrect: true };
+}
+function parsePair(content: string): Pair {
+  try {
+    const p = JSON.parse(content) as Partial<Pair>;
+    return { left: p.left ?? '', right: p.right ?? '' };
+  } catch {
+    return { left: '', right: '' };
+  }
+}
 
 function defaultOptions(type: QType): Option[] {
   if (type === 'TRUE_FALSE')
@@ -105,6 +108,15 @@ function defaultOptions(type: QType): Option[] {
       { content: 'Phát biểu 3', isCorrect: true },
       { content: 'Phát biểu 4', isCorrect: false },
     ];
+  // General ordering — items entered in the correct order (position = order).
+  if (type === 'ORDERING')
+    return [
+      { content: '', isCorrect: false },
+      { content: '', isCorrect: false },
+      { content: '', isCorrect: false },
+    ];
+  // Matching — pairs of left ↔ right.
+  if (type === 'MATCHING') return [emptyPair(), emptyPair(), emptyPair()];
   const noOpts: QType[] = [
     'ESSAY',
     'CODE_PYTHON',
@@ -225,6 +237,22 @@ export function QuestionForm({
     });
   }
 
+  // ── Matching pair helpers (each option.content = JSON {left,right}) ──
+
+  function updatePair(i: number, side: 'left' | 'right', val: string) {
+    setOptions((prev) =>
+      prev.map((o, j) => {
+        if (j !== i) return o;
+        const p = parsePair(o.content);
+        return { ...o, content: JSON.stringify({ ...p, [side]: val }) };
+      })
+    );
+  }
+
+  function addPair() {
+    setOptions((prev) => [...prev, emptyPair()]);
+  }
+
   // ── Parsons: parse code into lines ────────────────────────
 
   function handleParseLines() {
@@ -320,6 +348,17 @@ export function QuestionForm({
     if (type === 'PARSONS') {
       if (options.length < 2) return 'Phải có ít nhất 2 dòng code.';
       if (options.some((o) => !o.content.trim())) return 'Tất cả dòng code phải có nội dung.';
+    }
+    if (type === 'ORDERING') {
+      if (options.length < 2) return 'Phải có ít nhất 2 mục để sắp xếp.';
+      if (options.some((o) => !o.content.trim())) return 'Tất cả các mục phải có nội dung.';
+    }
+    if (type === 'MATCHING') {
+      if (options.length < 2) return 'Phải có ít nhất 2 cặp ghép nối.';
+      if (
+        options.some((o) => !parsePair(o.content).left.trim() || !parsePair(o.content).right.trim())
+      )
+        return 'Mỗi cặp phải nhập đủ cả hai vế.';
     }
     if (type === 'CODE_FILL') {
       if (!starterCode.includes('___')) return 'Template phải có ít nhất 1 chỗ trống (___)';
@@ -418,6 +457,8 @@ export function QuestionForm({
   const isEssay = type === 'ESSAY';
   const isParsons = type === 'PARSONS';
   const isCodeFill = type === 'CODE_FILL';
+  const isOrdering = type === 'ORDERING';
+  const isMatching = type === 'MATCHING';
   const isDebugType = type === 'CODE_DEBUG_PYTHON' || type === 'CODE_DEBUG_CPP';
   const isCodeType = type === 'CODE_PYTHON' || type === 'CODE_CPP' || type === 'CODE_WEB';
   const isAutoGraded = isCodeType || isDebugType;
@@ -430,24 +471,11 @@ export function QuestionForm({
         <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
           Loại câu hỏi
         </label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(Object.keys(TYPE_LABEL) as QType[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => !question && handleTypeChange(t)}
-              disabled={!!question}
-              className={cn(
-                'rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors',
-                type === t
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                question && 'cursor-default opacity-70'
-              )}
-            >
-              {TYPE_LABEL[t]}
-            </button>
-          ))}
-        </div>
+        <QuestionTypeSelect
+          value={type}
+          onChange={(t) => handleTypeChange(t as QType)}
+          disabled={!!question}
+        />
         {question && (
           <p className="text-muted-foreground text-xs">
             Không thể thay đổi loại câu hỏi sau khi tạo.
@@ -788,6 +816,118 @@ export function QuestionForm({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ORDERING — general drag-to-order */}
+      {isOrdering && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 px-4 py-3 text-xs text-sky-700 dark:text-sky-400">
+            <strong>Sắp xếp thứ tự</strong> — Nhập các mục theo <strong>đúng thứ tự</strong>. Khi
+            làm bài, các mục sẽ bị xáo trộn và học sinh kéo thả để sắp xếp lại.
+          </div>
+          <div className="space-y-2">
+            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Các mục (nhập theo đúng thứ tự) · {options.length} mục
+            </label>
+            <div className="space-y-1.5">
+              {options.map((o, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-muted-foreground w-5 shrink-0 text-right text-xs tabular-nums">
+                    {i + 1}
+                  </span>
+                  <input
+                    value={o.content}
+                    onChange={(e) => updateOption(i, e.target.value)}
+                    placeholder={`Mục thứ ${i + 1}...`}
+                    className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => moveOption(i, -1)}
+                    disabled={i === 0}
+                    className="text-muted-foreground/40 hover:text-foreground p-1 transition-colors disabled:opacity-20"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => moveOption(i, 1)}
+                    disabled={i === options.length - 1}
+                    className="text-muted-foreground/40 hover:text-foreground p-1 transition-colors disabled:opacity-20"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </button>
+                  {options.length > 2 && (
+                    <button
+                      onClick={() => removeOption(i)}
+                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={addOption}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Thêm mục
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MATCHING — drag-to-pair */}
+      {isMatching && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-lime-500/30 bg-lime-500/5 px-4 py-3 text-xs text-lime-700 dark:text-lime-400">
+            <strong>Ghép nối</strong> — Mỗi dòng là một cặp đúng (vế trái ↔ vế phải). Khi làm bài,
+            các vế phải sẽ bị xáo trộn và học sinh kéo thả để ghép cho đúng.
+          </div>
+          <div className="space-y-2">
+            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Các cặp ghép nối · {options.length} cặp
+            </label>
+            <div className="space-y-2">
+              {options.map((o, i) => {
+                const p = parsePair(o.content);
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="bg-muted text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                      {i + 1}
+                    </span>
+                    <input
+                      value={p.left}
+                      onChange={(e) => updatePair(i, 'left', e.target.value)}
+                      placeholder={`Vế trái ${i + 1}...`}
+                      className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                    />
+                    <ArrowRight className="text-muted-foreground/60 h-4 w-4 shrink-0" />
+                    <input
+                      value={p.right}
+                      onChange={(e) => updatePair(i, 'right', e.target.value)}
+                      placeholder={`Vế phải ${i + 1}...`}
+                      className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                    />
+                    {options.length > 2 && (
+                      <button
+                        onClick={() => removeOption(i)}
+                        className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={addPair}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Thêm cặp
+            </button>
+          </div>
         </div>
       )}
 

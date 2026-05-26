@@ -38,7 +38,7 @@ type Props = {
   existing: ExistingCA;
 };
 
-export function CodeAssignmentSetup({ assignmentId, existing }: Props) {
+export function CodeAssignmentSetup({ existing }: Props) {
   const [pending, start] = useTransition();
   const [language, setLanguage] = useState<CodeLanguage>(existing?.language ?? 'PYTHON3');
   const [starterCode, setStarterCode] = useState(existing?.starterCode ?? '');

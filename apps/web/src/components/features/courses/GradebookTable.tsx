@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Download, ChevronUp, ChevronDown } from 'lucide-react';
 import type { GbColumn, GbStudent } from '@lumibach/types';
@@ -58,9 +59,10 @@ type SortDir = 'asc' | 'desc';
 type Props = {
   columns: GbColumn[];
   students: GbStudent[];
+  courseSlug: string;
 };
 
-export function GradebookTable({ columns, students }: Props) {
+export function GradebookTable({ columns, students, courseSlug }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -200,7 +202,13 @@ export function GradebookTable({ columns, students }: Props) {
                       ri % 2 === 0 ? 'bg-card' : 'bg-muted/10'
                     )}
                   >
-                    <p className="max-w-[160px] truncate text-sm font-medium">{student.name}</p>
+                    <Link
+                      href={`/courses/${courseSlug}/portfolio/${student.id}`}
+                      className="hover:text-primary max-w-[160px] truncate text-sm font-medium hover:underline"
+                      title="Xem hồ sơ học tập"
+                    >
+                      {student.name}
+                    </Link>
                     <p className="text-muted-foreground max-w-[160px] truncate text-[10px]">
                       {student.email}
                     </p>

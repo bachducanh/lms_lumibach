@@ -311,7 +311,7 @@ export class AttemptsService {
         continue;
       }
 
-      if (type === 'PARSONS') {
+      if (type === 'PARSONS' || type === 'ORDERING') {
         const studentIds: string[] = (() => {
           try {
             return JSON.parse(ans?.textAnswer ?? '[]') as string[];
@@ -333,6 +333,33 @@ export class AttemptsService {
           booleanAnswer: null,
           textAnswer: ans?.textAnswer ?? null,
           isCorrect: correct === sortedOpts.length,
+          score,
+        });
+        continue;
+      }
+
+      if (type === 'MATCHING') {
+        // textAnswer = JSON map { leftOptionId: rightOptionId }. Each option holds one
+        // pair, so a match is correct when the chosen right belongs to the same option.
+        const map: Record<string, string> = (() => {
+          try {
+            return JSON.parse(ans?.textAnswer ?? '{}') as Record<string, string>;
+          } catch {
+            return {};
+          }
+        })();
+        let correct = 0;
+        for (const opt of opts) {
+          if (map[opt.id] === opt.id) correct++;
+        }
+        const score = opts.length > 0 ? Math.round((correct / opts.length) * pts * 10) / 10 : 0;
+        totalScore += score;
+        updates.push({
+          questionId: qq.questionId,
+          selectedOptionIds: null,
+          booleanAnswer: null,
+          textAnswer: ans?.textAnswer ?? null,
+          isCorrect: correct === opts.length,
           score,
         });
         continue;

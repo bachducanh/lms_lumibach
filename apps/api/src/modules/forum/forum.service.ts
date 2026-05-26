@@ -40,12 +40,13 @@ export class ForumService {
 
   async listTopics(user: AuthUser, courseId: string): Promise<ForumTopicSummary[]> {
     await this.assertEnrolled(courseId, user.id, user.role);
-    return this.cached(`forum:topics:${courseId}`, TOPIC_LIST_TTL_MS, async () => {
+    const all = await this.cached(`forum:topics:${courseId}`, TOPIC_LIST_TTL_MS, async () => {
       const topics = await this.prisma.forumTopic.findMany({
         where: { courseId },
         orderBy: [{ isPinned: 'desc' }, { updatedAt: 'desc' }],
         include: {
           author: { select: AUTHOR_SELECT },
+          group: { select: { name: true } },
           _count: { select: { posts: true } },
           posts: {
             orderBy: { createdAt: 'desc' },
@@ -66,6 +67,8 @@ export class ForumService {
         viewCount: t.viewCount,
         createdAt: t.createdAt.toISOString(),
         updatedAt: t.updatedAt.toISOString(),
+        groupId: t.groupId,
+        groupName: t.group?.name ?? null,
         author: t.author,
         _count: t._count,
         posts: t.posts.map((p) => ({
@@ -75,6 +78,59 @@ export class ForumService {
         })),
       }));
     });
+
+    return this.filterTopicsForUser(user, courseId, all);
+  }
+
+  // Lọc topic theo chế độ nhóm (per-user, sau cache).
+  private async filterTopicsForUser(
+    user: AuthUser,
+    courseId: string,
+    topics: ForumTopicSummary[]
+  ): Promise<ForumTopicSummary[]> {
+    if (hasMinRole(user.role, 'TA')) return topics;
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      select: { groupMode: true },
+    });
+    if (!course || course.groupMode !== 'SEPARATE_GROUPS') return topics;
+    const myGroups = await this.prisma.group.findMany({
+      where: { courseId, members: { some: { userId: user.id } } },
+      select: { id: true },
+    });
+    const ids = new Set(myGroups.map((g) => g.id));
+    return topics.filter((t) => !t.groupId || ids.has(t.groupId));
+  }
+
+  private async resolveTopicGroupId(
+    user: AuthUser,
+    courseId: string,
+    requested: string | null | undefined
+  ): Promise<string | null> {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      select: { groupMode: true },
+    });
+    if (!course || course.groupMode === 'NO_GROUPS') return null;
+
+    if (hasMinRole(user.role, 'TA')) {
+      if (requested) {
+        const g = await this.prisma.group.findFirst({
+          where: { id: requested, courseId },
+          select: { id: true },
+        });
+        return g ? requested : null;
+      }
+      return null;
+    }
+
+    const myGroups = await this.prisma.group.findMany({
+      where: { courseId, members: { some: { userId: user.id } } },
+      select: { id: true },
+    });
+    if (myGroups.length === 0) return null;
+    if (requested && myGroups.some((g) => g.id === requested)) return requested;
+    return myGroups[0]!.id;
   }
 
   async getTopic(user: AuthUser, topicId: string): Promise<ForumTopicDetail> {
@@ -84,6 +140,7 @@ export class ForumService {
         include: {
           course: { select: { id: true, slug: true, name: true } },
           author: { select: AUTHOR_SELECT },
+          group: { select: { name: true } },
           posts: {
             where: { parentId: null },
             orderBy: { createdAt: 'asc' },
@@ -109,6 +166,8 @@ export class ForumService {
         viewCount: topic.viewCount,
         createdAt: topic.createdAt.toISOString(),
         updatedAt: topic.updatedAt.toISOString(),
+        groupId: topic.groupId,
+        groupName: topic.group?.name ?? null,
         author: topic.author,
         course: topic.course,
         posts: topic.posts.map((p) => ({
@@ -136,6 +195,21 @@ export class ForumService {
     // Enrollment check always runs per-request (outside cache)
     await this.assertEnrolled(data.courseId, user.id, user.role);
 
+    // Chế độ nhóm riêng biệt: học sinh không xem được chủ đề của nhóm khác.
+    if (!hasMinRole(user.role, 'TA') && data.groupId) {
+      const course = await this.prisma.course.findUnique({
+        where: { id: data.courseId },
+        select: { groupMode: true },
+      });
+      if (course?.groupMode === 'SEPARATE_GROUPS') {
+        const member = await this.prisma.groupMember.findFirst({
+          where: { groupId: data.groupId, userId: user.id },
+          select: { id: true },
+        });
+        if (!member) throw new ForbiddenException('Chủ đề thuộc nhóm khác.');
+      }
+    }
+
     // Increment view count non-blocking
     this.prisma.forumTopic
       .update({ where: { id: topicId }, data: { viewCount: { increment: 1 } } })
@@ -146,9 +220,10 @@ export class ForumService {
 
   async createTopic(user: AuthUser, body: CreateTopicBody): Promise<{ topicId: string }> {
     await this.assertEnrolled(body.courseId, user.id, user.role);
+    const groupId = await this.resolveTopicGroupId(user, body.courseId, body.groupId);
     const topic = await this.prisma.$transaction(async (tx) => {
       const t = await tx.forumTopic.create({
-        data: { courseId: body.courseId, authorId: user.id, title: body.title },
+        data: { courseId: body.courseId, authorId: user.id, title: body.title, groupId },
       });
       await tx.forumPost.create({
         data: { topicId: t.id, authorId: user.id, content: body.content },

@@ -3,10 +3,10 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
-import { PeoplePanel } from '@/components/features/courses/PeoplePanel';
+import { CourseMembersTabs } from '@/components/features/courses/CourseMembersTabs';
 import { buttonVariants } from '@/components/ui/button';
 import { hasMinRole } from '@/lib/permissions';
-import type { CourseDetail, CourseMembersResponse } from '@lumibach/types';
+import type { CourseDetail, CourseMembersResponse, CourseGroupsData } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -30,9 +30,14 @@ export default async function CoursePeoplePage({ params }: { params: Promise<{ s
   const canManage =
     role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
 
-  const { enrollments, tas, coTeachers } = await api
-    .get<CourseMembersResponse>(`/courses/${course.id}/members`)
-    .catch(() => ({ enrollments: [], tas: [], coTeachers: [] }));
+  const [{ enrollments, tas, coTeachers }, groupsData] = await Promise.all([
+    api
+      .get<CourseMembersResponse>(`/courses/${course.id}/members`)
+      .catch(() => ({ enrollments: [], tas: [], coTeachers: [] })),
+    api
+      .get<CourseGroupsData>(`/courses/${course.id}/groups`)
+      .catch(() => ({ groupMode: 'NO_GROUPS', groups: [], groupings: [] }) as CourseGroupsData),
+  ]);
 
   const totalTeachers = 1 + coTeachers.length;
 
@@ -54,12 +59,13 @@ export default async function CoursePeoplePage({ params }: { params: Promise<{ s
         </p>
       </div>
 
-      <PeoplePanel
+      <CourseMembersTabs
         courseId={course.id}
         canManage={canManage}
         enrollments={enrollments}
         tas={tas}
         coTeachers={coTeachers}
+        groupsData={groupsData}
         courseOwner={{
           id: course.owner.id,
           fullName: course.owner.fullName ?? null,

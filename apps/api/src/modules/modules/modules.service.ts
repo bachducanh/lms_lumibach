@@ -198,8 +198,12 @@ export class ModulesService {
               ? {
                   isPublished: true,
                   OR: [
-                    { type: { not: 'CODE_EXERCISE' } },
+                    { type: { notIn: ['CODE_EXERCISE', 'PRACTICE_TEST'] } },
                     { type: 'CODE_EXERCISE', codeExercise: { status: 'PUBLISHED' } },
+                    {
+                      type: 'PRACTICE_TEST',
+                      practiceTest: { status: 'PUBLISHED', deletedAt: null },
+                    },
                   ],
                 }
               : undefined,
@@ -208,6 +212,7 @@ export class ModulesService {
               lesson: { select: { id: true, title: true, estimatedMinutes: true } },
               quiz: { select: { id: true, title: true, status: true } } as any,
               codeExercise: { select: { id: true, title: true, language: true, status: true } },
+              practiceTest: { select: { id: true, title: true, status: true } } as any,
             },
           },
         },
@@ -230,13 +235,17 @@ export class ModulesService {
       const items = await this.prisma.moduleItem.findMany({
         where: {
           module: { courseId, ...(publishedOnly ? { isPublished: true } : {}) },
-          type: { in: ['LESSON', 'ASSIGNMENT', 'QUIZ', 'CODE_EXERCISE'] },
+          type: { in: ['LESSON', 'ASSIGNMENT', 'QUIZ', 'CODE_EXERCISE', 'PRACTICE_TEST'] },
           ...(publishedOnly ? { isPublished: true } : {}),
           ...(publishedOnly
             ? {
                 OR: [
-                  { type: { not: 'CODE_EXERCISE' } },
+                  { type: { notIn: ['CODE_EXERCISE', 'PRACTICE_TEST'] } },
                   { type: 'CODE_EXERCISE', codeExercise: { status: 'PUBLISHED' } },
+                  {
+                    type: 'PRACTICE_TEST',
+                    practiceTest: { status: 'PUBLISHED', deletedAt: null },
+                  },
                 ],
               }
             : {}),
@@ -250,7 +259,9 @@ export class ModulesService {
           assignmentId: true,
           quizId: true,
           codeExerciseId: true,
+          practiceTestId: true,
           codeExercise: { select: { language: true } },
+          practiceTest: { select: { status: true } } as any,
         },
       });
       return items as CourseNavItem[];

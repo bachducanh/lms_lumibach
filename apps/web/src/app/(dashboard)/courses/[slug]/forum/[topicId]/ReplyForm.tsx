@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 
 export function ReplyForm({
   topicId,
-  slug,
   parentId,
   onDone,
 }: {

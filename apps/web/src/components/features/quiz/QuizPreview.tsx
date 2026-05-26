@@ -12,6 +12,7 @@ import {
   XCircle,
   RotateCcw,
   Minus,
+  ArrowRight,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
@@ -26,6 +27,13 @@ const ParsonsQuestion = nextDynamic(
   () =>
     import('@/components/features/quiz/ParsonsQuestion').then((m) => ({
       default: m.ParsonsQuestion,
+    })),
+  { ssr: false }
+);
+const MatchingQuestion = nextDynamic(
+  () =>
+    import('@/components/features/quiz/MatchingQuestion').then((m) => ({
+      default: m.MatchingQuestion,
     })),
   { ssr: false }
 );
@@ -58,6 +66,24 @@ function seededShuffle<T>(arr: T[], seed: string): T[] {
     [out[i], out[j]] = [out[j]!, out[i]!];
   }
   return out;
+}
+
+// MATCHING options each store one pair as JSON {left,right}; position = order.
+function parseMatchPairs(options: { id: string; content: string; position: number }[]) {
+  return [...options]
+    .sort((a, b) => a.position - b.position)
+    .map((o) => {
+      let left = '';
+      let right = '';
+      try {
+        const p = JSON.parse(o.content) as { left?: string; right?: string };
+        left = p.left ?? '';
+        right = p.right ?? '';
+      } catch {
+        /* malformed */
+      }
+      return { id: o.id, left, right };
+    });
 }
 
 // ── Scoring helpers (mirrors submitAttemptAction logic) ────────
@@ -148,6 +174,36 @@ function computeScore(
       const score =
         expected.length > 0 ? Math.round((correctCount / expected.length) * pts * 10) / 10 : 0;
       return { score, isCorrect: correctCount === expected.length };
+    } catch {
+      return { score: 0, isCorrect: false };
+    }
+  }
+
+  if (type === 'ORDERING') {
+    const raw = texts[q.questionId];
+    if (!raw) return { score: 0, isCorrect: false };
+    try {
+      const order = JSON.parse(raw) as string[];
+      const correctOrder = [...opts].sort((a, b) => a.position - b.position).map((o) => o.id);
+      let c = 0;
+      for (let i = 0; i < correctOrder.length; i++) if (order[i] === correctOrder[i]) c++;
+      const score =
+        correctOrder.length > 0 ? Math.round((c / correctOrder.length) * pts * 10) / 10 : 0;
+      return { score, isCorrect: c === correctOrder.length };
+    } catch {
+      return { score: 0, isCorrect: false };
+    }
+  }
+
+  if (type === 'MATCHING') {
+    const raw = texts[q.questionId];
+    if (!raw) return { score: 0, isCorrect: false };
+    try {
+      const map = JSON.parse(raw) as Record<string, string>;
+      let c = 0;
+      for (const o of opts) if (map[o.id] === o.id) c++;
+      const score = opts.length > 0 ? Math.round((c / opts.length) * pts * 10) / 10 : 0;
+      return { score, isCorrect: c === opts.length };
     } catch {
       return { score: 0, isCorrect: false };
     }
@@ -677,6 +733,138 @@ export function QuizPreview({ quiz }: Props) {
                     );
                   })()}
 
+                {/* ORDERING review */}
+                {qType === 'ORDERING' &&
+                  (() => {
+                    const correctOrder = [...opts]
+                      .sort((a, b) => a.position - b.position)
+                      .map((o) => o.id);
+                    let studentOrder: string[] = [];
+                    try {
+                      if (textVal) studentOrder = JSON.parse(textVal) as string[];
+                    } catch {
+                      /**/
+                    }
+                    return (
+                      <div className="space-y-3 pl-10">
+                        <div>
+                          <p className="text-muted-foreground mb-1 text-xs font-medium">
+                            Thứ tự bạn sắp:
+                          </p>
+                          {studentOrder.length === 0 ? (
+                            <p className="text-muted-foreground text-xs italic">Chưa sắp xếp.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {studentOrder.map((id, oi) => {
+                                const opt = opts.find((o) => o.id === id);
+                                const ok = correctOrder[oi] === id;
+                                return (
+                                  <div
+                                    key={id}
+                                    className={cn(
+                                      'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs',
+                                      ok
+                                        ? 'border-green-500/30 bg-green-500/5'
+                                        : 'border-red-400/30 bg-red-400/5'
+                                    )}
+                                  >
+                                    <span className="text-muted-foreground w-5 shrink-0 text-right tabular-nums">
+                                      {oi + 1}
+                                    </span>
+                                    <span className="flex-1">{opt?.content ?? '?'}</span>
+                                    {ok ? (
+                                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                                    ) : (
+                                      <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        {sr.isCorrect === false && (
+                          <div>
+                            <p className="text-muted-foreground mb-1 text-xs font-medium">
+                              Đáp án đúng:
+                            </p>
+                            <div className="space-y-1.5">
+                              {correctOrder.map((id, oi) => {
+                                const opt = opts.find((o) => o.id === id);
+                                return (
+                                  <div
+                                    key={id}
+                                    className="border-border bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs"
+                                  >
+                                    <span className="text-muted-foreground w-5 shrink-0 text-right tabular-nums">
+                                      {oi + 1}
+                                    </span>
+                                    <span className="flex-1">{opt?.content ?? '?'}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                {/* MATCHING review */}
+                {qType === 'MATCHING' &&
+                  (() => {
+                    const pairs = parseMatchPairs(opts);
+                    let map: Record<string, string> = {};
+                    try {
+                      if (textVal) map = JSON.parse(textVal) as Record<string, string>;
+                    } catch {
+                      /**/
+                    }
+                    return (
+                      <div className="space-y-1.5 pl-10">
+                        {pairs.map((p, i) => {
+                          const chosenId = map[p.id];
+                          const ok = chosenId === p.id;
+                          const chosen = chosenId
+                            ? pairs.find((x) => x.id === chosenId)?.right
+                            : null;
+                          return (
+                            <div
+                              key={p.id}
+                              className={cn(
+                                'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                ok
+                                  ? 'border-green-500/30 bg-green-500/5'
+                                  : 'border-red-400/30 bg-red-400/5'
+                              )}
+                            >
+                              <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
+                                {i + 1}
+                              </span>
+                              <span className="font-medium">{p.left}</span>
+                              <ArrowRight className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
+                              <span
+                                className={cn(
+                                  ok ? 'text-green-700 dark:text-green-400' : 'text-red-500'
+                                )}
+                              >
+                                {chosen ?? '(chưa ghép)'}
+                              </span>
+                              {!ok && (
+                                <span className="text-muted-foreground">→ đúng: {p.right}</span>
+                              )}
+                              {ok ? (
+                                <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />
+                              ) : (
+                                <XCircle className="ml-auto h-3.5 w-3.5 shrink-0 text-red-400" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                 {/* Explanation */}
                 {q.question.explanation && !isManual && (
                   <div className="pl-10">
@@ -744,7 +932,15 @@ export function QuizPreview({ quiz }: Props) {
             )
               return (texts[q.questionId] ?? '').trim().length > 0;
             if (qType === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
-            if (qType === 'PARSONS') return (texts[q.questionId] ?? '').length > 0;
+            if (qType === 'PARSONS' || qType === 'ORDERING')
+              return (texts[q.questionId] ?? '').length > 0;
+            if (qType === 'MATCHING') {
+              try {
+                return Object.keys(JSON.parse(texts[q.questionId] ?? '{}') as object).length > 0;
+              } catch {
+                return false;
+              }
+            }
             if (qType === 'CODE_FILL') {
               try {
                 const fills = JSON.parse(texts[q.questionId] ?? '[]') as string[];
@@ -1243,6 +1439,74 @@ export function QuizPreview({ quiz }: Props) {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  );
+                })()}
+
+              {/* ORDERING */}
+              {qType === 'ORDERING' &&
+                (() => {
+                  const sortedItems = [...opts].sort((a, b) => a.position - b.position);
+                  const savedRaw = texts[q.questionId];
+                  let initialItems: typeof sortedItems;
+                  if (savedRaw) {
+                    try {
+                      const ids = JSON.parse(savedRaw) as string[];
+                      const restored = ids
+                        .map((id) => sortedItems.find((o) => o.id === id))
+                        .filter((o): o is (typeof sortedItems)[number] => Boolean(o));
+                      initialItems =
+                        restored.length === sortedItems.length
+                          ? restored
+                          : seededShuffle(sortedItems, q.questionId);
+                    } catch {
+                      initialItems = seededShuffle(sortedItems, q.questionId);
+                    }
+                  } else {
+                    initialItems = seededShuffle(sortedItems, q.questionId);
+                  }
+                  return (
+                    <div className="space-y-2 pl-4">
+                      <p className="text-muted-foreground text-xs">
+                        Kéo thả để sắp xếp đúng thứ tự.
+                      </p>
+                      <ParsonsQuestion
+                        plainText
+                        initialLines={initialItems.map((o) => ({ id: o.id, content: o.content }))}
+                        onChange={(orderedIds) =>
+                          setTexts((prev) => ({
+                            ...prev,
+                            [q.questionId]: JSON.stringify(orderedIds),
+                          }))
+                        }
+                      />
+                    </div>
+                  );
+                })()}
+
+              {/* MATCHING */}
+              {qType === 'MATCHING' &&
+                (() => {
+                  const matchPairs = parseMatchPairs(opts);
+                  let assign: Record<string, string>;
+                  try {
+                    assign = JSON.parse(texts[q.questionId] ?? '{}') as Record<string, string>;
+                  } catch {
+                    assign = {};
+                  }
+                  return (
+                    <div className="space-y-2 pl-4">
+                      <p className="text-muted-foreground text-xs">
+                        Kéo đáp án ở cột phải sang ghép với mục ở cột trái.
+                      </p>
+                      <MatchingQuestion
+                        pairs={matchPairs}
+                        value={assign}
+                        shuffleSeed={q.questionId}
+                        onChange={(next) =>
+                          setTexts((prev) => ({ ...prev, [q.questionId]: JSON.stringify(next) }))
+                        }
+                      />
                     </div>
                   );
                 })()}

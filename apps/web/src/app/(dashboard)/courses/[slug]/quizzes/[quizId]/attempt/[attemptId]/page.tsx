@@ -6,10 +6,10 @@ import type { CourseDetail, AttemptData } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
-import { ParsonsQuestion } from '@/components/features/quiz/ParsonsQuestion';
 import { hasMinRole } from '@/lib/permissions';
-import { CheckCircle2, XCircle, Minus, Brain, Code } from 'lucide-react';
+import { CheckCircle2, XCircle, Minus, Brain, Code, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
@@ -36,7 +36,27 @@ const TYPE_LABEL: Record<string, string> = {
   CODE_FILL: 'Điền vào chỗ trống',
   CODE_DEBUG_PYTHON: 'Debug Python',
   CODE_DEBUG_CPP: 'Debug C++',
+  ORDERING: 'Sắp xếp thứ tự',
+  MATCHING: 'Ghép nối',
 };
+
+// MATCHING options each store one pair as JSON {left,right}; position = order.
+function parseMatchPairs(options: { id: string; content: string; position: number }[]) {
+  return [...options]
+    .sort((a, b) => a.position - b.position)
+    .map((o) => {
+      let left = '';
+      let right = '';
+      try {
+        const p = JSON.parse(o.content) as { left?: string; right?: string };
+        left = p.left ?? '';
+        right = p.right ?? '';
+      } catch {
+        /* malformed */
+      }
+      return { id: o.id, left, right };
+    });
+}
 
 export default async function AttemptPage({
   params,
@@ -78,7 +98,6 @@ export default async function AttemptPage({
   // ── Results view ───────────────────────────────────────────────
   const { score, maxScore, quiz } = attempt;
   const MANUAL_TYPES = new Set(['ESSAY', 'CODE_WEB']); // types needing manual grading
-  const hasEssay = attempt.questions.some((q) => MANUAL_TYPES.has(q.question.type));
   const ungradedEssay = attempt.answers.some((a) => {
     const q = attempt.questions.find((qq) => qq.questionId === a.questionId);
     return q && MANUAL_TYPES.has(q.question.type) && a.score === null;
@@ -222,7 +241,7 @@ export default async function AttemptPage({
           <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
             Chi tiết câu hỏi
           </h2>
-          {attempt.questions.map((q, idx) => {
+          {attempt.questions.map((q) => {
             const ans = answerMap.get(q.questionId);
             const qType = q.question.type;
             const isManual = MANUAL_TYPES.has(qType);
@@ -237,6 +256,8 @@ export default async function AttemptPage({
             const isTFMulti = qType === 'TRUE_FALSE_MULTI';
             const isParsons = qType === 'PARSONS';
             const isCodeFill = qType === 'CODE_FILL';
+            const isOrdering = qType === 'ORDERING';
+            const isMatching = qType === 'MATCHING';
 
             let resultIcon = <Minus className="text-muted-foreground h-4 w-4" />;
             if (!isManual && ans) {
@@ -269,7 +290,7 @@ export default async function AttemptPage({
                           ? ans?.score != null
                             ? `${ans.score}/${q.points}`
                             : `?/${q.points}`
-                          : isCodeAuto || isParsons || isCodeFill
+                          : isCodeAuto || isParsons || isCodeFill || isOrdering || isMatching
                             ? ans?.score != null
                               ? `${ans.score}/${q.points}`
                               : `0/${q.points}`
@@ -277,7 +298,10 @@ export default async function AttemptPage({
                         điểm
                       </span>
                     </div>
-                    <p className="text-sm font-medium">{q.question.content}</p>
+                    <RichTextView
+                      html={q.question.content}
+                      className="text-sm font-medium [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                    />
                   </div>
                 </div>
 
@@ -625,6 +649,138 @@ export default async function AttemptPage({
                             );
                           })}
                         </div>
+                      </div>
+                    );
+                  })()}
+
+                {/* ORDERING result — student's order vs correct */}
+                {isOrdering &&
+                  (() => {
+                    const sortedCorrect = [...q.question.options].sort(
+                      (a, b) => a.position - b.position
+                    );
+                    let studentItems: typeof sortedCorrect = [];
+                    if (ans?.textAnswer) {
+                      try {
+                        const ids = JSON.parse(ans.textAnswer) as string[];
+                        studentItems = ids
+                          .map((id) => sortedCorrect.find((o) => o.id === id)!)
+                          .filter(Boolean);
+                      } catch {
+                        studentItems = [];
+                      }
+                    }
+                    return (
+                      <div className="space-y-3 pl-9">
+                        {studentItems.length > 0 ? (
+                          <div className="space-y-1.5">
+                            <p className="text-muted-foreground text-xs font-medium">
+                              Thứ tự bạn chọn:
+                            </p>
+                            {studentItems.map((item, li) => {
+                              const isCorrectPos = sortedCorrect[li]?.id === item.id;
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={cn(
+                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                    isCorrectPos
+                                      ? 'border-green-500/30 bg-green-500/5'
+                                      : 'border-destructive/30 bg-destructive/5'
+                                  )}
+                                >
+                                  <span className="text-muted-foreground w-4 shrink-0 tabular-nums">
+                                    {li + 1}
+                                  </span>
+                                  <span className="flex-1">{item.content}</span>
+                                  {isCorrectPos ? (
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                                  ) : (
+                                    <XCircle className="text-destructive h-3.5 w-3.5 shrink-0" />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-xs italic">
+                            Không có câu trả lời
+                          </p>
+                        )}
+                        {ans?.isCorrect === false && (
+                          <div className="space-y-1.5">
+                            <p className="text-muted-foreground text-xs font-medium">
+                              Thứ tự đúng:
+                            </p>
+                            {sortedCorrect.map((item, li) => (
+                              <div
+                                key={item.id}
+                                className="border-border bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                              >
+                                <span className="text-muted-foreground w-4 shrink-0 tabular-nums">
+                                  {li + 1}
+                                </span>
+                                <span className="flex-1">{item.content}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                {/* MATCHING result — student pairing vs correct */}
+                {isMatching &&
+                  (() => {
+                    const pairs = parseMatchPairs(q.question.options);
+                    let map: Record<string, string> = {};
+                    try {
+                      if (ans?.textAnswer)
+                        map = JSON.parse(ans.textAnswer) as Record<string, string>;
+                    } catch {
+                      map = {};
+                    }
+                    return (
+                      <div className="space-y-1.5 pl-9">
+                        {pairs.map((p, i) => {
+                          const chosenId = map[p.id];
+                          const ok = chosenId === p.id;
+                          const chosen = chosenId
+                            ? pairs.find((x) => x.id === chosenId)?.right
+                            : null;
+                          return (
+                            <div
+                              key={p.id}
+                              className={cn(
+                                'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                ok
+                                  ? 'border-green-500/30 bg-green-500/5'
+                                  : 'border-destructive/30 bg-destructive/5'
+                              )}
+                            >
+                              <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
+                                {i + 1}
+                              </span>
+                              <span className="font-medium">{p.left}</span>
+                              <ArrowRight className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
+                              <span
+                                className={cn(
+                                  ok ? 'text-green-700 dark:text-green-400' : 'text-destructive'
+                                )}
+                              >
+                                {chosen ?? '(chưa ghép)'}
+                              </span>
+                              {!ok && (
+                                <span className="text-muted-foreground">→ đúng: {p.right}</span>
+                              )}
+                              {ok ? (
+                                <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />
+                              ) : (
+                                <XCircle className="text-destructive ml-auto h-3.5 w-3.5 shrink-0" />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}

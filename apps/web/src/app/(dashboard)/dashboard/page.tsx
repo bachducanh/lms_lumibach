@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { auth } from '@/auth';
-import { buttonVariants } from '@/components/ui/button';
 import {
   BookOpen,
   FlaskConical,

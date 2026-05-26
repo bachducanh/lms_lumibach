@@ -18,6 +18,8 @@ import { SubmissionForm } from '@/components/features/assignments/SubmissionForm
 import { SubmissionFiles } from '@/components/features/assignments/SubmissionFiles';
 import { CodeSubmitPanel } from '@/components/features/code/CodeSubmitPanel';
 import { CodeAssignmentSetup } from '@/components/features/code/CodeAssignmentSetup';
+import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
+import { GroupSubmissionPanel } from '@/components/features/assignments/GroupSubmissionPanel';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Clock,
@@ -42,6 +44,8 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'ASSIGNMENT' && item.assignmentId)
     return `/courses/${slug}/assignments/${item.assignmentId}`;
   if (item.type === 'QUIZ' && item.quizId) return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'PRACTICE_TEST' && item.practiceTestId)
+    return `/courses/${slug}/practice-tests/${item.practiceTestId}`;
   if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
     return item.codeExercise?.language === 'SCRATCH'
       ? `/courses/${slug}/scratch/${item.codeExerciseId}`
@@ -334,6 +338,26 @@ export default async function AssignmentViewPage({
               <RubricView rubric={rubric} />
             </div>
           </div>
+        )}
+
+        {/* Group submission settings — manager only, non-code assignments */}
+        {canManage && !isCodeAssignment && (
+          <GroupSubmissionPanel
+            assignmentId={assignmentId}
+            courseId={course.id}
+            initialEnabled={assignment.groupSubmission}
+            initialGroupingId={assignment.groupingId}
+          />
+        )}
+
+        {/* Competency assessment — staff only */}
+        {isStaff && (
+          <ActivityCompetencyPanel
+            courseId={course.id}
+            activityType="assignment"
+            activityId={assignmentId}
+            canManage={canManage}
+          />
         )}
 
         {/* CODE type: student submission via Monaco */}

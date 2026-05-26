@@ -11,6 +11,7 @@ type Props = {
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;
+  submittedPracticeTestIds?: Set<string>;
   submittedCodeExerciseIds?: Set<string>;
 };
 

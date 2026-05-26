@@ -166,18 +166,20 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
 
-    const [ownedCourses, submissions, quizAttempts, forumTopics, forumPosts] = await Promise.all([
-      this.prisma.course.count({ where: { ownerId: userId, deletedAt: null } }),
-      this.prisma.submission.count({ where: { studentId: userId } }),
-      this.prisma.quizAttempt.count({ where: { studentId: userId } }),
-      this.prisma.forumTopic.count({ where: { authorId: userId } }),
-      this.prisma.forumPost.count({ where: { authorId: userId } }),
-    ]);
+    const [ownedCourses, submissions, quizAttempts, practiceTestAttempts, forumTopics, forumPosts] =
+      await Promise.all([
+        this.prisma.course.count({ where: { ownerId: userId } }),
+        this.prisma.submission.count({ where: { studentId: userId } }),
+        this.prisma.quizAttempt.count({ where: { studentId: userId } }),
+        this.prisma.practiceTestAttempt.count({ where: { studentId: userId } }),
+        this.prisma.forumTopic.count({ where: { authorId: userId } }),
+        this.prisma.forumPost.count({ where: { authorId: userId } }),
+      ]);
 
     const blockers: string[] = [];
-    if (ownedCourses > 0) blockers.push(`${ownedCourses} khoá học đang sở hữu`);
     if (submissions > 0) blockers.push(`${submissions} bài nộp assignment`);
     if (quizAttempts > 0) blockers.push(`${quizAttempts} lượt làm quiz`);
+    if (practiceTestAttempts > 0) blockers.push(`${practiceTestAttempts} lượt làm đề luyện tập`);
     if (forumTopics > 0) blockers.push(`${forumTopics} chủ đề diễn đàn`);
     if (forumPosts > 0) blockers.push(`${forumPosts} bài viết diễn đàn`);
 
@@ -188,7 +190,13 @@ export class UsersService {
       );
     }
 
-    await this.prisma.user.delete({ where: { id: userId } });
+    await this.prisma.$transaction([
+      this.prisma.course.updateMany({
+        where: { ownerId: userId },
+        data: { ownerId: actor.id },
+      }),
+      this.prisma.user.delete({ where: { id: userId } }),
+    ]);
 
     this.audit.log({
       userId: actor.id,
@@ -196,7 +204,12 @@ export class UsersService {
       action: 'DELETE_USER',
       resource: 'User',
       resourceId: userId,
-      metadata: { hard: true, email: user.email, fullName: user.fullName },
+      metadata: {
+        hard: true,
+        email: user.email,
+        fullName: user.fullName,
+        reassignedCourses: ownedCourses,
+      },
     });
   }
 

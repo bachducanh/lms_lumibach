@@ -11,6 +11,7 @@ import type { MyScratchSubmission, ScratchSubmissionWithStudent } from '@lumibac
 import type { RubricData } from '@lumibach/types';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
 import { ScratchTeacherPanel } from '@/components/features/scratch/ScratchTeacherPanel';
+import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { Cat, ChevronLeft, ChevronRight, Pencil, Sparkles } from 'lucide-react';
@@ -21,6 +22,8 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'ASSIGNMENT' && item.assignmentId)
     return `/courses/${slug}/assignments/${item.assignmentId}`;
   if (item.type === 'QUIZ' && item.quizId) return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'PRACTICE_TEST' && item.practiceTestId)
+    return `/courses/${slug}/practice-tests/${item.practiceTestId}`;
   if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
     return item.codeExercise?.language === 'SCRATCH'
       ? `/courses/${slug}/scratch/${item.codeExerciseId}`
@@ -221,6 +224,16 @@ export default async function ScratchExercisePage({
 
         {/* Teacher review panel */}
         {isTeacher && <ScratchTeacherPanel submissions={allSubs} rubric={rubric} />}
+
+        {/* Competency assessment — staff only */}
+        {isTeacher && (
+          <ActivityCompetencyPanel
+            courseId={course.id}
+            activityType="code-exercise"
+            activityId={exerciseId}
+            canManage={canEdit}
+          />
+        )}
 
         {/* Prev / Next */}
         <div className="border-border grid grid-cols-2 gap-4 border-t pt-6">

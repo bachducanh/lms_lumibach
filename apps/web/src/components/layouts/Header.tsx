@@ -1,11 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/layouts/ThemeToggle';
 import { UserMenu } from '@/components/features/auth/UserMenu';
 import { NotificationBell } from '@/components/features/notifications/NotificationBell';
 import { useSidebar } from '@/components/layouts/SidebarContext';
-import { Menu } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 const SEGMENT_LABEL: Record<string, string> = {
   dashboard: 'Tổng quan',
@@ -37,36 +38,59 @@ function isId(s: string) {
   return s.length > 20 || /^[a-z0-9]{20,}$/.test(s);
 }
 
-export function Header({ showNotifications = true }: { showNotifications?: boolean }) {
-  const pathname = usePathname();
-  const { toggle } = useSidebar();
-
+function buildCrumbs(pathname: string) {
   const segments = pathname.split('/').filter(Boolean);
-
-  // Build breadcrumb: skip ID segments, map known labels
   const crumbs: string[] = ['LumiBach'];
+
   for (const seg of segments) {
     if (isId(seg)) continue;
     const label = SEGMENT_LABEL[seg];
     if (label && !crumbs.includes(label)) crumbs.push(label);
   }
 
+  return crumbs;
+}
+
+export function Header({ showNotifications = true }: { showNotifications?: boolean }) {
+  const pathname = usePathname();
+  const [clientPathname, setClientPathname] = useState('');
+  const { isCollapsed, toggle, toggleCollapsed } = useSidebar();
+
+  useEffect(() => {
+    setClientPathname(pathname);
+  }, [pathname]);
+
+  const crumbs = buildCrumbs(clientPathname);
+
   return (
     <header
-      className="border-border bg-card/60 relative z-10 flex h-14 shrink-0 items-center gap-3 border-b px-6 backdrop-blur-md"
+      className="border-border bg-card/60 relative z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 backdrop-blur-md sm:gap-3 sm:px-4 md:px-6"
       style={{ boxShadow: '0 1px 0 0 oklch(1 0 0 / 5%)' }}
     >
       {/* Mobile hamburger */}
       <button
         onClick={toggle}
-        className="text-muted-foreground hover:bg-muted/40 hover:text-foreground mr-1 -ml-1 flex h-8 w-8 items-center justify-center rounded-md transition-colors md:hidden"
+        className="text-muted-foreground hover:bg-muted/40 hover:text-foreground -ml-1 flex h-9 w-9 items-center justify-center rounded-md transition-colors md:hidden"
         aria-label="Mở menu"
       >
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Breadcrumb */}
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-medium select-none">
+      <button
+        onClick={toggleCollapsed}
+        className="text-muted-foreground hover:bg-muted/40 hover:text-foreground -ml-1 hidden h-9 w-9 items-center justify-center rounded-md transition-colors md:flex"
+        title={isCollapsed ? 'Mở sidebar' : 'Thu gọn sidebar'}
+        aria-label={isCollapsed ? 'Mở sidebar' : 'Thu gọn sidebar'}
+      >
+        {isCollapsed ? (
+          <PanelLeftOpen className="h-5 w-5" />
+        ) : (
+          <PanelLeftClose className="h-5 w-5" />
+        )}
+      </button>
+
+      {/* Breadcrumb — hidden on mobile, the page hero already shows context */}
+      <div className="hidden min-w-0 flex-1 items-center gap-1.5 text-xs font-medium select-none md:flex">
         {crumbs.map((crumb, i) => (
           <span key={i} className="flex min-w-0 items-center gap-1.5">
             {i > 0 && <span className="text-muted-foreground/30 shrink-0">/</span>}
@@ -86,10 +110,10 @@ export function Header({ showNotifications = true }: { showNotifications?: boole
       </div>
 
       {/* Right controls */}
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
         {showNotifications && <NotificationBell />}
         <ThemeToggle />
-        <div className="bg-border h-5 w-px" />
+        <div className="bg-border hidden h-5 w-px sm:block" />
         <UserMenu />
       </div>
     </header>

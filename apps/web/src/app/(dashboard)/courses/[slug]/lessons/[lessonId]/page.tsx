@@ -26,6 +26,8 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'ASSIGNMENT' && item.assignmentId)
     return `/courses/${slug}/assignments/${item.assignmentId}`;
   if (item.type === 'QUIZ' && item.quizId) return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'PRACTICE_TEST' && item.practiceTestId)
+    return `/courses/${slug}/practice-tests/${item.practiceTestId}`;
   if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
     return item.codeExercise?.language === 'SCRATCH'
       ? `/courses/${slug}/scratch/${item.codeExerciseId}`
@@ -101,7 +103,7 @@ export default async function LessonViewPage({
   return (
     <div className="space-y-8">
       {/* ── Page hero header ────────────────────────────────── */}
-      <div className="border-border bg-card relative -mx-6 -mt-6 overflow-hidden border-b">
+      <div className="border-border bg-card relative -mx-4 -mt-4 overflow-hidden border-b md:-mx-6 md:-mt-6">
         {/* Tech grid */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.03]"
@@ -133,7 +135,7 @@ export default async function LessonViewPage({
           }}
         />
 
-        <div className="relative px-6 py-8">
+        <div className="relative px-4 py-6 sm:px-6 sm:py-8">
           <Link
             href={`/courses/${slug}/modules`}
             className="text-muted-foreground hover:text-primary mb-4 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase transition-colors duration-150"
@@ -153,9 +155,9 @@ export default async function LessonViewPage({
                   Bài giảng
                 </p>
               </div>
-              <h1 className="text-3xl font-bold tracking-tight">{lesson.title}</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{lesson.title}</h1>
 
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
                   {moduleItem.module.name}
                 </span>
@@ -208,14 +210,12 @@ export default async function LessonViewPage({
             <BookOpen className="h-5 w-5 text-teal-500" />
             <h2 className="text-lg font-bold">Nội dung bài học</h2>
           </div>
-          <div className="p-6 md:p-10">
-            <div className="prose prose-invert max-w-none">
-              <RichTextEditor
-                content={lesson.content}
-                editable={false}
-                className="border-0 bg-transparent p-0 [&_.tiptap]:text-base [&_.tiptap]:leading-relaxed"
-              />
-            </div>
+          <div className="p-4 sm:p-6 md:p-10">
+            <RichTextEditor
+              content={lesson.content}
+              editable={false}
+              className="border-0 bg-transparent p-0 [&_.tiptap]:text-base [&_.tiptap]:leading-relaxed"
+            />
           </div>
         </div>
 

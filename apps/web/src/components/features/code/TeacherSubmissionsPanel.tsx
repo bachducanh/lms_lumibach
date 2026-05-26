@@ -460,11 +460,11 @@ function SubmissionDialog({
 
 // ── Main panel ─────────────────────────────────────────────────
 
-export function TeacherSubmissionsPanel({ exerciseId, initialSubs, language, rubric }: Props) {
+export function TeacherSubmissionsPanel({ exerciseId, initialSubs, rubric }: Props) {
   const [subs, setSubs] = useState<SubRow[]>(initialSubs);
   const [openRow, setOpenRow] = useState<SubRow | null>(null);
 
-  function handleGraded(id: string, score: number, maxScore: number, feedback: string) {
+  function handleGraded(id: string, score: number, maxScore: number, _feedback: string) {
     setSubs((prev) =>
       prev.map((s) =>
         s.id === id ? { ...s, score, maxScore, status: 'ACCEPTED' as CodeSubmissionStatus } : s

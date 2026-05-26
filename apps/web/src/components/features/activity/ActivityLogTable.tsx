@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { BookOpen, Code2, ClipboardList, FileText, LogIn, Eye } from 'lucide-react';
+import { BookOpen, Code2, ClipboardList, FileQuestion, FileText, LogIn, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ACTION_LABELS_VI } from '@/lib/activity-labels';
 import type { ActivityLogRow } from '@lumibach/types';
@@ -18,6 +18,9 @@ const ACTION_META: Record<
   VIEW_EXERCISE: { icon: Code2, color: 'text-violet-400' },
   START_QUIZ: { icon: ClipboardList, color: 'text-emerald-400' },
   SUBMIT_QUIZ: { icon: ClipboardList, color: 'text-emerald-400' },
+  VIEW_PRACTICE_TEST: { icon: FileQuestion, color: 'text-cyan-400' },
+  START_PRACTICE_TEST: { icon: FileQuestion, color: 'text-cyan-400' },
+  SUBMIT_PRACTICE_TEST: { icon: FileQuestion, color: 'text-cyan-400' },
   SUBMIT_ASSIGNMENT: { icon: FileText, color: 'text-orange-400' },
   SUBMIT_CODE: { icon: Code2, color: 'text-violet-400' },
   LOGIN: { icon: LogIn, color: 'text-rose-400' },

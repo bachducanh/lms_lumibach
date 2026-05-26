@@ -33,6 +33,7 @@ export const ModuleItemTypeSchema = z.enum([
   'ASSIGNMENT',
   'QUIZ',
   'CODE_EXERCISE',
+  'PRACTICE_TEST',
   'EXTERNAL_URL',
 ]);
 
@@ -77,9 +78,11 @@ export type ModuleItemSummary = {
   assignmentId: string | null;
   quizId: string | null;
   codeExerciseId: string | null;
+  practiceTestId: string | null;
   lesson?: { id: string; title: string; estimatedMinutes: number | null } | null;
   quiz?: { id: string; title: string; status: string } | null;
   codeExercise?: { id: string; title: string; language: string; status: string } | null;
+  practiceTest?: { id: string; title: string; status: string } | null;
 };
 
 export type ModuleWithItems = {
@@ -102,5 +105,7 @@ export type CourseNavItem = {
   assignmentId: string | null;
   quizId: string | null;
   codeExerciseId: string | null;
+  practiceTestId: string | null;
   codeExercise?: { language: string } | null;
+  practiceTest?: { status: string } | null;
 };

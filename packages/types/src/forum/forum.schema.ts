@@ -35,6 +35,8 @@ export const ForumTopicSummarySchema = z.object({
   viewCount: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  groupId: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
   author: ForumAuthorSchema,
   _count: z.object({ posts: z.number() }),
   posts: z.array(TopicLastPostSchema),
@@ -71,6 +73,8 @@ export const ForumTopicDetailSchema = z.object({
   viewCount: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  groupId: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
   author: ForumAuthorSchema,
   course: z.object({ id: z.string(), slug: z.string(), name: z.string() }),
   posts: z.array(ForumPostSchema),
@@ -88,6 +92,7 @@ export const CreateTopicBodySchema = z.object({
   courseId: z.string().min(1),
   title: z.string().min(5, 'Tiêu đề tối thiểu 5 ký tự').max(200),
   content: z.string().min(10, 'Nội dung tối thiểu 10 ký tự'),
+  groupId: z.string().min(1).nullable().optional(),
 });
 export type CreateTopicBody = z.infer<typeof CreateTopicBodySchema>;
 

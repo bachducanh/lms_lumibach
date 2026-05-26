@@ -23,7 +23,17 @@ import { cn } from '@/lib/utils';
 
 export type ParsonsLine = { id: string; content: string };
 
-function SortableLine({ id, content, index }: { id: string; content: string; index: number }) {
+function SortableLine({
+  id,
+  content,
+  index,
+  plainText,
+}: {
+  id: string;
+  content: string;
+  index: number;
+  plainText?: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
   });
@@ -47,9 +57,13 @@ function SortableLine({ id, content, index }: { id: string; content: string; ind
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre">
-        {content}
-      </pre>
+      {plainText ? (
+        <span className="flex-1 text-sm leading-relaxed">{content}</span>
+      ) : (
+        <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre">
+          {content}
+        </pre>
+      )}
     </div>
   );
 }
@@ -58,9 +72,11 @@ type Props = {
   initialLines: ParsonsLine[];
   onChange: (orderedIds: string[]) => void;
   readOnly?: boolean;
+  /** Render items as normal wrapping text instead of monospace code lines. */
+  plainText?: boolean;
 };
 
-export function ParsonsQuestion({ initialLines, onChange, readOnly = false }: Props) {
+export function ParsonsQuestion({ initialLines, onChange, readOnly = false, plainText }: Props) {
   const [items, setItems] = useState<ParsonsLine[]>(initialLines);
 
   const sensors = useSensors(
@@ -92,9 +108,13 @@ export function ParsonsQuestion({ initialLines, onChange, readOnly = false }: Pr
             <span className="text-muted-foreground w-5 shrink-0 text-right text-xs tabular-nums">
               {idx + 1}
             </span>
-            <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre">
-              {item.content}
-            </pre>
+            {plainText ? (
+              <span className="flex-1 text-sm leading-relaxed">{item.content}</span>
+            ) : (
+              <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre">
+                {item.content}
+              </pre>
+            )}
           </div>
         ))}
       </div>
@@ -106,7 +126,13 @@ export function ParsonsQuestion({ initialLines, onChange, readOnly = false }: Pr
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-1.5">
           {items.map((item, idx) => (
-            <SortableLine key={item.id} id={item.id} content={item.content} index={idx} />
+            <SortableLine
+              key={item.id}
+              id={item.id}
+              content={item.content}
+              index={idx}
+              plainText={plainText}
+            />
           ))}
         </div>
       </SortableContext>

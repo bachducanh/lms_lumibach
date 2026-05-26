@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, AssignmentsByModule, AssignmentListItem } from '@lumibach/types';
 import type { CodeExerciseListItem, ExerciseModuleGroup } from '@lumibach/types';
+import type { PracticeTestsByModule, PracticeTestListItem } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import {
   ClipboardList,
@@ -15,6 +16,8 @@ import {
   BookOpen,
   FolderOpen,
   Code2,
+  FileQuestion,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
@@ -183,6 +186,80 @@ function ExerciseCard({
   );
 }
 
+function PracticeTestCard({
+  pt,
+  slug,
+  isStaff,
+}: {
+  pt: PracticeTestListItem;
+  slug: string;
+  isStaff: boolean;
+}) {
+  const isOverdue = pt.dueDate && new Date() > new Date(pt.dueDate);
+
+  return (
+    <Link
+      href={`/courses/${slug}/practice-tests/${pt.id}`}
+      className="bg-card flex items-center gap-4 rounded-xl border border-cyan-500/20 px-5 py-4 transition-colors hover:bg-cyan-500/5"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
+        <FileQuestion className="h-5 w-5 text-cyan-500" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate font-semibold">{pt.title}</p>
+          <span className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-500">
+            Đề PDF
+          </span>
+          {isStaff && (
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+                STATUS_CLASS[pt.status]
+              )}
+            >
+              {STATUS_LABEL[pt.status]}
+            </span>
+          )}
+        </div>
+        <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+          <span className="flex items-center gap-1">
+            <Target className="h-3 w-3" />
+            {pt._count.questions} câu
+          </span>
+          {pt.timeLimit && (
+            <>
+              <span>·</span>
+              <span>{pt.timeLimit} phút</span>
+            </>
+          )}
+          {pt.dueDate && (
+            <>
+              <span>·</span>
+              <span
+                className={cn(
+                  'flex items-center gap-1',
+                  isOverdue && pt.status === 'PUBLISHED' ? 'text-destructive' : ''
+                )}
+              >
+                <Clock className="h-3 w-3" />
+                {formatDate(pt.dueDate)}
+              </span>
+            </>
+          )}
+          {isStaff && (
+            <>
+              <span>·</span>
+              <span>{pt._count.attempts} bài làm</span>
+            </>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────
 
 export default async function AssignmentsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -200,6 +277,7 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
   const [
     { groups: aGroups, standalone: aStandalone },
     { groups: eGroups, standalone: eStandalone },
+    { groups: pGroups, standalone: pStandalone },
   ] = await Promise.all([
     api.get<AssignmentsByModule>('/assignments', { query: { courseId: course.id } }),
     api
@@ -212,11 +290,22 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
         groups: [] as ExerciseModuleGroup[],
         standalone: [] as CodeExerciseListItem[],
       })),
+    api
+      .get<PracticeTestsByModule>('/practice-tests', { query: { courseId: course.id } })
+      .then((r) => ({ groups: r.groups, standalone: r.standalone }))
+      .catch(() => ({
+        groups: [] as PracticeTestsByModule['groups'],
+        standalone: [] as PracticeTestListItem[],
+      })),
   ]);
 
-  // Merge module groups: combine assignments + exercises per module
+  // Merge module groups: combine assignments + exercises + practice tests per module
   const allModuleIds = [
-    ...new Set([...aGroups.map((g) => g.moduleId), ...eGroups.map((g) => g.moduleId)]),
+    ...new Set([
+      ...aGroups.map((g) => g.moduleId),
+      ...eGroups.map((g) => g.moduleId),
+      ...pGroups.map((g) => g.moduleId),
+    ]),
   ];
 
   type MergedGroup = {
@@ -225,26 +314,33 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
     position: number;
     assignments: AssignmentListItem[];
     exercises: CodeExerciseListItem[];
+    practiceTests: PracticeTestListItem[];
   };
 
   const mergedGroups: MergedGroup[] = allModuleIds
     .map((moduleId) => {
       const ag = aGroups.find((g) => g.moduleId === moduleId);
       const eg = eGroups.find((g) => g.moduleId === moduleId);
+      const pg = pGroups.find((g) => g.moduleId === moduleId);
       return {
         moduleId,
-        moduleName: ag?.moduleName ?? eg?.moduleName ?? '',
-        position: ag?.position ?? eg?.position ?? 0,
+        moduleName: ag?.moduleName ?? eg?.moduleName ?? pg?.moduleName ?? '',
+        position: ag?.position ?? eg?.position ?? pg?.position ?? 0,
         assignments: ag?.assignments ?? [],
         exercises: eg?.exercises ?? [],
+        practiceTests: pg?.practiceTests ?? [],
       };
     })
     .sort((a, b) => a.position - b.position);
 
   const totalItems =
-    mergedGroups.reduce((s, g) => s + g.assignments.length + g.exercises.length, 0) +
+    mergedGroups.reduce(
+      (s, g) => s + g.assignments.length + g.exercises.length + g.practiceTests.length,
+      0
+    ) +
     aStandalone.length +
-    eStandalone.length;
+    eStandalone.length +
+    pStandalone.length;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -258,7 +354,9 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
         {totalItems > 0 && (
           <p className="text-muted-foreground mt-0.5 text-sm">
             {aGroups.reduce((s, g) => s + g.assignments.length, 0) + aStandalone.length} bài tập ·{' '}
-            {eGroups.reduce((s, g) => s + g.exercises.length, 0) + eStandalone.length} bài code
+            {eGroups.reduce((s, g) => s + g.exercises.length, 0) + eStandalone.length} bài code ·{' '}
+            {pGroups.reduce((s, g) => s + g.practiceTests.length, 0) + pStandalone.length} đề luyện
+            tập
           </p>
         )}
       </div>
@@ -282,11 +380,15 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
                 <BookOpen className="text-primary h-4 w-4 shrink-0" />
                 <span className="text-primary text-sm font-semibold">{group.moduleName}</span>
                 <span className="text-muted-foreground ml-auto text-xs">
-                  {group.assignments.length + group.exercises.length} hoạt động
+                  {group.assignments.length + group.exercises.length + group.practiceTests.length}{' '}
+                  hoạt động
                 </span>
               </div>
               {group.assignments.map((a) => (
                 <AssignmentCard key={a.id} a={a} slug={slug} isStaff={isStaff} />
+              ))}
+              {group.practiceTests.map((pt) => (
+                <PracticeTestCard key={pt.id} pt={pt} slug={slug} isStaff={isStaff} />
               ))}
               {group.exercises.map((ex) => (
                 <ExerciseCard key={ex.id} ex={ex} slug={slug} isStaff={isStaff} />
@@ -295,25 +397,29 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
           ))}
 
           {/* Standalone — chỉ staff thấy, học sinh không thấy */}
-          {isStaff && (aStandalone.length > 0 || eStandalone.length > 0) && (
-            <div className="space-y-2">
-              <div className="bg-muted/40 border-border flex items-center gap-2.5 rounded-lg border px-4 py-2.5">
-                <FolderOpen className="text-muted-foreground h-4 w-4 shrink-0" />
-                <span className="text-muted-foreground text-sm font-semibold">
-                  Chưa thuộc chương nào
-                </span>
-                <span className="text-muted-foreground ml-auto text-xs">
-                  {aStandalone.length + eStandalone.length} hoạt động
-                </span>
+          {isStaff &&
+            (aStandalone.length > 0 || eStandalone.length > 0 || pStandalone.length > 0) && (
+              <div className="space-y-2">
+                <div className="bg-muted/40 border-border flex items-center gap-2.5 rounded-lg border px-4 py-2.5">
+                  <FolderOpen className="text-muted-foreground h-4 w-4 shrink-0" />
+                  <span className="text-muted-foreground text-sm font-semibold">
+                    Chưa thuộc chương nào
+                  </span>
+                  <span className="text-muted-foreground ml-auto text-xs">
+                    {aStandalone.length + eStandalone.length + pStandalone.length} hoạt động
+                  </span>
+                </div>
+                {aStandalone.map((a) => (
+                  <AssignmentCard key={a.id} a={a} slug={slug} isStaff={isStaff} />
+                ))}
+                {pStandalone.map((pt) => (
+                  <PracticeTestCard key={pt.id} pt={pt} slug={slug} isStaff={isStaff} />
+                ))}
+                {eStandalone.map((ex) => (
+                  <ExerciseCard key={ex.id} ex={ex} slug={slug} isStaff={isStaff} />
+                ))}
               </div>
-              {aStandalone.map((a) => (
-                <AssignmentCard key={a.id} a={a} slug={slug} isStaff={isStaff} />
-              ))}
-              {eStandalone.map((ex) => (
-                <ExerciseCard key={ex.id} ex={ex} slug={slug} isStaff={isStaff} />
-              ))}
-            </div>
-          )}
+            )}
         </div>
       )}
     </div>

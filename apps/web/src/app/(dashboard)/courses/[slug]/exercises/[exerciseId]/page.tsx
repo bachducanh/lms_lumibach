@@ -13,6 +13,7 @@ import type { RubricData } from '@lumibach/types';
 import { logActivity } from '@/lib/activity';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
+import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { ChevronLeft, ChevronRight, Code2, Pencil, Clock, Cpu } from 'lucide-react';
@@ -31,6 +32,8 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'ASSIGNMENT' && item.assignmentId)
     return `/courses/${slug}/assignments/${item.assignmentId}`;
   if (item.type === 'QUIZ' && item.quizId) return `/courses/${slug}/quizzes/${item.quizId}`;
+  if (item.type === 'PRACTICE_TEST' && item.practiceTestId)
+    return `/courses/${slug}/practice-tests/${item.practiceTestId}`;
   if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
     return item.codeExercise?.language === 'SCRATCH'
       ? `/courses/${slug}/scratch/${item.codeExerciseId}`
@@ -299,6 +302,16 @@ export default async function ExerciseViewPage({
             language={exercise.language}
             initialSubs={allSubs}
             rubric={rubric}
+          />
+        )}
+
+        {/* Competency assessment — staff only */}
+        {isTeacher && (
+          <ActivityCompetencyPanel
+            courseId={course.id}
+            activityType="code-exercise"
+            activityId={exerciseId}
+            canManage={canEdit}
           />
         )}
 

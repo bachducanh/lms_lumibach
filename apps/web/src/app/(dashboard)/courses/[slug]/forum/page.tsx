@@ -123,6 +123,11 @@ export default async function ForumPage({ params }: { params: Promise<{ slug: st
                         Ghim
                       </Badge>
                     )}
+                    {topic.groupName && (
+                      <Badge variant="secondary" className="shrink-0 text-xs">
+                        {topic.groupName}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {authorName(topic.author)} &middot; {timeAgo(topic.createdAt)}

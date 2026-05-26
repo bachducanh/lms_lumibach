@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
+import { exportRowsToExcel, safeExcelFileName } from '@/lib/export-excel';
 import type { AttemptDetailRow, QuizQuestionBrief } from '@lumibach/types';
 
 // ── Constants ─────────────────────────────────────────────────
@@ -64,9 +65,13 @@ function normalizeScore(score: number | null, maxScore: number | null): string {
   return ((score / maxScore) * 10).toFixed(2);
 }
 
-// ── CSV export ────────────────────────────────────────────────
+// ── Excel export ──────────────────────────────────────────────
 
-function exportCSV(rows: AttemptDetailRow[], questions: QuizQuestionBrief[], quizTitle: string) {
+async function exportExcel(
+  rows: AttemptDetailRow[],
+  questions: QuizQuestionBrief[],
+  quizTitle: string
+) {
   const headers = [
     'Họ và tên',
     'Email',
@@ -78,7 +83,7 @@ function exportCSV(rows: AttemptDetailRow[], questions: QuizQuestionBrief[], qui
     ...questions.map((q, i) => `Q${i + 1}/${q.points}`),
   ];
 
-  const csvRows = rows.map((a) => {
+  const bodyRows = rows.map((a) => {
     const name =
       (a.student?.fullName ??
         `${a.student?.firstName ?? ''} ${a.student?.lastName ?? ''}`.trim()) ||
@@ -99,20 +104,11 @@ function exportCSV(rows: AttemptDetailRow[], questions: QuizQuestionBrief[], qui
     ];
   });
 
-  const csv = [headers, ...csvRows]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\r\n');
-
-  // UTF-8 BOM so Excel opens Vietnamese correctly
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `bai-lam-${quizTitle.toLowerCase().replace(/\s+/g, '-')}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await exportRowsToExcel({
+    rows: [headers, ...bodyRows],
+    fileName: `bai-lam-${safeExcelFileName(quizTitle)}.xlsx`,
+    sheetName: 'Bai lam quiz',
+  });
 }
 
 // ── Types ─────────────────────────────────────────────────────
@@ -248,11 +244,15 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
         {/* Right: export */}
         <button
           type="button"
-          onClick={() => exportCSV(sorted, questions, quizTitle)}
+          onClick={() => {
+            void exportExcel(sorted, questions, quizTitle).catch((error) => {
+              toast.error(error instanceof Error ? error.message : 'Không thể xuất Excel.');
+            });
+          }}
           className="border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
         >
           <Download className="h-3.5 w-3.5" />
-          Xuất CSV
+          Xuất Excel
         </button>
       </div>
 

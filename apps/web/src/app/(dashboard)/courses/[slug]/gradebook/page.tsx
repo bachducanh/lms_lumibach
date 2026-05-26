@@ -55,7 +55,7 @@ export default async function GradebookPage({ params }: { params: Promise<{ slug
           <p className="text-muted-foreground text-sm">Chưa có bài tập hoặc quiz nào được đăng.</p>
         </div>
       ) : (
-        <GradebookTable columns={data.columns} students={data.students} />
+        <GradebookTable columns={data.columns} students={data.students} courseSlug={slug} />
       )}
     </div>
   );

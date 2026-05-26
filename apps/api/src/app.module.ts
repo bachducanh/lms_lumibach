@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -24,10 +24,14 @@ import { RubricsModule } from './modules/rubrics/rubrics.module';
 import { QuestionsModule } from './modules/questions/questions.module';
 import { QuizzesModule } from './modules/quizzes/quizzes.module';
 import { AttemptsModule } from './modules/attempts/attempts.module';
+import { PracticeTestsModule } from './modules/practice-tests/practice-tests.module';
 import { GradebookModule } from './modules/gradebook/gradebook.module';
 import { CodeExercisesModule } from './modules/code-exercises/code-exercises.module';
 import { SandboxModule } from './modules/sandbox/sandbox.module';
 import { ScratchModule } from './modules/scratch/scratch.module';
+import { CompetenciesModule } from './modules/competencies/competencies.module';
+import { GroupsModule } from './modules/groups/groups.module';
+import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { UserAuthModule } from './modules/auth/auth.module';
 
 @Module({
@@ -37,6 +41,7 @@ import { UserAuthModule } from './modules/auth/auth.module';
       cache: true,
     }),
     LoggerModule.forRoot({
+      forRoutes: [{ path: '{*path}', method: RequestMethod.ALL }],
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
         transport:
@@ -91,10 +96,14 @@ import { UserAuthModule } from './modules/auth/auth.module';
     QuestionsModule,
     QuizzesModule,
     AttemptsModule,
+    PracticeTestsModule,
     GradebookModule,
     CodeExercisesModule,
     SandboxModule,
     ScratchModule,
+    CompetenciesModule,
+    GroupsModule,
+    PortfolioModule,
     UserAuthModule,
   ],
   providers: [

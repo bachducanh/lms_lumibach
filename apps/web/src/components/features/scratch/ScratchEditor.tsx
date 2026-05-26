@@ -3,6 +3,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Cat, Play, Maximize2, Minimize2 } from 'lucide-react';
 
+/**
+ * Scratch GUI (TurboWarp) loads `project_url` by fetch()-ing it from inside the
+ * iframe. A relative path like `/storage/...` makes that fetch fail with
+ * "TypeError: Failed to fetch" (the GUI can't resolve it against its own base),
+ * so the .sb3 never loads and the editor shows a blank/crashed project.
+ *
+ * Resolving to an absolute same-origin URL fixes it on both localhost and HTTPS
+ * without any CORS / mixed-content risk (it stays on our origin → Next rewrites
+ * /storage to MinIO server-side).
+ */
+function toAbsoluteSameOrigin(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  if (typeof window === 'undefined') return url;
+  try {
+    return new URL(url, window.location.origin).href;
+  } catch {
+    return url;
+  }
+}
+
 type Props = {
   /** URL of the .sb3 starter project on MinIO. Falls back to blank Scratch project. */
   starterUrl?: string | null;
@@ -90,7 +110,7 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
 
   if (hasSelfHost) {
     const params = new URLSearchParams();
-    if (starterUrl) params.set('project_url', starterUrl);
+    if (starterUrl) params.set('project_url', toAbsoluteSameOrigin(starterUrl));
     // Disable TurboWarp's JIT compiler — runs scripts in interpreter mode instead.
     // Avoids noisy "Cannot find top block" errors triggered by the compiler's
     // incremental recompile while the user is mid-edit. Tradeoff: slightly slower
@@ -140,7 +160,7 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
   // ── Mode 2: Fallback — open TurboWarp in new tab ───────────
 
   const params = new URLSearchParams();
-  if (starterUrl) params.set('project_url', starterUrl);
+  if (starterUrl) params.set('project_url', toAbsoluteSameOrigin(starterUrl));
   const url = `https://turbowarp.org/editor${params.toString() ? '?' + params.toString() : ''}`;
 
   return (

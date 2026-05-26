@@ -423,7 +423,9 @@ export function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       Subscript,
       Superscript,
-      TableKit.configure({ table: { resizable: false } }),
+      TableKit.configure({
+        table: { resizable: true, lastColumnResizable: true, renderWrapper: true },
+      }),
       ImageExt.configure({ HTMLAttributes: { class: 'rounded-md max-w-full' } }),
     ],
     content,
@@ -435,10 +437,10 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: !editable
-          ? 'prose prose-sm max-w-none focus:outline-none px-0 py-0 text-sm leading-relaxed'
+          ? 'prose prose-sm dark:prose-invert max-w-none focus:outline-none px-0 py-0 text-sm leading-relaxed'
           : compact
-            ? 'prose prose-sm max-w-none focus:outline-none min-h-[160px] px-4 py-3 text-sm leading-relaxed'
-            : 'prose prose-sm max-w-none focus:outline-none min-h-[460px] px-6 py-5 text-[15px] leading-relaxed',
+            ? 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[160px] px-4 py-3 text-sm leading-relaxed'
+            : 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[460px] px-6 py-5 text-[15px] leading-relaxed',
       },
     },
   });
@@ -489,12 +491,7 @@ export function RichTextEditor({
   // read-only view
   if (!editable) {
     return (
-      <div
-        className={cn(
-          'prose prose-sm [&_td]:border-border [&_th]:border-border [&_th]:bg-muted max-w-none [&_table]:w-full [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2 [&_th]:font-semibold',
-          className
-        )}
-      >
+      <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
         <EditorContent editor={editor} />
       </div>
     );

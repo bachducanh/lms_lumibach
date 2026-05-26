@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Play, Send, Loader2, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Play, Send, Loader2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { apiClient } from '@/lib/api-client';
@@ -89,10 +89,10 @@ const DONE_STATUSES: CodeSubmissionStatus[] = [
 
 // ── Component ─────────────────────────────────────────────────
 
-export function CodeSubmitPanel({ assignmentId, language, starterCode, initialSubs }: Props) {
+export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
   const [code, setCode] = useState(starterCode);
-  const [sampleRes, setSampleRes] = useState<SampleItem[]>([]);
-  const [showSamples, setShowSamples] = useState(false);
+  const [sampleRes] = useState<SampleItem[]>([]);
+  const [showSamples] = useState(false);
   const [submissions, setSubmissions] = useState<SubSummary[]>(initialSubs);
   const [activeSubId, setActiveSubId] = useState<string | null>(null);
   const [activeSub, setActiveSub] = useState<Submission | null>(null);

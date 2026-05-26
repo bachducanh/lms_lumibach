@@ -4,7 +4,6 @@ import '@/components/ui/editor/monaco-setup';
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Globe } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-import { useTheme } from 'next-themes';
 import type * as Monaco from 'monaco-editor';
 import { defineDraculaTheme } from '@/components/ui/editor/CodeEditor';
 import { cn } from '@/lib/utils';
@@ -110,7 +109,6 @@ export function WebEditor({
   height = 580,
   onChange,
 }: Props) {
-  const { resolvedTheme } = useTheme();
   const monacoTheme = 'dracula';
 
   const [tab, setTab] = useState<Tab>('html');

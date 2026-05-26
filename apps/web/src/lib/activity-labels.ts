@@ -5,6 +5,9 @@ export const ACTION_LABELS: Record<ActivityAction, string> = {
   VIEW_LESSON: 'Lesson viewed',
   START_QUIZ: 'Quiz attempt started',
   SUBMIT_QUIZ: 'Quiz submitted',
+  VIEW_PRACTICE_TEST: 'Practice test viewed',
+  START_PRACTICE_TEST: 'Practice test started',
+  SUBMIT_PRACTICE_TEST: 'Practice test submitted',
   VIEW_ASSIGNMENT: 'Assignment viewed',
   SUBMIT_ASSIGNMENT: 'Assignment submitted',
   SUBMIT_CODE: 'Code submitted',
@@ -17,6 +20,9 @@ export const ACTION_LABELS_VI: Record<ActivityAction, string> = {
   VIEW_LESSON: 'Xem bài giảng',
   START_QUIZ: 'Bắt đầu làm quiz',
   SUBMIT_QUIZ: 'Nộp quiz',
+  VIEW_PRACTICE_TEST: 'Xem đề luyện tập',
+  START_PRACTICE_TEST: 'Bắt đầu làm đề luyện tập',
+  SUBMIT_PRACTICE_TEST: 'Nộp đề luyện tập',
   VIEW_ASSIGNMENT: 'Xem bài tập',
   SUBMIT_ASSIGNMENT: 'Nộp bài tập',
   SUBMIT_CODE: 'Nộp bài code',
@@ -30,6 +36,7 @@ export const RESOURCE_TYPE_LABELS: Record<string, string> = {
   lesson: 'Lesson',
   assignment: 'Assignment',
   quiz: 'Quiz',
+  'practice-test': 'Practice test',
   exercise: 'Code exercise',
   scratch: 'Scratch exercise',
 };
@@ -76,12 +83,15 @@ export function describeActivityLog(params: {
     case 'VIEW_COURSE':
     case 'VIEW_LESSON':
     case 'VIEW_ASSIGNMENT':
+    case 'VIEW_PRACTICE_TEST':
     case 'VIEW_EXERCISE':
       return `${actor} viewed ${target}.`;
     case 'START_QUIZ':
+    case 'START_PRACTICE_TEST':
       return `${actor} started ${target}.`;
     case 'SUBMIT_QUIZ':
     case 'SUBMIT_ASSIGNMENT':
+    case 'SUBMIT_PRACTICE_TEST':
     case 'SUBMIT_CODE':
       return `${actor} submitted ${target}.`;
     default:

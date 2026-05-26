@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { Play, Send, Loader2, CheckCircle2, Terminal } from 'lucide-react';
+import { Play, Send, Loader2, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';

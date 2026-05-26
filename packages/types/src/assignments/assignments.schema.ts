@@ -41,6 +41,8 @@ export type AssignmentDetail = {
   maxAttempts: number | null;
   maxFileSizeMb: number | null;
   maxFiles: number | null;
+  groupSubmission: boolean;
+  groupingId: string | null;
   publishedAt: string | null;
   createdAt: string;
   moduleItems: { id: string; moduleId: string; module: { name: string } }[];

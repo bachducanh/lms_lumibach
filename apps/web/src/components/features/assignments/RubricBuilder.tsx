@@ -7,7 +7,6 @@ import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react
 import { apiClient } from '@/lib/api-client';
 import type { RubricData } from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { cn } from '@/lib/utils';
 
 type Level = { label: string; points: string; description: string };
 type Criterion = { name: string; description: string; levels: Level[] };

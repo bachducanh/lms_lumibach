@@ -20,6 +20,7 @@ import {
   Trash2,
   Check,
   X,
+  ArrowRight,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import type { QuestionItem, CategoryWithQuestions } from '@lumibach/types';
@@ -30,6 +31,22 @@ import {
   QUESTION_TYPE_SHORT as TYPE_SHORT,
   QUESTION_TYPE_ICON as TYPE_ICON,
 } from '@/lib/question-type-labels';
+
+// MATCHING options each store one pair as JSON {left,right}.
+function parseMatchPairs(options: { id: string; content: string }[]) {
+  return options.map((o) => {
+    let left = '';
+    let right = '';
+    try {
+      const p = JSON.parse(o.content) as { left?: string; right?: string };
+      left = p.left ?? '';
+      right = p.right ?? '';
+    } catch {
+      /* malformed */
+    }
+    return { id: o.id, left, right };
+  });
+}
 
 // ── Question row ─────────────────────────────────────────────
 
@@ -88,29 +105,57 @@ function QuestionRow({
       {expanded && (
         <div className="border-border bg-muted/20 space-y-3 border-t px-5 py-4">
           <RichTextView html={q.content} className="text-sm" />
-          {q.options.length > 0 && (
-            <div className="space-y-1.5">
-              {q.options.map((opt) => (
-                <div
-                  key={opt.id}
-                  className={cn(
-                    'flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs',
-                    opt.isCorrect
-                      ? 'border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400'
-                      : 'border-border bg-background text-muted-foreground'
-                  )}
-                >
-                  {opt.isCorrect ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                  ) : (
-                    <Circle className="h-3.5 w-3.5 shrink-0 opacity-30" />
-                  )}
-                  {opt.content}
-                  {opt.isCorrect && <span className="ml-auto font-medium">Đúng</span>}
-                </div>
-              ))}
-            </div>
-          )}
+          {q.options.length > 0 &&
+            (q.type === 'MATCHING' ? (
+              <div className="space-y-1.5">
+                {parseMatchPairs(q.options).map((p, i) => (
+                  <div
+                    key={p.id}
+                    className="border-border bg-background flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                  >
+                    <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
+                      {i + 1}
+                    </span>
+                    <span className="font-medium">{p.left}</span>
+                    <ArrowRight className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
+                    <span className="text-muted-foreground">{p.right}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {q.options.map((opt, oi) => {
+                  // ORDERING items are stored in correct order; show the index instead of a
+                  // (meaningless) correct/incorrect marker.
+                  const isOrdering = q.type === 'ORDERING';
+                  return (
+                    <div
+                      key={opt.id}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs',
+                        !isOrdering && opt.isCorrect
+                          ? 'border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400'
+                          : 'border-border bg-background text-muted-foreground'
+                      )}
+                    >
+                      {isOrdering ? (
+                        <span className="text-muted-foreground w-4 shrink-0 text-right tabular-nums">
+                          {oi + 1}
+                        </span>
+                      ) : opt.isCorrect ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 shrink-0 opacity-30" />
+                      )}
+                      {opt.content}
+                      {!isOrdering && opt.isCorrect && (
+                        <span className="ml-auto font-medium">Đúng</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           {q.explanation && (
             <div className="bg-muted/40 text-muted-foreground rounded-lg px-3 py-2 text-xs">
               <span className="font-medium">Giải thích: </span>

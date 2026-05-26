@@ -35,58 +35,75 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
     redirect(`/courses/${slug}`);
   }
 
-  const [modules, completions, submittedAssignments, submittedQuizzes, submittedCodeExercises] =
-    await Promise.all([
-      api
-        .get<ModuleWithItems[]>('/modules', {
-          query: { courseId: course.id, publishedOnly: isStudent },
+  const [
+    modules,
+    completions,
+    submittedAssignments,
+    submittedQuizzes,
+    submittedPracticeTests,
+    submittedCodeExercises,
+  ] = await Promise.all([
+    api
+      .get<ModuleWithItems[]>('/modules', {
+        query: { courseId: course.id, publishedOnly: isStudent },
+      })
+      .catch(() => [] as ModuleWithItems[]),
+    userId
+      ? prisma.moduleItemCompletion.findMany({
+          where: { userId, moduleItem: { module: { courseId: course.id } } },
+          select: { moduleItemId: true },
         })
-        .catch(() => [] as ModuleWithItems[]),
-      userId
-        ? prisma.moduleItemCompletion.findMany({
-            where: { userId, moduleItem: { module: { courseId: course.id } } },
-            select: { moduleItemId: true },
-          })
-        : Promise.resolve([]),
-      isStudent && userId
-        ? prisma.submission.findMany({
-            where: {
-              studentId: userId,
-              status: { in: ['SUBMITTED', 'LATE', 'GRADED', 'RETURNED'] as SubmissionStatus[] },
-              assignment: { courseId: course.id },
-            },
-            select: { assignmentId: true },
-          })
-        : Promise.resolve([]),
-      isStudent && userId
-        ? prisma.quizAttempt.findMany({
-            where: {
-              studentId: userId,
-              status: { in: ['SUBMITTED', 'GRADED'] as AttemptStatus[] },
-              quiz: { courseId: course.id },
-            },
-            select: { quizId: true },
-          })
-        : Promise.resolve([]),
-      isStudent && userId
-        ? prisma.codeSubmission.findMany({
-            where: { studentId: userId, codeExercise: { courseId: course.id } },
-            select: { codeExerciseId: true },
-            distinct: ['codeExerciseId'],
-          })
-        : Promise.resolve([]),
-    ]);
+      : Promise.resolve([]),
+    isStudent && userId
+      ? prisma.submission.findMany({
+          where: {
+            studentId: userId,
+            status: { in: ['SUBMITTED', 'LATE', 'GRADED', 'RETURNED'] as SubmissionStatus[] },
+            assignment: { courseId: course.id },
+          },
+          select: { assignmentId: true },
+        })
+      : Promise.resolve([]),
+    isStudent && userId
+      ? prisma.quizAttempt.findMany({
+          where: {
+            studentId: userId,
+            status: { in: ['SUBMITTED', 'GRADED'] as AttemptStatus[] },
+            quiz: { courseId: course.id },
+          },
+          select: { quizId: true },
+        })
+      : Promise.resolve([]),
+    isStudent && userId
+      ? prisma.practiceTestAttempt.findMany({
+          where: {
+            studentId: userId,
+            practiceTest: { courseId: course.id },
+          },
+          select: { practiceTestId: true },
+          distinct: ['practiceTestId'],
+        })
+      : Promise.resolve([]),
+    isStudent && userId
+      ? prisma.codeSubmission.findMany({
+          where: { studentId: userId, codeExercise: { courseId: course.id } },
+          select: { codeExerciseId: true },
+          distinct: ['codeExerciseId'],
+        })
+      : Promise.resolve([]),
+  ]);
 
   const completedIds = new Set(completions.map((c) => c.moduleItemId));
   const submittedAssignmentIds = new Set(submittedAssignments.map((s) => s.assignmentId));
   const submittedQuizIds = new Set(submittedQuizzes.map((a) => a.quizId));
+  const submittedPracticeTestIds = new Set(submittedPracticeTests.map((a) => a.practiceTestId));
   const submittedCodeExerciseIds = new Set(submittedCodeExercises.map((s) => s.codeExerciseId));
   const totalItems = modules.reduce((s, m) => s + m.items.length, 0);
 
   return (
     <div className="space-y-6">
       {/* ── Page hero header ────────────────────────────────── */}
-      <div className="border-border bg-card relative -mx-6 -mt-6 mb-8 overflow-hidden border-b">
+      <div className="border-border bg-card relative -mx-4 -mt-4 mb-8 overflow-hidden border-b md:-mx-6 md:-mt-6">
         {/* Tech grid */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.03]"
@@ -118,7 +135,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
           }}
         />
 
-        <div className="relative px-6 py-8">
+        <div className="relative px-4 py-6 sm:px-6 sm:py-8">
           <Link
             href={`/courses/${slug}`}
             className="text-muted-foreground hover:text-primary mb-4 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase transition-colors duration-150"
@@ -138,8 +155,8 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
                   Giáo trình
                 </p>
               </div>
-              <h1 className="text-3xl font-bold tracking-tight">Nội dung khoá học</h1>
-              <div className="mt-1 flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Nội dung khoá học</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
                   <Zap className="h-3 w-3" /> {modules.length} chương
                 </span>
@@ -166,6 +183,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
           completedIds={completedIds}
           submittedAssignmentIds={submittedAssignmentIds}
           submittedQuizIds={submittedQuizIds}
+          submittedPracticeTestIds={submittedPracticeTestIds}
           submittedCodeExerciseIds={submittedCodeExerciseIds}
         />
       </div>
