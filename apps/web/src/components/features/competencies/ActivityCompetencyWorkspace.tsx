@@ -587,11 +587,15 @@ function GradingBoard({
                           disabled={saving}
                           className={cn(
                             'h-9 rounded-md border px-3 text-xs font-semibold transition-all disabled:opacity-60',
-                            active ? 'text-white shadow-sm' : 'bg-background hover:bg-muted/40'
+                            active ? 'shadow-sm' : 'bg-background hover:bg-muted/40'
                           )}
                           style={
                             active
-                              ? { backgroundColor: level.color, borderColor: level.color }
+                              ? {
+                                  backgroundColor: level.color,
+                                  borderColor: level.color,
+                                  color: level.textColor,
+                                }
                               : { borderColor: level.color, color: level.color }
                           }
                         >

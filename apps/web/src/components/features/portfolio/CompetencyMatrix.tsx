@@ -1,9 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   COMPETENCY_LEVELS,
   EVIDENCE_TYPE_LABEL,
+  type ActivityType,
   type CompetencyEvidenceRow,
   type CompetencyLevelValue,
   type CompetencyMatrixData,
@@ -17,15 +19,37 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
 
 const LEVEL_BY_VALUE: Map<CompetencyLevelValue, (typeof COMPETENCY_LEVELS)[number]> = new Map(
   COMPETENCY_LEVELS.map((level) => [level.value, level] as const)
 );
 
+// Url đến trang teacher xem bài của HS theo loại hoạt động.
+function activityHref(
+  slug: string,
+  type: ActivityType,
+  activityId: string,
+  studentId: string
+): string {
+  switch (type) {
+    case 'assignment':
+      return `/courses/${slug}/assignments/${activityId}/submissions?student=${studentId}`;
+    case 'quiz':
+      return `/courses/${slug}/quizzes/${activityId}/attempts`;
+    case 'code-exercise':
+      return `/courses/${slug}/exercises/${activityId}`;
+    case 'practice-test':
+      return `/courses/${slug}/practice-tests/${activityId}/attempts`;
+  }
+}
+
 type Props = {
   matrix: CompetencyMatrixData;
   evidence?: CompetencyEvidenceRow[];
+  // Khi cả 2 prop dưới đây có, mỗi dòng minh chứng sẽ có nút "Xem bài làm".
+  courseSlug?: string;
+  studentId?: string;
 };
 
 type DrillState = {
@@ -35,7 +59,7 @@ type DrillState = {
   moduleName: string;
 };
 
-export function CompetencyMatrix({ matrix, evidence = [] }: Props) {
+export function CompetencyMatrix({ matrix, evidence = [], courseSlug, studentId }: Props) {
   const { modules, categories, cells } = matrix;
   const totalIndicators = categories.reduce((sum, c) => sum + c.indicators.length, 0);
   const [drill, setDrill] = useState<DrillState | null>(null);
@@ -89,13 +113,13 @@ export function CompetencyMatrix({ matrix, evidence = [] }: Props) {
               <tr className="bg-[#202765] text-white">
                 <th
                   rowSpan={2}
-                  className="sticky left-0 z-20 w-[92px] border-r border-white/25 px-3 py-4 text-center font-bold uppercase"
+                  className="w-[92px] border-r border-white/25 px-3 py-4 text-center font-bold uppercase"
                 >
                   Năng lực
                 </th>
                 <th
                   rowSpan={2}
-                  className="sticky left-[92px] z-20 min-w-[360px] border-r border-white/25 px-3 py-4 text-left font-bold uppercase"
+                  className="min-w-[360px] border-r border-white/25 px-3 py-4 text-left font-bold uppercase"
                 >
                   Chỉ báo
                 </th>
@@ -150,6 +174,10 @@ export function CompetencyMatrix({ matrix, evidence = [] }: Props) {
             ) : (
               drillEvidence.map((ev) => {
                 const meta = LEVEL_BY_VALUE.get(ev.level);
+                const href =
+                  courseSlug && studentId
+                    ? activityHref(courseSlug, ev.activityType, ev.activityId, studentId)
+                    : null;
                 return (
                   <div
                     key={ev.assessmentId}
@@ -172,8 +200,8 @@ export function CompetencyMatrix({ matrix, evidence = [] }: Props) {
                       </div>
                       {meta && (
                         <span
-                          className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white"
-                          style={{ backgroundColor: meta.color }}
+                          className="inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                          style={{ backgroundColor: meta.color, color: meta.textColor }}
                         >
                           {meta.short}
                         </span>
@@ -183,6 +211,18 @@ export function CompetencyMatrix({ matrix, evidence = [] }: Props) {
                       <p className="bg-muted/40 mt-2 rounded-md p-2 text-xs leading-relaxed whitespace-pre-line">
                         {ev.note}
                       </p>
+                    )}
+                    {href && (
+                      <div className="mt-2 flex justify-end">
+                        <Link
+                          href={href}
+                          target="_blank"
+                          className="text-primary hover:text-primary/80 inline-flex items-center gap-1 text-xs font-medium hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Xem bài làm của học sinh
+                        </Link>
+                      </div>
                     )}
                   </div>
                 );
@@ -234,10 +274,10 @@ function CategoryBlock({
       ) : (
         category.indicators.map((indicator, index) => (
           <tr key={indicator.id} className="border-border/60 hover:bg-muted/20 border-b">
-            <td className="bg-card sticky left-0 z-10 border-r px-3 py-3 text-center align-top font-mono text-xs font-bold">
+            <td className="bg-card border-r px-3 py-3 text-center align-top font-mono text-xs font-bold">
               {indicator.code?.split('.')[0] ?? index + 1}
             </td>
-            <td className="bg-card sticky left-[92px] z-10 min-w-[360px] border-r px-3 py-3 align-top">
+            <td className="bg-card min-w-[360px] border-r px-3 py-3 align-top">
               <div className="flex gap-3">
                 <span className="text-primary w-12 shrink-0 font-mono text-xs font-bold">
                   {indicator.code ?? `${index + 1}`}
@@ -296,8 +336,8 @@ function CellPill({
 
   const pill = (
     <span
-      className="inline-flex h-6 w-full min-w-32 items-center justify-between rounded-full px-3 text-[11px] font-semibold text-white shadow-sm"
-      style={{ backgroundColor: meta.color }}
+      className="inline-flex h-6 w-full min-w-32 items-center justify-between rounded-full px-3 text-[11px] font-semibold shadow-sm"
+      style={{ backgroundColor: meta.color, color: meta.textColor }}
       title={`${meta.label}${count > 1 ? ` · ${count} lượt đánh giá` : ''}`}
     >
       <span className="truncate">{meta.label}</span>

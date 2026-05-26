@@ -3,18 +3,49 @@ import { z } from 'zod';
 // ── Mức độ thành thạo năng lực ─────────────────────────────────
 // Khớp enum CompetencyLevel trong schema.prisma. score dùng cho thống kê (0..4).
 
+// Bảng màu: NO_EVIDENCE đỏ, BEGINNING cam, APPROACHING xanh lá nhạt,
+// PROFICIENT xanh lá đậm, ADVANCED tím. textColor đi kèm để đảm bảo tương phản.
 export const COMPETENCY_LEVELS = [
   {
     value: 'NO_EVIDENCE',
     label: 'Không có minh chứng',
     short: 'Không có MC',
     score: 0,
-    color: '#9ca3af',
+    color: '#dc2626', // red-600
+    textColor: '#ffffff',
   },
-  { value: 'BEGINNING', label: 'Chưa thành thạo', short: 'Chưa TT', score: 1, color: '#ef4444' },
-  { value: 'APPROACHING', label: 'Gần thành thạo', short: 'Gần TT', score: 2, color: '#f59e0b' },
-  { value: 'PROFICIENT', label: 'Thành thạo', short: 'Thành thạo', score: 3, color: '#10b981' },
-  { value: 'ADVANCED', label: 'Vượt thành thạo', short: 'Vượt TT', score: 4, color: '#3b82f6' },
+  {
+    value: 'BEGINNING',
+    label: 'Chưa thành thạo',
+    short: 'Chưa TT',
+    score: 1,
+    color: '#f97316', // orange-500
+    textColor: '#ffffff',
+  },
+  {
+    value: 'APPROACHING',
+    label: 'Gần thành thạo',
+    short: 'Gần TT',
+    score: 2,
+    color: '#86efac', // green-300 — xanh lá nhạt
+    textColor: '#14532d', // green-900 cho tương phản trên nền nhạt
+  },
+  {
+    value: 'PROFICIENT',
+    label: 'Thành thạo',
+    short: 'Thành thạo',
+    score: 3,
+    color: '#15803d', // green-700 — xanh lá đậm
+    textColor: '#ffffff',
+  },
+  {
+    value: 'ADVANCED',
+    label: 'Vượt thành thạo',
+    short: 'Vượt TT',
+    score: 4,
+    color: '#a855f7', // purple-500 — tím
+    textColor: '#ffffff',
+  },
 ] as const;
 
 export type CompetencyLevelValue = (typeof COMPETENCY_LEVELS)[number]['value'];

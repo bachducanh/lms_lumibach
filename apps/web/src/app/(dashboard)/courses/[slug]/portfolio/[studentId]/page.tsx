@@ -92,15 +92,11 @@ export default async function StudentPortfolioPage({
       </Link>
 
       {/* Hero header */}
-      <div
-        className="border-border bg-card relative overflow-hidden rounded-2xl border p-6 shadow-sm"
-        style={{
-          background:
-            'linear-gradient(135deg, oklch(0.96 0.04 280 / 50%), oklch(0.94 0.05 200 / 40%))',
-        }}
-      >
-        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="border-border bg-card relative overflow-hidden rounded-2xl border p-6 shadow-sm">
+        {/* Subtle glow accents — work in both light & dark */}
+        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-violet-500/15 blur-3xl dark:bg-violet-500/20" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl dark:bg-cyan-500/20" />
+        <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-cyan-500/5 dark:to-violet-500/10" />
 
         <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-start gap-4">
@@ -177,7 +173,12 @@ export default async function StudentPortfolioPage({
             </p>
           </div>
         </div>
-        <CompetencyMatrix matrix={portfolio.matrix} evidence={portfolio.competencyEvidence} />
+        <CompetencyMatrix
+          matrix={portfolio.matrix}
+          evidence={portfolio.competencyEvidence}
+          courseSlug={slug}
+          studentId={portfolio.student.id}
+        />
       </section>
 
       {/* Graded work */}
@@ -281,8 +282,8 @@ export default async function StudentPortfolioPage({
                       </Td>
                       <Td>
                         <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium text-white"
-                          style={{ backgroundColor: lm!.color }}
+                          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ backgroundColor: lm!.color, color: lm!.textColor }}
                         >
                           {lm!.label}
                         </span>
