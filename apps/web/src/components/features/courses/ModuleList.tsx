@@ -754,7 +754,7 @@ function SortableItemRow({
               <DropdownMenuTrigger
                 type="button"
                 aria-label="Mở menu thao tác"
-                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none md:hidden"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none"
               >
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -793,45 +793,6 @@ function SortableItemRow({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <div className="hidden items-center gap-0.5 transition-opacity md:flex md:opacity-0 md:group-hover/item:opacity-100">
-              {editHref && (
-                <Link
-                  href={editHref}
-                  title="Chỉnh sửa"
-                  className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Link>
-              )}
-              <button
-                type="button"
-                onClick={() => setGroupDialogOpen(true)}
-                title="Cài đặt nhóm"
-                className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
-              >
-                <UsersRound className="h-3.5 w-3.5" />
-              </button>
-              <div className="bg-border/30 mx-0.5 h-5 w-px" />
-              <button
-                onClick={() => onTogglePublish(item.id)}
-                title={item.isPublished ? 'Ẩn' : 'Hiển thị'}
-                className={`rounded-md p-1.5 transition-all ${item.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
-              >
-                {item.isPublished ? (
-                  <Eye className="h-3.5 w-3.5" />
-                ) : (
-                  <EyeOff className="h-3.5 w-3.5" />
-                )}
-              </button>
-              <button
-                onClick={() => onDelete(item.id)}
-                title="Xoá"
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md p-1.5 transition-all"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
           </>
         )}
       </div>
@@ -1002,7 +963,7 @@ function SortableModuleRow({
               <DropdownMenuTrigger
                 type="button"
                 aria-label="Mở menu thao tác chương"
-                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors outline-none md:hidden"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors outline-none"
               >
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -1030,23 +991,6 @@ function SortableModuleRow({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <div className="border-border/50 hidden items-center gap-0.5 border-l pl-1.5 md:flex md:gap-1 md:pl-3">
-              <button
-                onClick={() => onTogglePublish(mod.id)}
-                title={mod.isPublished ? 'Ẩn chương' : 'Xuất bản chương'}
-                className={`rounded-lg p-2 transition-all ${mod.isPublished ? 'text-green-500 hover:bg-green-500/10' : 'text-muted-foreground hover:bg-muted'}`}
-              >
-                {mod.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </button>
-              <button
-                onClick={() => onDelete(mod.id, mod.name)}
-                title="Xoá chương"
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg p-2 transition-all"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
           </>
         )}
       </div>
