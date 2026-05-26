@@ -14,6 +14,7 @@ import { logActivity } from '@/lib/activity';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
+import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { ChevronLeft, ChevronRight, Code2, Pencil, Clock, Cpu } from 'lucide-react';
@@ -200,12 +201,14 @@ export default async function ExerciseViewPage({
             </div>
 
             {canEdit && (
-              <Link
-                href={`/courses/${slug}/exercises/${exerciseId}/edit`}
-                className={buttonVariants({ variant: 'outline', size: 'sm' })}
-              >
-                <Pencil className="text-muted-foreground mr-1 h-3.5 w-3.5" /> Chỉnh sửa
-              </Link>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Link
+                  href={`/courses/${slug}/exercises/${exerciseId}/edit`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  <Pencil className="text-muted-foreground mr-1 h-3.5 w-3.5" /> Chỉnh sửa
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -309,6 +312,7 @@ export default async function ExerciseViewPage({
         {isTeacher && (
           <ActivityCompetencyPanel
             courseId={course.id}
+            courseSlug={slug}
             activityType="code-exercise"
             activityId={exerciseId}
             canManage={canEdit}

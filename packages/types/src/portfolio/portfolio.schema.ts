@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import type { ActivityType, CompetencyEvidenceRow } from '../competencies/competencies.schema';
+import type {
+  ActivityType,
+  CompetencyEvidenceRow,
+  CompetencyLevelValue,
+} from '../competencies/competencies.schema';
 
 // ── Reflection (tự đánh giá) ───────────────────────────────────
 
@@ -50,6 +54,60 @@ export type PortfolioSummary = {
   reflectionCount: number;
 };
 
+export type PortfolioCourseOverview = {
+  courseId: string;
+  courseName: string;
+  courseSlug: string;
+  status: string;
+  progress: number;
+  enrolledAt: string;
+  summary: PortfolioSummary;
+};
+
+export type PortfolioOverview = {
+  student: PortfolioStudent;
+  totals: {
+    courseCount: number;
+    averageProgress: number;
+    totalGraded: number;
+    competencyCount: number;
+    reflectionCount: number;
+  };
+  courses: PortfolioCourseOverview[];
+};
+
+// Matrix năng lực: rows = chỉ báo (nhóm theo danh mục), cols = module (chương).
+export type CompetencyMatrixModule = {
+  id: string;
+  name: string;
+  position: number;
+};
+
+export type CompetencyMatrixIndicator = {
+  id: string;
+  code: string | null;
+  name: string;
+};
+
+export type CompetencyMatrixCategory = {
+  id: string;
+  name: string;
+  indicators: CompetencyMatrixIndicator[];
+};
+
+export type CompetencyMatrixCell = {
+  indicatorId: string;
+  moduleId: string;
+  level: CompetencyLevelValue; // mức tốt nhất của các đánh giá ở module này
+  count: number; // số đánh giá làm cơ sở
+};
+
+export type CompetencyMatrixData = {
+  modules: CompetencyMatrixModule[];
+  categories: CompetencyMatrixCategory[];
+  cells: CompetencyMatrixCell[];
+};
+
 export type PortfolioData = {
   student: PortfolioStudent;
   canEdit: boolean; // true nếu người xem chính là học sinh đó
@@ -57,4 +115,5 @@ export type PortfolioData = {
   gradedItems: PortfolioGradedItem[];
   competencyEvidence: CompetencyEvidenceRow[];
   reflections: PortfolioReflectionItem[];
+  matrix: CompetencyMatrixData;
 };

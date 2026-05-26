@@ -9,6 +9,7 @@ import { PracticeTestRunner } from '@/components/features/practice-tests/Practic
 import { PracticeTestStatusButton } from '@/components/features/practice-tests/PracticeTestStatusButton';
 import { DeletePracticeTestButton } from '@/components/features/practice-tests/DeletePracticeTestButton';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
+import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import type {
   CourseNavItem,
   CourseDetail,
@@ -369,6 +370,7 @@ export default async function PracticeTestPage({
 
       <ActivityCompetencyPanel
         courseId={course.id}
+        courseSlug={slug}
         activityType="practice-test"
         activityId={practiceTestId}
         canManage={canManage}

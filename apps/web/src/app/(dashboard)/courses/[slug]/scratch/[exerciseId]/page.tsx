@@ -12,6 +12,7 @@ import type { RubricData } from '@lumibach/types';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
 import { ScratchTeacherPanel } from '@/components/features/scratch/ScratchTeacherPanel';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
+import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { Cat, ChevronLeft, ChevronRight, Pencil, Sparkles } from 'lucide-react';
@@ -186,12 +187,14 @@ export default async function ScratchExercisePage({
             </div>
 
             {canEdit && (
-              <Link
-                href={`/courses/${slug}/scratch/${exerciseId}/edit`}
-                className={buttonVariants({ variant: 'outline', size: 'sm' })}
-              >
-                <Pencil className="text-muted-foreground mr-1 h-3.5 w-3.5" /> Chỉnh sửa
-              </Link>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Link
+                  href={`/courses/${slug}/scratch/${exerciseId}/edit`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  <Pencil className="text-muted-foreground mr-1 h-3.5 w-3.5" /> Chỉnh sửa
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -229,6 +232,7 @@ export default async function ScratchExercisePage({
         {isTeacher && (
           <ActivityCompetencyPanel
             courseId={course.id}
+            courseSlug={slug}
             activityType="code-exercise"
             activityId={exerciseId}
             canManage={canEdit}

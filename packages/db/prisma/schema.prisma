@@ -471,16 +471,40 @@ model ModuleItem {
   codeExerciseId String?
   practiceTestId String?
 
-  module       Module                 @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  lesson       Lesson?                @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  assignment   Assignment?            @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
-  quiz         Quiz?                  @relation(fields: [quizId], references: [id], onDelete: SetNull)
-  codeExercise CodeExercise?          @relation(fields: [codeExerciseId], references: [id], onDelete: SetNull)
-  practiceTest PracticeTest?          @relation(fields: [practiceTestId], references: [id], onDelete: SetNull)
-  completions  ModuleItemCompletion[]
+  // Cài đặt nhóm theo từng hoạt động (Moodle-style)
+  // NO_GROUPS: mọi HS xem được. VISIBLE_GROUPS: chỉ HS thuộc visibleGroups xem.
+  // SEPARATE_GROUPS: dùng grouping (chia nhóm trong hoạt động — group submission cho assignment).
+  groupMode  GroupMode @default(NO_GROUPS)
+  groupingId String?
+
+  module        Module                 @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lesson        Lesson?                @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  assignment    Assignment?            @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  quiz          Quiz?                  @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  codeExercise  CodeExercise?          @relation(fields: [codeExerciseId], references: [id], onDelete: SetNull)
+  practiceTest  PracticeTest?          @relation(fields: [practiceTestId], references: [id], onDelete: SetNull)
+  grouping      Grouping?              @relation(fields: [groupingId], references: [id], onDelete: SetNull)
+  completions   ModuleItemCompletion[]
+  visibleGroups ModuleItemGroup[]
 
   @@index([moduleId])
   @@index([moduleId, position])
+  @@index([groupingId])
+}
+
+// Bảng nối ModuleItem ↔ Group cho chế độ VISIBLE_GROUPS (chỉ nhóm được liệt kê có thể xem).
+model ModuleItemGroup {
+  id           String   @id @default(cuid())
+  moduleItemId String
+  groupId      String
+  createdAt    DateTime @default(now())
+
+  moduleItem ModuleItem @relation(fields: [moduleItemId], references: [id], onDelete: Cascade)
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleItemId, groupId])
+  @@index([moduleItemId])
+  @@index([groupId])
 }
 
 model Lesson {
@@ -1283,11 +1307,12 @@ model Group {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  course        Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  members       GroupMember[]
-  groupingLinks GroupingGroup[]
-  submissions   Submission[]
-  forumTopics   ForumTopic[]
+  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  members          GroupMember[]
+  groupingLinks    GroupingGroup[]
+  submissions      Submission[]
+  forumTopics      ForumTopic[]
+  moduleItemAccess ModuleItemGroup[]
 
   @@index([courseId])
 }
@@ -1318,6 +1343,7 @@ model Grouping {
   course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   groups      GroupingGroup[]
   assignments Assignment[]
+  moduleItems ModuleItem[]
 
   @@index([courseId])
 }

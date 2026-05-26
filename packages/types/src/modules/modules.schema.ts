@@ -45,6 +45,40 @@ export const AddModuleItemBodySchema = z.object({
 });
 export type AddModuleItemBody = z.infer<typeof AddModuleItemBodySchema>;
 
+// ── Group settings per ModuleItem ──────────────────────────────
+
+export const UpdateModuleItemGroupSettingsBodySchema = z
+  .object({
+    groupMode: z.enum(['NO_GROUPS', 'SEPARATE_GROUPS', 'VISIBLE_GROUPS']),
+    groupIds: z.array(z.string().min(1)).optional(), // dùng cho VISIBLE_GROUPS
+    groupingId: z.string().min(1).nullable().optional(), // dùng cho SEPARATE_GROUPS
+  })
+  .superRefine((data, ctx) => {
+    if (data.groupMode === 'VISIBLE_GROUPS' && (!data.groupIds || data.groupIds.length === 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['groupIds'],
+        message: 'Chế độ "Nhóm hiện hữu" cần chọn ít nhất 1 nhóm.',
+      });
+    }
+    if (data.groupMode === 'SEPARATE_GROUPS' && !data.groupingId) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['groupingId'],
+        message: 'Chế độ "Phân nhóm" cần chọn một Phân nhóm (Grouping).',
+      });
+    }
+  });
+export type UpdateModuleItemGroupSettingsBody = z.infer<
+  typeof UpdateModuleItemGroupSettingsBodySchema
+>;
+
+export type ModuleItemGroupSettings = {
+  groupMode: 'NO_GROUPS' | 'SEPARATE_GROUPS' | 'VISIBLE_GROUPS';
+  groupingId: string | null;
+  groupIds: string[]; // visible groups
+};
+
 // ── Query ──────────────────────────────────────────────────────
 
 export const ModulesQuerySchema = z.object({
@@ -79,6 +113,9 @@ export type ModuleItemSummary = {
   quizId: string | null;
   codeExerciseId: string | null;
   practiceTestId: string | null;
+  groupMode: 'NO_GROUPS' | 'SEPARATE_GROUPS' | 'VISIBLE_GROUPS';
+  groupingId: string | null;
+  visibleGroupIds: string[];
   lesson?: { id: string; title: string; estimatedMinutes: number | null } | null;
   quiz?: { id: string; title: string; status: string } | null;
   codeExercise?: { id: string; title: string; language: string; status: string } | null;

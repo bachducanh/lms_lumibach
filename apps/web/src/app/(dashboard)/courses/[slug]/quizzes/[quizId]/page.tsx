@@ -10,6 +10,7 @@ import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
 import { QuizQuestionPoints } from '@/components/features/quiz/QuizQuestionPoints';
 import { StartQuizButton } from '@/components/features/quiz/StartQuizButton';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
+import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Brain,
@@ -489,6 +490,7 @@ export default async function QuizDetailPage({
         {isStaff && (
           <ActivityCompetencyPanel
             courseId={course.id}
+            courseSlug={slug}
             activityType="quiz"
             activityId={quizId}
             canManage={canManage}

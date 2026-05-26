@@ -4,8 +4,9 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
 import { apiServerClient, ApiError } from '@/lib/api-client';
-import type { ActivityLogPage, StudentDetail } from '@lumibach/types';
+import type { ActivityLogPage, PortfolioOverview, StudentDetail } from '@lumibach/types';
 import { StudentDetailClient } from '@/components/features/students/StudentDetailClient';
+import { LearningPortfolioOverview } from '@/components/features/portfolio/LearningPortfolioOverview';
 import { ActivityLogTable } from '@/components/features/activity/ActivityLogTable';
 import {
   ChevronLeft,
@@ -53,7 +54,7 @@ export default async function StudentDetailPage({
   if (!role || !hasMinRole(role, 'TA')) redirect('/dashboard');
 
   const api = apiServerClient(await cookies());
-  const [student, courses, recentLogs] = await Promise.all([
+  const [student, courses, recentLogs, portfolioOverview] = await Promise.all([
     api.get<StudentDetail>(`/users/students/${userId}`).catch((err: unknown) => {
       if (err instanceof ApiError) return null;
       throw err;
@@ -67,6 +68,7 @@ export default async function StudentDetailPage({
         if (err instanceof ApiError) return null;
         throw err;
       }),
+    api.get<PortfolioOverview>(`/portfolio/students/${userId}/overview`).catch(() => null),
   ]);
 
   if (!student) notFound();
@@ -77,7 +79,7 @@ export default async function StudentDetailPage({
   const initials = displayName.split(' ').pop()?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       {/* Back */}
       <Link
         href="/students"
@@ -154,6 +156,15 @@ export default async function StudentDetailPage({
         canManage={canManage}
         initialEnrollments={student.enrollments}
       />
+
+      {portfolioOverview && (
+        <LearningPortfolioOverview
+          overview={portfolioOverview}
+          title="Phân tích hồ sơ học tập"
+          description="Tổng hợp tiến độ, điểm số và năng lực của học sinh trong mọi khoá bạn được quyền xem."
+          showStudentName
+        />
+      )}
 
       {/* Activity log */}
       <div className="space-y-3">

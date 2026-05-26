@@ -54,3 +54,41 @@ export async function exportRowsToExcel({
   XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(sheetName));
   XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
 }
+
+// Export workbook nhiều sheet trong 1 file.
+export async function exportSheetsToExcel({
+  sheets,
+  fileName,
+}: {
+  sheets: { name: string; rows: ExcelCellValue[][] }[];
+  fileName: string;
+}) {
+  const XLSX = await import('xlsx');
+  const workbook = XLSX.utils.book_new();
+  const usedNames = new Set<string>();
+
+  for (const s of sheets) {
+    const normalizedRows = s.rows.map((row) => row.map(toSheetValue));
+    const worksheet = XLSX.utils.aoa_to_sheet(normalizedRows);
+    const columnCount = Math.max(0, ...s.rows.map((row) => row.length));
+    worksheet['!cols'] = Array.from({ length: columnCount }, (_, columnIndex) => {
+      const maxLength = s.rows.reduce(
+        (max, row) => Math.max(max, visibleLength(row[columnIndex])),
+        8
+      );
+      return { wch: Math.min(48, Math.max(10, maxLength + 2)) };
+    });
+
+    // Tránh trùng tên sheet (Excel cấm).
+    let candidate = safeSheetName(s.name);
+    let i = 2;
+    while (usedNames.has(candidate)) {
+      candidate = safeSheetName(`${s.name} ${i++}`);
+    }
+    usedNames.add(candidate);
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, candidate);
+  }
+
+  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
+}

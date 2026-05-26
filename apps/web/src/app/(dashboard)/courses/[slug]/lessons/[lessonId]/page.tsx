@@ -7,6 +7,7 @@ import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { buttonVariants } from '@/components/ui/button';
 import { MarkCompleteButton } from '@/components/features/courses/MarkCompleteButton';
 import { LessonAttachments } from '@/components/features/courses/LessonAttachments';
+import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { logActivity } from '@/lib/activity';
 import { prisma } from '@/lib/db';
 import {

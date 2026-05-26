@@ -20,6 +20,7 @@ import { CodeSubmitPanel } from '@/components/features/code/CodeSubmitPanel';
 import { CodeAssignmentSetup } from '@/components/features/code/CodeAssignmentSetup';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
 import { GroupSubmissionPanel } from '@/components/features/assignments/GroupSubmissionPanel';
+import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Clock,
@@ -354,6 +355,7 @@ export default async function AssignmentViewPage({
         {isStaff && (
           <ActivityCompetencyPanel
             courseId={course.id}
+            courseSlug={slug}
             activityType="assignment"
             activityId={assignmentId}
             canManage={canManage}

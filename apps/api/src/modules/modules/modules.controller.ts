@@ -8,6 +8,7 @@ import {
   AddModuleItemBodySchema,
   ModulesQuerySchema,
   NavItemsQuerySchema,
+  UpdateModuleItemGroupSettingsBodySchema,
   type CreateModuleBody,
   type UpdateModuleBody,
   type ReorderModulesBody,
@@ -15,6 +16,7 @@ import {
   type AddModuleItemBody,
   type ModulesQuery,
   type NavItemsQuery,
+  type UpdateModuleItemGroupSettingsBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
@@ -121,5 +123,19 @@ export class ModulesController {
   @ApiOperation({ summary: 'Xoá item' })
   deleteItem(@CurrentUser() user: AuthUser, @Param('itemId') itemId: string) {
     return this.service.deleteModuleItem(user, itemId);
+  }
+
+  @Patch('items/:itemId/group-settings')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Đặt chế độ nhóm cho mục: NO_GROUPS / VISIBLE_GROUPS / SEPARATE_GROUPS',
+  })
+  setGroupSettings(
+    @CurrentUser() user: AuthUser,
+    @Param('itemId') itemId: string,
+    @Body(zodBody(UpdateModuleItemGroupSettingsBodySchema))
+    body: UpdateModuleItemGroupSettingsBody
+  ) {
+    return this.service.updateModuleItemGroupSettings(user, itemId, body);
   }
 }

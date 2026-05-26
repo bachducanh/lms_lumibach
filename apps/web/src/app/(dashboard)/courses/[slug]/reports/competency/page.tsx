@@ -155,7 +155,12 @@ export default async function CompetencyReportPage({
               {stats.students.map((s) => (
                 <tr key={s.studentId} className="border-border/50 hover:bg-muted/20 border-b">
                   <Td>
-                    <p className="font-medium">{s.studentName}</p>
+                    <Link
+                      href={`/courses/${slug}/portfolio/${s.studentId}`}
+                      className="hover:text-primary font-medium underline-offset-4 hover:underline"
+                    >
+                      {s.studentName}
+                    </Link>
                   </Td>
                   <Td>
                     <span className="text-muted-foreground text-xs">{s.email}</span>

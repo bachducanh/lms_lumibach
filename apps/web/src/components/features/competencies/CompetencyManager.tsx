@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, X, FolderTree, ListChecks } from 'lucide-react';
-import { apiClient, ApiError } from '@/lib/api-client';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import { apiClient, ApiError } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
+import { FolderTree, ListChecks, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import type { CompetencyCategoryItem, CompetencyIndicatorItem } from '@lumibach/types';
 
 type Props = {
@@ -17,6 +18,19 @@ type Props = {
   canManage: boolean;
   categories: CompetencyCategoryItem[];
 };
+
+function fmtError(err: unknown, fallback = 'Có lỗi xảy ra'): string {
+  if (!(err instanceof ApiError)) return err instanceof Error ? err.message : fallback;
+  if (err.code === 'VALIDATION_ERROR' && Array.isArray(err.details)) {
+    const parts = (err.details as { path?: string; message?: string }[])
+      .map((detail) =>
+        detail.path ? `${detail.path}: ${detail.message ?? ''}` : (detail.message ?? '')
+      )
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(' · ');
+  }
+  return err.message || fallback;
+}
 
 export function CompetencyManager({ courseId, canManage, categories }: Props) {
   const router = useRouter();
@@ -29,8 +43,9 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
 
   if (categories.length === 0 && !canManage) {
     return (
-      <div className="border-border bg-card text-muted-foreground rounded-lg border py-12 text-center text-sm">
-        Chưa có danh mục năng lực nào.
+      <div className="border-border bg-card rounded-lg border border-dashed py-14 text-center">
+        <FolderTree className="text-muted-foreground/40 mx-auto mb-3 h-10 w-10" />
+        <p className="text-muted-foreground text-sm">Khoá học chưa có danh mục năng lực.</p>
       </div>
     );
   }
@@ -40,7 +55,7 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
       {confirmDialog}
 
       {canManage && (
-        <div>
+        <div className="border-border bg-card rounded-lg border p-4">
           {showAddCategory ? (
             <CategoryForm
               courseId={courseId}
@@ -51,34 +66,46 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
               onCancel={() => setShowAddCategory(false)}
             />
           ) : (
-            <Button variant="outline" size="sm" onClick={() => setShowAddCategory(true)}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Thêm danh mục năng lực
-            </Button>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Kho năng lực của khoá học</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Tạo danh mục lớn, sau đó thêm các chỉ báo cụ thể để gán vào hoạt động.
+                </p>
+              </div>
+              <Button size="sm" onClick={() => setShowAddCategory(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Thêm danh mục
+              </Button>
+            </div>
           )}
         </div>
       )}
 
       {categories.length === 0 ? (
-        <div className="border-border bg-card text-muted-foreground rounded-lg border py-12 text-center text-sm">
-          Chưa có danh mục năng lực. Nhấn “Thêm danh mục năng lực” để bắt đầu.
+        <div className="border-border bg-card rounded-lg border border-dashed py-14 text-center">
+          <FolderTree className="text-muted-foreground/40 mx-auto mb-3 h-10 w-10" />
+          <p className="font-semibold">Chưa có năng lực nào</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Tạo danh mục năng lực đầu tiên để bắt đầu xây rubric năng lực cho khoá học.
+          </p>
         </div>
       ) : (
-        categories.map((cat) => (
-          <CategoryCard
-            key={cat.id}
-            category={cat}
-            canManage={canManage}
-            onChanged={refresh}
-            openConfirm={openConfirm}
-          />
-        ))
+        <div className="space-y-3">
+          {categories.map((category) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              canManage={canManage}
+              onChanged={refresh}
+              openConfirm={openConfirm}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
-
-// ── Category card ──────────────────────────────────────────────
 
 function CategoryCard({
   category,
@@ -89,29 +116,30 @@ function CategoryCard({
   category: CompetencyCategoryItem;
   canManage: boolean;
   onChanged: () => void;
-  openConfirm: (msg: string) => Promise<boolean>;
+  openConfirm: (message: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [showAddIndicator, setShowAddIndicator] = useState(false);
-  const [, startTransition] = useTransition();
+  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    const ok = await openConfirm(`Xoá danh mục “${category.name}” và toàn bộ chỉ báo bên trong?`);
+    const ok = await openConfirm(`Xoá danh mục "${category.name}" và toàn bộ chỉ báo bên trong?`);
     if (!ok) return;
-    startTransition(async () => {
-      try {
-        await apiClient.delete(`/competencies/categories/${category.id}`);
-        toast.success('Đã xoá danh mục năng lực.');
-        onChanged();
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá danh mục');
-      }
-    });
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/competencies/categories/${category.id}`);
+      toast.success('Đã xoá danh mục năng lực.');
+      onChanged();
+    } catch (err) {
+      toast.error(fmtError(err, 'Lỗi xoá danh mục'));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border">
-      <div className="border-border bg-muted/30 border-b px-4 py-3">
+    <section className="border-border bg-card overflow-hidden rounded-lg border">
+      <div className="bg-muted/20 border-b px-4 py-3">
         {editing ? (
           <CategoryForm
             category={category}
@@ -122,32 +150,36 @@ function CategoryCard({
             onCancel={() => setEditing(false)}
           />
         ) : (
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <FolderTree className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <p className="font-semibold">{category.name}</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="bg-primary/10 border-primary/20 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
+                <FolderTree className="text-primary h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold">{category.name}</h3>
+                  <Badge variant="secondary" className="text-xs">
+                    {category.indicators.length} chỉ báo
+                  </Badge>
+                </div>
                 {category.description && (
-                  <p className="text-muted-foreground mt-0.5 text-xs">{category.description}</p>
+                  <p className="text-muted-foreground mt-1 text-sm">{category.description}</p>
                 )}
               </div>
             </div>
             {canManage && (
-              <div className="flex shrink-0 gap-1">
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-muted-foreground hover:text-foreground p-1 transition-colors"
-                  title="Sửa"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
+              <div className="flex shrink-0 items-center gap-1">
+                <IconButton label="Sửa danh mục" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                </IconButton>
+                <IconButton
+                  label="Xoá danh mục"
                   onClick={handleDelete}
-                  className="text-muted-foreground hover:text-destructive p-1 transition-colors"
-                  title="Xoá"
+                  disabled={deleting}
+                  destructive
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                  <Trash2 className="h-4 w-4" />
+                </IconButton>
               </div>
             )}
           </div>
@@ -156,12 +188,14 @@ function CategoryCard({
 
       <div className="divide-border divide-y">
         {category.indicators.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-3 text-sm">Chưa có chỉ báo.</p>
+          <p className="text-muted-foreground px-4 py-4 text-sm">
+            Chưa có chỉ báo trong danh mục này.
+          </p>
         ) : (
-          category.indicators.map((ind) => (
+          category.indicators.map((indicator) => (
             <IndicatorRow
-              key={ind.id}
-              indicator={ind}
+              key={indicator.id}
+              indicator={indicator}
               canManage={canManage}
               onChanged={onChanged}
               openConfirm={openConfirm}
@@ -171,7 +205,7 @@ function CategoryCard({
       </div>
 
       {canManage && (
-        <div className="border-border border-t px-4 py-3">
+        <div className="border-t px-4 py-3">
           {showAddIndicator ? (
             <IndicatorForm
               categoryId={category.id}
@@ -182,21 +216,16 @@ function CategoryCard({
               onCancel={() => setShowAddIndicator(false)}
             />
           ) : (
-            <button
-              onClick={() => setShowAddIndicator(true)}
-              className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
-            >
-              <Plus className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={() => setShowAddIndicator(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
               Thêm chỉ báo
-            </button>
+            </Button>
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
-
-// ── Indicator row ──────────────────────────────────────────────
 
 function IndicatorRow({
   indicator,
@@ -207,23 +236,24 @@ function IndicatorRow({
   indicator: CompetencyIndicatorItem;
   canManage: boolean;
   onChanged: () => void;
-  openConfirm: (msg: string) => Promise<boolean>;
+  openConfirm: (message: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [, startTransition] = useTransition();
+  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    const ok = await openConfirm(`Xoá chỉ báo này?`);
+    const ok = await openConfirm('Xoá chỉ báo năng lực này?');
     if (!ok) return;
-    startTransition(async () => {
-      try {
-        await apiClient.delete(`/competencies/indicators/${indicator.id}`);
-        toast.success('Đã xoá chỉ báo.');
-        onChanged();
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Lỗi xoá chỉ báo');
-      }
-    });
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/competencies/indicators/${indicator.id}`);
+      toast.success('Đã xoá chỉ báo.');
+      onChanged();
+    } catch (err) {
+      toast.error(fmtError(err, 'Lỗi xoá chỉ báo'));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   if (editing) {
@@ -243,46 +273,36 @@ function IndicatorRow({
   }
 
   return (
-    <div className="flex items-start justify-between gap-3 px-4 py-3">
-      <div className="flex items-start gap-2.5">
+    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+      <div className="flex min-w-0 items-start gap-3">
         <ListChecks className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <p className="text-sm">
+        <div className="min-w-0">
+          <p className="text-sm leading-relaxed">
             {indicator.code && (
-              <Badge variant="outline" className="mr-2 font-mono text-[11px]">
+              <span className="text-primary mr-2 font-mono text-xs font-bold">
                 {indicator.code}
-              </Badge>
+              </span>
             )}
             {indicator.name}
           </p>
           {indicator.description && (
-            <p className="text-muted-foreground mt-0.5 text-xs">{indicator.description}</p>
+            <p className="text-muted-foreground mt-1 text-xs">{indicator.description}</p>
           )}
         </div>
       </div>
       {canManage && (
-        <div className="flex shrink-0 gap-1">
-          <button
-            onClick={() => setEditing(true)}
-            className="text-muted-foreground hover:text-foreground p-1 transition-colors"
-            title="Sửa"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={handleDelete}
-            className="text-muted-foreground hover:text-destructive p-1 transition-colors"
-            title="Xoá"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton label="Sửa chỉ báo" onClick={() => setEditing(true)}>
+            <Pencil className="h-4 w-4" />
+          </IconButton>
+          <IconButton label="Xoá chỉ báo" onClick={handleDelete} disabled={deleting} destructive>
+            <Trash2 className="h-4 w-4" />
+          </IconButton>
         </div>
       )}
     </div>
   );
 }
-
-// ── Forms ──────────────────────────────────────────────────────
 
 function CategoryForm({
   courseId,
@@ -297,59 +317,67 @@ function CategoryForm({
 }) {
   const [name, setName] = useState(category?.name ?? '');
   const [description, setDescription] = useState(category?.description ?? '');
-  const [pending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error('Nhập tên danh mục.');
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+
+    const cleanName = name.trim();
+    const cleanDescription = description.trim();
+    if (!cleanName) {
+      toast.error('Nhập tên danh mục năng lực.');
       return;
     }
-    startTransition(async () => {
-      try {
-        if (category) {
-          await apiClient.patch(`/competencies/categories/${category.id}`, {
-            name: name.trim(),
-            description: description.trim() || null,
-          });
-          toast.success('Đã cập nhật danh mục.');
-        } else {
-          await apiClient.post(`/courses/${courseId}/competencies/categories`, {
-            name: name.trim(),
-            description: description.trim() || undefined,
-          });
-          toast.success('Đã thêm danh mục.');
-        }
-        onDone();
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra');
+    if (!category && !courseId) {
+      toast.error('Thiếu khoá học để tạo danh mục.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (category) {
+        await apiClient.patch(`/competencies/categories/${category.id}`, {
+          name: cleanName,
+          description: cleanDescription || null,
+        });
+        toast.success('Đã cập nhật danh mục.');
+      } else {
+        await apiClient.post(`/courses/${courseId}/competencies/categories`, {
+          name: cleanName,
+          description: cleanDescription || undefined,
+        });
+        toast.success('Đã thêm danh mục.');
       }
-    });
+      onDone();
+    } catch (err) {
+      toast.error(fmtError(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <form onSubmit={submit} className="space-y-2">
+    <form onSubmit={submit} className="space-y-3">
       <Input
         autoFocus
-        placeholder="Tên danh mục năng lực (vd: Tư duy thuật toán)"
+        placeholder="Tên danh mục năng lực"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        maxLength={200}
+        onChange={(event) => setName(event.target.value)}
       />
       <Textarea
-        placeholder="Mô tả (tuỳ chọn)"
+        placeholder="Mô tả hoặc phạm vi đánh giá"
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        maxLength={2000}
+        onChange={(event) => setDescription(event.target.value)}
         rows={2}
       />
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={pending}>
-          {pending ? 'Đang lưu...' : category ? 'Lưu' : 'Thêm'}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          <X className="mr-1 h-4 w-4" />
-          Huỷ
-        </Button>
-      </div>
+      <FormActions
+        saving={saving}
+        submitLabel={category ? 'Lưu danh mục' : 'Thêm danh mục'}
+        onCancel={onCancel}
+      />
     </form>
   );
 }
@@ -368,70 +396,129 @@ function IndicatorForm({
   const [code, setCode] = useState(indicator?.code ?? '');
   const [name, setName] = useState(indicator?.name ?? '');
   const [description, setDescription] = useState(indicator?.description ?? '');
-  const [pending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
 
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error('Nhập nội dung chỉ báo.');
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+
+    const cleanCode = code.trim();
+    const cleanName = name.trim();
+    const cleanDescription = description.trim();
+    if (!cleanName) {
+      toast.error('Nhập nội dung chỉ báo năng lực.');
       return;
     }
-    startTransition(async () => {
-      try {
-        if (indicator) {
-          await apiClient.patch(`/competencies/indicators/${indicator.id}`, {
-            code: code.trim() || null,
-            name: name.trim(),
-            description: description.trim() || null,
-          });
-          toast.success('Đã cập nhật chỉ báo.');
-        } else {
-          await apiClient.post(`/competencies/categories/${categoryId}/indicators`, {
-            code: code.trim() || null,
-            name: name.trim(),
-            description: description.trim() || null,
-          });
-          toast.success('Đã thêm chỉ báo.');
-        }
-        onDone();
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Có lỗi xảy ra');
+
+    setSaving(true);
+    try {
+      if (indicator) {
+        await apiClient.patch(`/competencies/indicators/${indicator.id}`, {
+          code: cleanCode || null,
+          name: cleanName,
+          description: cleanDescription || null,
+        });
+        toast.success('Đã cập nhật chỉ báo.');
+      } else {
+        await apiClient.post(`/competencies/categories/${categoryId}/indicators`, {
+          code: cleanCode || null,
+          name: cleanName,
+          description: cleanDescription || null,
+        });
+        toast.success('Đã thêm chỉ báo.');
       }
-    });
+      onDone();
+    } catch (err) {
+      toast.error(fmtError(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <form onSubmit={submit} className="space-y-2">
-      <div className="flex gap-2">
+    <form onSubmit={submit} className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
         <Input
-          placeholder="Mã (vd 1.1)"
+          placeholder="Mã"
           value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className="w-28 shrink-0"
+          maxLength={50}
+          onChange={(event) => setCode(event.target.value)}
         />
         <Input
           autoFocus
           placeholder="Nội dung chỉ báo năng lực"
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="flex-1"
+          maxLength={2000}
+          onChange={(event) => setName(event.target.value)}
         />
       </div>
       <Textarea
-        placeholder="Mô tả / minh hoạ (tuỳ chọn)"
+        placeholder="Mô tả hoặc ví dụ minh chứng"
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        maxLength={2000}
+        onChange={(event) => setDescription(event.target.value)}
         rows={2}
       />
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={pending}>
-          {pending ? 'Đang lưu...' : indicator ? 'Lưu' : 'Thêm'}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          <X className="mr-1 h-4 w-4" />
-          Huỷ
-        </Button>
-      </div>
+      <FormActions
+        saving={saving}
+        submitLabel={indicator ? 'Lưu chỉ báo' : 'Thêm chỉ báo'}
+        onCancel={onCancel}
+      />
     </form>
+  );
+}
+
+function FormActions({
+  saving,
+  submitLabel,
+  onCancel,
+}: {
+  saving: boolean;
+  submitLabel: string;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="submit" size="sm" disabled={saving}>
+        <Save className="mr-1.5 h-3.5 w-3.5" />
+        {saving ? 'Đang lưu...' : submitLabel}
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+        <X className="mr-1.5 h-3.5 w-3.5" />
+        Huỷ
+      </Button>
+    </div>
+  );
+}
+
+function IconButton({
+  label,
+  children,
+  onClick,
+  disabled,
+  destructive,
+}: {
+  label: string;
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'rounded-md p-1.5 transition-colors disabled:opacity-50',
+        destructive
+          ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
   );
 }

@@ -284,10 +284,13 @@ export type CompetencyEvidenceRow = {
   activityId: string;
   activityTitle: string;
   categoryName: string;
+  indicatorId: string;
   indicatorName: string;
   indicatorCode: string | null;
   level: CompetencyLevelValue;
   evidenceType: string | null;
   note: string | null;
   gradedAt: string;
+  moduleId: string | null;
+  moduleName: string | null;
 };

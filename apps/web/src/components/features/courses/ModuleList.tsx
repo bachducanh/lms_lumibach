@@ -36,6 +36,7 @@ import {
   Cat,
   ChevronDown,
   ChevronsUpDown,
+  UsersRound,
 } from 'lucide-react';
 import {
   DndContext,
@@ -57,6 +58,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { apiClient, ApiError } from '@/lib/api-client';
 import type { ModuleWithItems } from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import { ActivityGroupModeButton } from './ActivityGroupModeButton';
 
 type ModuleItem = ModuleWithItems['items'][number];
 
@@ -465,22 +467,33 @@ function AddExternalUrlForm({
 type ItemRowProps = {
   item: ModuleItem;
   courseSlug: string;
+  courseId: string;
   canManage: boolean;
   isDone: boolean;
   onTogglePublish: (id: string) => void;
   onDelete: (id: string) => void;
+  onRefresh: () => void;
 };
 
 function SortableItemRow({
   item,
   courseSlug,
+  courseId,
   canManage,
   isDone,
   onTogglePublish,
   onDelete,
+  onRefresh,
 }: ItemRowProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const router = useRouter();
+  const itemGroupMode = (item.groupMode ?? 'NO_GROUPS') as
+    | 'NO_GROUPS'
+    | 'VISIBLE_GROUPS'
+    | 'SEPARATE_GROUPS';
+  const itemGroupingId = item.groupingId ?? null;
+  const itemVisibleGroupIds: string[] = item.visibleGroupIds ?? [];
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -752,7 +765,16 @@ function SortableItemRow({
                     Chỉnh sửa
                   </DropdownMenuItem>
                 )}
-                {editHref && <DropdownMenuSeparator />}
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setGroupDialogOpen(true);
+                  }}
+                >
+                  <UsersRound className="mr-2 h-4 w-4" />
+                  Cài đặt nhóm
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onTogglePublish(item.id)}>
                   {item.isPublished ? (
                     <EyeOff className="mr-2 h-4 w-4" />
@@ -772,6 +794,19 @@ function SortableItemRow({
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Controlled dialog: cài đặt nhóm — share giữa mobile menu item và desktop button */}
+            <ActivityGroupModeButton
+              courseId={courseId}
+              moduleItemId={item.id}
+              currentMode={itemGroupMode}
+              currentGroupingId={itemGroupingId}
+              currentGroupIds={itemVisibleGroupIds}
+              showTrigger={false}
+              open={groupDialogOpen}
+              onOpenChange={setGroupDialogOpen}
+              onChanged={onRefresh}
+            />
+
             <div className="hidden items-center gap-0.5 transition-opacity sm:flex sm:opacity-0 sm:group-hover/item:opacity-100">
               {editHref && (
                 <Link
@@ -782,7 +817,15 @@ function SortableItemRow({
                   <Pencil className="h-3.5 w-3.5" />
                 </Link>
               )}
-              {editHref && <div className="bg-border/30 mx-0.5 h-5 w-px" />}
+              <button
+                type="button"
+                onClick={() => setGroupDialogOpen(true)}
+                title="Cài đặt nhóm"
+                className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-all"
+              >
+                <UsersRound className="h-3.5 w-3.5" />
+              </button>
+              <div className="bg-border/30 mx-0.5 h-5 w-px" />
               <button
                 onClick={() => onTogglePublish(item.id)}
                 title={item.isPublished ? 'Ẩn' : 'Hiển thị'}
@@ -814,6 +857,7 @@ function SortableItemRow({
 type ModuleRowProps = {
   mod: ModuleWithItems;
   courseSlug: string;
+  courseId: string;
   canManage: boolean;
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
@@ -835,6 +879,7 @@ type ModuleRowProps = {
 function SortableModuleRow({
   mod,
   courseSlug,
+  courseId,
   canManage,
   completedIds,
   submittedAssignmentIds,
@@ -1050,10 +1095,12 @@ function SortableModuleRow({
                       key={item.id}
                       item={item}
                       courseSlug={courseSlug}
+                      courseId={courseId}
                       canManage={canManage}
                       isDone={!!isDone}
                       onTogglePublish={onToggleItemPublish}
                       onDelete={onDeleteItem}
+                      onRefresh={onRefresh}
                     />
                   );
                 })}
@@ -1311,6 +1358,7 @@ export function ModuleList({
                   key={mod.id}
                   mod={mod}
                   courseSlug={courseSlug}
+                  courseId={courseId}
                   canManage={canManage}
                   completedIds={completedIds}
                   submittedAssignmentIds={submittedAssignmentIds}

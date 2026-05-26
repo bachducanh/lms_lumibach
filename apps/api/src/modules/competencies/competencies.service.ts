@@ -324,12 +324,13 @@ export class CompetenciesService {
     await this.assertManage(user, courseId);
 
     // Chỉ chấp nhận chỉ báo thuộc khoá học này.
+    const requestedIds = [...new Set(body.indicatorIds)];
     const valid = await this.prisma.competencyIndicator.findMany({
-      where: { id: { in: body.indicatorIds }, category: { courseId } },
+      where: { id: { in: requestedIds }, category: { courseId } },
       select: { id: true },
     });
     const validIds = new Set(valid.map((v) => v.id));
-    const indicatorIds = body.indicatorIds.filter((id) => validIds.has(id));
+    const indicatorIds = requestedIds.filter((id) => validIds.has(id));
 
     const fk = this.activityFk(body.activityType, body.activityId);
 
@@ -338,6 +339,7 @@ export class CompetenciesService {
       if (indicatorIds.length > 0) {
         await tx.activityCompetency.createMany({
           data: indicatorIds.map((indicatorId) => ({ indicatorId, ...fk })),
+          skipDuplicates: true,
         });
       }
     });
@@ -358,43 +360,81 @@ export class CompetenciesService {
     });
     if (!indicator) throw new NotFoundException('Chỉ báo năng lực không thuộc khoá học.');
 
-    const student = await this.prisma.user.findUnique({
-      where: { id: body.studentId },
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: body.studentId,
+        role: 'STUDENT',
+        enrollments: { some: { courseId } },
+      },
       select: { id: true },
     });
-    if (!student) throw new NotFoundException('Học sinh không tồn tại.');
+    if (!student) throw new NotFoundException('Học sinh không thuộc khoá học này.');
 
     const fk = this.activityFk(body.activityType, body.activityId);
     const evidenceType =
       body.evidenceType && EVIDENCE_TYPE_LABEL[body.evidenceType] ? body.evidenceType : null;
+    const data = {
+      level: body.level,
+      evidenceType,
+      note: body.note?.trim() || null,
+      gradedBy: user.id,
+      gradedAt: new Date(),
+    };
+    const create = {
+      indicatorId: body.indicatorId,
+      studentId: body.studentId,
+      ...data,
+      ...fk,
+    };
 
-    const existing = await this.prisma.competencyAssessment.findFirst({
-      where: { indicatorId: body.indicatorId, studentId: body.studentId, ...fk },
-      select: { id: true },
-    });
-
-    const saved = existing
-      ? await this.prisma.competencyAssessment.update({
-          where: { id: existing.id },
-          data: {
-            level: body.level,
-            evidenceType,
-            note: body.note?.trim() || null,
-            gradedBy: user.id,
-            gradedAt: new Date(),
-          },
-        })
-      : await this.prisma.competencyAssessment.create({
-          data: {
-            indicatorId: body.indicatorId,
-            studentId: body.studentId,
-            level: body.level,
-            evidenceType,
-            note: body.note?.trim() || null,
-            gradedBy: user.id,
-            ...fk,
-          },
-        });
+    const saved =
+      body.activityType === 'assignment'
+        ? await this.prisma.competencyAssessment.upsert({
+            where: {
+              indicatorId_studentId_assignmentId: {
+                indicatorId: body.indicatorId,
+                studentId: body.studentId,
+                assignmentId: body.activityId,
+              },
+            },
+            update: data,
+            create,
+          })
+        : body.activityType === 'quiz'
+          ? await this.prisma.competencyAssessment.upsert({
+              where: {
+                indicatorId_studentId_quizId: {
+                  indicatorId: body.indicatorId,
+                  studentId: body.studentId,
+                  quizId: body.activityId,
+                },
+              },
+              update: data,
+              create,
+            })
+          : body.activityType === 'code-exercise'
+            ? await this.prisma.competencyAssessment.upsert({
+                where: {
+                  indicatorId_studentId_codeExerciseId: {
+                    indicatorId: body.indicatorId,
+                    studentId: body.studentId,
+                    codeExerciseId: body.activityId,
+                  },
+                },
+                update: data,
+                create,
+              })
+            : await this.prisma.competencyAssessment.upsert({
+                where: {
+                  indicatorId_studentId_practiceTestId: {
+                    indicatorId: body.indicatorId,
+                    studentId: body.studentId,
+                    practiceTestId: body.activityId,
+                  },
+                },
+                update: data,
+                create,
+              });
 
     return this.toAssessmentItem(saved);
   }
@@ -424,32 +464,67 @@ export class CompetenciesService {
       if (!canGrade) throw new ForbiddenException('Không có quyền xem hồ sơ năng lực.');
     }
 
-    const rows = await this.prisma.competencyAssessment.findMany({
-      where: { studentId, indicator: { category: { courseId } } },
-      orderBy: { gradedAt: 'desc' },
-      include: {
-        indicator: { select: { name: true, code: true, category: { select: { name: true } } } },
-        assignment: { select: { title: true } },
-        quiz: { select: { title: true } },
-        codeExercise: { select: { title: true } },
-        practiceTest: { select: { title: true } },
-      },
-    });
+    const [rows, modules] = await Promise.all([
+      this.prisma.competencyAssessment.findMany({
+        where: { studentId, indicator: { category: { courseId } } },
+        orderBy: { gradedAt: 'desc' },
+        include: {
+          indicator: {
+            select: { id: true, name: true, code: true, category: { select: { name: true } } },
+          },
+          assignment: { select: { title: true } },
+          quiz: { select: { title: true } },
+          codeExercise: { select: { title: true } },
+          practiceTest: { select: { title: true } },
+        },
+      }),
+      this.prisma.module.findMany({
+        where: { courseId },
+        select: {
+          id: true,
+          name: true,
+          items: {
+            select: {
+              assignmentId: true,
+              quizId: true,
+              codeExerciseId: true,
+              practiceTestId: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    // Map activity → (moduleId, moduleName) để gắn module vào từng dòng evidence.
+    const activityToModule = new Map<string, { id: string; name: string }>();
+    for (const m of modules) {
+      for (const item of m.items) {
+        const meta = { id: m.id, name: m.name };
+        if (item.assignmentId) activityToModule.set(`assignment:${item.assignmentId}`, meta);
+        if (item.quizId) activityToModule.set(`quiz:${item.quizId}`, meta);
+        if (item.codeExerciseId) activityToModule.set(`code-exercise:${item.codeExerciseId}`, meta);
+        if (item.practiceTestId) activityToModule.set(`practice-test:${item.practiceTestId}`, meta);
+      }
+    }
 
     return rows.map((r): CompetencyEvidenceRow => {
       const { activityType, activityId, activityTitle } = this.resolveActivity(r);
+      const mod = activityToModule.get(`${activityType}:${activityId}`) ?? null;
       return {
         assessmentId: r.id,
         activityType,
         activityId,
         activityTitle,
         categoryName: r.indicator.category.name,
+        indicatorId: r.indicator.id,
         indicatorName: r.indicator.name,
         indicatorCode: r.indicator.code,
         level: r.level as CompetencyLevelValue,
         evidenceType: r.evidenceType,
         note: r.note,
         gradedAt: r.gradedAt.toISOString(),
+        moduleId: mod?.id ?? null,
+        moduleName: mod?.name ?? null,
       };
     });
   }

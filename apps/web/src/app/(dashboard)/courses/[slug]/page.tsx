@@ -326,7 +326,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
       </div>
 
       {/* ── Role-aware sections ─────────────────────────────── */}
-      {role === 'STUDENT' && <StudentView enrollments={enrollments} userId={userId} slug={slug} />}
+      {role === 'STUDENT' && <StudentView enrollments={enrollments} userId={userId} />}
 
       {(role === 'TEACHER' || role === 'TA' || role === 'ADMIN') && (
         <TeacherView enrollments={enrollments} tas={tas} />
@@ -370,15 +370,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function StudentView({
-  enrollments,
-  userId,
-  slug,
-}: {
-  enrollments: CourseMember[];
-  userId?: string;
-  slug: string;
-}) {
+function StudentView({ enrollments, userId }: { enrollments: CourseMember[]; userId?: string }) {
   const myEnrollment = enrollments.find((e) => e.userId === userId);
   if (!myEnrollment) return null;
 
@@ -408,11 +400,11 @@ function StudentView({
         </span>
       </div>
       <Link
-        href={`/courses/${slug}/portfolio`}
+        href="/profile"
         className="border-border hover:border-primary/40 hover:bg-accent/40 mt-1 flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors"
       >
         <FolderKanban className="text-primary h-4 w-4" />
-        <span className="font-medium">Hồ sơ học tập của tôi</span>
+        <span className="font-medium">Xem trong hồ sơ cá nhân</span>
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" />
       </Link>
     </div>

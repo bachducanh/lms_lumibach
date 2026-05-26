@@ -23,6 +23,10 @@ const ENROLLMENT_STATUS_CLASS: Record<string, string> = {
   SUSPENDED: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
 };
 
+function progressPercent(progress: number) {
+  return Math.max(0, Math.min(100, Math.round(progress)));
+}
+
 type Course = { id: string; name: string; slug: string };
 
 type Props = {
@@ -146,12 +150,12 @@ export function StudentDetailClient({
                   <span className="flex items-center gap-1">
                     <TrendingUp className="h-3 w-3" /> Tiến độ
                   </span>
-                  <span className="font-medium">{Math.round(e.progress * 100)}%</span>
+                  <span className="font-medium">{progressPercent(e.progress)}%</span>
                 </div>
                 <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
                   <div
                     className="bg-primary h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.round(e.progress * 100)}%` }}
+                    style={{ width: `${progressPercent(e.progress)}%` }}
                   />
                 </div>
               </div>

@@ -11,14 +11,11 @@ import { Plus, Trash2, UserPlus, Shuffle, X, Pencil, Layers } from 'lucide-react
 import { apiClient, ApiError } from '@/lib/api-client';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import {
-  GROUP_MODES,
   type CourseGroupsData,
   type CourseMember,
   type GroupItem,
-  type GroupModeValue,
   type GroupingItem,
 } from '@lumibach/types';
-import { cn } from '@/lib/utils';
 
 type Props = {
   courseId: string;
@@ -43,12 +40,13 @@ export function GroupsPanel({ courseId, canManage, data, students }: Props) {
     <div className="space-y-6">
       {confirmDialog}
 
-      <ModeSelector
-        courseId={courseId}
-        canManage={canManage}
-        mode={data.groupMode}
-        onSaved={refresh}
-      />
+      <div className="border-border bg-muted/30 text-muted-foreground rounded-lg border p-3 text-xs leading-relaxed">
+        💡 <strong className="text-foreground font-medium">Lưu ý:</strong> Ở đây bạn chỉ tạo các{' '}
+        <strong className="text-foreground font-medium">nhóm</strong> và{' '}
+        <strong className="text-foreground font-medium">phân nhóm</strong>. Chế độ tương tác nhóm
+        (Không có nhóm / Nhóm hiện hữu / Phân nhóm) được đặt riêng cho{' '}
+        <em>từng hoạt động học tập</em> trong tab "Nội dung khoá học".
+      </div>
 
       {canManage && (
         <div className="flex flex-wrap gap-2">
@@ -85,64 +83,6 @@ export function GroupsPanel({ courseId, canManage, data, students }: Props) {
         onChanged={refresh}
         openConfirm={openConfirm}
       />
-    </div>
-  );
-}
-
-// ── Mode selector ──────────────────────────────────────────────
-
-function ModeSelector({
-  courseId,
-  canManage,
-  mode,
-  onSaved,
-}: {
-  courseId: string;
-  canManage: boolean;
-  mode: GroupModeValue;
-  onSaved: () => void;
-}) {
-  const [pending, startTransition] = useTransition();
-
-  function setMode(next: GroupModeValue) {
-    if (next === mode) return;
-    startTransition(async () => {
-      try {
-        await apiClient.patch(`/courses/${courseId}/group-mode`, { groupMode: next });
-        toast.success('Đã cập nhật chế độ nhóm.');
-        onSaved();
-      } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật chế độ');
-      }
-    });
-  }
-
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold">Chế độ tương tác nhóm</h3>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {GROUP_MODES.map((m) => {
-          const active = m.value === mode;
-          return (
-            <button
-              key={m.value}
-              type="button"
-              disabled={!canManage || pending}
-              onClick={() => setMode(m.value)}
-              className={cn(
-                'rounded-lg border p-3 text-left transition-colors',
-                active
-                  ? 'border-primary bg-primary/10 ring-primary/30 ring-1'
-                  : 'border-border bg-card hover:border-primary/40',
-                !canManage && 'cursor-default opacity-90'
-              )}
-            >
-              <p className="text-sm font-semibold">{m.label}</p>
-              <p className="text-muted-foreground mt-0.5 text-xs">{m.description}</p>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }

@@ -1,9 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
+import { COMPETENCY_LEVEL_SCORE } from '@lumibach/types';
 import type {
+  CompetencyLevelValue,
+  CompetencyMatrixCell,
+  CompetencyMatrixData,
   CreateReflectionBody,
   PortfolioData,
   PortfolioGradedItem,
+  PortfolioOverview,
   PortfolioReflectionItem,
   UpdateReflectionBody,
 } from '@lumibach/types';
@@ -62,42 +67,89 @@ export class PortfolioService {
     });
     if (!student) throw new NotFoundException('Học sinh không tồn tại.');
 
-    const [subs, codeSubs, quizAttempts, practiceAttempts, reflections, competencyEvidence] =
-      await Promise.all([
-        this.prisma.submission.findMany({
-          where: {
-            studentId,
-            status: { not: 'DRAFT' },
-            assignment: { courseId, deletedAt: null },
+    const [
+      subs,
+      codeSubs,
+      quizAttempts,
+      practiceAttempts,
+      reflections,
+      competencyEvidence,
+      modules,
+      catalog,
+      assessmentsForMatrix,
+    ] = await Promise.all([
+      this.prisma.submission.findMany({
+        where: {
+          studentId,
+          status: { not: 'DRAFT' },
+          assignment: { courseId, deletedAt: null },
+        },
+        include: { assignment: { select: { id: true, title: true, maxScore: true } } },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.codeSubmission.findMany({
+        where: { studentId, codeExercise: { courseId, deletedAt: null } },
+        include: { codeExercise: { select: { id: true, title: true } } },
+        orderBy: { submittedAt: 'desc' },
+      }),
+      this.prisma.quizAttempt.findMany({
+        where: {
+          studentId,
+          status: { in: ['SUBMITTED', 'GRADED'] },
+          quiz: { courseId, deletedAt: null },
+        },
+        include: { quiz: { select: { id: true, title: true } } },
+        orderBy: { submittedAt: 'desc' },
+      }),
+      this.prisma.practiceTestAttempt.findMany({
+        where: { studentId, practiceTest: { courseId, deletedAt: null } },
+        include: { practiceTest: { select: { id: true, title: true } } },
+        orderBy: { submittedAt: 'desc' },
+      }),
+      this.prisma.portfolioReflection.findMany({
+        where: { courseId, studentId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.competencies.getStudentEvidence(user, courseId, studentId),
+      this.prisma.module.findMany({
+        where: { courseId },
+        orderBy: { position: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          position: true,
+          items: {
+            select: {
+              assignmentId: true,
+              quizId: true,
+              codeExerciseId: true,
+              practiceTestId: true,
+            },
           },
-          include: { assignment: { select: { id: true, title: true, maxScore: true } } },
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.codeSubmission.findMany({
-          where: { studentId, codeExercise: { courseId, deletedAt: null } },
-          include: { codeExercise: { select: { id: true, title: true } } },
-          orderBy: { submittedAt: 'desc' },
-        }),
-        this.prisma.quizAttempt.findMany({
-          where: {
-            studentId,
-            status: { in: ['SUBMITTED', 'GRADED'] },
-            quiz: { courseId, deletedAt: null },
+        },
+      }),
+      this.prisma.competencyCategory.findMany({
+        where: { courseId },
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        include: {
+          indicators: {
+            orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+            select: { id: true, code: true, name: true },
           },
-          include: { quiz: { select: { id: true, title: true } } },
-          orderBy: { submittedAt: 'desc' },
-        }),
-        this.prisma.practiceTestAttempt.findMany({
-          where: { studentId, practiceTest: { courseId, deletedAt: null } },
-          include: { practiceTest: { select: { id: true, title: true } } },
-          orderBy: { submittedAt: 'desc' },
-        }),
-        this.prisma.portfolioReflection.findMany({
-          where: { courseId, studentId },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.competencies.getStudentEvidence(user, courseId, studentId),
-      ]);
+        },
+      }),
+      this.prisma.competencyAssessment.findMany({
+        where: { studentId, indicator: { category: { courseId } } },
+        select: {
+          indicatorId: true,
+          level: true,
+          assignmentId: true,
+          quizId: true,
+          codeExerciseId: true,
+          practiceTestId: true,
+        },
+      }),
+    ]);
 
     const gradedItems: PortfolioGradedItem[] = [
       ...subs.map(
@@ -174,11 +226,56 @@ export class PortfolioService {
         ? scored.reduce((sum, g) => sum + (g.score! / g.maxScore!) * 100, 0) / scored.length
         : null;
 
+    // ── Matrix năng lực (chỉ báo × module) ──
+    const activityToModule = new Map<string, string>();
+    for (const m of modules) {
+      for (const item of m.items) {
+        if (item.assignmentId) activityToModule.set(`assignment:${item.assignmentId}`, m.id);
+        if (item.quizId) activityToModule.set(`quiz:${item.quizId}`, m.id);
+        if (item.codeExerciseId) activityToModule.set(`code-exercise:${item.codeExerciseId}`, m.id);
+        if (item.practiceTestId) activityToModule.set(`practice-test:${item.practiceTestId}`, m.id);
+      }
+    }
+    const cellAgg = new Map<
+      string,
+      { level: CompetencyLevelValue; score: number; count: number }
+    >();
+    for (const a of assessmentsForMatrix) {
+      let key: string | undefined;
+      if (a.assignmentId) key = `assignment:${a.assignmentId}`;
+      else if (a.quizId) key = `quiz:${a.quizId}`;
+      else if (a.codeExerciseId) key = `code-exercise:${a.codeExerciseId}`;
+      else if (a.practiceTestId) key = `practice-test:${a.practiceTestId}`;
+      if (!key) continue;
+      const moduleId = activityToModule.get(key);
+      if (!moduleId) continue;
+      const cellKey = `${a.indicatorId}::${moduleId}`;
+      const lvl = a.level as CompetencyLevelValue;
+      const sc = COMPETENCY_LEVEL_SCORE[lvl] ?? 0;
+      const cur = cellAgg.get(cellKey);
+      if (!cur || sc > cur.score) {
+        cellAgg.set(cellKey, { level: lvl, score: sc, count: (cur?.count ?? 0) + 1 });
+      } else {
+        cellAgg.set(cellKey, { ...cur, count: cur.count + 1 });
+      }
+    }
+    const matrix: CompetencyMatrixData = {
+      modules: modules.map((m) => ({ id: m.id, name: m.name, position: m.position })),
+      categories: catalog.map((c) => ({
+        id: c.id,
+        name: c.name,
+        indicators: c.indicators,
+      })),
+      cells: [...cellAgg.entries()].map(([key, v]): CompetencyMatrixCell => {
+        const [indicatorId, moduleId] = key.split('::');
+        return { indicatorId: indicatorId!, moduleId: moduleId!, level: v.level, count: v.count };
+      }),
+    };
+
     return {
       student: {
         id: student.id,
-        name:
-          (student.fullName ?? `${student.firstName} ${student.lastName}`.trim()) || student.email,
+        name: this.displayName(student),
         email: student.email,
       },
       canEdit: isSelf,
@@ -191,6 +288,90 @@ export class PortfolioService {
       gradedItems,
       competencyEvidence,
       reflections: reflections.map(this.toReflectionItem),
+      matrix,
+    };
+  }
+
+  async getOverview(user: AuthUser, studentId = user.id): Promise<PortfolioOverview> {
+    const isSelf = user.id === studentId;
+    if (!isSelf && !['ADMIN', 'TEACHER', 'TA'].includes(user.role)) {
+      throw new ForbiddenException('Không có quyền xem hồ sơ học tập này.');
+    }
+
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId, deletedAt: null },
+      select: { id: true, fullName: true, firstName: true, lastName: true, email: true },
+    });
+    if (!student) throw new NotFoundException('Học sinh không tồn tại.');
+
+    const staffCourseScope =
+      user.role === 'ADMIN'
+        ? {}
+        : user.role === 'TEACHER'
+          ? {
+              OR: [{ ownerId: user.id }, { coTeachers: { some: { userId: user.id } } }],
+            }
+          : user.role === 'TA'
+            ? { teachingAssistants: { some: { userId: user.id } } }
+            : {};
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        userId: studentId,
+        course: {
+          deletedAt: null,
+          ...(isSelf ? {} : staffCourseScope),
+        },
+      },
+      select: {
+        courseId: true,
+        status: true,
+        progress: true,
+        enrolledAt: true,
+        course: { select: { id: true, name: true, slug: true } },
+      },
+      orderBy: { enrolledAt: 'desc' },
+    });
+
+    const courses = (
+      await Promise.all(
+        enrollments.map(async (enrollment) => {
+          const portfolio = await this.getPortfolio(user, enrollment.courseId, studentId).catch(
+            () => null
+          );
+          if (!portfolio) return null;
+          return {
+            courseId: enrollment.course.id,
+            courseName: enrollment.course.name,
+            courseSlug: enrollment.course.slug,
+            status: enrollment.status,
+            progress: enrollment.progress,
+            enrolledAt: enrollment.enrolledAt.toISOString(),
+            summary: portfolio.summary,
+          };
+        })
+      )
+    ).filter((course): course is NonNullable<typeof course> => course !== null);
+
+    const averageProgress =
+      courses.length > 0
+        ? Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length)
+        : 0;
+
+    return {
+      student: {
+        id: student.id,
+        name: this.displayName(student),
+        email: student.email,
+      },
+      totals: {
+        courseCount: courses.length,
+        averageProgress,
+        totalGraded: courses.reduce((sum, course) => sum + course.summary.totalGraded, 0),
+        competencyCount: courses.reduce((sum, course) => sum + course.summary.competencyCount, 0),
+        reflectionCount: courses.reduce((sum, course) => sum + course.summary.reflectionCount, 0),
+      },
+      courses,
     };
   }
 
@@ -265,4 +446,13 @@ export class PortfolioService {
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   });
+
+  private displayName(u: {
+    fullName: string | null;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }): string {
+    return (u.fullName ?? `${u.firstName} ${u.lastName}`.trim()) || u.email;
+  }
 }

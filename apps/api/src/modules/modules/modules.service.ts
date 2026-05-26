@@ -10,6 +10,7 @@ import type {
   ReorderItemsBody,
   ReorderModulesBody,
   UpdateModuleBody,
+  UpdateModuleItemGroupSettingsBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 
@@ -213,6 +214,7 @@ export class ModulesService {
               quiz: { select: { id: true, title: true, status: true } } as any,
               codeExercise: { select: { id: true, title: true, language: true, status: true } },
               practiceTest: { select: { id: true, title: true, status: true } } as any,
+              visibleGroups: { select: { groupId: true } },
             },
           },
         },
@@ -224,9 +226,63 @@ export class ModulesService {
         items: m.items.map((it) => ({
           ...it,
           quiz: it.quiz as any,
+          visibleGroupIds: it.visibleGroups.map((vg) => vg.groupId),
         })),
       })) as ModuleWithItems[];
     });
+  }
+
+  // ── Per-activity group settings (Moodle-style) ────────────────
+
+  async updateModuleItemGroupSettings(
+    actor: AuthUser,
+    itemId: string,
+    body: UpdateModuleItemGroupSettingsBody
+  ): Promise<{ message: string }> {
+    const item = await this.prisma.moduleItem.findUnique({
+      where: { id: itemId },
+      include: { module: { select: { courseId: true } } },
+    });
+    if (!item) throw new NotFoundException('Không tìm thấy mục');
+    await this.assertCanManage(item.module.courseId, actor);
+
+    // Validate cross-references thuộc cùng khoá học.
+    if (body.groupMode === 'SEPARATE_GROUPS' && body.groupingId) {
+      const grouping = await this.prisma.grouping.findFirst({
+        where: { id: body.groupingId, courseId: item.module.courseId },
+        select: { id: true },
+      });
+      if (!grouping) throw new ForbiddenException('Phân nhóm không thuộc khoá học.');
+    }
+
+    let validGroupIds: string[] = [];
+    if (body.groupMode === 'VISIBLE_GROUPS' && body.groupIds && body.groupIds.length > 0) {
+      const groups = await this.prisma.group.findMany({
+        where: { id: { in: body.groupIds }, courseId: item.module.courseId },
+        select: { id: true },
+      });
+      validGroupIds = groups.map((g) => g.id);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.moduleItem.update({
+        where: { id: itemId },
+        data: {
+          groupMode: body.groupMode,
+          groupingId: body.groupMode === 'SEPARATE_GROUPS' ? (body.groupingId ?? null) : null,
+        },
+      });
+      await tx.moduleItemGroup.deleteMany({ where: { moduleItemId: itemId } });
+      if (body.groupMode === 'VISIBLE_GROUPS' && validGroupIds.length > 0) {
+        await tx.moduleItemGroup.createMany({
+          data: validGroupIds.map((groupId) => ({ moduleItemId: itemId, groupId })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await this.invalidate(item.module.courseId);
+    return { message: 'Đã cập nhật chế độ nhóm cho hoạt động.' };
   }
 
   async listCourseNavItems(courseId: string, publishedOnly: boolean): Promise<CourseNavItem[]> {

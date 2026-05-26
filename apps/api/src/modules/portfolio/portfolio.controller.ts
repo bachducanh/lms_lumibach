@@ -16,6 +16,21 @@ import { PortfolioService } from './portfolio.service';
 export class PortfolioController {
   constructor(private readonly service: PortfolioService) {}
 
+  @Get('portfolio/me/overview')
+  @ApiOperation({ summary: 'Tổng quan hồ sơ học tập của người dùng hiện tại' })
+  getMyPortfolioOverview(@CurrentUser() user: AuthUser) {
+    return this.service.getOverview(user);
+  }
+
+  @Get('portfolio/students/:studentId/overview')
+  @ApiOperation({ summary: 'Tổng quan hồ sơ học tập của học sinh trên các khoá được phép xem' })
+  getStudentPortfolioOverview(
+    @CurrentUser() user: AuthUser,
+    @Param('studentId') studentId: string
+  ) {
+    return this.service.getOverview(user, studentId);
+  }
+
   @Get('courses/:courseId/portfolio/:studentId')
   @ApiOperation({ summary: 'Hồ sơ học tập của học sinh (chính chủ hoặc giáo viên)' })
   getPortfolio(

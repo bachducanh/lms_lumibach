@@ -5,6 +5,8 @@ import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
 import { Badge } from '@/components/ui/badge';
 import { ReflectionsPanel } from '@/components/features/portfolio/ReflectionsPanel';
+import { CompetencyMatrix } from '@/components/features/portfolio/CompetencyMatrix';
+import { PortfolioExportButton } from '@/components/features/portfolio/PortfolioExportButton';
 import {
   COMPETENCY_LEVELS,
   EVIDENCE_TYPE_LABEL,
@@ -12,7 +14,14 @@ import {
   type PortfolioData,
   type CompetencyLevelValue,
 } from '@lumibach/types';
-import { ArrowLeft, FolderKanban } from 'lucide-react';
+import {
+  ArrowLeft,
+  FolderKanban,
+  BookOpen,
+  GraduationCap,
+  Sparkles,
+  NotebookPen,
+} from 'lucide-react';
 
 export const metadata = { title: 'Hồ sơ học tập' };
 export const dynamic = 'force-dynamic';
@@ -73,7 +82,7 @@ export default async function StudentPortfolioPage({
   if (!portfolio) notFound();
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-2">
       <Link
         href={`/courses/${slug}`}
         className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
@@ -82,21 +91,56 @@ export default async function StudentPortfolioPage({
         {course.name}
       </Link>
 
-      <div className="flex items-start gap-3">
-        <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-          <FolderKanban className="text-primary h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Hồ sơ học tập</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            {portfolio.student.name} · {course.name}
-          </p>
+      {/* Hero header */}
+      <div
+        className="border-border bg-card relative overflow-hidden rounded-2xl border p-6 shadow-sm"
+        style={{
+          background:
+            'linear-gradient(135deg, oklch(0.96 0.04 280 / 50%), oklch(0.94 0.05 200 / 40%))',
+        }}
+      >
+        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
+
+        <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-4">
+            <div className="bg-primary/15 border-primary/20 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border shadow-sm">
+              <FolderKanban className="text-primary h-7 w-7" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
+                  Hồ sơ học tập
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  {portfolio.canEdit ? 'Của bạn' : 'Giáo viên xem'}
+                </Badge>
+              </div>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+                {portfolio.student.name}
+              </h1>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {portfolio.student.email} · {course.name}
+              </p>
+            </div>
+          </div>
+          {!portfolio.canEdit && (
+            <PortfolioExportButton
+              courseId={course.id}
+              courseName={course.name}
+              portfolio={portfolio}
+            />
+          )}
         </div>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryCard label="Bài làm" value={String(portfolio.summary.totalGraded)} />
+        <SummaryCard
+          label="Bài làm"
+          value={String(portfolio.summary.totalGraded)}
+          icon={<BookOpen className="h-4 w-4" />}
+        />
         <SummaryCard
           label="Điểm TB"
           value={
@@ -105,18 +149,36 @@ export default async function StudentPortfolioPage({
               : `${Math.round(portfolio.summary.averagePercent)}%`
           }
           tone="text-emerald-500"
+          icon={<GraduationCap className="h-4 w-4" />}
         />
         <SummaryCard
           label="Minh chứng NL"
           value={String(portfolio.summary.competencyCount)}
           tone="text-cyan-500"
+          icon={<Sparkles className="h-4 w-4" />}
         />
         <SummaryCard
           label="Tự đánh giá"
           value={String(portfolio.summary.reflectionCount)}
           tone="text-violet-500"
+          icon={<NotebookPen className="h-4 w-4" />}
         />
       </div>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+              <Sparkles className="h-4 w-4 text-cyan-500" /> Ma trận năng lực theo chương
+            </h2>
+            <p className="text-muted-foreground mt-1 text-xs">
+              U1, U2, U3… tương ứng Chương 1, Chương 2, Chương 3… trong nội dung khoá học. Bấm "Xem
+              minh chứng" trên một ô để xem các đánh giá cụ thể.
+            </p>
+          </div>
+        </div>
+        <CompetencyMatrix matrix={portfolio.matrix} evidence={portfolio.competencyEvidence} />
+      </section>
 
       {/* Graded work */}
       <section className="space-y-3">
@@ -258,15 +320,20 @@ function SummaryCard({
   label,
   value,
   tone = 'text-primary',
+  icon,
 }: {
   label: string;
   value: string;
   tone?: string;
+  icon?: React.ReactNode;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border px-4 py-3">
-      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${tone}`}>{value}</p>
+    <div className="border-border bg-card hover:border-primary/30 rounded-xl border px-4 py-3.5 shadow-sm transition-colors">
+      <div className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
+        {icon && <span className={tone}>{icon}</span>}
+        <span>{label}</span>
+      </div>
+      <p className={`mt-1.5 text-2xl font-bold tabular-nums ${tone}`}>{value}</p>
     </div>
   );
 }
