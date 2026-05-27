@@ -474,7 +474,7 @@ export class CompetenciesService {
           },
           assignment: { select: { title: true } },
           quiz: { select: { title: true } },
-          codeExercise: { select: { title: true } },
+          codeExercise: { select: { title: true, language: true } },
           practiceTest: { select: { title: true } },
         },
       }),
@@ -495,6 +495,67 @@ export class CompetenciesService {
       }),
     ]);
 
+    // Tra cứu bài làm tốt nhất của HS cho từng quiz / practice-test để link trực tiếp.
+    const quizIds = [...new Set(rows.filter((r) => r.quizId).map((r) => r.quizId!))];
+    const practiceIds = [
+      ...new Set(rows.filter((r) => r.practiceTestId).map((r) => r.practiceTestId!)),
+    ];
+    const [quizAttempts, practiceAttempts] = await Promise.all([
+      quizIds.length > 0
+        ? this.prisma.quizAttempt.findMany({
+            where: { studentId, quizId: { in: quizIds }, status: { in: ['SUBMITTED', 'GRADED'] } },
+            select: { id: true, quizId: true, score: true, submittedAt: true },
+          })
+        : Promise.resolve(
+            [] as {
+              id: string;
+              quizId: string;
+              score: number | null;
+              submittedAt: Date | null;
+            }[]
+          ),
+      practiceIds.length > 0
+        ? this.prisma.practiceTestAttempt.findMany({
+            where: {
+              studentId,
+              practiceTestId: { in: practiceIds },
+              status: { in: ['SUBMITTED', 'GRADED'] },
+            },
+            select: { id: true, practiceTestId: true, score: true, submittedAt: true },
+          })
+        : Promise.resolve(
+            [] as {
+              id: string;
+              practiceTestId: string;
+              score: number | null;
+              submittedAt: Date | null;
+            }[]
+          ),
+    ]);
+
+    function pickBest<T extends { id: string; score: number | null; submittedAt: Date | null }>(
+      attempts: T[]
+    ): string | undefined {
+      if (attempts.length === 0) return undefined;
+      const sorted = [...attempts].sort((a, b) => {
+        const aScore = a.score ?? -1;
+        const bScore = b.score ?? -1;
+        if (aScore !== bScore) return bScore - aScore;
+        return (b.submittedAt?.getTime() ?? 0) - (a.submittedAt?.getTime() ?? 0);
+      });
+      return sorted[0]!.id;
+    }
+    const bestQuizAttemptId = new Map<string, string>();
+    for (const qid of quizIds) {
+      const id = pickBest(quizAttempts.filter((a) => a.quizId === qid));
+      if (id) bestQuizAttemptId.set(qid, id);
+    }
+    const bestPracticeAttemptId = new Map<string, string>();
+    for (const pid of practiceIds) {
+      const id = pickBest(practiceAttempts.filter((a) => a.practiceTestId === pid));
+      if (id) bestPracticeAttemptId.set(pid, id);
+    }
+
     // Map activity → (moduleId, moduleName) để gắn module vào từng dòng evidence.
     const activityToModule = new Map<string, { id: string; name: string }>();
     for (const m of modules) {
@@ -510,6 +571,25 @@ export class CompetenciesService {
     return rows.map((r): CompetencyEvidenceRow => {
       const { activityType, activityId, activityTitle } = this.resolveActivity(r);
       const mod = activityToModule.get(`${activityType}:${activityId}`) ?? null;
+
+      // Đường dẫn xem trực tiếp bài làm/lần làm của HS.
+      let viewerPath: string | null = null;
+      if (activityType === 'assignment') {
+        // Trang submissions hỗ trợ ?student=… để focus thẳng vào bài của HS.
+        viewerPath = `/assignments/${activityId}/submissions?student=${studentId}`;
+      } else if (activityType === 'quiz') {
+        const attemptId = bestQuizAttemptId.get(activityId);
+        viewerPath = attemptId ? `/quizzes/${activityId}/attempt/${attemptId}` : null;
+      } else if (activityType === 'code-exercise') {
+        // /exercises hoặc /scratch tuỳ language. Teacher panel ở trang chính hiển
+        // thị danh sách bài nộp của tất cả HS — đủ để xem bài của HS này.
+        const lang = r.codeExercise?.language;
+        viewerPath = lang === 'SCRATCH' ? `/scratch/${activityId}` : `/exercises/${activityId}`;
+      } else if (activityType === 'practice-test') {
+        const attemptId = bestPracticeAttemptId.get(activityId);
+        viewerPath = attemptId ? `/practice-tests/${activityId}/attempt/${attemptId}` : null;
+      }
+
       return {
         assessmentId: r.id,
         activityType,
@@ -525,6 +605,7 @@ export class CompetenciesService {
         gradedAt: r.gradedAt.toISOString(),
         moduleId: mod?.id ?? null,
         moduleName: mod?.name ?? null,
+        viewerPath,
       };
     });
   }

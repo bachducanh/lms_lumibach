@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   COMPETENCY_LEVELS,
   EVIDENCE_TYPE_LABEL,
-  type ActivityType,
   type CompetencyEvidenceRow,
   type CompetencyLevelValue,
   type CompetencyMatrixData,
@@ -25,25 +24,10 @@ const LEVEL_BY_VALUE: Map<CompetencyLevelValue, (typeof COMPETENCY_LEVELS)[numbe
   COMPETENCY_LEVELS.map((level) => [level.value, level] as const)
 );
 
-// Url tới trang chính của hoạt động (luôn tồn tại). Với assignment có thêm
-// query student để focus đúng HS. Quiz / practice-test mở trang chi tiết
-// (có sẵn danh sách bài làm trong sidebar/teacher panel).
-function activityHref(
-  slug: string,
-  type: ActivityType,
-  activityId: string,
-  studentId: string
-): string {
-  switch (type) {
-    case 'assignment':
-      return `/courses/${slug}/assignments/${activityId}/submissions?student=${studentId}`;
-    case 'quiz':
-      return `/courses/${slug}/quizzes/${activityId}`;
-    case 'code-exercise':
-      return `/courses/${slug}/exercises/${activityId}`;
-    case 'practice-test':
-      return `/courses/${slug}/practice-tests/${activityId}`;
-  }
+// Build full URL từ viewerPath do BE trả (đã chứa /assignments/X/...).
+function fullViewerUrl(slug: string, viewerPath: string | null): string | null {
+  if (!viewerPath) return null;
+  return `/courses/${slug}${viewerPath}`;
 }
 
 type Props = {
@@ -51,7 +35,6 @@ type Props = {
   evidence?: CompetencyEvidenceRow[];
   // Khi cả 2 prop dưới đây có, mỗi dòng minh chứng sẽ có nút "Xem bài làm".
   courseSlug?: string;
-  studentId?: string;
 };
 
 type DrillState = {
@@ -61,7 +44,7 @@ type DrillState = {
   moduleName: string;
 };
 
-export function CompetencyMatrix({ matrix, evidence = [], courseSlug, studentId }: Props) {
+export function CompetencyMatrix({ matrix, evidence = [], courseSlug }: Props) {
   const { modules, categories, cells } = matrix;
   const totalIndicators = categories.reduce((sum, c) => sum + c.indicators.length, 0);
   const [drill, setDrill] = useState<DrillState | null>(null);
@@ -176,10 +159,7 @@ export function CompetencyMatrix({ matrix, evidence = [], courseSlug, studentId 
             ) : (
               drillEvidence.map((ev) => {
                 const meta = LEVEL_BY_VALUE.get(ev.level);
-                const href =
-                  courseSlug && studentId
-                    ? activityHref(courseSlug, ev.activityType, ev.activityId, studentId)
-                    : null;
+                const href = courseSlug ? fullViewerUrl(courseSlug, ev.viewerPath) : null;
                 return (
                   <div
                     key={ev.assessmentId}

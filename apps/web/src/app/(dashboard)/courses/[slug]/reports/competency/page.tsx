@@ -8,6 +8,7 @@ import {
   type CompetencyStats,
   type CompetencyLevelValue,
 } from '@lumibach/types';
+import { AllStudentsExportButton } from '@/components/features/portfolio/AllStudentsExportButton';
 
 export const metadata = { title: 'Phân tích năng lực - Khóa học' };
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,14 @@ export default async function CompetencyReportPage({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-muted-foreground text-xs">
+          Tổng hợp năng lực toàn khoá. Có thể xuất file XLSX bảng dữ liệu của toàn bộ HS (gồm bài
+          làm, minh chứng năng lực, tự đánh giá) để phân tích thêm.
+        </p>
+        <AllStudentsExportButton courseId={course.id} courseName={course.name} />
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <SummaryCard label="Chỉ báo" value={String(stats.totalIndicators)} />
         <SummaryCard label="Học viên" value={String(stats.totalStudents)} />

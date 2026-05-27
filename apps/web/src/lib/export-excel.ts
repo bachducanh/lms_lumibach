@@ -31,20 +31,9 @@ export function safeExcelFileName(value: string): string {
   return normalized || 'du-lieu';
 }
 
-// xlsx được build CJS — đôi khi với Turbopack/ESM interop, namespace import
-// không có .utils trực tiếp mà nằm trong .default. Hàm này lấy đúng object.
-async function loadXLSX() {
-  const mod: { utils?: unknown; default?: unknown } = (await import('xlsx')) as unknown as {
-    utils?: unknown;
-    default?: unknown;
-  };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const x: any = (mod as any).utils ? mod : ((mod as any).default ?? mod);
-  if (!x?.utils || typeof x.writeFile !== 'function') {
-    throw new Error('Không thể tải thư viện xlsx (utils/writeFile bị thiếu).');
-  }
-  return x as typeof import('xlsx');
-}
+// Dùng named imports từ xlsx (xlsx.mjs có sẵn named exports utils/writeFile).
+// Tránh dynamic import vì với Turbopack đôi khi interop CJS/ESM gây null .utils.
+import { utils, writeFile } from 'xlsx';
 
 export async function exportRowsToExcel({
   rows,
@@ -55,9 +44,8 @@ export async function exportRowsToExcel({
   fileName: string;
   sheetName?: string;
 }) {
-  const XLSX = await loadXLSX();
   const normalizedRows = rows.map((row) => row.map(toSheetValue));
-  const worksheet = XLSX.utils.aoa_to_sheet(normalizedRows);
+  const worksheet = utils.aoa_to_sheet(normalizedRows);
   const columnCount = Math.max(0, ...rows.map((row) => row.length));
 
   worksheet['!cols'] = Array.from({ length: columnCount }, (_, columnIndex) => {
@@ -65,9 +53,9 @@ export async function exportRowsToExcel({
     return { wch: Math.min(36, Math.max(10, maxLength + 2)) };
   });
 
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(sheetName));
-  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, worksheet, safeSheetName(sheetName));
+  writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
 }
 
 // Export workbook nhiều sheet trong 1 file.
@@ -78,13 +66,12 @@ export async function exportSheetsToExcel({
   sheets: { name: string; rows: ExcelCellValue[][] }[];
   fileName: string;
 }) {
-  const XLSX = await loadXLSX();
-  const workbook = XLSX.utils.book_new();
+  const workbook = utils.book_new();
   const usedNames = new Set<string>();
 
   for (const s of sheets) {
     const normalizedRows = s.rows.map((row) => row.map(toSheetValue));
-    const worksheet = XLSX.utils.aoa_to_sheet(normalizedRows);
+    const worksheet = utils.aoa_to_sheet(normalizedRows);
     const columnCount = Math.max(0, ...s.rows.map((row) => row.length));
     worksheet['!cols'] = Array.from({ length: columnCount }, (_, columnIndex) => {
       const maxLength = s.rows.reduce(
@@ -102,8 +89,8 @@ export async function exportSheetsToExcel({
     }
     usedNames.add(candidate);
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, candidate);
+    utils.book_append_sheet(workbook, worksheet, candidate);
   }
 
-  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
+  writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
 }

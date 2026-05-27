@@ -121,11 +121,7 @@ export default async function StudentPortfolioPage({
             </div>
           </div>
           {!portfolio.canEdit && (
-            <PortfolioExportButton
-              courseId={course.id}
-              courseName={course.name}
-              portfolio={portfolio}
-            />
+            <PortfolioExportButton courseName={course.name} portfolio={portfolio} />
           )}
         </div>
       </div>
@@ -177,7 +173,6 @@ export default async function StudentPortfolioPage({
           matrix={portfolio.matrix}
           evidence={portfolio.competencyEvidence}
           courseSlug={slug}
-          studentId={portfolio.student.id}
         />
       </section>
 

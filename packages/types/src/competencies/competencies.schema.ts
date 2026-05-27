@@ -324,4 +324,7 @@ export type CompetencyEvidenceRow = {
   gradedAt: string;
   moduleId: string | null;
   moduleName: string | null;
+  // Đường dẫn (không có /courses/SLUG) tới trang xem bài làm cụ thể của học sinh.
+  // Frontend prepend /courses/${slug}. Có thể null nếu HS chưa có bài nộp/lần làm.
+  viewerPath: string | null;
 };
