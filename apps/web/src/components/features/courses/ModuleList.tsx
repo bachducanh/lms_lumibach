@@ -985,7 +985,7 @@ function SortableModuleRow({
                   title={mod.items.length === 0 ? 'Chương chưa có hoạt động' : undefined}
                 >
                   <UsersRound className="mr-2 h-4 w-4" />
-                  Cài đặt nhóm cho cả chương
+                  Cài đặt nhóm
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onTogglePublish(mod.id)}>

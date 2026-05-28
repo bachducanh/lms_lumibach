@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "node ./scripts/touch-app-pages.mjs && next dev",
+    "dev": "node ./scripts/dev-with-warmup.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src --ext .ts,.tsx",
