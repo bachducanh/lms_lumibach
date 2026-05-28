@@ -138,4 +138,18 @@ export class ModulesController {
   ) {
     return this.service.updateModuleItemGroupSettings(user, itemId, body);
   }
+
+  @Patch(':id/group-settings')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Áp dụng chế độ nhóm cho toàn bộ hoạt động trong chương',
+  })
+  setModuleGroupSettings(
+    @CurrentUser() user: AuthUser,
+    @Param('id') moduleId: string,
+    @Body(zodBody(UpdateModuleItemGroupSettingsBodySchema))
+    body: UpdateModuleItemGroupSettingsBody
+  ) {
+    return this.service.updateModuleGroupSettings(user, moduleId, body);
+  }
 }

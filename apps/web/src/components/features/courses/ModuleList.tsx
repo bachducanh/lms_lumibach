@@ -59,6 +59,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import type { ModuleWithItems } from '@lumibach/types';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { ActivityGroupModeButton } from './ActivityGroupModeButton';
+import { ModuleGroupModeButton } from './ModuleGroupModeButton';
 
 type ModuleItem = ModuleWithItems['items'][number];
 
@@ -766,9 +767,10 @@ function SortableItemRow({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setGroupDialogOpen(true);
+                  onClick={() => {
+                    // Defer mở dialog sang tick sau để tránh đụng focus
+                    // restore khi DropdownMenu đóng (Base UI v1.4).
+                    setTimeout(() => setGroupDialogOpen(true), 0);
                   }}
                 >
                   <UsersRound className="mr-2 h-4 w-4" />
@@ -862,6 +864,7 @@ function SortableModuleRow({
 }: ModuleRowProps) {
   const [, startItemTransition] = useTransition();
   const [isEditingName, setIsEditingName] = useState(false);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: mod.id,
@@ -972,6 +975,18 @@ function SortableModuleRow({
                   <Pencil className="mr-2 h-4 w-4" />
                   Chỉnh sửa
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Defer mở dialog sang tick sau để tránh đụng focus
+                    // restore khi DropdownMenu đóng (Base UI v1.4).
+                    setTimeout(() => setGroupDialogOpen(true), 0);
+                  }}
+                  disabled={mod.items.length === 0}
+                  title={mod.items.length === 0 ? 'Chương chưa có hoạt động' : undefined}
+                >
+                  <UsersRound className="mr-2 h-4 w-4" />
+                  Cài đặt nhóm cho cả chương
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onTogglePublish(mod.id)}>
                   {mod.isPublished ? (
@@ -994,6 +1009,18 @@ function SortableModuleRow({
           </>
         )}
       </div>
+
+      {/* Controlled dialog "Cài đặt nhóm cho cả chương" */}
+      {canManage && (
+        <ModuleGroupModeButton
+          courseId={courseId}
+          moduleId={mod.id}
+          itemCount={mod.items.length}
+          open={groupDialogOpen}
+          onOpenChange={setGroupDialogOpen}
+          onChanged={onRefresh}
+        />
+      )}
 
       {/* Module Items */}
       <div

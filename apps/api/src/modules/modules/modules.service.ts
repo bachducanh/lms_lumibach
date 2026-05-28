@@ -285,6 +285,78 @@ export class ModulesService {
     return { message: 'Đã cập nhật chế độ nhóm cho hoạt động.' };
   }
 
+  /**
+   * Áp dụng cài đặt nhóm cho toàn bộ ModuleItem trong một chương.
+   * Module hiện chưa có cột group riêng — ta lặp qua items và áp dụng
+   * cùng một bộ cài đặt cho từng item. Chạy trong một transaction để
+   * tránh trạng thái không đồng nhất khi có lỗi giữa chừng.
+   */
+  async updateModuleGroupSettings(
+    actor: AuthUser,
+    moduleId: string,
+    body: UpdateModuleItemGroupSettingsBody
+  ): Promise<{ message: string; updatedItems: number }> {
+    const mod = await this.prisma.module.findUnique({
+      where: { id: moduleId },
+      select: {
+        id: true,
+        courseId: true,
+        items: { select: { id: true } },
+      },
+    });
+    if (!mod) throw new NotFoundException('Không tìm thấy chương.');
+    await this.assertCanManage(mod.courseId, actor);
+
+    // Validate cross-references thuộc cùng khoá học (1 lần, không mỗi item).
+    if (body.groupMode === 'SEPARATE_GROUPS' && body.groupingId) {
+      const grouping = await this.prisma.grouping.findFirst({
+        where: { id: body.groupingId, courseId: mod.courseId },
+        select: { id: true },
+      });
+      if (!grouping) throw new ForbiddenException('Phân nhóm không thuộc khoá học.');
+    }
+
+    let validGroupIds: string[] = [];
+    if (body.groupMode === 'VISIBLE_GROUPS' && body.groupIds && body.groupIds.length > 0) {
+      const groups = await this.prisma.group.findMany({
+        where: { id: { in: body.groupIds }, courseId: mod.courseId },
+        select: { id: true },
+      });
+      validGroupIds = groups.map((g) => g.id);
+    }
+
+    const itemIds = mod.items.map((i) => i.id);
+    if (itemIds.length === 0) {
+      return { message: 'Chương chưa có hoạt động nào.', updatedItems: 0 };
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.moduleItem.updateMany({
+        where: { id: { in: itemIds } },
+        data: {
+          groupMode: body.groupMode,
+          groupingId: body.groupMode === 'SEPARATE_GROUPS' ? (body.groupingId ?? null) : null,
+        },
+      });
+      // Reset visible-groups cho mọi item trong chương trước khi insert mới.
+      await tx.moduleItemGroup.deleteMany({ where: { moduleItemId: { in: itemIds } } });
+      if (body.groupMode === 'VISIBLE_GROUPS' && validGroupIds.length > 0) {
+        await tx.moduleItemGroup.createMany({
+          data: itemIds.flatMap((itemId) =>
+            validGroupIds.map((groupId) => ({ moduleItemId: itemId, groupId }))
+          ),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    await this.invalidate(mod.courseId);
+    return {
+      message: `Đã áp dụng chế độ nhóm cho ${itemIds.length} hoạt động trong chương.`,
+      updatedItems: itemIds.length,
+    };
+  }
+
   async listCourseNavItems(courseId: string, publishedOnly: boolean): Promise<CourseNavItem[]> {
     const cacheKey = publishedOnly ? `modules:nav:pub:${courseId}` : `modules:nav:${courseId}`;
     return this.cached(cacheKey, 120_000, async () => {
