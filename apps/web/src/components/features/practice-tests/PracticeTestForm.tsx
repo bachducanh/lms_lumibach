@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, Check, FileQuestion, Loader2, Plus, Save, UploadCloud, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
 import { apiClient } from '@/lib/api-client';
 import type { PracticeQuestionInput, PracticeTestDetail, PracticeTestFile } from '@lumibach/types';
 
@@ -171,6 +172,12 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
       : null
   );
   const [questions, setQuestions] = useState<PracticeQuestionInput[]>(initialQuestions);
+  const [sebEnabled, setSebEnabled] = useState(practiceTest?.sebEnabled ?? false);
+  const [sebConfig, setSebConfig] = useState<SebConfig>(
+    practiceTest?.sebConfigUrl
+      ? { url: practiceTest.sebConfigUrl, name: practiceTest.sebConfigName ?? 'config.seb' }
+      : null
+  );
 
   const grouped = useMemo(() => splitQuestions(questions), [questions]);
   const totalPoints = useMemo(
@@ -233,6 +240,9 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
       timeLimit: timeLimit ? Number(timeLimit) : null,
       maxAttempts: maxAttempts ? Number(maxAttempts) : null,
       showResults,
+      sebEnabled,
+      sebConfigUrl: sebEnabled ? (sebConfig?.url ?? null) : null,
+      sebConfigName: sebEnabled ? (sebConfig?.name ?? null) : null,
       availableFrom: availableFrom || null,
       dueDate: dueDate || null,
       moduleId,
@@ -414,6 +424,14 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
               />
             </span>
           </button>
+
+          <SebSettings
+            courseId={courseId}
+            enabled={sebEnabled}
+            onEnabledChange={setSebEnabled}
+            config={sebConfig}
+            onConfigChange={setSebConfig}
+          />
         </div>
 
         <div className="border-border bg-card space-y-4 rounded-lg border p-4">

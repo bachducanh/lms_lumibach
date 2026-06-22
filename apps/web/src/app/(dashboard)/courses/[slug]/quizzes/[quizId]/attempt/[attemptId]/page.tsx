@@ -1,9 +1,11 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
-import type { CourseDetail, AttemptData } from '@lumibach/types';
+import type { CourseDetail, AttemptData, QuizDetail } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
+import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
+import { isSafeExamBrowser, sebLaunchUrl } from '@/lib/seb';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
@@ -88,6 +90,22 @@ export default async function AttemptPage({
   // In-progress attempt → quiz taking UI
   if (attempt.status === 'IN_PROGRESS') {
     if (!isOwn) redirect(`/courses/${slug}/quizzes/${quizId}/attempts`);
+
+    // Chế độ kiểm tra Safe Exam Browser: học sinh phải mở bài bằng SEB.
+    const quizSeb = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
+    const reqHeaders = await headers();
+    if (quizSeb?.sebEnabled && !isSafeExamBrowser(reqHeaders)) {
+      return (
+        <div className="mx-auto max-w-5xl">
+          <SebLockScreen
+            title={quizSeb.title}
+            launchUrl={sebLaunchUrl(reqHeaders, quizSeb.sebConfigUrl)}
+            downloadUrl={quizSeb.sebConfigUrl}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-5xl">
         <QuizTaker attempt={attempt} courseSlug={slug} />

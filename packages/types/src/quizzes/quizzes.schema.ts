@@ -33,6 +33,9 @@ export type QuizDetail = {
   shuffleQuestions: boolean;
   shuffleAnswers: boolean;
   showResults: boolean;
+  sebEnabled: boolean;
+  sebConfigUrl: string | null;
+  sebConfigName: string | null;
   availableFrom: string | null;
   dueDate: string | null;
   publishedAt: string | null;

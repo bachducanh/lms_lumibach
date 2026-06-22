@@ -15,6 +15,22 @@ function toDate(s: string | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Chuẩn hoá cấu hình Safe Exam Browser: chỉ bật khi có file cấu hình hợp lệ (.seb
+// trên MinIO). Tắt thì xoá luôn url/tên để không còn rác.
+function normalizeSeb(body: {
+  sebEnabled?: boolean;
+  sebConfigUrl?: string | null;
+  sebConfigName?: string | null;
+}): { sebEnabled: boolean; sebConfigUrl: string | null; sebConfigName: string | null } {
+  const url = body.sebConfigUrl?.trim() || null;
+  const enabled = body.sebEnabled === true && !!url && url.startsWith('/storage/');
+  return {
+    sebEnabled: enabled,
+    sebConfigUrl: enabled ? url : null,
+    sebConfigName: enabled ? body.sebConfigName?.trim() || 'config.seb' : null,
+  };
+}
+
 @Injectable()
 export class QuizzesService {
   constructor(
@@ -205,6 +221,9 @@ export class QuizzesService {
       shuffleQuestions?: boolean;
       shuffleAnswers?: boolean;
       showResults?: boolean;
+      sebEnabled?: boolean;
+      sebConfigUrl?: string | null;
+      sebConfigName?: string | null;
       availableFrom?: string | null;
       dueDate?: string | null;
       moduleId?: string | null;
@@ -213,6 +232,8 @@ export class QuizzesService {
   ) {
     if (!(await this.canManage(user.id, user.role, body.courseId)))
       throw new ForbiddenException('Không có quyền.');
+
+    const seb = normalizeSeb(body);
 
     const quiz = await this.prisma.quiz.create({
       data: {
@@ -226,6 +247,9 @@ export class QuizzesService {
         shuffleQuestions: body.shuffleQuestions ?? false,
         shuffleAnswers: body.shuffleAnswers ?? false,
         showResults: body.showResults ?? true,
+        sebEnabled: seb.sebEnabled,
+        sebConfigUrl: seb.sebConfigUrl,
+        sebConfigName: seb.sebConfigName,
         availableFrom: toDate(body.availableFrom),
         dueDate: toDate(body.dueDate),
         createdBy: user.id,
@@ -268,6 +292,9 @@ export class QuizzesService {
       shuffleQuestions?: boolean;
       shuffleAnswers?: boolean;
       showResults?: boolean;
+      sebEnabled?: boolean;
+      sebConfigUrl?: string | null;
+      sebConfigName?: string | null;
       availableFrom?: string | null;
       dueDate?: string | null;
       publish?: boolean;
@@ -285,6 +312,8 @@ export class QuizzesService {
     if (body.publish === true) newStatus = 'PUBLISHED';
     if (body.publish === false) newStatus = 'DRAFT';
 
+    const seb = normalizeSeb(body);
+
     await this.prisma.quiz.update({
       where: { id },
       data: {
@@ -294,6 +323,9 @@ export class QuizzesService {
         timeLimit: body.timeLimit ?? null,
         maxAttempts: body.maxAttempts ?? null,
         passingScore: body.passingScore ?? null,
+        sebEnabled: seb.sebEnabled,
+        sebConfigUrl: seb.sebConfigUrl,
+        sebConfigName: seb.sebConfigName,
         ...(body.shuffleQuestions !== undefined && { shuffleQuestions: body.shuffleQuestions }),
         ...(body.shuffleAnswers !== undefined && { shuffleAnswers: body.shuffleAnswers }),
         ...(body.showResults !== undefined && { showResults: body.showResults }),

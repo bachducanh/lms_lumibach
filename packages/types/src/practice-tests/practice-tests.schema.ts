@@ -74,6 +74,9 @@ export type PracticeTestDetail = {
   timeLimit: number | null;
   maxAttempts: number | null;
   showResults: boolean;
+  sebEnabled: boolean;
+  sebConfigUrl: string | null;
+  sebConfigName: string | null;
   availableFrom: string | null;
   dueDate: string | null;
   publishedAt: string | null;

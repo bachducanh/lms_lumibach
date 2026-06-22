@@ -124,12 +124,30 @@ type PracticeTestInput = {
   timeLimit?: number | null;
   maxAttempts?: number | null;
   showResults?: boolean;
+  sebEnabled?: boolean;
+  sebConfigUrl?: string | null;
+  sebConfigName?: string | null;
   availableFrom?: string | null;
   dueDate?: string | null;
   moduleId?: string | null;
   publish?: boolean;
   questions?: QuestionInput[];
 };
+
+// Chuẩn hoá cấu hình Safe Exam Browser: chỉ bật khi có file .seb hợp lệ trên MinIO.
+function normalizeSeb(body: {
+  sebEnabled?: boolean;
+  sebConfigUrl?: string | null;
+  sebConfigName?: string | null;
+}): { sebEnabled: boolean; sebConfigUrl: string | null; sebConfigName: string | null } {
+  const url = body.sebConfigUrl?.trim() || null;
+  const enabled = body.sebEnabled === true && !!url && url.startsWith('/storage/');
+  return {
+    sebEnabled: enabled,
+    sebConfigUrl: enabled ? url : null,
+    sebConfigName: enabled ? body.sebConfigName?.trim() || 'config.seb' : null,
+  };
+}
 
 type AnswerInput = {
   questionId?: string;
@@ -360,6 +378,7 @@ export class PracticeTestsService {
     if (!body.pdfUrl?.startsWith('/storage/')) {
       throw new ForbiddenException('File PDF không hợp lệ.');
     }
+    const seb = normalizeSeb(body);
 
     const practiceTest = await this.prisma.$transaction(async (tx) => {
       const test = await tx.practiceTest.create({
@@ -375,6 +394,9 @@ export class PracticeTestsService {
           timeLimit: body.timeLimit ?? null,
           maxAttempts: body.maxAttempts ?? null,
           showResults: body.showResults ?? true,
+          sebEnabled: seb.sebEnabled,
+          sebConfigUrl: seb.sebConfigUrl,
+          sebConfigName: seb.sebConfigName,
           availableFrom: toDate(body.availableFrom),
           dueDate: toDate(body.dueDate),
           createdBy: user.id,
@@ -424,6 +446,11 @@ export class PracticeTestsService {
     const questions =
       body.questions !== undefined ? this.normalizeQuestions(body.questions) : undefined;
 
+    const seb =
+      body.sebEnabled !== undefined || body.sebConfigUrl !== undefined
+        ? normalizeSeb(body)
+        : undefined;
+
     await this.prisma.$transaction(async (tx) => {
       await tx.practiceTest.update({
         where: { id },
@@ -437,6 +464,11 @@ export class PracticeTestsService {
           ...(body.timeLimit !== undefined && { timeLimit: body.timeLimit ?? null }),
           ...(body.maxAttempts !== undefined && { maxAttempts: body.maxAttempts ?? null }),
           ...(body.showResults !== undefined && { showResults: body.showResults }),
+          ...(seb !== undefined && {
+            sebEnabled: seb.sebEnabled,
+            sebConfigUrl: seb.sebConfigUrl,
+            sebConfigName: seb.sebConfigName,
+          }),
           ...(body.availableFrom !== undefined && { availableFrom: toDate(body.availableFrom) }),
           ...(body.dueDate !== undefined && { dueDate: toDate(body.dueDate) }),
           status: nextStatus,

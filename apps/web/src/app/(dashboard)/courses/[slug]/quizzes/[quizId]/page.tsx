@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, CourseNavItem, QuizDetail, AttemptListItem } from '@lumibach/types';
 import { buttonVariants } from '@/components/ui/button';
@@ -9,8 +9,9 @@ import { DeleteQuizButton } from '@/components/features/quiz/DeleteQuizButton';
 import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
 import { QuizQuestionPoints } from '@/components/features/quiz/QuizQuestionPoints';
 import { StartQuizButton } from '@/components/features/quiz/StartQuizButton';
+import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
+import { isSafeExamBrowser, sebLaunchUrl } from '@/lib/seb';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
-import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { hasMinRole } from '@/lib/permissions';
 import {
   Brain,
@@ -139,6 +140,11 @@ export default async function QuizDetailPage({
       >('/modules/nav', { query: { courseId: course.id, publishedOnly: !isStaff } })
       .catch(() => [] as CourseNavItem[]),
   ]);
+  const reqHeaders = await headers();
+  const isSeb = isSafeExamBrowser(reqHeaders);
+  const sebBlocked = !isStaff && quiz.sebEnabled && !isSeb;
+  const sebLaunch = sebLaunchUrl(reqHeaders, quiz.sebConfigUrl);
+
   const currentNavIndex = allNavItems.findIndex((i) => i.quizId === quizId);
   const prevNavItem = currentNavIndex > 0 ? (allNavItems[currentNavIndex - 1] ?? null) : null;
   const nextNavItem =
@@ -287,7 +293,11 @@ export default async function QuizDetailPage({
 
       <div className="mx-auto w-full max-w-4xl space-y-8 pb-12">
         {/* ── Student: start CTA + history ───────────────────── */}
-        {!isStaff && (
+        {!isStaff && sebBlocked && (
+          <SebLockScreen title={quiz.title} launchUrl={sebLaunch} downloadUrl={quiz.sebConfigUrl} />
+        )}
+
+        {!isStaff && !sebBlocked && (
           <div className="space-y-6">
             <div className="relative flex flex-col items-center justify-center gap-5 overflow-hidden rounded-2xl border border-violet-500/20 bg-violet-500/5 py-12 text-center shadow-lg">
               <div className="absolute top-0 right-1/4 h-32 w-32 rounded-full bg-violet-500/10 blur-3xl" />

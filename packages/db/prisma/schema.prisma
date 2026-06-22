@@ -731,6 +731,12 @@ model Quiz {
   shuffleAnswers   Boolean @default(false)
   showResults      Boolean @default(true)
 
+  // Chế độ kiểm tra Safe Exam Browser. Khi bật, học sinh bắt buộc mở bài bằng SEB
+  // theo file cấu hình (.seb) đã tải lên (lưu trên MinIO).
+  sebEnabled    Boolean @default(false)
+  sebConfigUrl  String?
+  sebConfigName String?
+
   availableFrom DateTime?
   dueDate       DateTime?
 
@@ -998,6 +1004,11 @@ model PracticeTest {
   timeLimit   Int?
   maxAttempts Int?
   showResults Boolean @default(true)
+
+  // Chế độ kiểm tra Safe Exam Browser (xem ghi chú ở model Quiz).
+  sebEnabled    Boolean @default(false)
+  sebConfigUrl  String?
+  sebConfigName String?
 
   availableFrom DateTime?
   dueDate       DateTime?

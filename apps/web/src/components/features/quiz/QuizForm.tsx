@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 
@@ -17,6 +19,9 @@ type QuizFormValues = {
   showResults: boolean;
   availableFrom: string | null;
   dueDate: string | null;
+  sebEnabled: boolean;
+  sebConfigUrl: string | null;
+  sebConfigName: string | null;
 };
 import type { QuizStatus } from '@lumibach/db';
 
@@ -33,6 +38,9 @@ type ExistingQuiz = {
   showResults: boolean;
   availableFrom: string | null;
   dueDate: string | null;
+  sebEnabled: boolean;
+  sebConfigUrl: string | null;
+  sebConfigName: string | null;
 };
 
 type Props = {
@@ -68,6 +76,10 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
   const [showResults, setShowResults] = useState(quiz?.showResults ?? true);
   const [availableFrom, setAvailableFrom] = useState(toInputValue(quiz?.availableFrom));
   const [dueDate, setDueDate] = useState(toInputValue(quiz?.dueDate));
+  const [sebEnabled, setSebEnabled] = useState(quiz?.sebEnabled ?? false);
+  const [sebConfig, setSebConfig] = useState<SebConfig>(
+    quiz?.sebConfigUrl ? { url: quiz.sebConfigUrl, name: quiz.sebConfigName ?? 'config.seb' } : null
+  );
 
   function buildValues(): QuizFormValues {
     return {
@@ -81,6 +93,9 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
       showResults,
       availableFrom: availableFrom || null,
       dueDate: dueDate || null,
+      sebEnabled,
+      sebConfigUrl: sebEnabled ? (sebConfig?.url ?? null) : null,
+      sebConfigName: sebEnabled ? (sebConfig?.name ?? null) : null,
     };
   }
 
@@ -226,21 +241,20 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
           { label: 'Hiển thị kết quả sau khi nộp', value: showResults, set: setShowResults },
         ].map(({ label, value, set }) => (
           <label key={label} className="flex cursor-pointer items-center gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={value}
-              onClick={() => set(!value)}
-              className={`relative h-5 w-9 rounded-full transition-colors ${value ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-            >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-4' : 'translate-x-0.5'}`}
-              />
-            </button>
+            <Switch checked={value} onCheckedChange={set} />
             <span className="text-sm">{label}</span>
           </label>
         ))}
       </div>
+
+      {/* Safe Exam Browser */}
+      <SebSettings
+        courseId={courseId}
+        enabled={sebEnabled}
+        onEnabledChange={setSebEnabled}
+        config={sebConfig}
+        onConfigChange={setSebConfig}
+      />
 
       {/* Actions */}
       <div className="border-border flex items-center justify-end gap-2 border-t pt-4">

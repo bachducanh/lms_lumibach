@@ -1,15 +1,16 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
 import { hasMinRole } from '@/lib/permissions';
 import { PracticeTestRunner } from '@/components/features/practice-tests/PracticeTestRunner';
+import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
+import { isSafeExamBrowser, sebLaunchUrl } from '@/lib/seb';
 import { PracticeTestStatusButton } from '@/components/features/practice-tests/PracticeTestStatusButton';
 import { DeletePracticeTestButton } from '@/components/features/practice-tests/DeletePracticeTestButton';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
-import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import type {
   CourseNavItem,
   CourseDetail,
@@ -165,6 +166,23 @@ export default async function PracticeTestPage({
           />
         </div>
       );
+    }
+
+    // Chế độ kiểm tra Safe Exam Browser: học sinh phải mở bài bằng SEB.
+    if (practiceTest.sebEnabled) {
+      const reqHeaders = await headers();
+      if (!isSafeExamBrowser(reqHeaders)) {
+        return (
+          <div className="space-y-4">
+            {progressBar}
+            <SebLockScreen
+              title={practiceTest.title}
+              launchUrl={sebLaunchUrl(reqHeaders, practiceTest.sebConfigUrl)}
+              downloadUrl={practiceTest.sebConfigUrl}
+            />
+          </div>
+        );
+      }
     }
 
     return (
