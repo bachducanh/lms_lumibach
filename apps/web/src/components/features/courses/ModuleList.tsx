@@ -172,10 +172,10 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectUrl }: ModalP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
       <div
-        className="border-border/50 bg-card/90 relative w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl"
+        className="border-border/50 bg-card/90 relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-2xl"
         style={{ boxShadow: '0 24px 64px oklch(0 0 0 / 0.5), 0 0 0 1px oklch(1 0 0 / 10%)' }}
       >
         <div
@@ -186,10 +186,10 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectUrl }: ModalP
           }}
         />
 
-        <div className="border-border/50 bg-muted/20 flex items-center justify-between border-b px-6 py-5">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-bold">
-              <Sparkles className="text-primary h-4 w-4" />
+        <div className="border-border/50 bg-muted/20 flex shrink-0 items-center justify-between gap-3 border-b px-4 py-4 sm:px-6 sm:py-5">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-base font-bold sm:text-lg">
+              <Sparkles className="text-primary h-4 w-4 shrink-0" />
               Thêm hoạt động hoặc tài nguyên
             </h2>
             <p className="text-muted-foreground mt-1 text-xs">
@@ -198,13 +198,13 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectUrl }: ModalP
           </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-primary hover:bg-muted rounded-md p-1.5 transition-colors"
+            className="text-muted-foreground hover:text-primary hover:bg-muted shrink-0 rounded-md p-1.5 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 p-6">
+        <div className="grid grid-cols-1 gap-3 overflow-y-auto p-4 sm:grid-cols-2 sm:gap-4 sm:p-6">
           {ACTIVITY_DEFS.map((act) => {
             const href = navHrefs[act.id];
             const inner = (
