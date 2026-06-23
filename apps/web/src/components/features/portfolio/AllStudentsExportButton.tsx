@@ -33,6 +33,104 @@ function fmtDate(iso: string | null): string {
   }).format(new Date(iso));
 }
 
+// Rút gọn tên về tối đa 28 ký tự (chừa chỗ cho hậu tố " (2)" khi trùng).
+function shortSheetLabel(name: string): string {
+  const trimmed = name.trim().replace(/\s+/g, ' ');
+  return trimmed.length > 28 ? trimmed.slice(0, 28) : trimmed;
+}
+
+// Build sheet phẳng cho 1 HS: gồm Tóm tắt + Bài làm + Năng lực + Ma trận + Tự đánh giá,
+// mỗi mục cách 1 dòng trống và có dòng tiêu đề mục in hoa.
+function buildPerStudentSheet(p: PortfolioData): (string | number | null)[][] {
+  const rows: (string | number | null)[][] = [];
+
+  rows.push(['HỒ SƠ HỌC TẬP']);
+  rows.push(['Học sinh', p.student.name]);
+  rows.push(['Email', p.student.email]);
+  rows.push([
+    'Số bài chấm',
+    p.summary.totalGraded,
+    'Điểm TB (%)',
+    p.summary.averagePercent === null ? '' : Math.round(p.summary.averagePercent),
+    'Minh chứng NL',
+    p.summary.competencyCount,
+    'Tự đánh giá',
+    p.summary.reflectionCount,
+  ]);
+
+  rows.push([]);
+  rows.push(['BÀI LÀM']);
+  rows.push(['Hoạt động', 'Loại', 'Điểm', 'Tối đa', 'Tỉ lệ %', 'Trạng thái', 'Nhận xét', 'Ngày']);
+  for (const g of p.gradedItems) {
+    rows.push([
+      g.title,
+      ACTIVITY_LABEL[g.activityType] ?? g.activityType,
+      g.score,
+      g.maxScore,
+      g.score !== null && g.maxScore && g.maxScore > 0
+        ? Math.round((g.score / g.maxScore) * 100)
+        : null,
+      g.status,
+      g.feedback ?? '',
+      fmtDate(g.date),
+    ]);
+  }
+
+  rows.push([]);
+  rows.push(['NĂNG LỰC']);
+  rows.push([
+    'Danh mục',
+    'Mã',
+    'Chỉ báo',
+    'Mức độ',
+    'Loại minh chứng',
+    'Hoạt động',
+    'Chương / Module',
+    'Ghi chú',
+    'Ngày',
+  ]);
+  for (const e of p.competencyEvidence) {
+    rows.push([
+      e.categoryName,
+      e.indicatorCode ?? '',
+      e.indicatorName,
+      COMPETENCY_LEVEL_LABEL[e.level] ?? e.level,
+      e.evidenceType ? (EVIDENCE_TYPE_LABEL[e.evidenceType] ?? e.evidenceType) : '',
+      e.activityTitle,
+      e.moduleName ?? '',
+      e.note ?? '',
+      fmtDate(e.gradedAt),
+    ]);
+  }
+
+  rows.push([]);
+  rows.push(['MA TRẬN NĂNG LỰC THEO CHƯƠNG']);
+  const moduleHeaders = p.matrix.modules.map((m, i) => `U${i + 1}: ${m.name}`);
+  rows.push(['Danh mục', 'Mã', 'Chỉ báo', ...moduleHeaders]);
+  const cellMap = new Map<string, string>();
+  for (const c of p.matrix.cells) {
+    cellMap.set(`${c.indicatorId}__${c.moduleId}`, COMPETENCY_LEVEL_LABEL[c.level] ?? c.level);
+  }
+  for (const cat of p.matrix.categories) {
+    for (const ind of cat.indicators) {
+      const row: (string | number | null)[] = [cat.name, ind.code ?? '', ind.name];
+      for (const m of p.matrix.modules) {
+        row.push(cellMap.get(`${ind.id}__${m.id}`) ?? '');
+      }
+      rows.push(row);
+    }
+  }
+
+  rows.push([]);
+  rows.push(['TỰ ĐÁNH GIÁ']);
+  rows.push(['Tiêu đề', 'Nội dung', 'Ngày tạo', 'Cập nhật']);
+  for (const r of p.reflections) {
+    rows.push([r.title, r.content, fmtDate(r.createdAt), fmtDate(r.updatedAt)]);
+  }
+
+  return rows;
+}
+
 export function AllStudentsExportButton({ courseId, courseName }: Props) {
   const [busy, setBusy] = useState(false);
 
@@ -50,26 +148,7 @@ export function AllStudentsExportButton({ courseId, courseName }: Props) {
       const overviewRows: (string | number | null)[][] = [
         ['Học sinh', 'Email', 'Số bài chấm', 'Điểm TB (%)', 'Minh chứng NL', 'Tự đánh giá'],
       ];
-      const gradedAll: (string | number | null)[][] = [
-        ['Học sinh', 'Hoạt động', 'Loại', 'Điểm', 'Tối đa', 'Tỉ lệ %', 'Trạng thái', 'Ngày'],
-      ];
-      const competencyAll: (string | number | null)[][] = [
-        [
-          'Học sinh',
-          'Danh mục',
-          'Mã',
-          'Chỉ báo',
-          'Mức độ',
-          'Loại minh chứng',
-          'Hoạt động',
-          'Chương / Module',
-          'Ghi chú',
-          'Ngày',
-        ],
-      ];
-      const reflectionsAll: (string | number | null)[][] = [
-        ['Học sinh', 'Tiêu đề', 'Nội dung', 'Ngày tạo'],
-      ];
+      const perStudentSheets: { name: string; rows: (string | number | null)[][] }[] = [];
 
       let processed = 0;
       for (const s of students) {
@@ -84,37 +163,10 @@ export function AllStudentsExportButton({ courseId, courseName }: Props) {
             p.summary.competencyCount,
             p.summary.reflectionCount,
           ]);
-          for (const g of p.gradedItems) {
-            gradedAll.push([
-              studentName,
-              g.title,
-              ACTIVITY_LABEL[g.activityType] ?? g.activityType,
-              g.score,
-              g.maxScore,
-              g.score !== null && g.maxScore && g.maxScore > 0
-                ? Math.round((g.score / g.maxScore) * 100)
-                : null,
-              g.status,
-              fmtDate(g.date),
-            ]);
-          }
-          for (const e of p.competencyEvidence) {
-            competencyAll.push([
-              studentName,
-              e.categoryName,
-              e.indicatorCode ?? '',
-              e.indicatorName,
-              COMPETENCY_LEVEL_LABEL[e.level] ?? e.level,
-              e.evidenceType ? (EVIDENCE_TYPE_LABEL[e.evidenceType] ?? e.evidenceType) : '',
-              e.activityTitle,
-              e.moduleName ?? '',
-              e.note ?? '',
-              fmtDate(e.gradedAt),
-            ]);
-          }
-          for (const r of p.reflections) {
-            reflectionsAll.push([studentName, r.title, r.content, fmtDate(r.createdAt)]);
-          }
+          perStudentSheets.push({
+            name: shortSheetLabel(studentName),
+            rows: buildPerStudentSheet(p),
+          });
         } catch (err) {
           console.warn('Bỏ qua HS', studentName, err);
         }
@@ -124,12 +176,7 @@ export function AllStudentsExportButton({ courseId, courseName }: Props) {
 
       const fileName = `ho-so-toan-bo-${safeExcelFileName(courseName)}`;
       await exportSheetsToExcel({
-        sheets: [
-          { name: 'Tong quan', rows: overviewRows },
-          { name: 'Bai lam', rows: gradedAll },
-          { name: 'Nang luc', rows: competencyAll },
-          { name: 'Tu danh gia', rows: reflectionsAll },
-        ],
+        sheets: [{ name: 'Tong quan', rows: overviewRows }, ...perStudentSheets],
         fileName,
       });
       toast.success(`Đã xuất hồ sơ ${students.length} học sinh.`, { id: toastId });

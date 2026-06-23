@@ -500,11 +500,13 @@ export class CompetenciesService {
     const practiceIds = [
       ...new Set(rows.filter((r) => r.practiceTestId).map((r) => r.practiceTestId!)),
     ];
+    // Lấy tất cả attempt của HS rồi mới pick best. Ưu tiên SUBMITTED/GRADED;
+    // nếu chỉ có IN_PROGRESS thì FE fallback sang trang danh sách bài làm.
     const [quizAttempts, practiceAttempts] = await Promise.all([
       quizIds.length > 0
         ? this.prisma.quizAttempt.findMany({
-            where: { studentId, quizId: { in: quizIds }, status: { in: ['SUBMITTED', 'GRADED'] } },
-            select: { id: true, quizId: true, score: true, submittedAt: true },
+            where: { studentId, quizId: { in: quizIds } },
+            select: { id: true, quizId: true, score: true, submittedAt: true, status: true },
           })
         : Promise.resolve(
             [] as {
@@ -512,16 +514,19 @@ export class CompetenciesService {
               quizId: string;
               score: number | null;
               submittedAt: Date | null;
+              status: string;
             }[]
           ),
       practiceIds.length > 0
         ? this.prisma.practiceTestAttempt.findMany({
-            where: {
-              studentId,
-              practiceTestId: { in: practiceIds },
-              status: { in: ['SUBMITTED', 'GRADED'] },
+            where: { studentId, practiceTestId: { in: practiceIds } },
+            select: {
+              id: true,
+              practiceTestId: true,
+              score: true,
+              submittedAt: true,
+              status: true,
             },
-            select: { id: true, practiceTestId: true, score: true, submittedAt: true },
           })
         : Promise.resolve(
             [] as {
@@ -529,15 +534,25 @@ export class CompetenciesService {
               practiceTestId: string;
               score: number | null;
               submittedAt: Date | null;
+              status: string;
             }[]
           ),
     ]);
 
-    function pickBest<T extends { id: string; score: number | null; submittedAt: Date | null }>(
-      attempts: T[]
-    ): string | undefined {
+    function pickBest<
+      T extends {
+        id: string;
+        score: number | null;
+        submittedAt: Date | null;
+        status: string;
+      },
+    >(attempts: T[]): string | undefined {
       if (attempts.length === 0) return undefined;
-      const sorted = [...attempts].sort((a, b) => {
+      // Ưu tiên attempt đã nộp (SUBMITTED/GRADED). Chỉ trả id khi attempt đó
+      // hiển thị được — trang attempt staff sẽ redirect IN_PROGRESS sang list.
+      const finished = attempts.filter((a) => a.status !== 'IN_PROGRESS');
+      if (finished.length === 0) return undefined;
+      const sorted = [...finished].sort((a, b) => {
         const aScore = a.score ?? -1;
         const bScore = b.score ?? -1;
         if (aScore !== bScore) return bScore - aScore;
@@ -579,7 +594,10 @@ export class CompetenciesService {
         viewerPath = `/assignments/${activityId}/submissions?student=${studentId}`;
       } else if (activityType === 'quiz') {
         const attemptId = bestQuizAttemptId.get(activityId);
-        viewerPath = attemptId ? `/quizzes/${activityId}/attempt/${attemptId}` : null;
+        // Fallback sang trang danh sách bài làm để GV vẫn vào được bài của HS.
+        viewerPath = attemptId
+          ? `/quizzes/${activityId}/attempt/${attemptId}`
+          : `/quizzes/${activityId}/attempts`;
       } else if (activityType === 'code-exercise') {
         // /exercises hoặc /scratch tuỳ language. Teacher panel ở trang chính hiển
         // thị danh sách bài nộp của tất cả HS — đủ để xem bài của HS này.
@@ -587,7 +605,9 @@ export class CompetenciesService {
         viewerPath = lang === 'SCRATCH' ? `/scratch/${activityId}` : `/exercises/${activityId}`;
       } else if (activityType === 'practice-test') {
         const attemptId = bestPracticeAttemptId.get(activityId);
-        viewerPath = attemptId ? `/practice-tests/${activityId}/attempt/${attemptId}` : null;
+        viewerPath = attemptId
+          ? `/practice-tests/${activityId}/attempt/${attemptId}`
+          : `/practice-tests/${activityId}/attempts`;
       }
 
       return {

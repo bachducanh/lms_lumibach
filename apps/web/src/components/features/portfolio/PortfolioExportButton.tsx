@@ -88,12 +88,38 @@ export function buildSingleStudentSheets(p: PortfolioData) {
     ...p.reflections.map((r) => [r.title, r.content, fmtDate(r.createdAt), fmtDate(r.updatedAt)]),
   ];
 
+  const matrix = buildMatrixRows(p);
+
   return [
     { name: 'Tom tat', rows: summary },
     { name: 'Bai lam', rows: graded },
     { name: 'Nang luc', rows: competency },
+    { name: 'Ma tran nang luc', rows: matrix },
     { name: 'Tu danh gia', rows: reflections },
   ];
+}
+
+// Ma trận năng lực: rows = chỉ báo (nhóm theo danh mục), cols = module.
+// Mỗi ô là nhãn mức độ tốt nhất của HS ở module đó (hoặc rỗng khi không có).
+function buildMatrixRows(p: PortfolioData): (string | number | null)[][] {
+  const { matrix } = p;
+  const moduleHeaders = matrix.modules.map((m, i) => `U${i + 1}: ${m.name}`);
+  const header: (string | number | null)[] = ['Danh mục', 'Mã', 'Chỉ báo', ...moduleHeaders];
+  const cellMap = new Map<string, string>();
+  for (const c of matrix.cells) {
+    cellMap.set(`${c.indicatorId}__${c.moduleId}`, COMPETENCY_LEVEL_LABEL[c.level] ?? c.level);
+  }
+  const rows: (string | number | null)[][] = [header];
+  for (const cat of matrix.categories) {
+    for (const ind of cat.indicators) {
+      const row: (string | number | null)[] = [cat.name, ind.code ?? '', ind.name];
+      for (const m of matrix.modules) {
+        row.push(cellMap.get(`${ind.id}__${m.id}`) ?? '');
+      }
+      rows.push(row);
+    }
+  }
+  return rows;
 }
 
 export function PortfolioExportButton({ courseName, portfolio }: Props) {

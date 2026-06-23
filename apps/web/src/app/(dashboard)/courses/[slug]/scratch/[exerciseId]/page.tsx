@@ -12,7 +12,6 @@ import type { RubricData } from '@lumibach/types';
 import { ScratchTakePanel } from '@/components/features/scratch/ScratchTakePanel';
 import { ScratchTeacherPanel } from '@/components/features/scratch/ScratchTeacherPanel';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
-import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { Cat, ChevronLeft, ChevronRight, Pencil, Sparkles } from 'lucide-react';

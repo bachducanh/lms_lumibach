@@ -14,7 +14,6 @@ import { logActivity } from '@/lib/activity';
 import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPanel';
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
-import { ActivityGroupModeButton } from '@/components/features/courses/ActivityGroupModeButton';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { ChevronLeft, ChevronRight, Code2, Pencil, Clock, Cpu } from 'lucide-react';
