@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   AlertTriangle,
   ChevronRight,
+  Database,
 } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
@@ -56,14 +57,23 @@ export default async function CourseAnalyticsPage({
           <ChevronLeft className="h-3.5 w-3.5" />
           {data.course.name}
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10">
-            <BarChart3 className="h-5 w-5 text-cyan-400" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Phân tích khoá học</h1>
+              <p className="text-muted-foreground text-sm">{data.course.name}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold">Phân tích khoá học</h1>
-            <p className="text-muted-foreground text-sm">{data.course.name}</p>
-          </div>
+          <Link
+            href={`/courses/${slug}/analytics/clustering`}
+            className="border-input bg-background hover:bg-accent inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors"
+          >
+            <Database className="h-4 w-4" />
+            Dữ liệu phân cụm
+          </Link>
         </div>
       </div>
 

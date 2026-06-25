@@ -30,4 +30,11 @@ export class AnalyticsController {
   getCourseAnalytics(@CurrentUser() user: AuthUser, @Param('courseSlug') courseSlug: string) {
     return this.service.getCourseAnalytics(user, courseSlug);
   }
+
+  @Roles('TA', 'TEACHER')
+  @Get('course/:courseSlug/clustering-dataset')
+  @ApiOperation({ summary: 'Ma trận đặc trưng mỗi học sinh để xuất phục vụ phân cụm' })
+  getClusteringDataset(@CurrentUser() user: AuthUser, @Param('courseSlug') courseSlug: string) {
+    return this.service.getClusteringDataset(user, courseSlug);
+  }
 }
