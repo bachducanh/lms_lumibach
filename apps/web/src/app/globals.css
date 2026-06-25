@@ -583,6 +583,73 @@
   transform: translate3d(0, var(--py, 0px), 0);
 }
 
+/* 3D tilt card: nghiêng theo --rx/--ry và glare theo --mx/--my (set từ React).
+   Child trực tiếp được transform; lớp ::after phủ glare lên trên. */
+.lb-tilt {
+  transform-style: preserve-3d;
+  perspective: 900px;
+}
+.lb-tilt > * {
+  position: relative;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+}
+.lb-tilt > *::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    rgb(253 8 93 / 14%),
+    transparent 55%
+  );
+  pointer-events: none;
+}
+.lb-tilt:hover > *::after { opacity: 1; }
+
+/* Con trỏ nhấp nháy cho hiệu ứng gõ chữ. */
+.lb-caret {
+  color: rgb(253 8 93);
+  animation: lb-blink 1s steps(1) infinite;
+}
+@keyframes lb-blink { 50% { opacity: 0; } }
+
+/* Nền "nebula" toàn trang landing. Light mode: chỉ tint hồng/cyan rất nhẹ để
+   --background sáng vẫn lộ ra. Dark mode: nền navy đậm có chiều sâu (không đen
+   tuyền) + quầng hồng/cyan rõ hơn — theo phong cách trang tham khảo. */
+.lb-nebula {
+  background:
+    radial-gradient(circle at top left, rgb(253 8 93 / 0.08), transparent 33rem),
+    radial-gradient(circle at 86% 8%, oklch(0.78 0.16 220 / 0.06), transparent 34rem);
+}
+.dark .lb-nebula {
+  background:
+    radial-gradient(circle at top left, rgb(253 8 93 / 0.23), transparent 33rem),
+    radial-gradient(circle at 86% 8%, oklch(0.78 0.16 220 / 0.18), transparent 34rem),
+    linear-gradient(135deg, #02040c 0%, #0a1530 44%, #0a0712 100%);
+}
+
+/* Chữ gradient động (aurora) — dùng cho cụm từ nhấn mạnh ở hero. */
+.lb-gradient-text {
+  background: linear-gradient(
+    100deg,
+    rgb(253 8 93),
+    oklch(0.78 0.16 220),
+    rgb(253 8 93)
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: lb-gradient-pan 6s linear infinite;
+}
+@keyframes lb-gradient-pan {
+  to { background-position: 200% center; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lb-fade-up,
   .lb-fade-in,
@@ -600,4 +667,7 @@
     filter: none;
   }
   .lb-mouse-glow { background: none; }
+  .lb-tilt > * { transform: none; }
+  .lb-caret { animation: none; }
+  .lb-gradient-text { animation: none; }
 }

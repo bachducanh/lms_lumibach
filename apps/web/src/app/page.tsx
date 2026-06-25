@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { auth } from '@/auth';
@@ -14,6 +15,7 @@ import {
   Sparkles,
   ChevronRight,
   Layers,
+  HelpCircle,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -21,6 +23,12 @@ import { ThemeToggle } from '@/components/layouts/ThemeToggle';
 import { CountUp } from '@/components/features/landing/CountUp';
 import { MouseGlow } from '@/components/features/landing/MouseGlow';
 import { ParallaxBlob } from '@/components/features/landing/ParallaxBlob';
+import { NebulaBackground } from '@/components/features/landing/NebulaBackground';
+import { TiltCard } from '@/components/features/landing/TiltCard';
+import { Magnetic } from '@/components/features/landing/Magnetic';
+import { Typewriter } from '@/components/features/landing/Typewriter';
+import { FaqAccordion } from '@/components/features/landing/FaqAccordion';
+import { ScrollProgress } from '@/components/features/landing/ScrollProgress';
 
 export const metadata = {
   title: 'LumiBach — Chuyển đổi ước mơ bằng mã nguồn thực tế',
@@ -103,6 +111,25 @@ const ROADMAP: { stage: string; title: string; items: string[] }[] = [
   },
 ];
 
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: 'Nền tảng phù hợp với những lứa tuổi nào?',
+    a: 'Từ học sinh tiểu học (lập trình kéo–thả Scratch) đến THPT (Python, C++, Web). Nội dung tổ chức theo chương nên dễ điều chỉnh theo trình độ lớp.',
+  },
+  {
+    q: 'Bài code được chấm như thế nào?',
+    a: 'Học sinh viết code ngay trong trình duyệt; hệ thống chạy qua bộ test case và trả kết quả tự động trong vài giây, kèm điểm theo từng test.',
+  },
+  {
+    q: 'Một giáo viên quản lý được bao nhiêu học sinh?',
+    a: 'Nền tảng vận hành tốt với quy mô vài trăm học sinh mỗi giáo viên, hỗ trợ nhập danh sách từ Excel và mã tham gia lớp để ghi danh nhanh.',
+  },
+  {
+    q: 'Có cần cài đặt gì không?',
+    a: 'Không. Mọi thứ chạy trên trình duyệt — giáo viên và học sinh chỉ cần đăng nhập là dùng được ngay.',
+  },
+];
+
 export default async function HomePage() {
   const session = await auth();
   const isLoggedIn = !!session?.user;
@@ -115,7 +142,13 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="relative min-h-screen">
+      {/* Scroll progress bar */}
+      <ScrollProgress />
+
+      {/* Global nebula background — portaled to <body> (xem component) */}
+      <NebulaBackground />
+
       {/* ── Top nav ───────────────────────────────────────────────── */}
       <header className="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -136,8 +169,8 @@ export default async function HomePage() {
             <a href="#roadmap" className="hover:text-foreground transition-colors">
               Quy trình
             </a>
-            <a href="#mission" className="hover:text-foreground transition-colors">
-              Triết lý
+            <a href="#faq" className="hover:text-foreground transition-colors">
+              FAQ
             </a>
           </nav>
 
@@ -165,20 +198,6 @@ export default async function HomePage() {
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
-        {/* Tech grid background */}
-        <svg
-          className="text-foreground pointer-events-none absolute inset-0 h-full w-full opacity-[0.04]"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden
-        >
-          <defs>
-            <pattern id="hero-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#hero-grid)" />
-        </svg>
-
         {/* Mouse-tracking spotlight (drives cursor glow) */}
         <MouseGlow />
 
@@ -209,14 +228,7 @@ export default async function HomePage() {
                 className="text-foreground text-4xl leading-tight font-black tracking-tight text-balance sm:text-5xl md:text-6xl"
                 style={{ ['--i' as string]: 1 }}
               >
-                Chuyển đổi ước mơ bằng{' '}
-                <span
-                  className="text-primary"
-                  style={{ textShadow: '0 0 24px rgb(253 8 93 / 35%)' }}
-                >
-                  mã nguồn thực tế
-                </span>
-                .
+                Chuyển đổi ước mơ bằng <span className="lb-gradient-text">mã nguồn thực tế</span>.
               </h1>
               <p
                 className="text-muted-foreground max-w-xl text-base leading-relaxed text-pretty sm:text-lg"
@@ -229,37 +241,43 @@ export default async function HomePage() {
 
               <div className="flex flex-wrap items-center gap-3" style={{ ['--i' as string]: 3 }}>
                 {isLoggedIn ? (
-                  <Link
-                    href="/dashboard"
-                    className={cn(
-                      buttonVariants({ size: 'lg' }),
-                      'gap-2 px-6 shadow-[0_4px_24px_rgb(253_8_93_/_35%)] transition-all hover:-translate-y-0.5 hover:brightness-110'
-                    )}
-                  >
-                    Đến Dashboard
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                ) : (
-                  <>
+                  <Magnetic>
                     <Link
-                      href="/register"
+                      href="/dashboard"
                       className={cn(
                         buttonVariants({ size: 'lg' }),
                         'gap-2 px-6 shadow-[0_4px_24px_rgb(253_8_93_/_35%)] transition-all hover:-translate-y-0.5 hover:brightness-110'
                       )}
                     >
-                      Bắt đầu hành trình
+                      Đến Dashboard
                       <ArrowRight className="h-4 w-4" />
                     </Link>
-                    <Link
-                      href="/login"
-                      className={cn(
-                        buttonVariants({ variant: 'outline', size: 'lg' }),
-                        'gap-2 px-6 transition-all hover:-translate-y-0.5'
-                      )}
-                    >
-                      Đăng nhập
-                    </Link>
+                  </Magnetic>
+                ) : (
+                  <>
+                    <Magnetic>
+                      <Link
+                        href="/register"
+                        className={cn(
+                          buttonVariants({ size: 'lg' }),
+                          'gap-2 px-6 shadow-[0_4px_24px_rgb(253_8_93_/_35%)] transition-all hover:-translate-y-0.5 hover:brightness-110'
+                        )}
+                      >
+                        Bắt đầu hành trình
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Magnetic>
+                    <Magnetic>
+                      <Link
+                        href="/login"
+                        className={cn(
+                          buttonVariants({ variant: 'outline', size: 'lg' }),
+                          'gap-2 px-6 transition-all hover:-translate-y-0.5'
+                        )}
+                      >
+                        Đăng nhập
+                      </Link>
+                    </Magnetic>
                   </>
                 )}
               </div>
@@ -286,7 +304,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Mission / Philosophy ──────────────────────────────────── */}
-      <section id="mission" className="border-border/60 bg-card/30 border-y">
+      <section id="mission" className="border-border/60 border-y">
         <div className="mx-auto max-w-4xl px-4 py-14 text-center sm:px-6 sm:py-16">
           <p
             className="lb-reveal text-primary text-xs font-bold tracking-[0.2em] uppercase"
@@ -344,22 +362,24 @@ export default async function HomePage() {
                 // Outer = reveal-on-scroll wrapper (handles entrance translate).
                 // Inner = card with hover lift (separate transform context).
                 <div key={f.title} className="lb-reveal" style={{ ['--i' as string]: i }}>
-                  <div className="border-border bg-card hover:border-primary/40 group h-full rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_32px_oklch(0_0_0_/_0.18)]">
-                    <div
-                      className={cn(
-                        'mb-3 inline-flex rounded-lg p-2.5 transition-transform duration-200 group-hover:scale-110',
-                        f.color
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
+                  <TiltCard>
+                    <div className="border-border bg-card hover:border-primary/40 group h-full rounded-xl border p-5 transition-shadow duration-200 hover:shadow-[0_8px_32px_oklch(0_0_0_/_0.18)]">
+                      <div
+                        className={cn(
+                          'mb-3 inline-flex rounded-lg p-2.5 transition-transform duration-200 group-hover:scale-110',
+                          f.color
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="text-foreground text-base font-semibold text-balance">
+                        {f.title}
+                      </h3>
+                      <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed text-pretty">
+                        {f.body}
+                      </p>
                     </div>
-                    <h3 className="text-foreground text-base font-semibold text-balance">
-                      {f.title}
-                    </h3>
-                    <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed text-pretty">
-                      {f.body}
-                    </p>
-                  </div>
+                  </TiltCard>
                 </div>
               );
             })}
@@ -394,29 +414,52 @@ export default async function HomePage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {ROADMAP.map((step, i) => (
             <div key={step.stage} className="lb-reveal" style={{ ['--i' as string]: i }}>
-              <div className="border-border bg-card hover:border-primary/40 relative h-full overflow-hidden rounded-xl border p-5 transition-all duration-200 hover:-translate-y-1">
-                <div className="text-primary/15 absolute top-2 right-3 font-mono text-5xl font-black">
-                  0{i + 1}
+              <TiltCard>
+                <div className="border-border bg-card hover:border-primary/40 relative h-full overflow-hidden rounded-xl border p-5 transition-shadow duration-200">
+                  <div className="text-primary/15 absolute top-2 right-3 font-mono text-5xl font-black">
+                    0{i + 1}
+                  </div>
+                  <div className="relative">
+                    <p className="text-primary text-[10px] font-bold tracking-[0.2em] uppercase">
+                      {step.stage}
+                    </p>
+                    <h3 className="mt-1 text-lg font-bold tracking-tight text-balance">
+                      {step.title}
+                    </h3>
+                    <ul className="mt-3 space-y-1.5">
+                      {step.items.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-sm">
+                          <CheckCircle2 className="text-primary/70 mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span className="text-muted-foreground">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <div className="relative">
-                  <p className="text-primary text-[10px] font-bold tracking-[0.2em] uppercase">
-                    {step.stage}
-                  </p>
-                  <h3 className="mt-1 text-lg font-bold tracking-tight text-balance">
-                    {step.title}
-                  </h3>
-                  <ul className="mt-3 space-y-1.5">
-                    {step.items.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm">
-                        <CheckCircle2 className="text-primary/70 mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              </TiltCard>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── FAQ ───────────────────────────────────────────────────── */}
+      <section id="faq" className="border-border/60 border-b">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="lb-reveal" style={{ ['--i' as string]: 0 }}>
+            <p className="text-primary inline-flex items-center gap-1.5 text-xs font-bold tracking-[0.2em] uppercase">
+              <HelpCircle className="h-3.5 w-3.5" />
+              FAQ
+            </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+              Câu hỏi thường gặp
+            </h2>
+            <p className="text-muted-foreground mt-3 text-base text-pretty">
+              Vài thông tin nhanh trước khi bạn bắt đầu lớp học đầu tiên.
+            </p>
+          </div>
+          <div className="lb-reveal" style={{ ['--i' as string]: 1 }}>
+            <FaqAccordion items={FAQS} />
+          </div>
         </div>
       </section>
 
@@ -457,22 +500,34 @@ export default async function HomePage() {
             style={{ ['--i' as string]: 3 }}
           >
             {isLoggedIn ? (
-              <Link href="/dashboard" className={cn(buttonVariants({ size: 'lg' }), 'gap-2 px-7')}>
-                Đến Dashboard
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            ) : (
-              <>
-                <Link href="/register" className={cn(buttonVariants({ size: 'lg' }), 'gap-2 px-7')}>
-                  Khởi tạo tài khoản
+              <Magnetic>
+                <Link
+                  href="/dashboard"
+                  className={cn(buttonVariants({ size: 'lg' }), 'gap-2 px-7')}
+                >
+                  Đến Dashboard
                   <ChevronRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="/login"
-                  className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'gap-2 px-7')}
-                >
-                  Đăng nhập
-                </Link>
+              </Magnetic>
+            ) : (
+              <>
+                <Magnetic>
+                  <Link
+                    href="/register"
+                    className={cn(buttonVariants({ size: 'lg' }), 'gap-2 px-7')}
+                  >
+                    Khởi tạo tài khoản
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </Magnetic>
+                <Magnetic>
+                  <Link
+                    href="/login"
+                    className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'gap-2 px-7')}
+                  >
+                    Đăng nhập
+                  </Link>
+                </Magnetic>
               </>
             )}
           </div>
@@ -530,69 +585,194 @@ function CodeEditorMock() {
         style={{ background: 'rgb(253 8 93 / 8%)' }}
         aria-hidden
       />
-      <div className="border-border bg-card relative overflow-hidden rounded-xl border shadow-2xl">
+      <div
+        className="relative overflow-hidden rounded-xl border shadow-2xl backdrop-blur-xl"
+        style={{
+          borderColor: 'rgb(255 255 255 / 0.12)',
+          background:
+            'linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.02)), linear-gradient(135deg, #080b1a 0%, #0a0712 100%)',
+        }}
+      >
+        {/* Edge glow */}
+        <div
+          className="pointer-events-none absolute -inset-px rounded-xl"
+          style={{
+            background:
+              'linear-gradient(115deg, rgb(253 8 93 / 0.7), oklch(0.78 0.16 220 / 0.45), transparent 45%)',
+            opacity: 0.22,
+          }}
+          aria-hidden
+        />
         {/* Window chrome */}
-        <div className="border-border/60 bg-muted/40 flex items-center gap-2 border-b px-3 py-2">
+        <div
+          className="relative flex items-center gap-2 border-b px-3 py-2.5"
+          style={{ borderColor: 'rgb(255 255 255 / 0.1)', background: 'rgb(4 6 17 / 0.45)' }}
+        >
           <div className="flex gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-rose-500/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#ff5f57' }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#febc2e' }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#28c840' }} />
           </div>
-          <p className="text-muted-foreground font-mono text-[10px]">bai-tap · python · tự chấm</p>
+          <p className="font-mono text-[10px]" style={{ color: '#bfc8df' }}>
+            bai-tap · python · tự chấm
+          </p>
         </div>
         {/* Code body */}
-        <div className="font-mono text-[12px] leading-relaxed">
-          <CodeLine n={1} text="def sieve(n):" />
-          <CodeLine n={2} text="    is_prime = [True] * (n + 1)" />
-          <CodeLine n={3} text="    is_prime[0] = is_prime[1] = False" />
-          <CodeLine n={4} text="    for i in range(2, int(n ** 0.5) + 1):" />
-          <CodeLine n={5} text="        if is_prime[i]:" />
-          <CodeLine n={6} text="            for j in range(i * i, n + 1, i):" />
-          <CodeLine n={7} text="                is_prime[j] = False" highlight />
-          <CodeLine n={8} text="    return [i for i, p in enumerate(is_prime) if p]" />
-          <CodeLine n={9} text="" />
-          <CodeLine n={10} text="print(sieve(int(input())))" />
+        <div
+          className="relative font-mono text-[12px] leading-relaxed"
+          style={{ color: '#dce6ff' }}
+        >
+          <CodeLine n={1}>
+            <KW>def</KW> <FN>sieve</FN>(n):
+          </CodeLine>
+          <CodeLine n={2}>
+            {'    is_prime = ['}
+            <FN>True</FN>
+            {'] * (n + '}
+            <NUM>1</NUM>
+            {')'}
+          </CodeLine>
+          <CodeLine n={3}>
+            {'    is_prime['}
+            <NUM>0</NUM>
+            {'] = is_prime['}
+            <NUM>1</NUM>
+            {'] = '}
+            <FN>False</FN>
+          </CodeLine>
+          <CodeLine n={4}>
+            {'    '}
+            <KW>for</KW>
+            {' i '}
+            <KW>in</KW> <FN>range</FN>
+            {'('}
+            <NUM>2</NUM>
+            {', '}
+            <FN>int</FN>
+            {'(n ** '}
+            <NUM>0.5</NUM>
+            {') + '}
+            <NUM>1</NUM>
+            {'):'}
+          </CodeLine>
+          <CodeLine n={5}>
+            {'        '}
+            <KW>if</KW>
+            {' is_prime[i]:'}
+          </CodeLine>
+          <CodeLine n={6}>
+            {'            '}
+            <KW>for</KW>
+            {' j '}
+            <KW>in</KW> <FN>range</FN>
+            {'(i * i, n + '}
+            <NUM>1</NUM>
+            {', i):'}
+          </CodeLine>
+          <CodeLine n={7} highlight>
+            {'                is_prime[j] = '}
+            <FN>False</FN>
+          </CodeLine>
+          <CodeLine n={8}>
+            {'    '}
+            <KW>return</KW>
+            {' [i '}
+            <KW>for</KW>
+            {' i, p '}
+            <KW>in</KW> <FN>enumerate</FN>
+            {'(is_prime) '}
+            <KW>if</KW>
+            {' p]'}
+          </CodeLine>
+          <CodeLine n={9} />
+          <CodeLine n={10}>
+            <FN>print</FN>
+            {'('}
+            <FN>sieve</FN>
+            {'('}
+            <FN>int</FN>
+            {'('}
+            <FN>input</FN>
+            {'())))'}
+          </CodeLine>
         </div>
         {/* Result strip */}
-        <div className="border-border/60 bg-muted/30 space-y-1 border-t px-3 py-2 text-[11px]">
-          <p className="flex items-center gap-1.5 text-emerald-500">
+        <div
+          className="relative space-y-1 border-t px-3 py-2 text-[11px]"
+          style={{ borderColor: 'rgb(255 255 255 / 0.08)', background: 'rgb(4 6 17 / 0.35)' }}
+        >
+          <p className="flex items-center gap-1.5" style={{ color: '#7dffbc' }}>
             <CheckCircle2 className="h-3 w-3" /> Test 1/5: n = 30 → 10 số nguyên tố
-            <span className="text-muted-foreground ml-auto font-mono">0.04s</span>
+            <span className="ml-auto font-mono" style={{ color: 'rgb(255 255 255 / 0.4)' }}>
+              0.04s
+            </span>
           </p>
-          <p className="flex items-center gap-1.5 text-emerald-500">
+          <p className="flex items-center gap-1.5" style={{ color: '#7dffbc' }}>
             <CheckCircle2 className="h-3 w-3" /> Test 2/5: n = 100 → 25 số nguyên tố
-            <span className="text-muted-foreground ml-auto font-mono">0.06s</span>
+            <span className="ml-auto font-mono" style={{ color: 'rgb(255 255 255 / 0.4)' }}>
+              0.06s
+            </span>
           </p>
-          <p className="flex items-center gap-1.5 text-emerald-500">
+          <p className="flex items-center gap-1.5 font-semibold" style={{ color: '#7dffbc' }}>
             <CheckCircle2 className="h-3 w-3" /> Hoàn thành 5/5 test
-            <span className="ml-auto font-mono font-bold text-emerald-500">100/100</span>
+            <span className="ml-auto font-mono font-bold">100/100</span>
           </p>
+        </div>
+        {/* Typing console line */}
+        <div
+          className="relative border-t px-3 py-2 font-mono text-[11px]"
+          style={{ borderColor: 'rgb(255 255 255 / 0.08)', background: 'rgb(2 4 12 / 0.55)' }}
+        >
+          <span style={{ color: '#ff5aa9' }}>$ </span>
+          <Typewriter
+            className="text-[#aeb8d4]"
+            phrases={[
+              'chấm tự động qua test case…',
+              'tổng hợp điểm vào sổ điểm…',
+              'ghi nhận tiến độ học sinh…',
+            ]}
+          />
         </div>
       </div>
     </div>
   );
 }
 
+// Token màu cho code (theo bảng màu trang tham khảo).
+function KW({ children }: { children: ReactNode }) {
+  return <span style={{ color: '#ff5aa9' }}>{children}</span>;
+}
+function FN({ children }: { children: ReactNode }) {
+  return <span style={{ color: '#75c8ff' }}>{children}</span>;
+}
+function NUM({ children }: { children: ReactNode }) {
+  return <span style={{ color: '#e8b974' }}>{children}</span>;
+}
+
 function CodeLine({
   n,
-  text,
+  children,
   highlight = false,
 }: {
   n: number;
-  text: string;
+  children?: ReactNode;
   highlight?: boolean;
 }) {
   return (
     <div
       className={cn(
         'flex items-baseline gap-3 px-3 py-0.5',
-        highlight && 'bg-primary/5 border-l-primary border-l-2 pl-[10px]'
+        highlight && 'border-l-primary border-l-2 pl-[10px]'
       )}
+      style={highlight ? { background: 'rgb(253 8 93 / 0.1)' } : undefined}
     >
-      <span className="text-muted-foreground/40 w-4 shrink-0 text-right font-mono text-[10px]">
+      <span
+        className="w-4 shrink-0 text-right font-mono text-[10px]"
+        style={{ color: 'rgb(255 255 255 / 0.25)' }}
+      >
         {n}
       </span>
-      <code className="text-foreground/85 whitespace-pre">{text || ' '}</code>
+      <code className="whitespace-pre">{children ?? ' '}</code>
     </div>
   );
 }
