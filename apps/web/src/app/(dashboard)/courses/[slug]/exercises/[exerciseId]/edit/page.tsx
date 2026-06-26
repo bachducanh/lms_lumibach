@@ -30,8 +30,7 @@ export default async function EditExercisePage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}`);
 
   const exercise = await api

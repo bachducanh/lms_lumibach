@@ -13,6 +13,7 @@ import type {
   UpdateModuleItemGroupSettingsBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageCourse } from '../../common/auth/course-access';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -30,10 +31,7 @@ export class ModulesService {
 
   private async assertCanManage(courseId: string, actor: AuthUser): Promise<void> {
     if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
-    if (actor.role === 'ADMIN') return;
-    const course = await this.prisma.course.findUnique({ where: { id: courseId } });
-    if (!course) throw new NotFoundException('Khoá học không tồn tại');
-    if (course.ownerId !== actor.id)
+    if (!(await canManageCourse(this.prisma, actor, courseId)))
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
   }
 

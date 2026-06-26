@@ -90,7 +90,7 @@ export default async function ExerciseViewPage({
     });
   })();
 
-  const canEdit = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canEdit = course.viewerCanManage;
 
   if (role === 'STUDENT' && exercise.status !== 'PUBLISHED') {
     notFound();

@@ -69,8 +69,7 @@ export default async function SubmissionsPage({
 
   const submissionMap = new Map(submissions.map((s) => [s.studentId, s]));
   const selectedSub = selectedStudentId ? (submissionMap.get(selectedStudentId) ?? null) : null;
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
 
   const submittedCount = submissions.filter((s) => s.status !== 'DRAFT').length;
   const gradedCount = submissions.filter((s) => s.status === 'GRADED').length;

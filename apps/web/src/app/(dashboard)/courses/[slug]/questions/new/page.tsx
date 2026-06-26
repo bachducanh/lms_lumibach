@@ -1,5 +1,4 @@
 import { notFound, redirect } from 'next/navigation';
-import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail } from '@lumibach/types';
@@ -7,7 +6,6 @@ import { QuestionForm } from '@/components/features/quiz/QuestionForm';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
-import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Tạo câu hỏi' };
 
@@ -20,15 +18,12 @@ export default async function NewQuestionPage({
 }) {
   const { slug } = await params;
   const { quizId, categoryId } = await searchParams;
-  const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
 
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}/questions`);
 
   const backHref = quizId

@@ -21,8 +21,7 @@ export default async function QuestionsPage({ params }: { params: Promise<{ slug
   if (!course) notFound();
   if (!role || !hasMinRole(role, 'TA')) redirect('/courses');
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   const { categories, uncategorized } = await api.get<QuestionBankData>('/questions', {
     query: { courseId: course.id },
   });

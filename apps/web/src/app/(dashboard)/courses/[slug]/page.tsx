@@ -9,7 +9,6 @@ import { logActivity } from '@/lib/activity';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EnrollmentCodePanel } from '@/components/features/courses/EnrollmentCodePanel';
-import { hasMinRole } from '@/lib/permissions';
 import type { CourseDetail, CourseMember, CourseTA, CourseMembersResponse } from '@lumibach/types';
 import {
   BookOpen,
@@ -78,8 +77,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
       resourceName: course.name,
     });
 
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
-  const canViewPeople = hasMinRole(role, 'TA');
+  const canManage = course.viewerCanManage;
+  const canViewPeople = course.viewerCanGrade;
+  // Thao tác cấp khoá (sửa khoá, mã ghi danh) chỉ dành cho ADMIN/chủ khoá.
+  const canEditCourse = course.viewerIsOwner;
 
   const { enrollments, tas } = await api
     .get<CourseMembersResponse>(`/courses/${course.id}/members`)
@@ -175,7 +176,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
               Thành viên
             </Link>
           )}
-          {canManage && (
+          {canEditCourse && (
             <Link
               href={`/courses/${slug}/edit`}
               className={buttonVariants({ variant: 'outline', size: 'sm' })}
@@ -344,12 +345,12 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
         </div>
       )}
 
-      {/* ── Enrollment code ─────────────────────────────────── */}
-      {canManage && (
+      {/* ── Enrollment code (cấp khoá → chỉ chủ khoá/ADMIN) ─────── */}
+      {canEditCourse && (
         <EnrollmentCodePanel
           courseId={course.id}
           initialCode={course.enrollmentCode ?? null}
-          canManage={canManage}
+          canManage={canEditCourse}
         />
       )}
     </div>

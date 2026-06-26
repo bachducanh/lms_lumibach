@@ -11,6 +11,7 @@ import type {
   DailySeriesPoint,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { resolveCourseAccess } from '../../common/auth/course-access';
 
 const CACHE_TTL_MS = 300_000; // 5 phút — analytics tốn nhiều query, cache aggressive
 
@@ -242,7 +243,8 @@ export class AnalyticsService {
       select: { id: true, name: true, slug: true, ownerId: true },
     });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role === 'TEACHER' && course.ownerId !== user.id) {
+    const courseAccess = await resolveCourseAccess(this.prisma, user, course.id);
+    if (!courseAccess.canGrade) {
       throw new NotFoundException('Course not found');
     }
 
@@ -504,7 +506,8 @@ export class AnalyticsService {
       select: { id: true, name: true, slug: true, ownerId: true },
     });
     if (!course) throw new NotFoundException('Course not found');
-    if (user.role === 'TEACHER' && course.ownerId !== user.id) {
+    const clusterAccess = await resolveCourseAccess(this.prisma, user, course.id);
+    if (!clusterAccess.canGrade) {
       throw new NotFoundException('Course not found');
     }
 

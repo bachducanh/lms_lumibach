@@ -114,7 +114,6 @@ export default async function QuizDetailPage({
   const { slug, quizId } = await params;
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
-  const userId = session?.user?.id;
 
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
@@ -124,7 +123,7 @@ export default async function QuizDetailPage({
   if (!quiz) notFound();
 
   const isStaff = role ? hasMinRole(role, 'TA') : false;
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canManage = course.viewerCanManage;
 
   if (!isStaff && quiz.status !== 'PUBLISHED') notFound();
 

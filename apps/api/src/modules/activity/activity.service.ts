@@ -11,6 +11,7 @@ import type {
   SystemLogsQuery,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { resolveCourseAccess } from '../../common/auth/course-access';
 
 const PAGE_SIZE = 30;
 const CACHE_TTL_MS = 60_000;
@@ -35,10 +36,9 @@ export class ActivityService {
     });
     if (!course) throw new NotFoundException('Course not found');
 
-    // TEACHER chỉ xem được khóa mình sở hữu (ADMIN bypass đã pass RolesGuard);
-    // TA giả định được assign — kiểm tra ở phase ownership guard sau, hiện tại
-    // chấp nhận TA bất kỳ (giữ behavior cũ của server action).
-    if (user.role === 'TEACHER' && course.ownerId !== user.id) {
+    // Owner, co-teacher và TA được phân công của khoá đều xem được nhật ký.
+    const { canGrade } = await resolveCourseAccess(this.prisma, user, course.id);
+    if (!canGrade) {
       throw new NotFoundException('Course not found');
     }
 

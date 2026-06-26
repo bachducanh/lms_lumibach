@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageCourse } from '../../common/auth/course-access';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -48,13 +49,7 @@ export class QuizzesService {
   }
 
   private async canManage(userId: string, role: string, courseId: string) {
-    if (role === 'ADMIN') return true;
-    if (role !== 'TEACHER') return false;
-    const c = await this.prisma.course.findUnique({
-      where: { id: courseId },
-      select: { ownerId: true },
-    });
-    return c?.ownerId === userId;
+    return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
 
   // ── List ──────────────────────────────────────────────────────

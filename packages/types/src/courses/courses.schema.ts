@@ -78,4 +78,11 @@ export type CourseDetail = CourseListItem & {
   publishedAt: string | null;
   archivedAt: string | null;
   ownerId: string;
+  /** Người xem hiện tại có quyền quản lý nội dung khoá (ADMIN/owner/co-teacher). */
+  viewerCanManage: boolean;
+  /** Người xem hiện tại có quyền chấm/xem báo cáo khoá (thêm cả TA). */
+  viewerCanGrade: boolean;
+  /** Người xem là ADMIN hoặc chủ khoá (KHÔNG gồm co-teacher) — dùng cho thao tác
+   *  cấp khoá: sửa/xoá khoá, mã ghi danh, quản lý thành viên & nhân sự. */
+  viewerIsOwner: boolean;
 };

@@ -29,7 +29,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
   if (!course) notFound();
 
   const isStudent = role === 'STUDENT';
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canManage = course.viewerCanManage;
 
   if (isStudent && course.status !== 'PUBLISHED') {
     redirect(`/courses/${slug}`);

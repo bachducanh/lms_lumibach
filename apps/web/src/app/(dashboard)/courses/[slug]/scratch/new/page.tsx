@@ -26,7 +26,7 @@ export default async function NewScratchExercisePage({
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
-  if (role === 'TEACHER' && course.ownerId !== session!.user!.id) redirect(`/courses/${slug}`);
+  if (!course.viewerCanManage) redirect(`/courses/${slug}`);
 
   return (
     <div className="max-w-3xl space-y-5">

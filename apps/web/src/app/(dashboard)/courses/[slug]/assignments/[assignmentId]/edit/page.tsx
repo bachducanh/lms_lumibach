@@ -1,11 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
-import { auth } from '@/auth';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, AssignmentDetail, RubricData, ModuleWithItems } from '@lumibach/types';
 import { AssignmentForm } from '@/components/features/assignments/AssignmentForm';
 import { RubricBuilder } from '@/components/features/assignments/RubricBuilder';
-import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Chỉnh sửa bài tập' };
 
@@ -15,15 +13,12 @@ export default async function EditAssignmentPage({
   params: Promise<{ slug: string; assignmentId: string }>;
 }) {
   const { slug, assignmentId } = await params;
-  const session = await auth();
-  const role = session?.user?.role as UserRole;
 
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}/assignments`);
 
   const assignment = await api

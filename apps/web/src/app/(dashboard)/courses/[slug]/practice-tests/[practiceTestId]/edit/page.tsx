@@ -1,10 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
 import { PracticeTestForm } from '@/components/features/practice-tests/PracticeTestForm';
 import type { CourseDetail, PracticeTestDetail } from '@lumibach/types';
-import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Chỉnh sửa đề luyện tập' };
 
@@ -14,8 +12,6 @@ export default async function EditPracticeTestPage({
   params: Promise<{ slug: string; practiceTestId: string }>;
 }) {
   const { slug, practiceTestId } = await params;
-  const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
 
   const api = apiServerClient(await cookies());
   const [course, practiceTest] = await Promise.all([
@@ -24,8 +20,7 @@ export default async function EditPracticeTestPage({
   ]);
   if (!course || !practiceTest) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}/practice-tests/${practiceTestId}`);
 
   return (

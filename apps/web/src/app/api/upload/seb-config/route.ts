@@ -47,10 +47,15 @@ export async function POST(req: NextRequest) {
 
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { ownerId: true },
+    select: {
+      ownerId: true,
+      coTeachers: { where: { userId: session.user.id }, select: { id: true } },
+    },
   });
   if (!course) return NextResponse.json({ error: 'Khoá học không tồn tại' }, { status: 404 });
-  if (role !== 'ADMIN' && course.ownerId !== session.user.id) {
+  const canManage =
+    role === 'ADMIN' || course.ownerId === session.user.id || course.coTeachers.length > 0;
+  if (!canManage) {
     return NextResponse.json({ error: 'Không có quyền quản lý khoá học này' }, { status: 403 });
   }
 

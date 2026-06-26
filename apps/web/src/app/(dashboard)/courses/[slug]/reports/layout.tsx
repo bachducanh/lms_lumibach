@@ -1,9 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail } from '@lumibach/types';
-import type { UserRole } from '@lumibach/db';
 import { ReportsNav } from '@/components/features/reports/ReportsNav';
 import { BarChart3 } from 'lucide-react';
 
@@ -15,17 +13,11 @@ export default async function ReportsLayout({
   children: React.ReactNode;
 }) {
   const { slug } = await params;
-  const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  const userId = session?.user?.id;
-
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) redirect(`/courses/${slug}`);
 
-  const canViewReports =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId) || role === 'TA';
-  if (!canViewReports) redirect(`/courses/${slug}`);
+  if (!course.viewerCanGrade) redirect(`/courses/${slug}`);
 
   return (
     <div className="space-y-6">

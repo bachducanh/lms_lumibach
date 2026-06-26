@@ -11,6 +11,7 @@ import type {
   UpdateCourseBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { resolveCourseAccess } from '../../common/auth/course-access';
 import { AuditService } from '../../common/audit/audit.service';
 import { CategoriesService } from '../categories/categories.service';
 
@@ -336,16 +337,20 @@ export class CoursesService {
       throw new NotFoundException('Khoá học không tồn tại');
     }
 
-    // Counts change frequently (enrollments, TA assignments), so fetch fresh
+    // Counts + viewer permissions are per-request / mutable, so fetch fresh
     // each time rather than caching with the rest of the detail.
-    const [enrollmentCount, taCount] = await Promise.all([
+    const [enrollmentCount, taCount, access] = await Promise.all([
       this.prisma.enrollment.count({ where: { courseId: cached.id } }),
       this.prisma.teachingAssistant.count({ where: { courseId: cached.id } }),
+      resolveCourseAccess(this.prisma, actor, cached.id),
     ]);
 
     return {
       ...cached,
       _count: { enrollments: enrollmentCount, teachingAssistants: taCount },
+      viewerCanManage: access.canManage,
+      viewerCanGrade: access.canGrade,
+      viewerIsOwner: access.isOwner,
     } as CourseDetail;
   }
 

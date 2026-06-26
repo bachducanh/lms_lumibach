@@ -27,8 +27,9 @@ export default async function CoursePeoplePage({ params }: { params: Promise<{ s
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  // Quản lý thành viên & nhân sự (ghi danh, trợ giảng, đồng giảng, mã ghi danh)
+  // là thao tác cấp khoá → chỉ ADMIN/chủ khoá; co-teacher chỉ xem.
+  const canManage = course.viewerIsOwner;
 
   const [{ enrollments, tas, coTeachers }, groupsData] = await Promise.all([
     api

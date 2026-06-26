@@ -27,7 +27,7 @@ export default async function EditScratchExercisePage({
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
-  if (role === 'TEACHER' && course.ownerId !== userId) redirect(`/courses/${slug}`);
+  if (!course.viewerCanManage) redirect(`/courses/${slug}`);
 
   const ex = await prisma.codeExercise.findUnique({
     where: { id: exerciseId, deletedAt: null },

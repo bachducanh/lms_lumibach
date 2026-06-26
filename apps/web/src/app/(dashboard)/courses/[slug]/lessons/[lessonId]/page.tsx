@@ -80,7 +80,7 @@ export default async function LessonViewPage({
 
   if (role === 'STUDENT' && !moduleItem.isPublished) notFound();
 
-  const canEdit = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canEdit = course.viewerCanManage;
 
   const completion = userId
     ? await prisma.moduleItemCompletion.findUnique({

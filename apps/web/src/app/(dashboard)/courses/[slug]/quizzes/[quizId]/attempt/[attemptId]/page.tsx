@@ -83,7 +83,7 @@ export default async function AttemptPage({
 
   const isStaff = hasMinRole(role, 'TA');
   const isOwn = attempt.studentId === session.user.id;
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session.user.id);
+  const canManage = course.viewerCanManage;
 
   if (!isOwn && !isStaff) notFound();
 

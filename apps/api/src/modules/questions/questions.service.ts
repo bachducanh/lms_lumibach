@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
@@ -17,13 +18,7 @@ export class QuestionsService {
   ) {}
 
   private async canManage(userId: string, role: string, courseId: string) {
-    if (role === 'ADMIN') return true;
-    if (role !== 'TEACHER') return false;
-    const c = await this.prisma.course.findUnique({
-      where: { id: courseId },
-      select: { ownerId: true },
-    });
-    return c?.ownerId === userId;
+    return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
 
   // ── Categories ────────────────────────────────────────────────

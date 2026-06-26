@@ -61,7 +61,7 @@ export default async function CompetencyGradePage({
   ]);
   if (!course || !activity || activity.courseId !== course.id) notFound();
 
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canManage = course.viewerCanManage;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">

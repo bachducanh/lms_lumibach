@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageCourse, resolveCourseAccess } from '../../common/auth/course-access';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -43,7 +44,7 @@ export class ScratchService {
       select: { ownerId: true },
     });
     if (!course) throw new NotFoundException('Khoá học không tồn tại.');
-    if (user.role !== 'ADMIN' && course.ownerId !== user.id)
+    if (!(await canManageCourse(this.prisma, user, body.courseId)))
       throw new ForbiddenException('Bạn không quản lý khoá học này.');
 
     const exercise = await this.prisma.codeExercise.create({
@@ -94,10 +95,10 @@ export class ScratchService {
 
     const ex = await this.prisma.codeExercise.findUnique({
       where: { id: exerciseId },
-      select: { id: true, course: { select: { ownerId: true } } },
+      select: { id: true, courseId: true },
     });
     if (!ex) throw new NotFoundException('Bài tập không tồn tại.');
-    if (user.role !== 'ADMIN' && ex.course.ownerId !== user.id)
+    if (!(await canManageCourse(this.prisma, user, ex.courseId)))
       throw new ForbiddenException('Bạn không quản lý bài tập này.');
 
     const data: Record<string, unknown> = {};
@@ -209,12 +210,12 @@ export class ScratchService {
       where: { id: submissionId },
       select: {
         id: true,
-        codeExercise: { select: { course: { select: { ownerId: true } } } },
+        codeExercise: { select: { courseId: true } },
       },
     });
     if (!sub) throw new NotFoundException('Submission không tồn tại.');
-    if (user.role === 'TEACHER' && sub.codeExercise.course.ownerId !== user.id)
-      throw new ForbiddenException('Bạn không quản lý khoá học này.');
+    const access = await resolveCourseAccess(this.prisma, user, sub.codeExercise.courseId);
+    if (!access.canGrade) throw new ForbiddenException('Bạn không quản lý khoá học này.');
 
     await this.prisma.codeSubmission.update({
       where: { id: submissionId },

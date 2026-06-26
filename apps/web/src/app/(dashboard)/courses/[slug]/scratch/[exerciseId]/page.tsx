@@ -77,7 +77,7 @@ export default async function ScratchExercisePage({
     redirect(`/courses/${slug}/exercises/${exerciseId}`);
   }
 
-  const canEdit = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canEdit = course.viewerCanManage;
   const isTeacher = !!role && hasMinRole(role, 'TA');
 
   if (role === 'STUDENT' && exercise.status !== 'PUBLISHED') notFound();

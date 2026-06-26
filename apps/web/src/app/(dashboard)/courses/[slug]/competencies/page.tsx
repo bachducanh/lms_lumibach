@@ -22,8 +22,7 @@ export default async function CompetenciesPage({ params }: { params: Promise<{ s
   if (!course) notFound();
   if (!role || !hasMinRole(role, 'TA')) redirect('/courses');
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
 
   const catalog = await api
     .get<CourseCompetencyCatalog>(`/courses/${course.id}/competencies`)

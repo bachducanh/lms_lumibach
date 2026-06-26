@@ -111,7 +111,7 @@ export default async function PracticeTestPage({
   if (practiceTest.courseId !== course.id) notFound();
 
   const isStaff = hasMinRole(role, 'TA');
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canManage = course.viewerCanManage;
   if (!isStaff && practiceTest.status !== 'PUBLISHED') notFound();
 
   const [myAttempts, allAttempts, allNavItems] = await Promise.all([

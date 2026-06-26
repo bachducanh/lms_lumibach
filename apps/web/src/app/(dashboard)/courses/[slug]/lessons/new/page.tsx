@@ -27,8 +27,7 @@ export default async function NewLessonPage({
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}`);
 
   if (!moduleId) redirect(`/courses/${slug}/modules`);

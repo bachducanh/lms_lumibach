@@ -1,5 +1,4 @@
 import { notFound, redirect } from 'next/navigation';
-import { auth } from '@/auth';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
@@ -7,7 +6,6 @@ import type { CourseDetail, QuizDetail, QuizBankGroup } from '@lumibach/types';
 import { QuizBuilder } from '@/components/features/quiz/QuizBuilder';
 import { buttonVariants } from '@/components/ui/button';
 import { ArrowLeft, Brain } from 'lucide-react';
-import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Quản lý câu hỏi - Quiz' };
 
@@ -17,15 +15,12 @@ export default async function ManageQuizPage({
   params: Promise<{ slug: string; quizId: string }>;
 }) {
   const { slug, quizId } = await params;
-  const session = await auth();
-  const role = session?.user?.role as UserRole | undefined;
-  const userId = session?.user?.id;
 
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
   if (!course) notFound();
 
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}/quizzes/${quizId}`);
 
   const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);

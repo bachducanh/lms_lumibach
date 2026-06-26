@@ -119,7 +119,7 @@ export default async function AssignmentViewPage({
   if (!assignment) notFound();
   if (assignment.courseId !== course.id) notFound();
 
-  const canManage = role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === userId);
+  const canManage = course.viewerCanManage;
   const isStaff = hasMinRole(role, 'TA');
 
   if (assignment.status === 'DRAFT' && !isStaff) notFound();

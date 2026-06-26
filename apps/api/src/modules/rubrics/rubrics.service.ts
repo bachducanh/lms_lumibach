@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageCourse, resolveCourseAccess } from '../../common/auth/course-access';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -20,23 +21,21 @@ export class RubricsService {
   constructor(private readonly prisma: PrismaClient) {}
 
   private async canManageAssignment(userId: string, role: string, assignmentId: string) {
-    if (role === 'ADMIN') return true;
-    if (role !== 'TEACHER') return false;
     const a = await this.prisma.assignment.findUnique({
       where: { id: assignmentId },
-      include: { course: { select: { ownerId: true } } },
+      select: { courseId: true },
     });
-    return a?.course.ownerId === userId;
+    if (!a) return false;
+    return canManageCourse(this.prisma, { id: userId, role }, a.courseId);
   }
 
   private async canManageCodeExercise(userId: string, role: string, codeExerciseId: string) {
-    if (role === 'ADMIN') return true;
-    if (role !== 'TEACHER') return false;
     const ex = await this.prisma.codeExercise.findUnique({
       where: { id: codeExerciseId },
-      include: { course: { select: { ownerId: true } } },
+      select: { courseId: true },
     });
-    return ex?.course.ownerId === userId;
+    if (!ex) return false;
+    return canManageCourse(this.prisma, { id: userId, role }, ex.courseId);
   }
 
   // ── Assignment rubric ─────────────────────────────────────────
@@ -158,13 +157,8 @@ export class RubricsService {
     });
     if (!sub) throw new NotFoundException('Không tìm thấy bài nộp.');
 
-    if (user.role !== 'ADMIN') {
-      const course = await this.prisma.course.findUnique({
-        where: { id: sub.assignment.courseId },
-        select: { ownerId: true },
-      });
-      if (course?.ownerId !== user.id) throw new ForbiddenException('Không có quyền.');
-    }
+    const access = await resolveCourseAccess(this.prisma, user, sub.assignment.courseId);
+    if (!access.canGrade) throw new ForbiddenException('Không có quyền.');
 
     const levels = await this.prisma.rubricLevel.findMany({
       where: { id: { in: selections.map((s) => s.levelId) } },
@@ -217,12 +211,12 @@ export class RubricsService {
     const sub = await this.prisma.codeSubmission.findUnique({
       where: { id: codeSubmissionId },
       include: {
-        codeExercise: { select: { courseId: true, course: { select: { ownerId: true } } } },
+        codeExercise: { select: { courseId: true } },
       },
     });
     if (!sub) throw new NotFoundException('Không tìm thấy bài nộp.');
-    if (user.role === 'TEACHER' && sub.codeExercise.course.ownerId !== user.id)
-      throw new ForbiddenException('Không có quyền.');
+    const access = await resolveCourseAccess(this.prisma, user, sub.codeExercise.courseId);
+    if (!access.canGrade) throw new ForbiddenException('Không có quyền.');
 
     const levels = await this.prisma.rubricLevel.findMany({
       where: { id: { in: selections.map((s) => s.levelId) } },

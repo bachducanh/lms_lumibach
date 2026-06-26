@@ -27,8 +27,7 @@ export default async function EditLessonPage({
   ]);
   if (!course) notFound();
 
-  const canManage =
-    role === 'ADMIN' || (role === 'TEACHER' && course.ownerId === session?.user?.id);
+  const canManage = course.viewerCanManage;
   if (!canManage) redirect(`/courses/${slug}`);
 
   if (!lesson) notFound();
