@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${exo2.variable} ${jetbrainsMono.variable}`}
     >
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider defaultTheme="dark">
           {children}
           <Toaster richColors position="top-right" />
