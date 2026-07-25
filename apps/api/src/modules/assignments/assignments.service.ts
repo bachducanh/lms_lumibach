@@ -325,7 +325,10 @@ export class AssignmentsService {
     if (!(await this.canManage(user.id, user.role, existing.courseId)))
       throw new ForbiddenException('Không có quyền.');
 
-    await this.prisma.assignment.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.prisma.$transaction([
+      this.prisma.moduleItem.deleteMany({ where: { assignmentId: id } }),
+      this.prisma.assignment.update({ where: { id }, data: { deletedAt: new Date() } }),
+    ]);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xóa bài tập.' };
   }

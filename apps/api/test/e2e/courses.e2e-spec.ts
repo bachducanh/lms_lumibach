@@ -3,7 +3,13 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../helpers/app';
 import { cookieHeader, signTestToken } from '../helpers/sign-test-token';
-import { createTestCategory, createTestCourse, createTestUser } from '../factories';
+import {
+  createTestCategory,
+  createTestCourse,
+  createTestEnrollment,
+  createTestUser,
+} from '../factories';
+import { testPrisma } from '../db';
 
 describe('Courses API — category-aware behavior', () => {
   let app: INestApplication;
@@ -170,6 +176,64 @@ describe('Courses API — category-aware behavior', () => {
         .set('Cookie', cookie);
 
       expect(res.status).toBe(200);
+    });
+
+    // Trước đây deleteCourse chỉ set deletedAt, nên toàn bộ nội dung con vẫn
+    // sống trong DB dù khoá học đã "biến mất" khỏi giao diện.
+    it('200 — xoá sạch nội dung con, không để lại bản ghi mồ côi', async () => {
+      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const student = await createTestUser({ role: 'STUDENT' });
+      const course = await createTestCourse({ ownerId: owner.id });
+
+      await createTestEnrollment({ userId: student.id, courseId: course.id });
+      const mod = await testPrisma.module.create({
+        data: { courseId: course.id, name: 'Chương 1', position: 0 },
+      });
+      // Lesson là ca đặc biệt: không có courseId, chỉ nối qua ModuleItem.lessonId
+      // với onDelete SetNull nên cascade của Course không chạm tới.
+      const lesson = await testPrisma.lesson.create({
+        data: { title: 'Bài 1', content: '<p>Nội dung</p>', createdBy: owner.id },
+      });
+      const item = await testPrisma.moduleItem.create({
+        data: {
+          moduleId: mod.id,
+          type: 'LESSON',
+          position: 0,
+          title: 'Bài 1',
+          lessonId: lesson.id,
+        },
+      });
+      const assignment = await testPrisma.assignment.create({
+        data: {
+          courseId: course.id,
+          title: 'Bài tập 1',
+          instructions: 'Làm bài',
+          createdBy: owner.id,
+        },
+      });
+
+      const res = await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}`)
+        .set('Cookie', cookie);
+
+      expect(res.status).toBe(200);
+
+      const [courseLeft, moduleLeft, itemLeft, lessonLeft, assignmentLeft, enrollmentLeft] =
+        await Promise.all([
+          testPrisma.course.findUnique({ where: { id: course.id } }),
+          testPrisma.module.findUnique({ where: { id: mod.id } }),
+          testPrisma.moduleItem.findUnique({ where: { id: item.id } }),
+          testPrisma.lesson.findUnique({ where: { id: lesson.id } }),
+          testPrisma.assignment.findUnique({ where: { id: assignment.id } }),
+          testPrisma.enrollment.findFirst({ where: { courseId: course.id } }),
+        ]);
+
+      expect(courseLeft).toBeNull();
+      expect(moduleLeft).toBeNull();
+      expect(itemLeft).toBeNull();
+      expect(lessonLeft).toBeNull();
+      expect(assignmentLeft).toBeNull();
+      expect(enrollmentLeft).toBeNull();
     });
   });
 

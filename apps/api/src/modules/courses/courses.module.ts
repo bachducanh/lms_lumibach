@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { CoursesController } from './courses.controller';
 import { CoursesService } from './courses.service';
 import { AuditModule } from '../../common/audit/audit.module';
+import { StorageModule } from '../../common/storage/storage.module';
 import { CategoriesModule } from '../categories/categories.module';
 
 @Module({
-  imports: [AuditModule, CategoriesModule],
+  imports: [AuditModule, StorageModule, CategoriesModule],
   controllers: [CoursesController],
   providers: [CoursesService],
 })

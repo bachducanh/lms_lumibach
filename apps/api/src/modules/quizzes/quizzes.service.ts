@@ -364,7 +364,10 @@ export class QuizzesService {
     if (!(await this.canManage(user.id, user.role, existing.courseId)))
       throw new ForbiddenException('Không có quyền.');
 
-    await this.prisma.quiz.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.prisma.$transaction([
+      this.prisma.moduleItem.deleteMany({ where: { quizId: id } }),
+      this.prisma.quiz.update({ where: { id }, data: { deletedAt: new Date() } }),
+    ]);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xoá quiz.' };
   }

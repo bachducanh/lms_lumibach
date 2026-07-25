@@ -14,6 +14,8 @@ import type {
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { StorageService } from '../../common/storage/storage.service';
+import { LessonCleanupService } from '../../common/storage/lesson-cleanup.service';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -26,7 +28,9 @@ function hasMinRole(userRole: string, minRole: Role): boolean {
 export class ModulesService {
   constructor(
     private readonly prisma: PrismaClient,
-    @Inject(CACHE_MANAGER) private readonly cache: Cache
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    private readonly storage: StorageService,
+    private readonly lessonCleanup: LessonCleanupService
   ) {}
 
   private async assertCanManage(courseId: string, actor: AuthUser): Promise<void> {
@@ -84,7 +88,16 @@ export class ModulesService {
     if (!mod) throw new NotFoundException('Chương không tồn tại');
     await this.assertCanManage(mod.courseId, actor);
 
-    await this.prisma.module.delete({ where: { id: moduleId } });
+    // Cascade xoá được ModuleItem nhưng không chạm tới Lesson — dọn tay trước.
+    const itemIds = await this.lessonCleanup.moduleItemIdsOfModule(moduleId);
+    const plan = await this.lessonCleanup.planPurge(itemIds);
+
+    await this.prisma.$transaction([
+      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
+      this.prisma.module.delete({ where: { id: moduleId } }),
+    ]);
+
+    await this.storage.removeByUrls(plan.fileUrls);
     await this.invalidate(mod.courseId);
   }
 
@@ -181,7 +194,15 @@ export class ModulesService {
     if (!item) throw new NotFoundException('Không tìm thấy');
     await this.assertCanManage(item.module.courseId, actor);
 
-    await this.prisma.moduleItem.delete({ where: { id: itemId } });
+    // Lesson không cascade theo ModuleItem (quan hệ là SetNull) — phải dọn tay.
+    const plan = await this.lessonCleanup.planPurge([itemId]);
+
+    await this.prisma.$transaction([
+      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
+      this.prisma.moduleItem.delete({ where: { id: itemId } }),
+    ]);
+
+    await this.storage.removeByUrls(plan.fileUrls);
     await this.invalidate(item.module.courseId);
   }
 

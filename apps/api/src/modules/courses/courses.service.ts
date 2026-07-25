@@ -13,6 +13,8 @@ import type {
 import type { AuthUser } from '../../common/auth/auth.types';
 import { resolveCourseAccess } from '../../common/auth/course-access';
 import { AuditService } from '../../common/audit/audit.service';
+import { StorageService } from '../../common/storage/storage.service';
+import { LessonCleanupService } from '../../common/storage/lesson-cleanup.service';
 import { CategoriesService } from '../categories/categories.service';
 
 function slugify(text: string): string {
@@ -47,7 +49,9 @@ export class CoursesService {
     private readonly prisma: PrismaClient,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly audit: AuditService,
-    private readonly categories: CategoriesService
+    private readonly categories: CategoriesService,
+    private readonly storage: StorageService,
+    private readonly lessonCleanup: LessonCleanupService
   ) {}
 
   async createCourse(actor: AuthUser, body: CreateCourseBody): Promise<{ slug: string }> {
@@ -161,6 +165,60 @@ export class CoursesService {
     return { slug: course.slug };
   }
 
+  /**
+   * Gom mọi URL file trên MinIO thuộc khoá học, gọi TRƯỚC khi xoá DB.
+   *
+   * Không lọc deletedAt: bài tập/quiz đã soft-delete vẫn bị cascade xoá cứng
+   * theo khoá, nên file của chúng cũng phải được dọn.
+   */
+  private async collectCourseFileUrls(
+    courseId: string,
+    thumbnail: string | null
+  ): Promise<string[]> {
+    const [submissionFiles, quizzes, practiceTests, exercises, codeSubmissions] = await Promise.all(
+      [
+        this.prisma.submissionFile.findMany({
+          where: { submission: { assignment: { courseId } } },
+          select: { url: true },
+        }),
+        this.prisma.quiz.findMany({
+          where: { courseId, sebConfigUrl: { not: null } },
+          select: { sebConfigUrl: true },
+        }),
+        this.prisma.practiceTest.findMany({
+          where: { courseId },
+          select: { pdfUrl: true, sebConfigUrl: true },
+        }),
+        this.prisma.codeExercise.findMany({
+          where: { courseId, starterFileUrl: { not: null } },
+          select: { starterFileUrl: true },
+        }),
+        this.prisma.codeSubmission.findMany({
+          where: { codeExercise: { courseId }, language: 'SCRATCH' },
+          select: { code: true },
+        }),
+      ]
+    );
+
+    const urls: (string | null)[] = [
+      thumbnail,
+      ...submissionFiles.map((f) => f.url),
+      ...quizzes.map((q) => q.sebConfigUrl),
+      ...practiceTests.flatMap((p) => [p.pdfUrl, p.sebConfigUrl]),
+      ...exercises.map((e) => e.starterFileUrl),
+      // Bài nộp Scratch lưu code dạng JSON {"sb3Url": "/storage/..."}.
+      ...codeSubmissions.map((s) => {
+        try {
+          return (JSON.parse(s.code) as { sb3Url?: string }).sb3Url ?? null;
+        } catch {
+          return null;
+        }
+      }),
+    ];
+
+    return urls.filter((u): u is string => !!u);
+  }
+
   async deleteCourse(actor: AuthUser, courseId: string): Promise<void> {
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
@@ -168,10 +226,18 @@ export class CoursesService {
       throw new ForbiddenException('Bạn không có quyền xoá khoá học này');
     }
 
-    await this.prisma.course.update({
-      where: { id: courseId },
-      data: { deletedAt: new Date() },
-    });
+    const itemIds = await this.lessonCleanup.moduleItemIdsOfCourse(courseId);
+    const lessonPlan = await this.lessonCleanup.planPurge(itemIds);
+    const courseFiles = await this.collectCourseFileUrls(courseId, existing.thumbnail);
+
+    // Xoá DB trước, file sau: nếu MinIO lỗi thì chỉ còn file rác (vô hại), còn
+    // làm ngược lại sẽ mất file của một khoá học vẫn đang tồn tại.
+    await this.prisma.$transaction([
+      this.prisma.lesson.deleteMany({ where: { id: { in: lessonPlan.lessonIds } } }),
+      this.prisma.course.delete({ where: { id: courseId } }),
+    ]);
+
+    await this.storage.removeByUrls([...courseFiles, ...lessonPlan.fileUrls]);
 
     await this.cache.del(`courses:detail:slug:${existing.slug}`);
 
