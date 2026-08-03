@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from '@/components/layouts/ThemeToggle';
 import { CountUp } from '@/components/features/landing/CountUp';
 import { MouseGlow } from '@/components/features/landing/MouseGlow';
 import { ParallaxBlob } from '@/components/features/landing/ParallaxBlob';
@@ -29,6 +28,7 @@ import { Magnetic } from '@/components/features/landing/Magnetic';
 import { Typewriter } from '@/components/features/landing/Typewriter';
 import { FaqAccordion } from '@/components/features/landing/FaqAccordion';
 import { ScrollProgress } from '@/components/features/landing/ScrollProgress';
+import { ForceDarkMode } from '@/components/features/landing/ForceDarkMode';
 
 export const metadata = {
   title: 'LumiBach — Chuyển đổi ước mơ bằng mã nguồn thực tế',
@@ -143,6 +143,9 @@ export default async function HomePage() {
 
   return (
     <div className="relative min-h-screen">
+      {/* Landing page chỉ hỗ trợ dark mode */}
+      <ForceDarkMode />
+
       {/* Scroll progress bar */}
       <ScrollProgress />
 
@@ -175,7 +178,6 @@ export default async function HomePage() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             {isLoggedIn ? (
               <Link href="/dashboard" className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5')}>
                 Dashboard
@@ -304,7 +306,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Mission / Philosophy ──────────────────────────────────── */}
-      <section id="mission" className="border-border/60 border-y">
+      <section id="mission" className="relative">
         <div className="mx-auto max-w-4xl px-4 py-14 text-center sm:px-6 sm:py-16">
           <p
             className="lb-reveal text-primary text-xs font-bold tracking-[0.2em] uppercase"
@@ -316,7 +318,7 @@ export default async function HomePage() {
             className="lb-reveal mt-2 text-2xl font-bold tracking-tight text-balance sm:text-3xl"
             style={{ ['--i' as string]: 1 }}
           >
-            Mỗi học sinh đều xứng đáng có công cụ chuyên nghiệp
+            Chuyển đổi ước mơ bằng mã nguồn thực tế
           </h2>
           <p
             className="lb-reveal text-muted-foreground mx-auto mt-3 max-w-2xl text-base leading-relaxed text-pretty"
@@ -331,7 +333,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Features ──────────────────────────────────────────────── */}
-      <section id="features" className="border-border/60 border-b">
+      <section id="features">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <p
@@ -443,7 +445,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────── */}
-      <section id="faq" className="border-border/60 border-b">
+      <section id="faq">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="lb-reveal" style={{ ['--i' as string]: 0 }}>
             <p className="text-primary inline-flex items-center gap-1.5 text-xs font-bold tracking-[0.2em] uppercase">
@@ -464,7 +466,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────────────── */}
-      <section className="border-border/60 relative overflow-hidden border-t">
+      <section className="relative overflow-hidden">
         <MouseGlow />
         <div
           className="pointer-events-none absolute inset-0"
@@ -486,7 +488,7 @@ export default async function HomePage() {
             className="lb-reveal text-3xl font-bold tracking-tight text-balance sm:text-4xl"
             style={{ ['--i' as string]: 1 }}
           >
-            Hãy cùng kiến tạo thế hệ lập trình viên tương lai
+            Kết nối công nghệ, kiến tạo tri thức
           </h2>
           <p
             className="lb-reveal text-muted-foreground mx-auto mt-3 max-w-xl text-base leading-relaxed text-pretty"
@@ -535,7 +537,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
-      <footer className="border-border/60 border-t">
+      <footer>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 sm:flex-row sm:px-6">
           <div className="text-muted-foreground flex items-center gap-2 text-xs">
             <Layers className="text-primary h-3.5 w-3.5" />
