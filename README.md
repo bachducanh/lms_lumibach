@@ -1,46 +1,95 @@
 # LumiBach LMS
 
-Hệ thống quản lý học tập (Learning Management System) hiện đại được xây dựng với Next.js, Prisma, PostgreSQL, Redis, MinIO và Judge0.
+Hệ thống quản lý học tập (LMS) cho môn Tin học, xây dựng dưới dạng monorepo:
+Next.js (giao diện) + NestJS (API) + Prisma/PostgreSQL, kèm Redis, MinIO và Judge0.
 
 ## 🚀 Tài liệu hướng dẫn
 
-- **Hướng dẫn cài đặt Development**: [docs/SETUP.md](docs/SETUP.md)
-- **Hướng dẫn triển khai Server (Production)**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Cài đặt môi trường Development**: [docs/SETUP.md](docs/SETUP.md)
+- **Triển khai lên server**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Server vật lý (bare metal)**: [docs/PHYSICAL_SERVER_SETUP.md](docs/PHYSICAL_SERVER_SETUP.md)
+- **Tên miền lumibach.com + Cloudflare Tunnel**: [docs/DOMAIN_SETUP.md](docs/DOMAIN_SETUP.md)
 - **Cấu trúc Database**: [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
 
 ## 🛠 Tech Stack
 
-- **Framework**: Next.js 15+ (App Router)
-- **Database**: PostgreSQL (Prisma ORM)
-- **Cache & Queue**: Redis (BullMQ)
+- **Web**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui
+- **API**: NestJS 11 (REST `/api/v1` + WebSocket socket.io + Swagger `/api/docs`)
+- **Database**: PostgreSQL 16 với Prisma ORM (`packages/db`)
+- **Cache & Queue**: Redis 7 (BullMQ)
 - **Storage**: MinIO (S3 compatible)
-- **Code Execution**: Judge0 (Docker)
-- **Styling**: Tailwind CSS & Shadcn UI
+- **Code Execution**: Judge0 CE (Docker)
+- **Auth**: NextAuth v5 (Auth.js)
+- **Monorepo**: pnpm 9 workspaces + Turborepo
+
+```
+apps/web        Next.js — giao diện, server actions, 2 worker BullMQ
+apps/api        NestJS  — REST API, WebSocket, gửi email
+packages/db     Prisma schema, migrations, seed, script bảo trì
+packages/types  Zod schema + kiểu dữ liệu dùng chung
+```
 
 ## 💻 Bắt đầu nhanh (Dev)
 
-1. **Khởi động hạ tầng**:
+Yêu cầu: **Node.js >= 20**, **pnpm 9**, **Docker Desktop**.
+
+1. **Khởi động hạ tầng** (Postgres, Redis, MinIO, Judge0):
+
    ```bash
    docker compose up -d
    ```
 
-2. **Cài đặt dependencies**:
+2. **Tạo file cấu hình** — copy rồi sửa mật khẩu, `AUTH_SECRET`, `CRON_SECRET`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Cài dependencies** (tự sinh Prisma client):
+
    ```bash
    pnpm install
    ```
 
-3. **Chạy ứng dụng**:
+4. **Tạo bảng và dữ liệu mẫu**:
+
+   ```bash
+   pnpm db:migrate:deploy
+   ```
+
+   ```bash
+   pnpm db:seed
+   ```
+
+5. **Chạy web + API** (turbo chạy song song cả hai):
+
    ```bash
    pnpm dev
    ```
 
-4. **Chạy workers**:
-   ```bash
-   # Terminal 1: Worker chấm code
-   pnpm worker:dev
+6. **Chạy workers** — chỉ cần khi dùng chấm code / gửi email:
 
-   # Terminal 2: Worker gửi mail
+   ```bash
+   # Terminal 2: worker chấm code
+   pnpm worker:dev
+   ```
+
+   ```bash
+   # Terminal 3: worker gửi mail
    pnpm worker:email
    ```
 
-Mở [http://localhost:3000](http://localhost:3000) để xem kết quả.
+Mở http://localhost:3000 (giao diện) và http://localhost:4000/api/docs (Swagger).
+
+> **Windows**: dừng hẳn `pnpm dev` trước khi chạy `prisma generate` / `pnpm build`,
+> nếu không sẽ gặp lỗi EPERM do DLL của Prisma đang bị khoá.
+
+## 🧪 Kiểm thử
+
+```bash
+pnpm test:db:up && pnpm test:api
+```
+
+```bash
+pnpm test:e2e
+```
