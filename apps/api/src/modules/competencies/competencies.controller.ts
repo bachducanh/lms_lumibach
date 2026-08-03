@@ -15,17 +15,23 @@ import {
   ActivityCompetencyQuerySchema,
   CreateCompetencyCategoryBodySchema,
   CreateCompetencyIndicatorBodySchema,
+  CreateCompetencyPeriodBodySchema,
   SetActivityCompetenciesBodySchema,
   UpdateCompetencyCategoryBodySchema,
   UpdateCompetencyIndicatorBodySchema,
+  UpdateCompetencyPeriodBodySchema,
   UpsertCompetencyAssessmentBodySchema,
+  UpsertCompetencyLevelTargetBodySchema,
   type ActivityCompetencyQuery,
   type CreateCompetencyCategoryBody,
   type CreateCompetencyIndicatorBody,
+  type CreateCompetencyPeriodBody,
   type SetActivityCompetenciesBody,
   type UpdateCompetencyCategoryBody,
   type UpdateCompetencyIndicatorBody,
+  type UpdateCompetencyPeriodBody,
   type UpsertCompetencyAssessmentBody,
+  type UpsertCompetencyLevelTargetBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
@@ -115,6 +121,62 @@ export class CompetenciesController {
   @ApiOperation({ summary: 'Xoá chỉ báo năng lực' })
   deleteIndicator(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.deleteIndicator(user, id);
+  }
+
+  // ── Kỳ đánh giá năng lực (học kỳ) ──────────────────────────────
+
+  @Get('courses/:courseId/competencies/periods')
+  @ApiOperation({ summary: 'Danh sách kỳ đánh giá năng lực của khoá học' })
+  listPeriods(@CurrentUser() user: AuthUser, @Param('courseId') courseId: string) {
+    return this.service.listPeriods(user, courseId);
+  }
+
+  @Post('courses/:courseId/competencies/periods')
+  @ApiOperation({ summary: 'Tạo kỳ đánh giá năng lực' })
+  createPeriod(
+    @CurrentUser() user: AuthUser,
+    @Param('courseId') courseId: string,
+    @Body(zodBody(CreateCompetencyPeriodBodySchema)) body: CreateCompetencyPeriodBody
+  ) {
+    return this.service.createPeriod(user, courseId, body);
+  }
+
+  @Patch('competencies/periods/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Cập nhật kỳ đánh giá năng lực' })
+  updatePeriod(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(UpdateCompetencyPeriodBodySchema)) body: UpdateCompetencyPeriodBody
+  ) {
+    return this.service.updatePeriod(user, id, body);
+  }
+
+  @Delete('competencies/periods/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá kỳ đánh giá năng lực' })
+  deletePeriod(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.deletePeriod(user, id);
+  }
+
+  @Get('courses/:courseId/competencies/periods/:periodId/grid')
+  @ApiOperation({ summary: 'Bảng cấp độ + điểm năng lực của cả khoá tại 1 kỳ đánh giá' })
+  getPeriodGrid(
+    @CurrentUser() user: AuthUser,
+    @Param('courseId') courseId: string,
+    @Param('periodId') periodId: string
+  ) {
+    return this.service.getPeriodGrid(user, courseId, periodId);
+  }
+
+  @Put('competencies/level-targets')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Nhập cấp độ năng lực xuất phát/đích cho 1 học sinh tại 1 kỳ' })
+  upsertLevelTarget(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(UpsertCompetencyLevelTargetBodySchema)) body: UpsertCompetencyLevelTargetBody
+  ) {
+    return this.service.upsertLevelTarget(user, body);
   }
 
   // ── Activity links + assessments ─────────────────────────────

@@ -1,21 +1,32 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
-import { COMPETENCY_LEVELS, COMPETENCY_LEVEL_SCORE, EVIDENCE_TYPE_LABEL } from '@lumibach/types';
+import {
+  COMPETENCY_LEVELS,
+  COMPETENCY_LEVEL_SCORE,
+  EVIDENCE_TYPE_LABEL,
+  learningPaceFromRate,
+} from '@lumibach/types';
 import type {
   ActivityType,
   CompetencyAssessmentItem,
   CompetencyCategoryItem,
+  CompetencyCategoryLevelRow,
   CompetencyEvidenceRow,
   CompetencyIndicatorItem,
   CompetencyLevelValue,
+  CompetencyPeriod,
+  CompetencyPeriodGrid,
   CompetencyStats,
   CourseCompetencyCatalog,
   CreateCompetencyCategoryBody,
   CreateCompetencyIndicatorBody,
+  CreateCompetencyPeriodBody,
   SetActivityCompetenciesBody,
   UpdateCompetencyCategoryBody,
   UpdateCompetencyIndicatorBody,
+  UpdateCompetencyPeriodBody,
   UpsertCompetencyAssessmentBody,
+  UpsertCompetencyLevelTargetBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 
@@ -31,7 +42,10 @@ const EMPTY_LEVEL_COUNTS = (): Record<CompetencyLevelValue, number> =>
     number
   >;
 
-const ACHIEVED_MIN_SCORE = 3; // Thành thạo (PROFICIENT) trở lên được tính là "đạt"
+// Mức tối thiểu được tính là "thành thạo" cho quy tắc hoàn thành chỉ báo.
+const MASTERED_LEVELS: readonly CompetencyLevelValue[] = ['PROFICIENT', 'ADVANCED'];
+// Số minh chứng tối thiểu đạt mức thành thạo trở lên để 1 chỉ báo được tính "hoàn thành".
+const INDICATOR_COMPLETION_MIN_EVIDENCE = 2;
 
 @Injectable()
 export class CompetenciesService {
@@ -281,6 +295,259 @@ export class CompetenciesService {
 
     await this.prisma.competencyIndicator.delete({ where: { id } });
     return { message: 'Đã xoá chỉ báo năng lực.' };
+  }
+
+  // ── Kỳ đánh giá năng lực (học kỳ) ─────────────────────────────
+
+  async listPeriods(user: AuthUser, courseId: string): Promise<CompetencyPeriod[]> {
+    await this.assertGrade(user, courseId);
+
+    const periods = await this.prisma.competencyAssessmentPeriod.findMany({
+      where: { courseId },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    });
+    return periods.map(this.toPeriodItem);
+  }
+
+  async createPeriod(
+    user: AuthUser,
+    courseId: string,
+    body: CreateCompetencyPeriodBody
+  ): Promise<CompetencyPeriod> {
+    await this.assertManage(user, courseId);
+
+    let position = body.position;
+    if (position === undefined) {
+      const last = await this.prisma.competencyAssessmentPeriod.findFirst({
+        where: { courseId },
+        orderBy: { position: 'desc' },
+        select: { position: true },
+      });
+      position = (last?.position ?? -1) + 1;
+    }
+
+    const created = await this.prisma.competencyAssessmentPeriod.create({
+      data: {
+        courseId,
+        name: body.name.trim(),
+        position,
+        startDate: body.startDate ? new Date(body.startDate) : null,
+        endDate: body.endDate ? new Date(body.endDate) : null,
+      },
+    });
+    return this.toPeriodItem(created);
+  }
+
+  async updatePeriod(
+    user: AuthUser,
+    id: string,
+    body: UpdateCompetencyPeriodBody
+  ): Promise<{ message: string }> {
+    const period = await this.prisma.competencyAssessmentPeriod.findUnique({
+      where: { id },
+      select: { courseId: true },
+    });
+    if (!period) throw new NotFoundException('Kỳ đánh giá không tồn tại.');
+    await this.assertManage(user, period.courseId);
+
+    await this.prisma.competencyAssessmentPeriod.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined && { name: body.name.trim() }),
+        ...(body.position !== undefined && { position: body.position }),
+        ...(body.startDate !== undefined && {
+          startDate: body.startDate ? new Date(body.startDate) : null,
+        }),
+        ...(body.endDate !== undefined && {
+          endDate: body.endDate ? new Date(body.endDate) : null,
+        }),
+      },
+    });
+    return { message: 'Đã cập nhật kỳ đánh giá.' };
+  }
+
+  async deletePeriod(user: AuthUser, id: string): Promise<{ message: string }> {
+    const period = await this.prisma.competencyAssessmentPeriod.findUnique({
+      where: { id },
+      select: { courseId: true },
+    });
+    if (!period) throw new NotFoundException('Kỳ đánh giá không tồn tại.');
+    await this.assertManage(user, period.courseId);
+
+    await this.prisma.competencyAssessmentPeriod.delete({ where: { id } });
+    return { message: 'Đã xoá kỳ đánh giá.' };
+  }
+
+  // ── Cấp độ năng lực xuất phát/đích + điểm năng lực theo kỳ ────
+
+  async upsertLevelTarget(
+    user: AuthUser,
+    body: UpsertCompetencyLevelTargetBody
+  ): Promise<{ message: string }> {
+    const period = await this.prisma.competencyAssessmentPeriod.findUnique({
+      where: { id: body.periodId },
+      select: { courseId: true },
+    });
+    if (!period) throw new NotFoundException('Kỳ đánh giá không tồn tại.');
+    await this.assertGrade(user, period.courseId);
+
+    const category = await this.prisma.competencyCategory.findFirst({
+      where: { id: body.categoryId, courseId: period.courseId },
+      select: { id: true },
+    });
+    if (!category) throw new NotFoundException('Danh mục năng lực không thuộc khoá học.');
+
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: body.studentId,
+        role: 'STUDENT',
+        enrollments: { some: { courseId: period.courseId } },
+      },
+      select: { id: true },
+    });
+    if (!student) throw new NotFoundException('Học sinh không thuộc khoá học này.');
+
+    await this.prisma.competencyLevelTarget.upsert({
+      where: {
+        periodId_categoryId_studentId: {
+          periodId: body.periodId,
+          categoryId: body.categoryId,
+          studentId: body.studentId,
+        },
+      },
+      update: { startLevel: body.startLevel, targetLevel: body.targetLevel },
+      create: {
+        periodId: body.periodId,
+        categoryId: body.categoryId,
+        studentId: body.studentId,
+        startLevel: body.startLevel,
+        targetLevel: body.targetLevel,
+      },
+    });
+    return { message: 'Đã cập nhật cấp độ năng lực.' };
+  }
+
+  async getPeriodGrid(
+    user: AuthUser,
+    courseId: string,
+    periodId: string
+  ): Promise<CompetencyPeriodGrid> {
+    await this.assertGrade(user, courseId);
+
+    const period = await this.prisma.competencyAssessmentPeriod.findFirst({
+      where: { id: periodId, courseId },
+    });
+    if (!period) throw new NotFoundException('Kỳ đánh giá không tồn tại.');
+
+    const [categories, enrollments, levelTargets, assessments] = await Promise.all([
+      this.prisma.competencyCategory.findMany({
+        where: { courseId },
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        include: { indicators: { select: { id: true } } },
+      }),
+      this.prisma.enrollment.findMany({
+        where: { courseId, status: 'ACTIVE', user: { role: 'STUDENT' } },
+        select: {
+          user: {
+            select: { id: true, fullName: true, firstName: true, lastName: true, email: true },
+          },
+        },
+        orderBy: [{ user: { fullName: 'asc' } }, { user: { email: 'asc' } }],
+      }),
+      this.prisma.competencyLevelTarget.findMany({ where: { periodId } }),
+      this.prisma.competencyAssessment.findMany({
+        where: {
+          indicator: { category: { courseId } },
+          ...(period.startDate && period.endDate
+            ? { gradedAt: { gte: period.startDate, lte: period.endDate } }
+            : {}),
+        },
+        select: { indicatorId: true, studentId: true, level: true },
+      }),
+    ]);
+
+    // indicatorId -> categoryId, để tra ngược danh mục của 1 minh chứng.
+    const indicatorCategory = new Map<string, string>();
+    // categoryId -> tổng số chỉ báo (mẫu số của tỉ lệ % hoàn thành).
+    const categoryTotalIndicators = new Map<string, number>();
+    for (const c of categories) {
+      categoryTotalIndicators.set(c.id, c.indicators.length);
+      for (const ind of c.indicators) indicatorCategory.set(ind.id, c.id);
+    }
+
+    // (categoryId -> studentId -> indicatorId -> levels[]) để áp dụng quy tắc hoàn thành
+    // chỉ báo (≥2 minh chứng Thành thạo/Vượt thành thạo) trước khi tính tỉ lệ % theo danh mục.
+    const tally = new Map<string, Map<string, Map<string, CompetencyLevelValue[]>>>();
+    for (const a of assessments) {
+      const categoryId = indicatorCategory.get(a.indicatorId);
+      if (!categoryId) continue;
+      let byStudent = tally.get(categoryId);
+      if (!byStudent) {
+        byStudent = new Map();
+        tally.set(categoryId, byStudent);
+      }
+      let byIndicator = byStudent.get(a.studentId);
+      if (!byIndicator) {
+        byIndicator = new Map();
+        byStudent.set(a.studentId, byIndicator);
+      }
+      const levels = byIndicator.get(a.indicatorId);
+      const level = a.level as CompetencyLevelValue;
+      if (levels) levels.push(level);
+      else byIndicator.set(a.indicatorId, [level]);
+    }
+
+    const levelTargetByKey = new Map<string, { startLevel: number; targetLevel: number }>();
+    for (const lt of levelTargets) {
+      levelTargetByKey.set(`${lt.categoryId}::${lt.studentId}`, {
+        startLevel: lt.startLevel,
+        targetLevel: lt.targetLevel,
+      });
+    }
+
+    const rows: CompetencyCategoryLevelRow[] = [];
+    for (const { user: student } of enrollments) {
+      for (const category of categories) {
+        const totalIndicators = categoryTotalIndicators.get(category.id) ?? 0;
+        const byIndicator = tally.get(category.id)?.get(student.id);
+        let completedIndicators = 0;
+        if (byIndicator) {
+          for (const levels of byIndicator.values()) {
+            if (this.isIndicatorCompleted(levels)) completedIndicators++;
+          }
+        }
+        const completionRate = totalIndicators > 0 ? completedIndicators / totalIndicators : null;
+        const target = levelTargetByKey.get(`${category.id}::${student.id}`);
+
+        let competencyScore: number | null = null;
+        let growthScore: number | null = null;
+        if (target && completionRate !== null) {
+          competencyScore = target.startLevel + 2 * completionRate;
+          growthScore = competencyScore - target.startLevel;
+        }
+
+        rows.push({
+          studentId: student.id,
+          studentName: this.displayName(student),
+          categoryId: category.id,
+          categoryName: category.name,
+          startLevel: target?.startLevel ?? null,
+          targetLevel: target?.targetLevel ?? null,
+          completedIndicators,
+          totalIndicators,
+          completionRate,
+          competencyScore,
+          growthScore,
+          learningPace: completionRate !== null ? learningPaceFromRate(completionRate) : null,
+        });
+      }
+    }
+
+    return {
+      period: this.toPeriodItem(period),
+      categories: categories.map((c) => ({ id: c.id, name: c.name })),
+      rows,
+    };
   }
 
   // ── Activity links + assessments ─────────────────────────────
@@ -630,6 +897,13 @@ export class CompetenciesService {
     });
   }
 
+  // ── Quy tắc hoàn thành chỉ báo (Chính sách đánh giá H.A.S) ────
+
+  private isIndicatorCompleted(levels: CompetencyLevelValue[]): boolean {
+    const masteredCount = levels.filter((l) => MASTERED_LEVELS.includes(l)).length;
+    return masteredCount >= INDICATOR_COMPLETION_MIN_EVIDENCE;
+  }
+
   // ── Thống kê toàn khoá ───────────────────────────────────────
 
   async getStats(user: AuthUser, courseId: string): Promise<CompetencyStats> {
@@ -685,12 +959,7 @@ export class CompetenciesService {
     // Khởi tạo accumulator cho từng chỉ báo / học sinh / danh mục.
     const indAcc = new Map<
       string,
-      {
-        counts: Record<CompetencyLevelValue, number>;
-        scoreSum: number;
-        achieved: number;
-        total: number;
-      }
+      { counts: Record<CompetencyLevelValue, number>; scoreSum: number; total: number }
     >();
     const studentAcc = new Map<
       string,
@@ -699,12 +968,14 @@ export class CompetenciesService {
         email: string;
         counts: Record<CompetencyLevelValue, number>;
         scoreSum: number;
-        achieved: number;
         total: number;
       }
     >();
     const catAcc = new Map<string, { scoreSum: number; total: number }>();
     const evidenceAcc = new Map<string, number>();
+    // (indicatorId -> studentId -> mức độ đã ghi nhận) — dùng để tính "hoàn thành chỉ báo"
+    // theo Chính sách đánh giá H.A.S: ≥2 minh chứng đạt Thành thạo/Vượt thành thạo.
+    const indicatorStudentLevels = new Map<string, Map<string, CompetencyLevelValue[]>>();
 
     for (const { user: u } of enrollments) {
       studentAcc.set(u.id, {
@@ -712,7 +983,6 @@ export class CompetenciesService {
         email: u.email,
         counts: EMPTY_LEVEL_COUNTS(),
         scoreSum: 0,
-        achieved: 0,
         total: 0,
       });
     }
@@ -720,18 +990,16 @@ export class CompetenciesService {
     for (const a of assessments) {
       const level = a.level as CompetencyLevelValue;
       const score = COMPETENCY_LEVEL_SCORE[level] ?? 0;
-      const isAchieved = score >= ACHIEVED_MIN_SCORE;
 
       // indicator
       let ia = indAcc.get(a.indicatorId);
       if (!ia) {
-        ia = { counts: EMPTY_LEVEL_COUNTS(), scoreSum: 0, achieved: 0, total: 0 };
+        ia = { counts: EMPTY_LEVEL_COUNTS(), scoreSum: 0, total: 0 };
         indAcc.set(a.indicatorId, ia);
       }
       ia.counts[level]++;
       ia.scoreSum += score;
       ia.total++;
-      if (isAchieved) ia.achieved++;
 
       // student
       let sa = studentAcc.get(a.studentId);
@@ -741,7 +1009,6 @@ export class CompetenciesService {
           email: a.student.email,
           counts: EMPTY_LEVEL_COUNTS(),
           scoreSum: 0,
-          achieved: 0,
           total: 0,
         };
         studentAcc.set(a.studentId, sa);
@@ -749,7 +1016,6 @@ export class CompetenciesService {
       sa.counts[level]++;
       sa.scoreSum += score;
       sa.total++;
-      if (isAchieved) sa.achieved++;
 
       // category
       const meta = indicatorMeta.get(a.indicatorId);
@@ -767,10 +1033,47 @@ export class CompetenciesService {
       if (a.evidenceType) {
         evidenceAcc.set(a.evidenceType, (evidenceAcc.get(a.evidenceType) ?? 0) + 1);
       }
+
+      // hoàn thành chỉ báo
+      let byStudent = indicatorStudentLevels.get(a.indicatorId);
+      if (!byStudent) {
+        byStudent = new Map();
+        indicatorStudentLevels.set(a.indicatorId, byStudent);
+      }
+      const levels = byStudent.get(a.studentId);
+      if (levels) levels.push(level);
+      else byStudent.set(a.studentId, [level]);
+    }
+
+    // studentId -> { assessed: số chỉ báo có minh chứng, completed: số chỉ báo "hoàn thành" }
+    const studentIndicatorTally = new Map<string, { assessed: number; completed: number }>();
+    const indicatorCompletion = new Map<
+      string,
+      { studentsAssessedCount: number; studentsCompletedCount: number }
+    >();
+    for (const [indicatorId, byStudent] of indicatorStudentLevels) {
+      let completedCount = 0;
+      for (const [studentId, levels] of byStudent) {
+        const completed = this.isIndicatorCompleted(levels);
+        if (completed) completedCount++;
+
+        let t = studentIndicatorTally.get(studentId);
+        if (!t) {
+          t = { assessed: 0, completed: 0 };
+          studentIndicatorTally.set(studentId, t);
+        }
+        t.assessed++;
+        if (completed) t.completed++;
+      }
+      indicatorCompletion.set(indicatorId, {
+        studentsAssessedCount: byStudent.size,
+        studentsCompletedCount: completedCount,
+      });
     }
 
     const indicators = [...indicatorMeta.entries()].map(([indicatorId, meta]) => {
       const acc = indAcc.get(indicatorId);
+      const completion = indicatorCompletion.get(indicatorId);
       return {
         indicatorId,
         indicatorName: meta.name,
@@ -778,21 +1081,26 @@ export class CompetenciesService {
         categoryId: meta.categoryId,
         categoryName: meta.categoryName,
         totalAssessments: acc?.total ?? 0,
-        achievedCount: acc?.achieved ?? 0,
+        studentsAssessedCount: completion?.studentsAssessedCount ?? 0,
+        studentsCompletedCount: completion?.studentsCompletedCount ?? 0,
         averageScore: acc && acc.total > 0 ? acc.scoreSum / acc.total : null,
         levelCounts: acc?.counts ?? EMPTY_LEVEL_COUNTS(),
       };
     });
 
-    const students = [...studentAcc.entries()].map(([studentId, acc]) => ({
-      studentId,
-      studentName: acc.name,
-      email: acc.email,
-      totalAssessments: acc.total,
-      achievedCount: acc.achieved,
-      averageScore: acc.total > 0 ? acc.scoreSum / acc.total : null,
-      levelCounts: acc.counts,
-    }));
+    const students = [...studentAcc.entries()].map(([studentId, acc]) => {
+      const tally = studentIndicatorTally.get(studentId);
+      return {
+        studentId,
+        studentName: acc.name,
+        email: acc.email,
+        totalAssessments: acc.total,
+        indicatorsAssessedCount: tally?.assessed ?? 0,
+        indicatorsCompletedCount: tally?.completed ?? 0,
+        averageScore: acc.total > 0 ? acc.scoreSum / acc.total : null,
+        levelCounts: acc.counts,
+      };
+    });
 
     const catList = categories.map((c) => {
       const acc = catAcc.get(c.id);
@@ -824,6 +1132,22 @@ export class CompetenciesService {
   }
 
   // ── Mappers ──────────────────────────────────────────────────
+
+  private toPeriodItem = (p: {
+    id: string;
+    courseId: string;
+    name: string;
+    position: number;
+    startDate: Date | null;
+    endDate: Date | null;
+  }): CompetencyPeriod => ({
+    id: p.id,
+    courseId: p.courseId,
+    name: p.name,
+    position: p.position,
+    startDate: p.startDate ? p.startDate.toISOString() : null,
+    endDate: p.endDate ? p.endDate.toISOString() : null,
+  });
 
   private toIndicatorItem = (i: {
     id: string;

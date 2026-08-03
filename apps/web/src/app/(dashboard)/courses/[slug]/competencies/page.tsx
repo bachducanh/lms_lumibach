@@ -6,7 +6,7 @@ import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, CourseCompetencyCatalog } from '@lumibach/types';
 import { CompetencyManager } from '@/components/features/competencies/CompetencyManager';
 import { hasMinRole } from '@/lib/permissions';
-import { ArrowLeft, Target } from 'lucide-react';
+import { ArrowLeft, GaugeCircle, Target } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Năng lực' };
@@ -40,16 +40,25 @@ export default async function CompetenciesPage({ params }: { params: Promise<{ s
         {course.name}
       </Link>
 
-      <div className="flex items-start gap-3">
-        <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-          <Target className="text-primary h-5 w-5" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+            <Target className="text-primary h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Năng lực</h1>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              {catalog.categories.length} danh mục · {totalIndicators} chỉ báo · {course.name}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Năng lực</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            {catalog.categories.length} danh mục · {totalIndicators} chỉ báo · {course.name}
-          </p>
-        </div>
+        <Link
+          href={`/courses/${slug}/competencies/levels`}
+          className="border-border bg-card hover:bg-muted/40 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+        >
+          <GaugeCircle className="h-3.5 w-3.5" />
+          Cấp độ năng lực theo kỳ
+        </Link>
       </div>
 
       <div className="border-border bg-muted/20 text-muted-foreground rounded-lg border p-4 text-sm leading-relaxed">

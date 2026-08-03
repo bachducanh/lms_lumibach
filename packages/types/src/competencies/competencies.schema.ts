@@ -63,6 +63,70 @@ export const COMPETENCY_LEVEL_SCORE: Record<CompetencyLevelValue, number> = Obje
   COMPETENCY_LEVELS.map((l) => [l.value, l.score])
 ) as Record<CompetencyLevelValue, number>;
 
+// ── Tiến độ học-tập ─────────────────────────────────────────────
+// Bucket theo tỉ lệ % chỉ báo hoàn thành tại cấp độ năng lực đích, theo Chính sách
+// đánh giá H.A.S. minPercent/maxPercent là % làm tròn (số nguyên 0..100), phủ kín
+// toàn bộ khoảng — tránh dùng phân số thô 0..1 vì với danh mục có nhiều chỉ báo,
+// 1 chỉ báo hoàn thành có thể ra tỉ lệ < 1% (VD 1/200 = 0.5%) và lọt khe giữa 2 mốc.
+export const LEARNING_PACE_LEVELS = [
+  {
+    value: 'NOT_RECORDED',
+    label: 'Không ghi nhận được sự tiến bộ',
+    minPercent: 0,
+    maxPercent: 0,
+    color: '#dc2626', // red-600
+    textColor: '#ffffff',
+  },
+  {
+    value: 'BEHIND',
+    label: 'Chậm tiến độ',
+    minPercent: 1,
+    maxPercent: 50,
+    color: '#f97316', // orange-500
+    textColor: '#ffffff',
+  },
+  {
+    value: 'NEARLY_ON_TRACK',
+    label: 'Gần đúng tiến độ',
+    minPercent: 51,
+    maxPercent: 69,
+    color: '#86efac', // green-300
+    textColor: '#14532d',
+  },
+  {
+    value: 'ON_TRACK',
+    label: 'Đúng tiến độ',
+    minPercent: 70,
+    maxPercent: 90,
+    color: '#15803d', // green-700
+    textColor: '#ffffff',
+  },
+  {
+    value: 'AHEAD',
+    label: 'Vượt tiến độ',
+    minPercent: 91,
+    maxPercent: 100,
+    color: '#a855f7', // purple-500
+    textColor: '#ffffff',
+  },
+] as const;
+
+export type LearningPaceValue = (typeof LEARNING_PACE_LEVELS)[number]['value'];
+
+export const LEARNING_PACE_LABEL: Record<LearningPaceValue, string> = Object.fromEntries(
+  LEARNING_PACE_LEVELS.map((l) => [l.value, l.label])
+) as Record<LearningPaceValue, string>;
+
+// rate: phân số 0..1 (0 hoặc không có chỉ báo nào => NOT_RECORDED). Làm tròn về %
+// nguyên trước khi so khoảng, để mọi rate > 0 luôn rơi vào đúng 1 mốc (không có khe hở).
+export function learningPaceFromRate(rate: number): LearningPaceValue {
+  if (rate <= 0) return 'NOT_RECORDED';
+  const percent = Math.round(rate * 100);
+  if (percent <= 0) return 'NOT_RECORDED';
+  const hit = LEARNING_PACE_LEVELS.find((l) => percent >= l.minPercent && percent <= l.maxPercent);
+  return hit?.value ?? 'AHEAD';
+}
+
 // ── 22 loại minh chứng, gom theo 5 nhóm ────────────────────────
 
 export const EVIDENCE_CATEGORIES = [
@@ -220,6 +284,37 @@ export const ActivityCompetencyQuerySchema = z.object({
 });
 export type ActivityCompetencyQuery = z.infer<typeof ActivityCompetencyQuerySchema>;
 
+// ── Zod: Kỳ đánh giá năng lực (học kỳ) ──────────────────────────
+
+export const CreateCompetencyPeriodBodySchema = z.object({
+  name: z.string().min(1, 'Tên kỳ đánh giá không được trống').max(200),
+  position: z.number().int().min(0).optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  endDate: z.string().datetime().nullable().optional(),
+});
+export type CreateCompetencyPeriodBody = z.infer<typeof CreateCompetencyPeriodBodySchema>;
+
+export const UpdateCompetencyPeriodBodySchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  position: z.number().int().min(0).optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  endDate: z.string().datetime().nullable().optional(),
+});
+export type UpdateCompetencyPeriodBody = z.infer<typeof UpdateCompetencyPeriodBodySchema>;
+
+// ── Zod: Cấp độ năng lực xuất phát/đích (upsert) ────────────────
+
+const CompetencyLevelValueSchema = z.number().int().min(1).max(12);
+
+export const UpsertCompetencyLevelTargetBodySchema = z.object({
+  periodId: z.string().min(1),
+  categoryId: z.string().min(1),
+  studentId: z.string().min(1),
+  startLevel: CompetencyLevelValueSchema,
+  targetLevel: CompetencyLevelValueSchema,
+});
+export type UpsertCompetencyLevelTargetBody = z.infer<typeof UpsertCompetencyLevelTargetBodySchema>;
+
 // ── Response types ─────────────────────────────────────────────
 
 export type CompetencyIndicatorItem = {
@@ -269,8 +364,9 @@ export type CompetencyIndicatorStat = {
   indicatorCode: string | null;
   categoryId: string;
   categoryName: string;
-  totalAssessments: number;
-  achievedCount: number; // số đánh giá đạt mức Thành thạo trở lên
+  totalAssessments: number; // tổng số lượt chấm (minh chứng) ghi nhận cho chỉ báo này
+  studentsAssessedCount: number; // số học sinh có ít nhất 1 minh chứng
+  studentsCompletedCount: number; // số học sinh "hoàn thành" chỉ báo (≥2 minh chứng Thành thạo/Vượt thành thạo)
   averageScore: number | null; // 0..4
   levelCounts: Record<CompetencyLevelValue, number>;
 };
@@ -280,7 +376,8 @@ export type CompetencyStudentStat = {
   studentName: string;
   email: string;
   totalAssessments: number;
-  achievedCount: number;
+  indicatorsAssessedCount: number; // số chỉ báo có ít nhất 1 minh chứng
+  indicatorsCompletedCount: number; // số chỉ báo "hoàn thành" (≥2 minh chứng Thành thạo/Vượt thành thạo)
   averageScore: number | null;
   levelCounts: Record<CompetencyLevelValue, number>;
 };
@@ -306,6 +403,40 @@ export type CompetencyStats = {
   students: CompetencyStudentStat[];
   categories: CompetencyCategoryStat[];
   evidenceTypes: EvidenceTypeStat[];
+};
+
+// ── Điểm năng lực theo kỳ đánh giá ───────────────────────────────
+
+export type CompetencyPeriod = {
+  id: string;
+  courseId: string;
+  name: string;
+  position: number;
+  startDate: string | null;
+  endDate: string | null;
+};
+
+// Điểm năng lực của 1 học sinh, tại 1 danh mục, trong 1 kỳ đánh giá — theo công thức
+// Chính sách đánh giá H.A.S. startLevel/targetLevel null nếu GV chưa nhập cấp độ.
+export type CompetencyCategoryLevelRow = {
+  studentId: string;
+  studentName: string;
+  categoryId: string;
+  categoryName: string;
+  startLevel: number | null;
+  targetLevel: number | null;
+  completedIndicators: number;
+  totalIndicators: number;
+  completionRate: number | null; // phân số 0..1, null nếu totalIndicators = 0
+  competencyScore: number | null; // startLevel + 2 × completionRate
+  growthScore: number | null; // competencyScore − startLevel
+  learningPace: LearningPaceValue | null;
+};
+
+export type CompetencyPeriodGrid = {
+  period: CompetencyPeriod;
+  categories: { id: string; name: string }[];
+  rows: CompetencyCategoryLevelRow[];
 };
 
 // Một dòng minh chứng năng lực cho hồ sơ học tập cá nhân (Phase 3 dùng lại).

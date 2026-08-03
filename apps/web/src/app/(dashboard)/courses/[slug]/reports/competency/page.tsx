@@ -4,11 +4,15 @@ import { Target } from 'lucide-react';
 import { apiServerClient } from '@/lib/api-client';
 import {
   COMPETENCY_LEVELS,
+  LEARNING_PACE_LEVELS,
   type CourseDetail,
   type CompetencyStats,
   type CompetencyLevelValue,
+  type CompetencyPeriod,
+  type CompetencyPeriodGrid,
 } from '@lumibach/types';
 import { AllStudentsExportButton } from '@/components/features/portfolio/AllStudentsExportButton';
+import { cn } from '@/lib/utils';
 
 export const metadata = { title: 'Phân tích năng lực - Khóa học' };
 export const dynamic = 'force-dynamic';
@@ -21,10 +25,13 @@ function scoreLabel(avg: number | null) {
 
 export default async function CompetencyReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ period?: string }>;
 }) {
   const { slug } = await params;
+  const { period: periodParam } = await searchParams;
   const api = apiServerClient(await cookies());
   const course = await api.get<CourseDetail>(`/courses/${slug}`);
 
@@ -40,6 +47,18 @@ export default async function CompetencyReportPage({
         evidenceTypes: [],
       }) as CompetencyStats
   );
+
+  const periods = await api
+    .get<CompetencyPeriod[]>(`/courses/${course.id}/competencies/periods`)
+    .catch(() => [] as CompetencyPeriod[]);
+  const selectedPeriodId = periodParam ?? periods[0]?.id ?? null;
+  const periodGrid = selectedPeriodId
+    ? await api
+        .get<CompetencyPeriodGrid>(
+          `/courses/${course.id}/competencies/periods/${selectedPeriodId}/grid`
+        )
+        .catch(() => null)
+    : null;
 
   if (stats.totalIndicators === 0) {
     return (
@@ -79,6 +98,105 @@ export default async function CompetencyReportPage({
       </div>
 
       <LevelLegend />
+
+      {/* Điểm năng lực theo kỳ đánh giá */}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Điểm năng lực theo kỳ</h2>
+          {periods.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {periods.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/courses/${slug}/reports/competency?period=${p.id}`}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    p.id === selectedPeriodId
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border bg-card hover:bg-muted/40'
+                  )}
+                >
+                  {p.name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!periodGrid ? (
+          <div className="border-border bg-card text-muted-foreground rounded-lg border border-dashed py-10 text-center text-sm">
+            Khoá học chưa có kỳ đánh giá năng lực. Vào{' '}
+            <Link href={`/courses/${slug}/competencies/levels`} className="text-primary underline">
+              Cấp độ năng lực
+            </Link>{' '}
+            để tạo kỳ và nhập cấp độ xuất phát/đích cho học sinh.
+          </div>
+        ) : (
+          <div className="border-border bg-card overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="border-border bg-muted/30 border-b text-left text-xs">
+                <tr>
+                  <Th>Học sinh</Th>
+                  <Th>Danh mục</Th>
+                  <Th align="right">Xuất phát</Th>
+                  <Th align="right">Đích</Th>
+                  <Th align="right">Hoàn thành</Th>
+                  <Th align="right">Tỉ lệ %</Th>
+                  <Th align="right">Điểm năng lực</Th>
+                  <Th align="right">Tăng trưởng</Th>
+                  <Th>Tiến độ</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {periodGrid.rows.map((row) => {
+                  const pace = row.learningPace
+                    ? LEARNING_PACE_LEVELS.find((l) => l.value === row.learningPace)
+                    : null;
+                  return (
+                    <tr
+                      key={`${row.studentId}::${row.categoryId}`}
+                      className="border-border/50 hover:bg-muted/20 border-b"
+                    >
+                      <Td>{row.studentName}</Td>
+                      <Td>
+                        <span className="text-muted-foreground text-xs">{row.categoryName}</span>
+                      </Td>
+                      <Td align="right">{row.startLevel ?? '—'}</Td>
+                      <Td align="right">{row.targetLevel ?? '—'}</Td>
+                      <Td align="right">
+                        {row.completedIndicators}/{row.totalIndicators}
+                      </Td>
+                      <Td align="right">
+                        {row.completionRate !== null
+                          ? `${Math.round(row.completionRate * 100)}%`
+                          : '—'}
+                      </Td>
+                      <Td align="right">
+                        {row.competencyScore !== null ? row.competencyScore.toFixed(2) : '—'}
+                      </Td>
+                      <Td align="right">
+                        {row.growthScore !== null ? row.growthScore.toFixed(2) : '—'}
+                      </Td>
+                      <Td>
+                        {pace ? (
+                          <span
+                            className="rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+                            style={{ backgroundColor: pace.color, color: pace.textColor }}
+                          >
+                            {pace.label}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* Trung bình theo danh mục */}
       {stats.categories.length > 0 && (
@@ -134,8 +252,8 @@ export default async function CompetencyReportPage({
                     <DistributionBar counts={ind.levelCounts} total={ind.totalAssessments} />
                   </Td>
                   <Td align="right">
-                    {ind.totalAssessments > 0
-                      ? `${ind.achievedCount}/${ind.totalAssessments}`
+                    {ind.studentsAssessedCount > 0
+                      ? `${ind.studentsCompletedCount}/${ind.studentsAssessedCount}`
                       : '—'}
                   </Td>
                   <Td align="right">{scoreLabel(ind.averageScore)}</Td>
@@ -178,7 +296,9 @@ export default async function CompetencyReportPage({
                     <DistributionBar counts={s.levelCounts} total={s.totalAssessments} />
                   </Td>
                   <Td align="right">
-                    {s.totalAssessments > 0 ? `${s.achievedCount}/${s.totalAssessments}` : '—'}
+                    {s.indicatorsAssessedCount > 0
+                      ? `${s.indicatorsCompletedCount}/${s.indicatorsAssessedCount}`
+                      : '—'}
                   </Td>
                   <Td align="right">{scoreLabel(s.averageScore)}</Td>
                 </tr>

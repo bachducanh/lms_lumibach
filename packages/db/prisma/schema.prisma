@@ -239,6 +239,7 @@ model User {
   forumTopics            ForumTopic[]             @relation("ForumTopicAuthor")
   forumPosts             ForumPost[]              @relation("ForumPostAuthor")
   competencyAssessments  CompetencyAssessment[]
+  competencyLevelTargets CompetencyLevelTarget[]
   groupMemberships       GroupMember[]
   portfolioReflections   PortfolioReflection[]
 
@@ -353,22 +354,23 @@ model Course {
   archivedAt  DateTime?
   deletedAt   DateTime?
 
-  enrollments          Enrollment[]
-  teachingAssistants   TeachingAssistant[]
-  coTeachers           CourseCoTeacher[]
-  modules              Module[]
-  assignments          Assignment[]
-  quizzes              Quiz[]
-  practiceTests        PracticeTest[]
-  questions            Question[]
-  questionCategories   QuestionCategory[]
-  exercises            CodeExercise[]
-  activityLogs         ActivityLog[]
-  forumTopics          ForumTopic[]
-  competencyCategories CompetencyCategory[]
-  groups               Group[]
-  groupings            Grouping[]
-  portfolioReflections PortfolioReflection[]
+  enrollments                 Enrollment[]
+  teachingAssistants          TeachingAssistant[]
+  coTeachers                  CourseCoTeacher[]
+  modules                     Module[]
+  assignments                 Assignment[]
+  quizzes                     Quiz[]
+  practiceTests               PracticeTest[]
+  questions                   Question[]
+  questionCategories          QuestionCategory[]
+  exercises                   CodeExercise[]
+  activityLogs                ActivityLog[]
+  forumTopics                 ForumTopic[]
+  competencyCategories        CompetencyCategory[]
+  competencyAssessmentPeriods CompetencyAssessmentPeriod[]
+  groups                      Group[]
+  groupings                   Grouping[]
+  portfolioReflections        PortfolioReflection[]
 
   @@index([slug])
   @@index([ownerId])
@@ -1213,8 +1215,9 @@ model CompetencyCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  course     Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  indicators CompetencyIndicator[]
+  course       Course                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  indicators   CompetencyIndicator[]
+  levelTargets CompetencyLevelTarget[]
 
   @@index([courseId])
 }
@@ -1302,6 +1305,45 @@ model CompetencyAssessment {
   @@index([quizId])
   @@index([codeExerciseId])
   @@index([practiceTestId])
+}
+
+// Kỳ đánh giá (học kỳ) — phạm vi trong 1 khoá học, dùng để nhóm các cặp
+// cấp độ xuất phát/đích theo thời gian.
+model CompetencyAssessmentPeriod {
+  id        String    @id @default(cuid())
+  courseId  String
+  name      String // "Học kỳ 1", "Cuối năm"...
+  position  Int       @default(0) // thứ tự trong năm học
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  course       Course                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  levelTargets CompetencyLevelTarget[]
+
+  @@index([courseId])
+}
+
+// Cấp độ năng lực xuất phát/đích của 1 học sinh, cho 1 danh mục năng lực, tại 1 kỳ đánh giá.
+model CompetencyLevelTarget {
+  id          String   @id @default(cuid())
+  periodId    String
+  categoryId  String
+  studentId   String
+  startLevel  Int // thang 1-12
+  targetLevel Int // thang 1-12
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  period   CompetencyAssessmentPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  category CompetencyCategory         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  student  User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, categoryId, studentId])
+  @@index([periodId])
+  @@index([categoryId])
+  @@index([studentId])
 }
 
 // ============================================================
