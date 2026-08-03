@@ -3,6 +3,12 @@ import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
+import {
+  gradeOptionAnswer,
+  isCodeAutoQuestionType,
+  isManualQuestionType,
+  type GradableOption,
+} from '../../common/grading/quiz-grading';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -229,9 +235,9 @@ export class AttemptsService {
       maxScore += pts;
       const ans = answerMap.get(qq.questionId);
       const type = qq.question.type as string;
-      const opts = qq.question.options as { id: string; content: string; isCorrect: boolean }[];
+      const opts = qq.question.options as GradableOption[];
 
-      if (type === 'ESSAY' || type === 'CODE_WEB') {
+      if (isManualQuestionType(type)) {
         needsManualGrading = true;
         updates.push({
           questionId: qq.questionId,
@@ -244,150 +250,7 @@ export class AttemptsService {
         continue;
       }
 
-      if (type === 'MULTIPLE_CHOICE_SINGLE' || type === 'MULTIPLE_CHOICE_MULTIPLE') {
-        const correctIds = opts
-          .filter((o) => o.isCorrect)
-          .map((o) => o.id)
-          .sort();
-        const selectedIds = ans?.selectedOptionIds
-          ? (JSON.parse(ans.selectedOptionIds) as string[]).sort()
-          : [];
-        const isCorrect =
-          correctIds.length > 0 &&
-          correctIds.length === selectedIds.length &&
-          correctIds.every((id, i) => id === selectedIds[i]);
-        const score = isCorrect ? pts : 0;
-        totalScore += score;
-        updates.push({
-          questionId: qq.questionId,
-          selectedOptionIds: ans?.selectedOptionIds ?? null,
-          booleanAnswer: null,
-          textAnswer: null,
-          isCorrect,
-          score,
-        });
-        continue;
-      }
-
-      if (type === 'TRUE_FALSE') {
-        const correctIsDong = opts.find((o) => o.content === 'Đúng')?.isCorrect ?? false;
-        const isCorrect = (ans?.booleanAnswer ?? null) === correctIsDong;
-        const score = isCorrect ? pts : 0;
-        totalScore += score;
-        updates.push({
-          questionId: qq.questionId,
-          selectedOptionIds: null,
-          booleanAnswer: ans?.booleanAnswer ?? null,
-          textAnswer: null,
-          isCorrect,
-          score,
-        });
-        continue;
-      }
-
-      if (type === 'TRUE_FALSE_MULTI') {
-        const studentDong = new Set<string>(
-          ans?.selectedOptionIds ? (JSON.parse(ans.selectedOptionIds) as string[]) : []
-        );
-        let correct = 0;
-        for (const opt of opts) {
-          if (studentDong.has(opt.id) === opt.isCorrect) correct++;
-        }
-        const score = opts.length > 0 ? Math.round((correct / opts.length) * pts * 10) / 10 : 0;
-        totalScore += score;
-        updates.push({
-          questionId: qq.questionId,
-          selectedOptionIds: ans?.selectedOptionIds ?? null,
-          booleanAnswer: null,
-          textAnswer: null,
-          isCorrect: correct === opts.length,
-          score,
-        });
-        continue;
-      }
-
-      if (type === 'PARSONS' || type === 'ORDERING') {
-        const studentIds: string[] = (() => {
-          try {
-            return JSON.parse(ans?.textAnswer ?? '[]') as string[];
-          } catch {
-            return [];
-          }
-        })();
-        const sortedOpts = [...opts].sort((a: any, b: any) => a.position - b.position);
-        let correct = 0;
-        for (let idx = 0; idx < sortedOpts.length; idx++) {
-          if (studentIds[idx] === sortedOpts[idx]!.id) correct++;
-        }
-        const score =
-          sortedOpts.length > 0 ? Math.round((correct / sortedOpts.length) * pts * 10) / 10 : 0;
-        totalScore += score;
-        updates.push({
-          questionId: qq.questionId,
-          selectedOptionIds: null,
-          booleanAnswer: null,
-          textAnswer: ans?.textAnswer ?? null,
-          isCorrect: correct === sortedOpts.length,
-          score,
-        });
-        continue;
-      }
-
-      if (type === 'MATCHING') {
-        // textAnswer = JSON map { leftOptionId: rightOptionId }. Each option holds one
-        // pair, so a match is correct when the chosen right belongs to the same option.
-        const map: Record<string, string> = (() => {
-          try {
-            return JSON.parse(ans?.textAnswer ?? '{}') as Record<string, string>;
-          } catch {
-            return {};
-          }
-        })();
-        let correct = 0;
-        for (const opt of opts) {
-          if (map[opt.id] === opt.id) correct++;
-        }
-        const score = opts.length > 0 ? Math.round((correct / opts.length) * pts * 10) / 10 : 0;
-        totalScore += score;
-        updates.push({
-          questionId: qq.questionId,
-          selectedOptionIds: null,
-          booleanAnswer: null,
-          textAnswer: ans?.textAnswer ?? null,
-          isCorrect: correct === opts.length,
-          score,
-        });
-        continue;
-      }
-
-      if (type === 'CODE_FILL') {
-        const studentFills: string[] = (() => {
-          try {
-            return JSON.parse(ans?.textAnswer ?? '[]') as string[];
-          } catch {
-            return [];
-          }
-        })();
-        const sortedBlanks = [...opts].sort((a: any, b: any) => a.position - b.position);
-        let correct = 0;
-        for (let idx = 0; idx < sortedBlanks.length; idx++) {
-          if ((studentFills[idx] ?? '').trim() === sortedBlanks[idx]!.content.trim()) correct++;
-        }
-        const score =
-          sortedBlanks.length > 0 ? Math.round((correct / sortedBlanks.length) * pts * 10) / 10 : 0;
-        totalScore += score;
-        updates.push({
-          questionId: qq.questionId,
-          selectedOptionIds: null,
-          booleanAnswer: null,
-          textAnswer: ans?.textAnswer ?? null,
-          isCorrect: correct === sortedBlanks.length,
-          score,
-        });
-        continue;
-      }
-
-      if (['CODE_PYTHON', 'CODE_CPP', 'CODE_DEBUG_PYTHON', 'CODE_DEBUG_CPP'].includes(type)) {
+      if (isCodeAutoQuestionType(type)) {
         const code = ans?.textAnswer ?? '';
         const testCases = (qq.question.testCases ?? []) as any[];
         const langId =
@@ -447,6 +310,18 @@ export class AttemptsService {
         });
         continue;
       }
+
+      const graded = gradeOptionAnswer(type, opts, pts, ans ?? null);
+      if (!graded) continue;
+      totalScore += graded.score;
+      updates.push({
+        questionId: qq.questionId,
+        selectedOptionIds: ans?.selectedOptionIds ?? null,
+        booleanAnswer: ans?.booleanAnswer ?? null,
+        textAnswer: ans?.textAnswer ?? null,
+        isCorrect: graded.isCorrect,
+        score: graded.score,
+      });
     }
 
     const ops: any[] = updates.map((u) =>
@@ -475,7 +350,7 @@ export class AttemptsService {
         data: {
           status: needsManualGrading ? 'SUBMITTED' : 'GRADED',
           submittedAt: new Date(),
-          score: totalScore,
+          score: Math.round(totalScore * 100) / 100,
           maxScore,
         },
       })

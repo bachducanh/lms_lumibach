@@ -481,15 +481,46 @@ export class PracticeTestsService {
       }
 
       if (questions) {
-        await tx.practiceTestQuestion.deleteMany({ where: { practiceTestId: id } });
-        await tx.practiceTestQuestion.createMany({
-          data: questions.map((q) => ({ ...q, practiceTestId: id })),
+        // PracticeTestAnswer trỏ tới PracticeTestQuestion.id (khoá ngoại RESTRICT),
+        // nên xoá sạch rồi tạo lại vừa làm hỏng bài đã nộp vừa khiến việc lưu thất
+        // bại khi đã có học sinh làm bài. Thay vào đó sửa tại chỗ theo vị trí: câu
+        // nào đã có thì update, chỉ tạo thêm khi thêm câu và chỉ xoá phần dư.
+        const current = await tx.practiceTestQuestion.findMany({
+          where: { practiceTestId: id },
+          orderBy: { position: 'asc' },
+          select: { id: true },
         });
+
+        for (let i = 0; i < questions.length; i++) {
+          const data = questions[i]!;
+          const row = current[i];
+          if (row) {
+            await tx.practiceTestQuestion.update({ where: { id: row.id }, data });
+          } else {
+            await tx.practiceTestQuestion.create({ data: { ...data, practiceTestId: id } });
+          }
+        }
+
+        const surplus = current.slice(questions.length).map((q) => q.id);
+        if (surplus.length > 0) {
+          // Câu bị gỡ khỏi đề thì câu trả lời tương ứng cũng không còn ý nghĩa.
+          await tx.practiceTestAnswer.deleteMany({ where: { questionId: { in: surplus } } });
+          await tx.practiceTestQuestion.deleteMany({ where: { id: { in: surplus } } });
+        }
       }
     });
 
+    // Đề/đáp án vừa đổi nên điểm đã chấm không còn đúng — chấm lại các bài đã nộp.
+    const regraded = questions ? await this.regradeAttempts(id) : 0;
+
     await this.invalidateModuleCache(existing.courseId);
-    return { message: 'Đã cập nhật đề luyện tập.' };
+    return {
+      message:
+        regraded > 0
+          ? `Đã cập nhật đề luyện tập và chấm lại ${regraded} bài làm.`
+          : 'Đã cập nhật đề luyện tập.',
+      regradedAttempts: regraded,
+    };
   }
 
   async setStatus(user: AuthUser, id: string, publish: boolean) {
@@ -628,6 +659,132 @@ export class PracticeTestsService {
     };
   }
 
+  // Chấm một câu theo đáp án hiện tại của đề. Dùng chung cho lúc học sinh nộp bài
+  // và lúc chấm lại sau khi giáo viên sửa đề, để hai đường đi luôn khớp nhau.
+  private gradeQuestion(
+    question: {
+      id: string;
+      type: string;
+      points: number;
+      optionCount: number;
+      statementCount: number;
+      caseSensitive: boolean;
+      correctAnswer: Prisma.JsonValue;
+    },
+    answer: AnswerInput | undefined
+  ) {
+    const answerKey = asRecord(question.correctAnswer);
+    const points = question.points;
+
+    let selectedOption: string | null = null;
+    let statementAnswers: (boolean | null)[] | null = null;
+    let textAnswer: string | null = null;
+    let isCorrect = false;
+    let score = 0;
+
+    if (question.type === 'MULTIPLE_CHOICE') {
+      const allowed = LETTERS.slice(0, question.optionCount);
+      selectedOption = (answer?.selectedOption ?? '').trim().toUpperCase() || null;
+      if (selectedOption && !allowed.includes(selectedOption)) selectedOption = null;
+      isCorrect = selectedOption === answerKey.option;
+      score = isCorrect ? points : 0;
+    }
+
+    if (question.type === 'TRUE_FALSE_MULTI') {
+      const correctStatements = Array.isArray(answerKey.statements)
+        ? answerKey.statements.map((v) => v === true)
+        : [];
+      const source = Array.isArray(answer?.statementAnswers) ? answer.statementAnswers : [];
+      statementAnswers = Array.from({ length: question.statementCount }, (_, index) =>
+        typeof source[index] === 'boolean' ? source[index]! : null
+      );
+      let correctCount = 0;
+      for (let index = 0; index < question.statementCount; index++) {
+        if (
+          typeof statementAnswers[index] === 'boolean' &&
+          statementAnswers[index] === correctStatements[index]
+        ) {
+          correctCount++;
+        }
+      }
+      isCorrect = question.statementCount > 0 && correctCount === question.statementCount;
+      score = scoreTrueFalseMulti(answerKey, correctCount, points);
+    }
+
+    if (question.type === 'SHORT_ANSWER') {
+      const accepted = Array.isArray(answerKey.answers)
+        ? answerKey.answers.map((value) => String(value))
+        : [];
+      textAnswer = answer?.textAnswer?.trim() || null;
+      const normalizedStudent = textAnswer ? normalizeText(textAnswer, question.caseSensitive) : '';
+      isCorrect =
+        !!normalizedStudent &&
+        accepted.some(
+          (value) => normalizeText(value, question.caseSensitive) === normalizedStudent
+        );
+      score = isCorrect ? points : 0;
+    }
+
+    return { selectedOption, statementAnswers, textAnswer, isCorrect, score };
+  }
+
+  /**
+   * Chấm lại toàn bộ bài đã nộp của một đề theo câu hỏi/đáp án hiện tại.
+   * Giữ nguyên câu trả lời học sinh đã chọn, chỉ tính lại đúng/sai và điểm.
+   * Trả về số bài làm được chấm lại.
+   */
+  private async regradeAttempts(practiceTestId: string): Promise<number> {
+    const questions = await this.prisma.practiceTestQuestion.findMany({
+      where: { practiceTestId },
+      orderBy: { position: 'asc' },
+    });
+    if (questions.length === 0) return 0;
+
+    const attempts = await this.prisma.practiceTestAttempt.findMany({
+      where: { practiceTestId },
+      select: { id: true, answers: true },
+    });
+    if (attempts.length === 0) return 0;
+
+    const maxScore = round2(questions.reduce((sum, q) => sum + q.points, 0));
+
+    for (const attempt of attempts) {
+      const answerMap = new Map(attempt.answers.map((a) => [a.questionId, a]));
+      const ops: Prisma.PrismaPromise<unknown>[] = [];
+      let totalScore = 0;
+
+      for (const question of questions) {
+        const stored = answerMap.get(question.id);
+        const graded = this.gradeQuestion(question, {
+          selectedOption: stored?.selectedOption ?? null,
+          statementAnswers: jsonBoolArray(stored?.statementAnswers ?? null) ?? undefined,
+          textAnswer: stored?.textAnswer ?? null,
+        });
+        totalScore += graded.score;
+
+        // Câu vừa được thêm sau khi học sinh đã nộp: chưa có bài làm, tính 0 điểm.
+        if (!stored) continue;
+        if (stored.isCorrect === graded.isCorrect && stored.score === graded.score) continue;
+        ops.push(
+          this.prisma.practiceTestAnswer.update({
+            where: { id: stored.id },
+            data: { isCorrect: graded.isCorrect, score: graded.score },
+          })
+        );
+      }
+
+      ops.push(
+        this.prisma.practiceTestAttempt.update({
+          where: { id: attempt.id },
+          data: { score: round2(totalScore), maxScore },
+        })
+      );
+      await this.prisma.$transaction(ops);
+    }
+
+    return attempts.length;
+  }
+
   async submit(user: AuthUser, practiceTestId: string, body: { answers?: AnswerInput[] }) {
     const test = await this.prisma.practiceTest.findUnique({
       where: { id: practiceTestId, deletedAt: null, status: 'PUBLISHED' },
@@ -657,72 +814,18 @@ export class PracticeTestsService {
     const answerRows: Prisma.PracticeTestAnswerCreateManyAttemptInput[] = [];
 
     for (const question of test.questions) {
-      const answer = answerMap.get(question.id);
-      const answerKey = asRecord(question.correctAnswer);
-      const points = question.points;
-      maxScore += points;
-
-      let selectedOption: string | null = null;
-      let statementAnswers: (boolean | null)[] | null = null;
-      let textAnswer: string | null = null;
-      let isCorrect = false;
-      let score = 0;
-
-      if (question.type === 'MULTIPLE_CHOICE') {
-        const allowed = LETTERS.slice(0, question.optionCount);
-        selectedOption = (answer?.selectedOption ?? '').trim().toUpperCase() || null;
-        if (selectedOption && !allowed.includes(selectedOption)) selectedOption = null;
-        isCorrect = selectedOption === answerKey.option;
-        score = isCorrect ? points : 0;
-      }
-
-      if (question.type === 'TRUE_FALSE_MULTI') {
-        const correctStatements = Array.isArray(answerKey.statements)
-          ? answerKey.statements.map((v) => v === true)
-          : [];
-        const source = Array.isArray(answer?.statementAnswers) ? answer.statementAnswers : [];
-        statementAnswers = Array.from({ length: question.statementCount }, (_, index) =>
-          typeof source[index] === 'boolean' ? source[index]! : null
-        );
-        let correctCount = 0;
-        for (let index = 0; index < question.statementCount; index++) {
-          if (
-            typeof statementAnswers[index] === 'boolean' &&
-            statementAnswers[index] === correctStatements[index]
-          ) {
-            correctCount++;
-          }
-        }
-        isCorrect = question.statementCount > 0 && correctCount === question.statementCount;
-        score = scoreTrueFalseMulti(answerKey, correctCount, points);
-      }
-
-      if (question.type === 'SHORT_ANSWER') {
-        const accepted = Array.isArray(answerKey.answers)
-          ? answerKey.answers.map((value) => String(value))
-          : [];
-        textAnswer = answer?.textAnswer?.trim() || null;
-        const normalizedStudent = textAnswer
-          ? normalizeText(textAnswer, question.caseSensitive)
-          : '';
-        isCorrect =
-          !!normalizedStudent &&
-          accepted.some(
-            (value) => normalizeText(value, question.caseSensitive) === normalizedStudent
-          );
-        score = isCorrect ? points : 0;
-      }
-
-      totalScore += score;
+      maxScore += question.points;
+      const graded = this.gradeQuestion(question, answerMap.get(question.id));
+      totalScore += graded.score;
       answerRows.push({
         questionId: question.id,
-        selectedOption,
-        ...(statementAnswers
-          ? { statementAnswers: statementAnswers as Prisma.InputJsonValue }
+        selectedOption: graded.selectedOption,
+        ...(graded.statementAnswers
+          ? { statementAnswers: graded.statementAnswers as Prisma.InputJsonValue }
           : {}),
-        textAnswer,
-        isCorrect,
-        score,
+        textAnswer: graded.textAnswer,
+        isCorrect: graded.isCorrect,
+        score: graded.score,
       });
     }
 

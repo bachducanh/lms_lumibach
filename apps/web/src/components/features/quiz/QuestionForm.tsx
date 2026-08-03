@@ -437,11 +437,15 @@ export function QuestionForm({
     setPending(true);
     try {
       if (question) {
-        await apiClient.patch(`/questions/${question.id}`, values);
+        const data = await apiClient.patch<{ message?: string }>(
+          `/questions/${question.id}`,
+          values
+        );
+        toast.success(data?.message || 'Đã lưu thay đổi.');
       } else {
         await apiClient.post('/questions', { courseId, ...values });
+        toast.success('Đã tạo câu hỏi.');
       }
-      toast.success(question ? 'Đã lưu thay đổi.' : 'Đã tạo câu hỏi.');
       router.push(returnTo ?? `/courses/${courseSlug}/questions`);
       router.refresh();
     } catch (e) {

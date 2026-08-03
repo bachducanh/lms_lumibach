@@ -287,8 +287,11 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
         toast.success('Đã tạo đề luyện tập.');
         router.push(`/courses/${courseSlug}/practice-tests/${data.practiceTestId}`);
       } else {
-        await apiClient.patch(`/practice-tests/${practiceTest!.id}`, buildPayload(publish));
-        toast.success('Đã cập nhật đề luyện tập.');
+        const data = await apiClient.patch<{ message?: string }>(
+          `/practice-tests/${practiceTest!.id}`,
+          buildPayload(publish)
+        );
+        toast.success(data?.message || 'Đã cập nhật đề luyện tập.');
         router.push(`/courses/${courseSlug}/practice-tests/${practiceTest!.id}`);
       }
     } catch (err) {

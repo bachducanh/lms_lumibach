@@ -3,6 +3,7 @@ import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
+import { regradeQuizzesForQuestion } from '../../common/grading/quiz-grading';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -225,10 +226,12 @@ export class QuestionsService {
     if (!(await this.canManage(user.id, user.role, existing.courseId)))
       throw new ForbiddenException('Không có quyền.');
 
-    await (this.prisma as any).$transaction([
-      this.prisma.questionOption.deleteMany({ where: { questionId } }),
-      (this.prisma as any).questionTestCase.deleteMany({ where: { questionId } }),
-      (this.prisma.question as any).update({
+    // Bài làm của học sinh (Answer.selectedOptionIds / textAnswer) tham chiếu tới
+    // QuestionOption.id. Nếu xoá hết option rồi tạo lại thì id đổi hết và mọi bài
+    // đã nộp mất đáp án đã chọn. Vì vậy sửa tại chỗ theo vị trí: option nào đã có
+    // thì update, chỉ tạo thêm khi giáo viên thêm đáp án và chỉ xoá phần dư.
+    await (this.prisma as any).$transaction(async (tx: any) => {
+      await (tx.question as any).update({
         where: { id: questionId },
         data: {
           ...(data.type !== undefined && { type: data.type }),
@@ -240,27 +243,72 @@ export class QuestionsService {
           solutionCode: data.solutionCode ?? null,
           timeLimit: data.timeLimit ?? null,
           memoryLimit: data.memoryLimit ?? null,
-          options: {
-            create: (data.options ?? []).map((o, i) => ({
-              content: o.content,
-              isCorrect: o.isCorrect,
-              position: i,
-            })),
-          },
-          testCases: {
-            create: (data.testCases ?? []).map((tc, i) => ({
-              input: tc.input,
-              expectedOutput: tc.expectedOutput,
-              isHidden: tc.isHidden ?? false,
-              points: tc.points ?? 1,
-              position: i,
-            })),
-          },
         },
-      }),
-    ]);
+      });
 
-    return { message: 'Đã cập nhật câu hỏi.' };
+      const nextOptions = data.options ?? [];
+      const currentOptions = await tx.questionOption.findMany({
+        where: { questionId },
+        orderBy: { position: 'asc' },
+        select: { id: true },
+      });
+      for (let i = 0; i < nextOptions.length; i++) {
+        const o = nextOptions[i]!;
+        const current = currentOptions[i];
+        if (current) {
+          await tx.questionOption.update({
+            where: { id: current.id },
+            data: { content: o.content, isCorrect: o.isCorrect, position: i },
+          });
+        } else {
+          await tx.questionOption.create({
+            data: { questionId, content: o.content, isCorrect: o.isCorrect, position: i },
+          });
+        }
+      }
+      const surplusOptions = currentOptions.slice(nextOptions.length).map((o: any) => o.id);
+      if (surplusOptions.length > 0) {
+        await tx.questionOption.deleteMany({ where: { id: { in: surplusOptions } } });
+      }
+
+      const nextTestCases = data.testCases ?? [];
+      const currentTestCases = await tx.questionTestCase.findMany({
+        where: { questionId },
+        orderBy: { position: 'asc' },
+        select: { id: true },
+      });
+      for (let i = 0; i < nextTestCases.length; i++) {
+        const tc = nextTestCases[i]!;
+        const payload = {
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          isHidden: tc.isHidden ?? false,
+          points: tc.points ?? 1,
+          position: i,
+        };
+        const current = currentTestCases[i];
+        if (current) {
+          await tx.questionTestCase.update({ where: { id: current.id }, data: payload });
+        } else {
+          await tx.questionTestCase.create({ data: { questionId, ...payload } });
+        }
+      }
+      const surplusTestCases = currentTestCases.slice(nextTestCases.length).map((tc: any) => tc.id);
+      if (surplusTestCases.length > 0) {
+        await tx.questionTestCase.deleteMany({ where: { id: { in: surplusTestCases } } });
+      }
+    });
+
+    // Đề/đáp án vừa đổi nên điểm đã chấm không còn đúng — chấm lại các bài đã nộp.
+    const regraded = await regradeQuizzesForQuestion(this.prisma, questionId);
+
+    return {
+      message:
+        regraded > 0
+          ? `Đã cập nhật câu hỏi và chấm lại ${regraded} bài làm.`
+          : 'Đã cập nhật câu hỏi.',
+      regradedAttempts: regraded,
+    };
   }
 
   async delete(user: AuthUser, questionId: string) {

@@ -4,6 +4,7 @@ import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { regradeQuizAttempts } from '../../common/grading/quiz-grading';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -396,6 +397,8 @@ export class QuizzesService {
     await this.prisma.quizQuestion.create({
       data: { quizId, questionId, position: (last?.position ?? -1) + 1 },
     });
+    // Thêm câu làm đổi điểm tối đa — chấm lại các bài đã nộp cho khớp.
+    await regradeQuizAttempts(this.prisma, quizId);
     return { message: 'Đã thêm câu hỏi.' };
   }
 
@@ -421,6 +424,7 @@ export class QuizzesService {
       data: toAdd.map((qId, i) => ({ quizId, questionId: qId, position: lastPos + 1 + i })),
       skipDuplicates: true,
     });
+    await regradeQuizAttempts(this.prisma, quizId);
     return { message: `Đã thêm ${toAdd.length} câu hỏi.`, added: [] };
   }
 
@@ -461,6 +465,7 @@ export class QuizzesService {
       data: picked.map((q, i) => ({ quizId, questionId: q.id, position: lastPos + 1 + i })),
       skipDuplicates: true,
     });
+    await regradeQuizAttempts(this.prisma, quizId);
 
     const added = picked.map((q, i) => ({
       questionId: q.id,
@@ -482,6 +487,8 @@ export class QuizzesService {
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.quizQuestion.deleteMany({ where: { quizId, questionId } });
+    // Bớt câu làm đổi điểm tối đa — chấm lại các bài đã nộp cho khớp.
+    await regradeQuizAttempts(this.prisma, quizId);
     return { message: 'Đã xoá câu hỏi.' };
   }
 
@@ -507,13 +514,15 @@ export class QuizzesService {
 
     const qq = await this.prisma.quizQuestion.findUnique({
       where: { id: qqId },
-      select: { quiz: { select: { courseId: true } } },
+      select: { quizId: true, quiz: { select: { courseId: true } } },
     });
     if (!qq) throw new NotFoundException('Không tìm thấy.');
     if (!(await this.canManage(user.id, user.role, qq.quiz.courseId)))
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.quizQuestion.update({ where: { id: qqId }, data: { points } });
+    // Đổi thang điểm câu hỏi — chấm lại các bài đã nộp cho khớp.
+    await regradeQuizAttempts(this.prisma, qq.quizId);
     return { message: 'Đã cập nhật điểm.' };
   }
 }
