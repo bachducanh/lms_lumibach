@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * hoặc Playwright webServer config sẽ start (set qua env PLAYWRIGHT_WEB_SERVER=1).
  *
  * BASE_URL: chỉnh qua env BASE_URL nếu test trên reverse proxy
- * (vd: BASE_URL=https://lumi.nextgentra.com pnpm test:e2e).
+ * (vd: BASE_URL=https://lumibach.com pnpm test:e2e).
  *
  * Phase 2: chỉ smoke test login page render. Sau khi có /me + dashboard
  * migrated, sẽ thêm full login → dashboard flow ở Phase 3+.

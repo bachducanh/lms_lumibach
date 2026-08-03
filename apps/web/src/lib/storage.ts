@@ -45,7 +45,7 @@ export async function ensureBucket(bucket: string): Promise<void> {
 }
 
 export function getPublicUrl(bucket: string, objectName: string): string {
-  // Return a relative /storage/... URL so it works on any domain (localhost, lumi.nextgentra.com).
+  // Return a relative /storage/... URL so it works on any domain (localhost, lumibach.com).
   // Next.js rewrites /storage/:path* → MinIO internally, avoiding Mixed Content on HTTPS.
   return `/storage/${bucket}/${objectName}`;
 }

@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingRoot: monorepoRoot,
   serverExternalPackages: ['@lumibach/db', 'archiver'],
-  allowedDevOrigins: ['lumi.nextgentra.com', '*.nextgentra.com'],
+  allowedDevOrigins: ['lumibach.com', '*.lumibach.com', '172.16.1.20'],
   async rewrites() {
     const internalBase =
       process.env.API_INTERNAL_URL ??

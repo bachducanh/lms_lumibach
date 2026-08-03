@@ -55,6 +55,7 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+*.stackdump
 
 # Logs
 logs/

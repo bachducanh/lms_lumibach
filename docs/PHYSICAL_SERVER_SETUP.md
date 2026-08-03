@@ -1,228 +1,183 @@
-# Hướng dẫn Triển khai trên Server Vật lý (Bare Metal Deployment Guide)
+# Hướng dẫn Triển khai trên Server Vật lý (Bare Metal)
 
-Tài liệu này cung cấp các bước chi tiết để thiết lập và triển khai hệ thống LMS_LumiBach trên một máy chủ vật lý (Physical Server) chạy hệ điều hành Ubuntu Server.
+Tài liệu này tập trung vào phần **riêng của máy chủ vật lý**: phần cứng, cài OS,
+bảo mật, mạng nội bộ và sao lưu.
 
-## 1. Chuẩn bị Phần cứng & Hệ điều hành
-
-### Yêu cầu Phần cứng (Khuyến nghị)
-
-- **CPU:** Intel Xeon hoặc Core i7/i9 (Tối thiểu 4 Cores).
-- **RAM:** 16GB trở lên (Để chạy mượt các Worker chấm code và Redis).
-- **Disk:** SSD NVMe 250GB+ (Nên cấu hình RAID 1 để an toàn dữ liệu).
-- **Network:** Kết nối Internet ổn định, có IP tĩnh (Static IP).
-
-### Cài đặt Hệ điều hành
-
-1. Tải bản **Ubuntu Server 22.04 LTS** hoặc **24.04 LTS**.
-2. Cài đặt qua USB Boot.
-3. Trong quá trình cài đặt:
-   - Chọn ngôn ngữ: **English**.
-   - Cấu hình **Static IP** (không nên dùng DHCP để tránh đổi IP nội bộ).
-   - Cài đặt **OpenSSH Server** để điều khiển từ xa.
+Các bước chung (Docker, `.env`, build, PM2, cron, cập nhật) nằm ở
+[DEPLOYMENT.md](DEPLOYMENT.md); phần tên miền và HTTPS nằm ở [DOMAIN_SETUP.md](DOMAIN_SETUP.md).
 
 ---
 
-## 2. Bảo mật Hệ thống Cơ bản
+## 1. Chuẩn bị Phần cứng
 
-Sau khi cài đặt OS, thực hiện các bước bảo mật:
+Hệ thống chạy **4 tiến trình Node** (web, api, 2 worker) cùng **Postgres, Redis,
+MinIO, Judge0** trong Docker, nên cần rộng tay về RAM:
 
-### Cập nhật hệ thống
+- **CPU:** tối thiểu 4 cores (Judge0 chấm code song song rất tốn CPU).
+- **RAM:** 16GB trở lên.
+- **Disk:** SSD NVMe 250GB+; nên RAID 1 vì MinIO lưu toàn bộ tệp bài nộp và bài giảng.
+- **Mạng:** kết nối ổn định. **Không bắt buộc IP tĩnh public** nếu dùng Cloudflare Tunnel —
+  chỉ cần IP tĩnh trong LAN để các dịch vụ trỏ tới nhau ổn định.
+
+---
+
+## 2. Cài đặt Hệ điều hành
+
+1. Tải **Ubuntu Server 24.04 LTS** (hoặc 22.04 LTS), cài qua USB boot.
+2. Trong lúc cài:
+   - Ngôn ngữ: **English**.
+   - Cấu hình **Static IP** trong LAN (ví dụ `192.168.53.105`) — nếu dùng DHCP, IP đổi
+     là `MINIO_INTERNAL_ENDPOINT` và `DATABASE_URL` trỏ sai ngay.
+   - Bật **OpenSSH Server**.
+3. Cài xong, ghi lại IP nội bộ — sẽ dùng lại trong `.env`.
+
+---
+
+## 3. Bảo mật cơ bản
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 ```
 
-### Cấu hình Firewall (UFW)
+### Firewall (UFW)
 
-Chỉ mở các cổng cần thiết:
+Chỉ mở SSH. Với Cloudflare Tunnel thì **không cần mở cả 80/443**, vì cloudflared
+tự mở kết nối đi ra:
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw allow 9000/tcp # Nếu cần truy cập MinIO Console từ ngoài
 sudo ufw enable
 ```
 
-### Bảo mật SSH
-
-Chỉnh sửa file `/etc/ssh/sshd_config`:
-
-- Đổi cổng mặc định (VD: từ 22 sang 2222) - _Tùy chọn_.
-- Tắt đăng nhập bằng mật khẩu, chỉ dùng **SSH Key**.
-- Tắt đăng nhập bằng tài khoản `root`.
-
----
-
-## 3. Cài đặt Môi trường (Docker & Runtime)
-
-Dù là server vật lý, việc sử dụng Docker vẫn được khuyến nghị để cô lập các dịch vụ như Database và Judge0.
-
-### Cài đặt Docker
+Nếu dùng Nginx + IP public thay cho tunnel thì mở thêm:
 
 ```bash
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 ```
 
-### Cài đặt Node.js (v20) & pnpm
+> ⚠️ **Không bao giờ** mở ra Internet các cổng 5432 (Postgres), 6379 (Redis),
+> 9000/9001 (MinIO), 2358 (Judge0). Judge0 chạy `privileged: true` — lộ ra ngoài
+> đồng nghĩa với trao quyền chạy code tuỳ ý trên server. Cần xem MinIO Console từ xa
+> thì dùng SSH tunnel: `ssh -L 9001:localhost:9001 user@server`.
+
+### SSH
+
+Trong `/etc/ssh/sshd_config`:
+
+- `PasswordAuthentication no` — chỉ dùng SSH key.
+- `PermitRootLogin no`.
+- Đổi cổng mặc định 22 (tuỳ chọn), nhớ `sudo ufw allow <port>/tcp` trước khi restart.
 
 ```bash
-curl -fsSL https://fnm.vercel.app/install | bash
-source ~/.bashrc
-fnm install 20
-npm install -g pnpm pm2
+sudo systemctl restart ssh
 ```
 
 ---
 
-## 4. Triển khai Cơ sở hạ tầng (Cơ sở dữ liệu & Storage)
+## 4. Cài môi trường và triển khai ứng dụng
 
-Sử dụng Docker Compose để chạy các dịch vụ lõi:
+Làm theo [DEPLOYMENT.md](DEPLOYMENT.md) mục 3 → 7:
 
-1. Clone mã nguồn:
+1. Cài Docker, Node 20, pnpm 9, pm2.
+2. `git clone` vào `/opt/lumibach`, sửa mật khẩu trong `docker-compose.yml`, `docker compose up -d`.
+3. Tạo `.env` — với server vật lý, chú ý các biến trỏ vào IP LAN:
 
-   ```bash
-   git clone https://github.com/bachducanh/lms_lumibach.git
-   cd lms_lumibach
+   ```dotenv
+   MINIO_INTERNAL_ENDPOINT="192.168.53.105"
+   MINIO_INTERNAL_PORT=9000
+   API_INTERNAL_URL="http://localhost:4000/api/v1"
    ```
 
-2. Khởi chạy các container:
-
-   ```bash
-   docker compose up -d
-   ```
-
-3. Kiểm tra trạng thái:
-   ```bash
-   docker compose ps
-   ```
+4. `pnpm install && pnpm db:migrate:deploy && pnpm build`.
+5. Chạy 4 tiến trình bằng PM2 (`ecosystem.config.js` ở [DEPLOYMENT.md](DEPLOYMENT.md) mục 7),
+   rồi `pm2 save && pm2 startup` để tự lên sau khi mất điện.
 
 ---
 
-## 5. Triển khai Ứng dụng Next.js
+## 5. Đưa ra Internet
 
-1. **Cấu hình .env:**
-   Copy file mẫu và chỉnh sửa thông tin thực tế:
+Máy chủ đặt trong LAN trường học thường **không có IP public** và bị chặn NAT —
+dùng **Cloudflare Tunnel** cho `lumibach.com`: xem [DOMAIN_SETUP.md](DOMAIN_SETUP.md).
 
-   ```bash
-   cp .env.example .env
-   nano .env
-   ```
-
-   _Lưu ý:_ Cập nhật `DATABASE_URL` và `NEXTAUTH_URL`.
-
-2. **Cài đặt & Build:**
-
-   ```bash
-   pnpm install
-   npx prisma migrate deploy
-   npx prisma generate
-   ```
-
-3. **Build ứng dụng Next.js & Scratch Editor:**
-
-   ```bash
-   pnpm build
-   pnpm build:scratch-gui
-   ```
-
-4. **Quản lý bằng PM2:**
-   Chạy ứng dụng và các worker chấm code:
-
-   ```bash
-   # App chính
-   pm2 start "pnpm start" --name lumibach-web
-
-   # Worker xử lý chấm bài Code (Quan trọng)
-   pm2 start "npx tsx src/workers/code-execution.ts" --name lumibach-worker-code
-
-   # Worker gửi Email
-   pm2 start "npx tsx src/workers/email.worker.ts" --name lumibach-worker-email
-
-   # Lưu cấu hình để tự khởi động cùng Server
-   pm2 save
-   pm2 startup
-   ```
+Nếu có IP tĩnh public và được phép NAT 80/443 thì dùng Nginx + Certbot theo
+[DEPLOYMENT.md](DEPLOYMENT.md) mục 8.2.
 
 ---
 
-## 6. Cấu hình Nginx & SSL (HTTPS)
+## 6. Chống mất điện & tự phục hồi
 
-### Cài đặt Nginx
+Rủi ro lớn nhất của server vật lý là mất điện đột ngột (hỏng dữ liệu Postgres):
 
-```bash
-sudo apt install nginx -y
-```
+- Lắp **UPS**, cấu hình `nut` hoặc `apcupsd` để shutdown mềm khi pin gần cạn.
+- Bật tự khởi động lại sau khi có điện: trong BIOS chọn _Restore on AC Power Loss → Power On_.
+- Docker đã có `restart: unless-stopped`; PM2 tự lên nhờ `pm2 startup`.
 
-### Tạo cấu hình Site
-
-Tạo file `/etc/nginx/sites-available/lumibach`:
-
-```nginx
-server {
-    listen 80;
-    server_name lms.yourdomain.com; # Thay bằng domain của bạn
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### Kích hoạt SSL (Certbot)
-
-```bash
-sudo ln -s /etc/nginx/sites-available/lumibach /etc/nginx/sites-enabled/
-sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d lms.yourdomain.com
-```
+Kiểm tra thử: rút điện đột ngột, cắm lại, sau ~3 phút `https://lumibach.com`
+phải tự truy cập được mà không cần đăng nhập SSH.
 
 ---
 
-## 7. Chiến lược Sao lưu Dữ liệu (Backup Strategy)
+## 7. Sao lưu dữ liệu
 
-Trên server vật lý, việc hỏng ổ cứng là rủi ro lớn nhất.
+Ba thứ phải backup: **DB Postgres**, **tệp trong MinIO**, và **file `.env`**
+(chứa `AUTH_SECRET` — mất là toàn bộ phiên đăng nhập và token hết hiệu lực).
 
-### Backup Docker Volumes
-
-Tạo một script backup hàng ngày (`/home/user/backup.sh`):
+Tạo `/opt/lumibach/scripts/backup.sh`:
 
 ```bash
 #!/bin/bash
-BACKUP_DIR="/path/to/backup/storage" # Nên là ổ cứng ngoài hoặc Cloud Storage
+set -euo pipefail
+BACKUP_DIR="/mnt/backup"        # ổ cứng ngoài hoặc mount cloud storage
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-# Backup Database
-docker exec lumibach-postgres pg_dump -U lumibach lumibach > $BACKUP_DIR/db_$TIMESTAMP.sql
+# Database
+docker exec lumibach-postgres pg_dump -U lumibach lumibach \
+  | gzip > "$BACKUP_DIR/db_$TIMESTAMP.sql.gz"
 
-# Backup MinIO Data (Các tệp tin)
-tar -czf $BACKUP_DIR/files_$TIMESTAMP.tar.gz /var/lib/docker/volumes/lms_lumibach_minio_data/_data
+# Tệp trong MinIO
+tar -czf "$BACKUP_DIR/files_$TIMESTAMP.tar.gz" \
+  /var/lib/docker/volumes/lms_lumibach_minio_data/_data
 
-# Xóa các bản backup cũ hơn 30 ngày
-find $BACKUP_DIR -type f -mtime +30 -delete
+# Cấu hình
+cp /opt/lumibach/.env "$BACKUP_DIR/env_$TIMESTAMP.bak"
+
+# Dọn bản cũ hơn 30 ngày
+find "$BACKUP_DIR" -type f -mtime +30 -delete
 ```
-
-Cấu hình **Crontab** để chạy hàng đêm lúc 2:00 AM:
 
 ```bash
-0 2 * * * /home/user/backup.sh
+chmod +x /opt/lumibach/scripts/backup.sh
+crontab -e
+```
+
+```cron
+0 2 * * * /opt/lumibach/scripts/backup.sh >> /var/log/lumibach-backup.log 2>&1
+```
+
+**Kiểm tra phục hồi định kỳ** (backup chưa từng restore thử là backup chưa chắc dùng được):
+
+```bash
+gunzip -c /mnt/backup/db_YYYYMMDD_HHMMSS.sql.gz | \
+  docker exec -i lumibach-postgres psql -U lumibach -d lumibach_restore_test
 ```
 
 ---
 
-## 8. Giám sát Server (Monitoring)
+## 8. Giám sát
 
-- **Xem Log ứng dụng:** `pm2 logs`
-- **Kiểm tra tài nguyên:** `htop` hoặc `docker stats`
-- **Nhiệt độ phần cứng:** `sensors` (Cài gói `lm-sensors`)
+| Việc              | Lệnh                                                  |
+| ----------------- | ----------------------------------------------------- |
+| Tiến trình Node   | `pm2 monit`, `pm2 logs`                               |
+| Container         | `docker compose ps`, `docker stats`                   |
+| Tài nguyên máy    | `htop`, `df -h` (theo dõi dung lượng MinIO)           |
+| Nhiệt độ / quạt   | `sensors` (cài `lm-sensors`)                          |
+| Sức khoẻ ổ cứng   | `sudo smartctl -a /dev/nvme0n1` (cài `smartmontools`) |
+| Trạng thái tunnel | `sudo systemctl status cloudflared`                   |
+
+Nên bật cảnh báo dung lượng: khi `df -h` vượt 80%, MinIO và Postgres đều có nguy cơ
+ghi lỗi giữa chừng.
 
 ---
 
-_Tài liệu được cập nhật ngày: 07/05/2026_
+_Cập nhật: 03/08/2026_
