@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const LOG_FILE = path.join(process.cwd(), 'logs', 'dev-emails.log');
 
 @Injectable()
 export class EmailService {
@@ -8,6 +12,15 @@ export class EmailService {
   private readonly transporter: nodemailer.Transporter | null;
   private readonly from: string;
   private readonly appUrl: string;
+
+  private logToFile(line: string) {
+    try {
+      fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
+      fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${line}\n`);
+    } catch (err) {
+      this.logger.warn(`Không ghi được log email vào file: ${(err as Error).message}`);
+    }
+  }
 
   constructor(private readonly config: ConfigService) {
     const host = config.get<string>('SMTP_HOST');
@@ -41,6 +54,9 @@ export class EmailService {
         process.stdout.write(`│  🔗 ${links[0]}\n`);
       }
       process.stdout.write('└─────────────────────────────────────────────────────┘\n\n');
+      this.logToFile(
+        `[DEV - chưa gửi thật] to=${to} subject="${subject}" link=${links[0] ?? '(không có)'}`
+      );
       return;
     }
     try {
@@ -58,6 +74,9 @@ export class EmailService {
         process.stdout.write(`│  🔗 ${links[0]}\n`);
       }
       process.stdout.write('└─────────────────────────────────────────────────────┘\n\n');
+      this.logToFile(
+        `[SMTP FAILED - fallback] to=${to} subject="${subject}" link=${links[0] ?? '(không có)'}`
+      );
     }
   }
 
@@ -67,6 +86,7 @@ export class EmailService {
     // issues (Gmail spam folder, blocked domain, etc.) without
     // exposing the token in logs we wouldn't otherwise have.
     process.stdout.write(`[email] verify URL for ${email}: ${url}\n`);
+    this.logToFile(`[verify-email] to=${email} url=${url}`);
     await this.send(
       email,
       'Xác thực email - LumiBach',
