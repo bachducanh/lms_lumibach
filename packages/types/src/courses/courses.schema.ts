@@ -72,6 +72,30 @@ export type CourseListItem = {
   _count: { enrollments: number };
 };
 
+// ── Thùng rác ──────────────────────────────────────────────────
+
+/** Số ngày giữ khoá học trong thùng rác trước khi xoá vĩnh viễn. */
+export const TRASH_RETENTION_DAYS = 30;
+
+export type TrashedCourseItem = {
+  id: string;
+  name: string;
+  slug: string;
+  thumbnail: string | null;
+  owner: CourseOwner;
+  deletedAt: string;
+  /** Số ngày còn lại trước khi tự xoá vĩnh viễn (0 = sẽ xoá ở lần dọn kế tiếp). */
+  daysLeft: number;
+  /** Nội dung sẽ mất nếu xoá vĩnh viễn — hiển thị để cảnh báo trước khi xác nhận. */
+  contents: {
+    modules: number;
+    lessons: number;
+    assignments: number;
+    quizzes: number;
+    enrollments: number;
+  };
+};
+
 export type CourseDetail = CourseListItem & {
   description: string | null;
   enrollmentCode: string | null;

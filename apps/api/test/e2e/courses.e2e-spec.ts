@@ -28,6 +28,111 @@ describe('Courses API — category-aware behavior', () => {
     return { user, cookie: cookieHeader(token) };
   }
 
+  /** Khoá học có đủ chương / bài giảng / bài tập / ghi danh để kiểm tra xoá. */
+  async function seedCourseWithContent(ownerId: string) {
+    const student = await createTestUser({ role: 'STUDENT' });
+    const course = await createTestCourse({ ownerId });
+    await createTestEnrollment({ userId: student.id, courseId: course.id });
+
+    const mod = await testPrisma.module.create({
+      data: { courseId: course.id, name: 'Chương 1', position: 0 },
+    });
+    const lesson = await testPrisma.lesson.create({
+      data: { title: 'Bài 1', content: '<p>Nội dung</p>', createdBy: ownerId },
+    });
+    const item = await testPrisma.moduleItem.create({
+      data: { moduleId: mod.id, type: 'LESSON', position: 0, title: 'Bài 1', lessonId: lesson.id },
+    });
+    const assignment = await testPrisma.assignment.create({
+      data: {
+        courseId: course.id,
+        title: 'Bài tập 1',
+        instructions: 'Làm bài',
+        createdBy: ownerId,
+      },
+    });
+
+    return { course, mod, item, lesson, assignment, student };
+  }
+
+  /**
+   * Thêm hoạt động thật của học sinh vào khoá: lượt làm quiz có câu trả lời,
+   * bài nộp code có kết quả test case, lượt làm đề luyện tập, và điểm rubric.
+   *
+   * Đây là các bảng nằm ở giao của hai nhánh cascade, nhánh trỏ tới phần định
+   * nghĩa đề khai RESTRICT — chính là thứ làm xoá vĩnh viễn fail P2003.
+   */
+  async function seedStudentActivity(courseId: string, ownerId: string, studentId: string) {
+    const quiz = await testPrisma.quiz.create({
+      data: { courseId, title: 'Quiz 1', createdBy: ownerId },
+    });
+    const question = await testPrisma.question.create({
+      data: { courseId, type: 'TRUE_FALSE', content: '1 + 1 = 2?', createdBy: ownerId },
+    });
+    await testPrisma.quizQuestion.create({ data: { quizId: quiz.id, questionId: question.id } });
+    const attempt = await testPrisma.quizAttempt.create({ data: { quizId: quiz.id, studentId } });
+    await testPrisma.answer.create({
+      data: { attemptId: attempt.id, questionId: question.id, booleanAnswer: true },
+    });
+
+    const exercise = await testPrisma.codeExercise.create({
+      data: { courseId, title: 'Bài code', language: 'PYTHON3', createdBy: ownerId },
+    });
+    const testCase = await testPrisma.testCase.create({
+      data: { codeExerciseId: exercise.id, input: '1', expectedOutput: '1' },
+    });
+    const codeSub = await testPrisma.codeSubmission.create({
+      data: { codeExerciseId: exercise.id, studentId, language: 'PYTHON3', code: 'print(1)' },
+    });
+    await testPrisma.testCaseResult.create({
+      data: { submissionId: codeSub.id, testCaseId: testCase.id, status: 'ACCEPTED' },
+    });
+
+    const pt = await testPrisma.practiceTest.create({
+      data: {
+        courseId,
+        title: 'Đề 1',
+        pdfUrl: '/storage/x/y.pdf',
+        pdfName: 'y.pdf',
+        createdBy: ownerId,
+      },
+    });
+    const ptQuestion = await testPrisma.practiceTestQuestion.create({
+      data: { practiceTestId: pt.id, type: 'MULTIPLE_CHOICE', correctAnswer: { value: 'A' } },
+    });
+    const ptAttempt = await testPrisma.practiceTestAttempt.create({
+      data: { practiceTestId: pt.id, studentId },
+    });
+    await testPrisma.practiceTestAnswer.create({
+      data: { attemptId: ptAttempt.id, questionId: ptQuestion.id, selectedOption: 'A' },
+    });
+
+    return { quiz, question, exercise, practiceTest: pt };
+  }
+
+  /** Bài nộp có chấm rubric — nhánh RESTRICT còn lại. */
+  async function seedRubricGrade(assignmentId: string, ownerId: string, studentId: string) {
+    const submission = await testPrisma.submission.create({
+      data: { assignmentId, studentId, content: 'bài làm' },
+    });
+    const rubric = await testPrisma.rubric.create({ data: { assignmentId } });
+    const criterion = await testPrisma.rubricCriterion.create({
+      data: { rubricId: rubric.id, name: 'Tiêu chí 1' },
+    });
+    const level = await testPrisma.rubricLevel.create({
+      data: { criterionId: criterion.id, label: 'Tốt', points: 10 },
+    });
+    await testPrisma.rubricGrade.create({
+      data: {
+        submissionId: submission.id,
+        criterionId: criterion.id,
+        levelId: level.id,
+        gradedBy: ownerId,
+      },
+    });
+    return { submission };
+  }
+
   describe('POST /api/v1/courses', () => {
     it('201 — ADMIN tạo course với leaf category', async () => {
       const { cookie } = await tokenFor('ADMIN');
@@ -178,44 +283,87 @@ describe('Courses API — category-aware behavior', () => {
       expect(res.status).toBe(200);
     });
 
-    // Trước đây deleteCourse chỉ set deletedAt, nên toàn bộ nội dung con vẫn
-    // sống trong DB dù khoá học đã "biến mất" khỏi giao diện.
-    it('200 — xoá sạch nội dung con, không để lại bản ghi mồ côi', async () => {
+    // Xoá = chuyển vào thùng rác. Nội dung con PHẢI còn nguyên, nếu không thì
+    // nút "Khôi phục" ở thùng rác trả về một khoá học rỗng.
+    it('200 — xoá chỉ đưa vào thùng rác, giữ nguyên nội dung để khôi phục', async () => {
       const { user: owner, cookie } = await tokenFor('TEACHER');
-      const student = await createTestUser({ role: 'STUDENT' });
-      const course = await createTestCourse({ ownerId: owner.id });
-
-      await createTestEnrollment({ userId: student.id, courseId: course.id });
-      const mod = await testPrisma.module.create({
-        data: { courseId: course.id, name: 'Chương 1', position: 0 },
-      });
-      // Lesson là ca đặc biệt: không có courseId, chỉ nối qua ModuleItem.lessonId
-      // với onDelete SetNull nên cascade của Course không chạm tới.
-      const lesson = await testPrisma.lesson.create({
-        data: { title: 'Bài 1', content: '<p>Nội dung</p>', createdBy: owner.id },
-      });
-      const item = await testPrisma.moduleItem.create({
-        data: {
-          moduleId: mod.id,
-          type: 'LESSON',
-          position: 0,
-          title: 'Bài 1',
-          lessonId: lesson.id,
-        },
-      });
-      const assignment = await testPrisma.assignment.create({
-        data: {
-          courseId: course.id,
-          title: 'Bài tập 1',
-          instructions: 'Làm bài',
-          createdBy: owner.id,
-        },
-      });
+      const { course, mod, lesson, assignment } = await seedCourseWithContent(owner.id);
 
       const res = await request(app.getHttpServer())
         .delete(`/api/v1/courses/${course.id}`)
         .set('Cookie', cookie);
+      expect(res.status).toBe(200);
 
+      const [courseRow, moduleLeft, lessonLeft, assignmentLeft, enrollmentLeft] = await Promise.all(
+        [
+          testPrisma.course.findUnique({ where: { id: course.id } }),
+          testPrisma.module.findUnique({ where: { id: mod.id } }),
+          testPrisma.lesson.findUnique({ where: { id: lesson.id } }),
+          testPrisma.assignment.findUnique({ where: { id: assignment.id } }),
+          testPrisma.enrollment.findFirst({ where: { courseId: course.id } }),
+        ]
+      );
+
+      expect(courseRow?.deletedAt).toBeInstanceOf(Date);
+      expect(moduleLeft).not.toBeNull();
+      expect(lessonLeft).not.toBeNull();
+      expect(assignmentLeft).not.toBeNull();
+      expect(enrollmentLeft).not.toBeNull();
+    });
+  });
+
+  describe('Thùng rác', () => {
+    it('200 — khôi phục đưa khoá học trở lại danh sách', async () => {
+      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const course = await createTestCourse({ ownerId: owner.id });
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}`)
+        .set('Cookie', cookie);
+
+      const trash = await request(app.getHttpServer())
+        .get('/api/v1/courses/trash')
+        .set('Cookie', cookie);
+      expect(trash.status).toBe(200);
+      expect(trash.body.data).toHaveLength(1);
+      expect(trash.body.data[0].id).toBe(course.id);
+      expect(trash.body.data[0].daysLeft).toBe(30);
+
+      const restored = await request(app.getHttpServer())
+        .post(`/api/v1/courses/${course.id}/restore`)
+        .set('Cookie', cookie);
+      expect(restored.status).toBe(200);
+
+      const row = await testPrisma.course.findUnique({ where: { id: course.id } });
+      expect(row?.deletedAt).toBeNull();
+    });
+
+    it('403 — không xoá vĩnh viễn được khoá chưa nằm trong thùng rác', async () => {
+      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const course = await createTestCourse({ ownerId: owner.id });
+
+      const res = await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}/purge`)
+        .set('Cookie', cookie);
+
+      expect(res.status).toBe(403);
+      const row = await testPrisma.course.findUnique({ where: { id: course.id } });
+      expect(row).not.toBeNull();
+    });
+
+    // Đây mới là chỗ xoá thật — gồm cả Lesson, thứ mà cascade không chạm tới
+    // vì ModuleItem.lessonId khai onDelete SetNull.
+    it('200 — xoá vĩnh viễn dọn sạch nội dung con, không để lại bản ghi mồ côi', async () => {
+      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { course, mod, item, lesson, assignment } = await seedCourseWithContent(owner.id);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}`)
+        .set('Cookie', cookie);
+
+      const res = await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}/purge`)
+        .set('Cookie', cookie);
       expect(res.status).toBe(200);
 
       const [courseLeft, moduleLeft, itemLeft, lessonLeft, assignmentLeft, enrollmentLeft] =
@@ -234,6 +382,77 @@ describe('Courses API — category-aware behavior', () => {
       expect(lessonLeft).toBeNull();
       expect(assignmentLeft).toBeNull();
       expect(enrollmentLeft).toBeNull();
+    });
+
+    // Hồi quy: khoá học có hoạt động thật của học sinh từng làm purge fail
+    // P2003 (Invalid reference) vì Answer/TestCaseResult/PracticeTestAnswer/
+    // RubricGrade trỏ tới phần định nghĩa đề bằng RESTRICT.
+    it('200 — xoá vĩnh viễn được khoá học đã có bài làm của học sinh', async () => {
+      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { course, assignment, student } = await seedCourseWithContent(owner.id);
+      const { question, exercise } = await seedStudentActivity(course.id, owner.id, student.id);
+      await seedRubricGrade(assignment.id, owner.id, student.id);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}`)
+        .set('Cookie', cookie);
+
+      const res = await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}/purge`)
+        .set('Cookie', cookie);
+
+      expect(res.status).toBe(200);
+      expect(await testPrisma.course.findUnique({ where: { id: course.id } })).toBeNull();
+
+      // Không còn bản ghi nào của khoá sót lại ở các bảng RESTRICT.
+      const [answers, results, ptAnswers, grades, questions, testCases] = await Promise.all([
+        testPrisma.answer.count({ where: { questionId: question.id } }),
+        testPrisma.testCaseResult.count({ where: { testCase: { codeExerciseId: exercise.id } } }),
+        testPrisma.practiceTestAnswer.count({
+          where: { attempt: { practiceTestId: { not: '' } } },
+        }),
+        testPrisma.rubricGrade.count({ where: { submission: { assignmentId: assignment.id } } }),
+        testPrisma.question.count({ where: { courseId: course.id } }),
+        testPrisma.testCase.count({ where: { codeExerciseId: exercise.id } }),
+      ]);
+      expect(answers).toBe(0);
+      expect(results).toBe(0);
+      expect(ptAnswers).toBe(0);
+      expect(grades).toBe(0);
+      expect(questions).toBe(0);
+      expect(testCases).toBe(0);
+    });
+
+    it('chỉ dọn khoá quá 30 ngày, giữ lại khoá mới xoá', async () => {
+      const owner = await createTestUser({ role: 'TEACHER' });
+      const fresh = await createTestCourse({ ownerId: owner.id });
+      const stale = await createTestCourse({ ownerId: owner.id });
+
+      await testPrisma.course.update({
+        where: { id: fresh.id },
+        data: { deletedAt: new Date() },
+      });
+      await testPrisma.course.update({
+        where: { id: stale.id },
+        data: { deletedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) },
+      });
+
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/courses/purge-expired')
+        .set('x-cron-secret', process.env.CRON_SECRET ?? '');
+      expect(res.status).toBe(200);
+      expect(res.body.data.purged).toBe(1);
+
+      expect(await testPrisma.course.findUnique({ where: { id: stale.id } })).toBeNull();
+      expect(await testPrisma.course.findUnique({ where: { id: fresh.id } })).not.toBeNull();
+    });
+
+    it('401 — cron endpoint từ chối khi sai secret', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/courses/purge-expired')
+        .set('x-cron-secret', 'sai-secret');
+
+      expect(res.status).toBe(401);
     });
   });
 

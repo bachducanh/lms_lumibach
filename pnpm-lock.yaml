@@ -427,6 +427,9 @@ importers:
       dotenv-cli:
         specifier: ^7.4.2
         version: 7.4.4
+      minio:
+        specifier: ^8.0.7
+        version: 8.0.7
       prisma:
         specifier: ^5
         version: 5.22.0

@@ -9,7 +9,9 @@ import type {
   CourseCategoryRef,
   CreateCourseBody,
   UpdateCourseBody,
+  TrashedCourseItem,
 } from '@lumibach/types';
+import { TRASH_RETENTION_DAYS } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { resolveCourseAccess } from '../../common/auth/course-access';
 import { AuditService } from '../../common/audit/audit.service';
@@ -219,35 +221,201 @@ export class CoursesService {
     return urls.filter((u): u is string => !!u);
   }
 
-  async deleteCourse(actor: AuthUser, courseId: string): Promise<void> {
+  private async assertCanDelete(actor: AuthUser, courseId: string) {
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
     if (actor.role !== 'ADMIN' && existing.ownerId !== actor.id) {
       throw new ForbiddenException('Bạn không có quyền xoá khoá học này');
     }
+    return existing;
+  }
 
-    const itemIds = await this.lessonCleanup.moduleItemIdsOfCourse(courseId);
-    const lessonPlan = await this.lessonCleanup.planPurge(itemIds);
-    const courseFiles = await this.collectCourseFileUrls(courseId, existing.thumbnail);
+  /**
+   * Chuyển khoá học vào thùng rác. Toàn bộ nội dung con được GIỮ NGUYÊN — đó là
+   * điều kiện để khôi phục được. Việc dọn thật nằm ở purgeCourse().
+   */
+  async deleteCourse(actor: AuthUser, courseId: string): Promise<void> {
+    const existing = await this.assertCanDelete(actor, courseId);
 
-    // Xoá DB trước, file sau: nếu MinIO lỗi thì chỉ còn file rác (vô hại), còn
-    // làm ngược lại sẽ mất file của một khoá học vẫn đang tồn tại.
-    await this.prisma.$transaction([
-      this.prisma.lesson.deleteMany({ where: { id: { in: lessonPlan.lessonIds } } }),
-      this.prisma.course.delete({ where: { id: courseId } }),
-    ]);
-
-    await this.storage.removeByUrls([...courseFiles, ...lessonPlan.fileUrls]);
+    await this.prisma.course.update({
+      where: { id: courseId },
+      data: { deletedAt: new Date() },
+    });
 
     await this.cache.del(`courses:detail:slug:${existing.slug}`);
 
     this.audit.log({
       userId: actor.id,
       userRole: actor.role,
-      action: 'COURSE_DELETE',
+      action: 'COURSE_TRASH',
       resource: 'Course',
       resourceId: courseId,
     });
+  }
+
+  async restoreCourse(actor: AuthUser, courseId: string): Promise<void> {
+    const existing = await this.assertCanDelete(actor, courseId);
+    if (!existing.deletedAt) throw new NotFoundException('Khoá học không nằm trong thùng rác');
+
+    await this.prisma.course.update({
+      where: { id: courseId },
+      data: { deletedAt: null },
+    });
+
+    await this.cache.del(`courses:detail:slug:${existing.slug}`);
+
+    this.audit.log({
+      userId: actor.id,
+      userRole: actor.role,
+      action: 'COURSE_RESTORE',
+      resource: 'Course',
+      resourceId: courseId,
+    });
+  }
+
+  /**
+   * Xoá vĩnh viễn — KHÔNG HOÀN TÁC ĐƯỢC. Chỉ áp dụng cho khoá đã nằm trong
+   * thùng rác, để một cú bấm nhầm ở màn hình khoá học không thể xoá thật.
+   */
+  async purgeCourse(actor: AuthUser, courseId: string): Promise<void> {
+    const existing = await this.assertCanDelete(actor, courseId);
+    if (!existing.deletedAt) {
+      throw new ForbiddenException('Chỉ xoá vĩnh viễn được khoá học đã ở trong thùng rác');
+    }
+
+    await this.purge(courseId, existing.slug, existing.thumbnail);
+
+    this.audit.log({
+      userId: actor.id,
+      userRole: actor.role,
+      action: 'COURSE_PURGE',
+      resource: 'Course',
+      resourceId: courseId,
+      metadata: { name: existing.name, slug: existing.slug },
+    });
+  }
+
+  /** Dọn thật một khoá học: nội dung con + Lesson + file trên MinIO. */
+  private async purge(courseId: string, slug: string, thumbnail: string | null): Promise<void> {
+    const itemIds = await this.lessonCleanup.moduleItemIdsOfCourse(courseId);
+    const lessonPlan = await this.lessonCleanup.planPurge(itemIds);
+    const courseFiles = await this.collectCourseFileUrls(courseId, thumbnail);
+
+    // Xoá DB trước, file sau: nếu MinIO lỗi thì chỉ còn file rác (vô hại), còn
+    // làm ngược lại sẽ mất file của một khoá học vẫn đang tồn tại.
+    //
+    // Bốn bảng đầu phải xoá TAY trước Course. Chúng nằm ở giao của hai nhánh
+    // cascade (bài làm của học sinh ↔ định nghĩa đề), và nhánh trỏ tới phần
+    // định nghĩa khai onDelete mặc định = RESTRICT. Postgres kiểm RESTRICT ngay
+    // lập tức, không đợi nhánh cascade kia dọn xong, nên xoá thẳng Course sẽ
+    // fail P2003 với bất kỳ khoá học nào có hoạt động thật của học sinh.
+    await this.prisma.$transaction([
+      // Answer → Question
+      this.prisma.answer.deleteMany({ where: { attempt: { quiz: { courseId } } } }),
+      // TestCaseResult → TestCase
+      this.prisma.testCaseResult.deleteMany({
+        where: { submission: { codeExercise: { courseId } } },
+      }),
+      // PracticeTestAnswer → PracticeTestQuestion
+      this.prisma.practiceTestAnswer.deleteMany({
+        where: { attempt: { practiceTest: { courseId } } },
+      }),
+      // RubricGrade → RubricCriterion / RubricLevel
+      this.prisma.rubricGrade.deleteMany({
+        where: {
+          OR: [
+            { submission: { assignment: { courseId } } },
+            { codeSubmission: { codeExercise: { courseId } } },
+          ],
+        },
+      }),
+      this.prisma.lesson.deleteMany({ where: { id: { in: lessonPlan.lessonIds } } }),
+      this.prisma.course.delete({ where: { id: courseId } }),
+    ]);
+
+    await this.storage.removeByUrls([...courseFiles, ...lessonPlan.fileUrls]);
+    await this.cache.del(`courses:detail:slug:${slug}`);
+  }
+
+  async listTrash(actor: AuthUser): Promise<TrashedCourseItem[]> {
+    if (actor.role !== 'ADMIN' && actor.role !== 'TEACHER') {
+      throw new ForbiddenException('Không có quyền xem thùng rác');
+    }
+
+    const courses = await this.prisma.course.findMany({
+      // ADMIN thấy toàn bộ; giáo viên chỉ thấy khoá mình sở hữu — khớp với
+      // quyền xoá ở assertCanDelete.
+      where: {
+        deletedAt: { not: null },
+        ...(actor.role === 'ADMIN' ? {} : { ownerId: actor.id }),
+      },
+      orderBy: { deletedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        thumbnail: true,
+        deletedAt: true,
+        owner: { select: OWNER_SELECT },
+        _count: { select: { modules: true, assignments: true, quizzes: true, enrollments: true } },
+      },
+    });
+    if (courses.length === 0) return [];
+
+    // Lesson không có courseId nên không đếm được qua _count — phải đếm riêng.
+    const lessonCounts = await Promise.all(
+      courses.map((c) =>
+        this.prisma.moduleItem.count({
+          where: { module: { courseId: c.id }, lessonId: { not: null } },
+        })
+      )
+    );
+
+    return courses.map((c, i) => {
+      const deletedAt = c.deletedAt as Date;
+      const ageMs = Date.now() - deletedAt.getTime();
+      const daysLeft = Math.max(
+        0,
+        TRASH_RETENTION_DAYS - Math.floor(ageMs / (24 * 60 * 60 * 1000))
+      );
+      return {
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        thumbnail: c.thumbnail,
+        owner: c.owner,
+        deletedAt: deletedAt.toISOString(),
+        daysLeft,
+        contents: {
+          modules: c._count.modules,
+          lessons: lessonCounts[i] as number,
+          assignments: c._count.assignments,
+          quizzes: c._count.quizzes,
+          enrollments: c._count.enrollments,
+        },
+      };
+    });
+  }
+
+  /** Dọn tự động các khoá đã quá hạn giữ. Gọi từ cron — không có actor. */
+  async purgeExpired(): Promise<{ purged: number; slugs: string[] }> {
+    const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const expired = await this.prisma.course.findMany({
+      where: { deletedAt: { not: null, lt: cutoff } },
+      select: { id: true, name: true, slug: true, thumbnail: true },
+    });
+
+    for (const course of expired) {
+      await this.purge(course.id, course.slug, course.thumbnail);
+      this.audit.log({
+        action: 'COURSE_PURGE_EXPIRED',
+        resource: 'Course',
+        resourceId: course.id,
+        metadata: { name: course.name, slug: course.slug },
+      });
+    }
+
+    return { purged: expired.length, slugs: expired.map((c) => c.slug) };
   }
 
   async listCourses(
