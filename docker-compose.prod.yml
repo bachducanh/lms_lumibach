@@ -1,0 +1,77 @@
+# Chạy LumiBach LMS bằng Docker.
+#
+#   cp .env.example .env    # rồi điền giá trị thật
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Chỉ chứa web + api. PostgreSQL, Redis và MinIO là dịch vụ có sẵn trên hạ tầng,
+# khai trong .env (DATABASE_URL, REDIS_URL, MINIO_INTERNAL_ENDPOINT).
+# Judge0 vẫn chạy từ docker-compose.yml như cũ.
+
+services:
+  # Chạy migration DB. KHÔNG tự chạy cùng `up` — gọi tay khi schema đổi:
+  #   docker compose -f docker-compose.prod.yml --profile tools run --rm migrate
+  #
+  # Dùng lại stage `build` vì Prisma CLI là devDependency, đã bị loại khỏi image
+  # chạy thật cho gọn.
+  migrate:
+    profiles: ['tools']
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    env_file: .env
+    command: pnpm --filter @lumibach/db exec prisma migrate deploy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: lumibach/api:latest
+    container_name: lumibach-api
+    env_file: .env
+    # Trong mạng của compose, web gọi api qua tên service. Cổng chỉ mở ra host để
+    # cloudflared (chạy ngoài Docker) với tới được.
+    ports:
+      - '${API_HOST_PORT:-4000}:4000'
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:4000/api/v1/health',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      # Những giá trị này bị NHÚNG vào image lúc build, không đọc lại lúc chạy.
+      # Đổi tên miền là phải build lại: docker compose ... up -d --build
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+        NEXT_PUBLIC_MEDIA_URL: ${NEXT_PUBLIC_MEDIA_URL}
+        # Tên service trong mạng compose, KHÔNG phải localhost — trong container
+        # thì localhost là chính nó.
+        API_INTERNAL_URL: http://api:4000/api/v1
+        MINIO_INTERNAL_ENDPOINT: ${MINIO_INTERNAL_ENDPOINT}
+        MINIO_INTERNAL_PORT: ${MINIO_INTERNAL_PORT}
+    image: lumibach/web:latest
+    container_name: lumibach-web
+    env_file: .env
+    # Ghi đè: bên trong mạng compose phải gọi api qua tên service.
+    environment:
+      API_INTERNAL_URL: http://api:4000/api/v1
+    ports:
+      - '${WEB_HOST_PORT:-3000}:3000'
+    depends_on:
+      - api
+    restart: unless-stopped

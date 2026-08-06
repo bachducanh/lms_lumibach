@@ -1,0 +1,50 @@
+# Những thứ KHÔNG gửi vào build context của Docker.
+# Mục tiêu: build nhanh, image nhỏ, và tuyệt đối không lọt bí mật vào image.
+
+# Bí mật — image sẽ nhận biến môi trường lúc CHẠY, không nhúng lúc build
+.env
+.env.*
+!.env.example
+
+# Phụ thuộc và kết quả build: dựng lại sạch trong container
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+**/generated
+.turbo
+**/.turbo
+
+# BẮT BUỘC loại: tsc dùng incremental nên ghi tsconfig.tsbuildinfo ở gốc package
+# (không nằm trong dist/). Để lọt vào container thì tsc tưởng đã build rồi và
+# KHÔNG emit gì — dist trống mà lệnh build vẫn báo thành công.
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Git và công cụ
+.git
+.gitignore
+.github
+.husky
+.claude
+.vscode
+.idea
+
+# Log, tệp tạm
+logs
+**/logs
+*.log
+npm-debug.log*
+coverage
+**/coverage
+test-results
+playwright-report
+
+# Không cần khi chạy
+docs
+README.md
+docker-compose*.yml
+Dockerfile*
+**/Dockerfile*
