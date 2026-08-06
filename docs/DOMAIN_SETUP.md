@@ -81,19 +81,22 @@ tunnel: <UUID>
 credentials-file: /home/<user>/.cloudflared/<UUID>.json
 
 ingress:
+  # WebSocket đi thẳng vào NestJS. KHUYẾN NGHỊ chứ không bắt buộc: thiếu rule này
+  # socket.io tự lùi về HTTP long-polling qua rewrite của Next.js, vẫn chạy đủ
+  # chức năng, chỉ tốn băng thông hơn. PHẢI đặt TRƯỚC rule chung.
+  - hostname: lumibach.com
+    path: ^/socket\.io
+    service: http://localhost:4000
+    originRequest:
+      httpHostHeader: lumibach.com
+
+  # Toàn bộ phần còn lại → Next.js, vốn đã tự rewrite /api/v1/* sang NestJS.
   - hostname: lumibach.com
     service: http://localhost:3000
     originRequest:
       httpHostHeader: lumibach.com
 
-  # REST API + WebSocket (socket.io) — cùng cổng 4000.
-  - hostname: api.lumibach.com
-    service: http://localhost:4000
-    originRequest:
-      httpHostHeader: api.lumibach.com
-
-  # File/ảnh phục vụ thẳng từ MinIO. Xem Bước 2b: phải có Transform Rule cắt
-  # tiền tố /storage, vì MinIO phục vụ theo dạng /<bucket>/<object>.
+  # File/ảnh phục vụ thẳng từ MinIO — không cần Transform Rule, xem Bước 2b.
   - hostname: media.lumibach.com
     service: http://192.168.53.105:9000
     originRequest:
@@ -101,6 +104,9 @@ ingress:
 
   - service: http_status:404
 ```
+
+> Bản đầy đủ có sẵn ở [`docs/cloudflared-config.yml`](cloudflared-config.yml),
+> kèm ghi chú những dòng nào phải đổi khi dời ứng dụng sang máy khác.
 
 Chạy như dịch vụ hệ thống để tự khởi động cùng server:
 

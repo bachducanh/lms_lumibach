@@ -39,8 +39,13 @@ services:
       - '9000:9000'
       - '9001:9001'
     environment:
-      # PHẢI khớp MINIO_ACCESS_KEY / MINIO_SECRET_KEY trong .env — lệch là mọi
-      # thao tác upload/xoá file đều hỏng.
+      # MinIO CỤC BỘ, chỉ dùng khi chạy độc lập một máy. Triển khai thật đang
+      # dùng MinIO riêng ở 192.168.53.105 (xem MINIO_INTERNAL_ENDPOINT trong
+      # .env), nên service này không được gọi tới.
+      #
+      # Nếu bật service này để dùng: đặt MINIO_ACCESS_KEY / MINIO_SECRET_KEY
+      # trong .env khớp đúng hai giá trị dưới đây, và trỏ
+      # MINIO_INTERNAL_ENDPOINT về localhost. Lệch là mọi thao tác upload/xoá hỏng.
       MINIO_ROOT_USER: lumibach-app
       MINIO_ROOT_PASSWORD: Iz92hcoorsAaeWu4sVRBBDtq5wWPJBopFCUb
       # Muốn đổi khoá gốc về sau: đặt khoá mới ở trên, thêm tạm
