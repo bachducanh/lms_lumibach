@@ -6,6 +6,7 @@ Next.js (giao diện) + NestJS (API) + Prisma/PostgreSQL, kèm Redis, MinIO và 
 ## 🚀 Tài liệu hướng dẫn
 
 - **Cài đặt môi trường Development**: [docs/SETUP.md](docs/SETUP.md)
+- **Bàn giao vận hành (đọc đầu tiên)**: [docs/HANDOVER.md](docs/HANDOVER.md)
 - **Triển khai lên server**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - **Server vật lý (bare metal)**: [docs/PHYSICAL_SERVER_SETUP.md](docs/PHYSICAL_SERVER_SETUP.md)
 - **Tên miền lumibach.com + Cloudflare Tunnel**: [docs/DOMAIN_SETUP.md](docs/DOMAIN_SETUP.md)
