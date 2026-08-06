@@ -1,0 +1,60 @@
+# Cấu hình Cloudflare Tunnel cho lumibach.com
+#
+# Chép lên máy chạy cloudflared (Ubuntu, 192.168.53.105) rồi:
+#     sudo systemctl restart cloudflared
+#     sudo journalctl -u cloudflared -n 30 --no-pager   # phải thấy "Registered tunnel connection"
+#
+# GIỮ NGUYÊN 2 dòng `tunnel:` và `credentials-file:` đang có trên máy đó — chúng
+# chứa UUID thật của tunnel, đừng chép đè bằng giá trị mẫu bên dưới.
+tunnel: <UUID-tunnel-hien-tai>
+credentials-file: /root/.cloudflared/<UUID-tunnel-hien-tai>.json
+
+# 100.66.84.91 là địa chỉ Tailscale của MÁY WINDOWS đang chạy ứng dụng tạm thời
+# (Next.js :3000, NestJS :4000, MinIO :9000 đều ở đó). Máy Ubuntu chỉ làm cổng vào.
+#
+# ┌── KHI CHUYỂN HẲN SANG SERVER 192.168.53.105 ──────────────────────────────┐
+# │ Lúc đó ứng dụng chạy cùng máy với cloudflared, nên đổi cả 3 dòng          │
+# │ `service:` bên dưới từ http://100.66.84.91:<cong> thành                   │
+# │ http://localhost:<cong>. Ngoài file này KHÔNG phải sửa gì khác trong       │
+# │ cấu hình — .env đã dùng localhost và đường dẫn tương đối sẵn.             │
+# │ Việc còn lại là bê dữ liệu sang: xem docs/DOMAIN_SETUP.md, Bước 7.        │
+# └───────────────────────────────────────────────────────────────────────────┘
+#
+# Chỉ dùng DUY NHẤT miền gốc. Nhờ vậy web dùng đường dẫn tương đối (/api/v1,
+# /storage/*) và CÙNG MỘT BẢN BUILD chạy được cả qua tên miền lẫn ở localhost khi
+# tunnel tắt. Tách sang api./media. sẽ làm mất khả năng đó.
+ingress:
+  # KHUYẾN NGHỊ, KHÔNG BẮT BUỘC. Thiếu rule này hệ thống vẫn chạy: socket.io lùi
+  # về HTTP long-polling qua rewrite `/socket.io/*` của Next.js (xem next.config.ts).
+  # Có rule thì client tự nâng cấp lên WebSocket — nhẹ hơn và độ trễ thấp hơn.
+  # PHẢI đặt TRƯỚC rule chung: cloudflared khớp theo thứ tự từ trên xuống.
+  - hostname: lumibach.com
+    path: ^/socket\.io
+    service: http://100.66.84.91:4000
+    originRequest:
+      httpHostHeader: lumibach.com
+
+  # Toàn bộ phần còn lại → Next.js, vốn đã tự rewrite /api/v1/* sang NestJS và
+  # /storage/* sang MinIO.
+  - hostname: lumibach.com
+    service: http://100.66.84.91:3000
+    originRequest:
+      httpHostHeader: lumibach.com
+
+  # File/ảnh phục vụ thẳng từ MinIO. SỬA SO VỚI BẢN CŨ: trước đây trỏ
+  # 192.168.53.105:9000 (chính máy Ubuntu này) — nhưng MinIO chạy trên máy Windows.
+  # BẮT BUỘC kèm Transform Rule cắt tiền tố /storage, xem DOMAIN_SETUP.md Bước 2b.
+  - hostname: media.lumibach.com
+    service: http://100.66.84.91:9000
+    originRequest:
+      httpHostHeader: media.lumibach.com
+
+  # ĐÃ BỎ api.lumibach.com — không còn dùng tới, và nó đòi cookie Domain=.lumibach.com
+  # khiến không test được ở localhost.
+  #
+  # ĐÃ BỎ judge0.lumibach.com — Judge0 chạy code tuỳ ý người gửi lên và
+  # JUDGE0_API_KEY đang để trống. Nó chỉ được gọi từ phía server nên không cần tên miền.
+  #
+  # Nhớ xoá 2 bản ghi DNS api và judge0 trên Cloudflare.
+
+  - service: http_status:404
