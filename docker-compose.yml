@@ -7,12 +7,12 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: lumibach
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lumibach"]
+      test: ['CMD-SHELL', 'pg_isready -U lumibach']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,13 +21,13 @@ services:
     image: redis:7-alpine
     container_name: lumibach-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     restart: unless-stopped
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,17 +36,22 @@ services:
     image: minio/minio:latest
     container_name: lumibach-minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin_password
+      # PHẢI khớp MINIO_ACCESS_KEY / MINIO_SECRET_KEY trong .env — lệch là mọi
+      # thao tác upload/xoá file đều hỏng.
+      MINIO_ROOT_USER: lumibach-app
+      MINIO_ROOT_PASSWORD: Iz92hcoorsAaeWu4sVRBBDtq5wWPJBopFCUb
+      # Muốn đổi khoá gốc về sau: đặt khoá mới ở trên, thêm tạm
+      # MINIO_ROOT_USER_OLD / MINIO_ROOT_PASSWORD_OLD bằng khoá cũ để MinIO giải
+      # mã lại dữ liệu IAM, khởi động một lần rồi xoá 2 dòng tạm đó đi.
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
       timeout: 20s
       retries: 3
@@ -63,7 +68,7 @@ services:
       - judge0_db_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U judge0"]
+      test: ['CMD-SHELL', 'pg_isready -U judge0']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -76,7 +81,7 @@ services:
       - judge0_redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -87,7 +92,7 @@ services:
     volumes:
       - ./judge0.conf:/judge0.conf:ro
     ports:
-      - "2358:2358"
+      - '2358:2358'
     privileged: true
     restart: unless-stopped
     depends_on:
@@ -103,7 +108,7 @@ services:
       - ./judge0.conf:/judge0.conf:ro
     privileged: true
     restart: unless-stopped
-    command: ["/api/scripts/workers"]
+    command: ['/api/scripts/workers']
     depends_on:
       - judge0-server
 
