@@ -85,11 +85,19 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4000/api/v1/health
 
 Cả hai phải trả **200**.
 
-Judge0 (nếu chạy trên cùng máy) khởi động riêng:
+### Judge0 — đừng quên
+
+`JUDGE0_API_URL` mặc định là `http://localhost:2358`, tức Judge0 phải chạy **trên
+cùng máy với API**. Khởi động nó từ `docker-compose.yml`:
 
 ```bash
 docker compose up -d judge0-db judge0-redis judge0-server judge0-workers
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:2358/about   # phải 200
 ```
+
+Nếu Judge0 nằm ở máy khác thì sửa `JUDGE0_API_URL` thành địa chỉ máy đó. **Thiếu
+bước này thì mọi thứ khác chạy bình thường, chỉ chức năng chấm code là chết** —
+lỗi dễ bỏ sót vì trang vẫn mở được.
 
 ---
 
