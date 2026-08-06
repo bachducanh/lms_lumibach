@@ -11,20 +11,33 @@ const REASON_LABEL: Record<string, string> = {
     'Phiên đăng nhập cũ không còn hợp lệ (tài khoản bị xoá hoặc khoá học đã được cập nhật). Vui lòng đăng nhập lại.',
 };
 
+/**
+ * Chỉ chấp nhận đường dẫn nội bộ. Chặn `//host` và `\\host` — trình duyệt coi
+ * đó là URL tuyệt đối, nếu nhận bừa sẽ thành lỗ hổng open redirect.
+ */
+function safeNext(value: string | undefined): string | null {
+  if (!value) return null;
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null;
+  return value;
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reason?: string }>;
+  searchParams: Promise<{ reason?: string; next?: string }>;
 }) {
-  const { reason } = await searchParams;
+  const { reason, next } = await searchParams;
+  const nextPath = safeNext(next);
   // Already signed in → send users back to the landing page (they don't
   // need the login form). The dashboard is one click away from there.
+  // Khi có `next` (ví dụ Safe Exam Browser mở thẳng vào bài thi) thì đi tiếp
+  // tới đúng hoạt động thay vì đổ về landing page.
   // Skip the redirect when there's a reason on the query — that means we
   // were just bounced here on purpose (eg. stale session) and showing
   // them the login form makes sense.
   if (!reason) {
     const session = await auth();
-    if (session?.user) redirect('/');
+    if (session?.user) redirect(nextPath ?? '/');
   }
   const notice = reason ? REASON_LABEL[reason] : null;
 
@@ -67,7 +80,7 @@ export default async function LoginPage({
       )}
 
       {/* Login form */}
-      <LoginForm />
+      <LoginForm next={nextPath} />
     </div>
   );
 }

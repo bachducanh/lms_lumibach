@@ -5,7 +5,7 @@ import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, AttemptData, QuizDetail } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
-import { isSafeExamBrowser, sebLaunchUrl } from '@/lib/seb';
+import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
@@ -99,8 +99,8 @@ export default async function AttemptPage({
         <div className="mx-auto max-w-5xl">
           <SebLockScreen
             title={quizSeb.title}
-            launchUrl={sebLaunchUrl(reqHeaders, quizSeb.sebConfigUrl)}
-            downloadUrl={quizSeb.sebConfigUrl}
+            launchUrl={sebLaunchUrl(reqHeaders, 'quiz', quizId)}
+            downloadUrl={sebConfigPath('quiz', quizId)}
           />
         </div>
       );

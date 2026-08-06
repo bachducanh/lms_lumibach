@@ -10,7 +10,7 @@ import { QuizStatusButton } from '@/components/features/quiz/QuizStatusButton';
 import { QuizQuestionPoints } from '@/components/features/quiz/QuizQuestionPoints';
 import { StartQuizButton } from '@/components/features/quiz/StartQuizButton';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
-import { isSafeExamBrowser, sebLaunchUrl } from '@/lib/seb';
+import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
 import { hasMinRole } from '@/lib/permissions';
 import {
@@ -142,7 +142,7 @@ export default async function QuizDetailPage({
   const reqHeaders = await headers();
   const isSeb = isSafeExamBrowser(reqHeaders);
   const sebBlocked = !isStaff && quiz.sebEnabled && !isSeb;
-  const sebLaunch = sebLaunchUrl(reqHeaders, quiz.sebConfigUrl);
+  const sebLaunch = sebLaunchUrl(reqHeaders, 'quiz', quizId);
 
   const currentNavIndex = allNavItems.findIndex((i) => i.quizId === quizId);
   const prevNavItem = currentNavIndex > 0 ? (allNavItems[currentNavIndex - 1] ?? null) : null;
@@ -293,7 +293,11 @@ export default async function QuizDetailPage({
       <div className="mx-auto w-full max-w-4xl space-y-8 pb-12">
         {/* ── Student: start CTA + history ───────────────────── */}
         {!isStaff && sebBlocked && (
-          <SebLockScreen title={quiz.title} launchUrl={sebLaunch} downloadUrl={quiz.sebConfigUrl} />
+          <SebLockScreen
+            title={quiz.title}
+            launchUrl={sebLaunch}
+            downloadUrl={sebConfigPath('quiz', quizId)}
+          />
         )}
 
         {!isStaff && !sebBlocked && (

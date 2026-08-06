@@ -7,7 +7,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { hasMinRole } from '@/lib/permissions';
 import { PracticeTestRunner } from '@/components/features/practice-tests/PracticeTestRunner';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
-import { isSafeExamBrowser, sebLaunchUrl } from '@/lib/seb';
+import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { PracticeTestStatusButton } from '@/components/features/practice-tests/PracticeTestStatusButton';
 import { DeletePracticeTestButton } from '@/components/features/practice-tests/DeletePracticeTestButton';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
@@ -177,8 +177,8 @@ export default async function PracticeTestPage({
             {progressBar}
             <SebLockScreen
               title={practiceTest.title}
-              launchUrl={sebLaunchUrl(reqHeaders, practiceTest.sebConfigUrl)}
-              downloadUrl={practiceTest.sebConfigUrl}
+              launchUrl={sebLaunchUrl(reqHeaders, 'practice-test', practiceTestId)}
+              downloadUrl={sebConfigPath('practice-test', practiceTestId)}
             />
           </div>
         );

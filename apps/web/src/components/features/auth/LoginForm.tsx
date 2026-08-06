@@ -22,7 +22,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 type LoginError = 'credentials' | 'pending' | 'suspended' | null;
 
-export function LoginForm() {
+/** `next` là đường dẫn nội bộ đã được trang cha kiểm tra hợp lệ. */
+export function LoginForm({ next }: { next?: string | null }) {
   const router = useRouter();
   const [loginError, setLoginError] = useState<LoginError>(null);
   const [resending, setResending] = useState(false);
@@ -46,7 +47,7 @@ export function LoginForm() {
     });
 
     if (!result?.error) {
-      router.push('/dashboard');
+      router.push(next ?? '/dashboard');
       router.refresh();
       return;
     }
