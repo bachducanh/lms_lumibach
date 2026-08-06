@@ -40,10 +40,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files — chặn hết, chỉ chừa file mẫu và file test
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 !.env.test
 

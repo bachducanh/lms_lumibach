@@ -31,6 +31,20 @@ packages/types  Zod schema + kiểu dữ liệu dùng chung
 
 ## 💻 Bắt đầu nhanh (Dev)
 
+> ⚠️ **Máy đang chạy production?** Nếu `.env` đang trỏ vào hạ tầng thật
+> (`192.168.53.x`) thì chạy `pnpm dev` sẽ **sửa thẳng vào dữ liệu học sinh**.
+> Giữ hai hồ sơ cấu hình rồi chuyển qua lại — cả hai đều đã bị `.gitignore` chặn:
+>
+> ```bash
+> cp .env.dev .env     # hạ tầng cục bộ, SMTP tắt (mail ghi ra log, không gửi thật)
+> cp .env.prod .env    # hạ tầng thật
+> ```
+>
+> Đổi `.env` xong: chạy dev thì khởi động lại `pnpm dev`; chạy Docker thì
+> `docker compose -f docker-compose.prod.yml up -d --build` (phải build lại vì
+> `NEXT_PUBLIC_*` nhúng lúc build). Hai chế độ **dùng chung cổng 3000/4000** nên
+> phải dừng cái này mới chạy được cái kia.
+
 Yêu cầu: **Node.js >= 20**, **pnpm 9**, **Docker Desktop**.
 
 1. **Khởi động hạ tầng** (Postgres, Redis, MinIO, Judge0):
