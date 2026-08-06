@@ -4,6 +4,7 @@ import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { toStoragePath } from '../../common/storage/storage-url';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -54,7 +55,8 @@ export class AssignmentsService {
 
   // Validate the file list a student submits. Files are uploaded separately via the
   // Next.js upload route; here we only trust metadata that points back into our own
-  // storage (relative /storage/… URL) to block javascript: hrefs / external links.
+  // storage (đường dẫn /storage/… hoặc URL trên miền media) to block javascript:
+  // hrefs / external links.
   private sanitizeSubmissionFiles(
     input: { name: string; url: string; mimeType: string; size: number }[] | undefined,
     maxFiles: number | null
@@ -67,7 +69,7 @@ export class AssignmentsService {
     if (files.length > limit) throw new ForbiddenException(`Chỉ được nộp tối đa ${limit} file.`);
 
     return files.map((f) => {
-      if (!f || typeof f.url !== 'string' || !f.url.startsWith('/storage/'))
+      if (!f || typeof f.url !== 'string' || toStoragePath(f.url) === null)
         throw new ForbiddenException('File không hợp lệ.');
       const name =
         typeof f.name === 'string' && f.name.trim() ? f.name.trim().slice(0, 255) : 'file';

@@ -25,6 +25,12 @@ describe('StorageService.parseUrl', () => {
     );
   });
 
+  it('tách được URL trên miền media (giữ nguyên đoạn /storage/)', () => {
+    expect(
+      service.parseUrl(`https://media.lumibach.com/storage/${BUCKET_FILES}/submissions/a/b.pdf`)
+    ).toEqual({ bucket: BUCKET_FILES, objectName: 'submissions/a/b.pdf' });
+  });
+
   it('giải mã ký tự đã encode trong tên object', () => {
     expect(
       service.parseUrl(`/storage/${BUCKET_FILES}/lesson-attachments/l1/b%C3%A0i%201.pdf`)
@@ -67,6 +73,21 @@ describe('StorageService.extractUrlsFromHtml', () => {
     expect(service.extractUrlsFromHtml('')).toEqual([]);
     expect(service.extractUrlsFromHtml(null)).toEqual([]);
     expect(service.extractUrlsFromHtml('<p>Không có ảnh</p>')).toEqual([]);
+  });
+
+  // Nội dung rich-text do người dùng soạn. Nếu chỉ dò chuỗi "/storage/" thì kẻ
+  // soạn nội dung chèn được URL host lạ và làm hệ thống xoá file của người khác.
+  it('bỏ qua URL của host lạ dù bên trong có chứa /storage/', () => {
+    const html = [
+      `<img src="/storage/${BUCKET_FILES}/editor-images/u1/ok.png" />`,
+      `<img src="https://evil.com/storage/${BUCKET_AVATARS}/victim/avatar.png" />`,
+      `<img src="https://evil.com/x?y=/storage/${BUCKET_FILES}/editor-images/u2/b.png" />`,
+      `<a href="https://media.lumibach.com.evil.com/storage/${BUCKET_FILES}/c.png">x</a>`,
+    ].join('');
+
+    expect(service.extractUrlsFromHtml(html)).toEqual([
+      `/storage/${BUCKET_FILES}/editor-images/u1/ok.png`,
+    ]);
   });
 });
 

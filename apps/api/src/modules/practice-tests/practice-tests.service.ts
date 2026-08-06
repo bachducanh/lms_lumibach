@@ -4,6 +4,7 @@ import type { Cache } from 'cache-manager';
 import { PrismaClient, type Prisma } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { toStoragePath } from '../../common/storage/storage-url';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -142,7 +143,7 @@ function normalizeSeb(body: {
   sebConfigName?: string | null;
 }): { sebEnabled: boolean; sebConfigUrl: string | null; sebConfigName: string | null } {
   const url = body.sebConfigUrl?.trim() || null;
-  const enabled = body.sebEnabled === true && !!url && url.startsWith('/storage/');
+  const enabled = body.sebEnabled === true && !!url && toStoragePath(url) !== null;
   return {
     sebEnabled: enabled,
     sebConfigUrl: enabled ? url : null,
@@ -371,7 +372,7 @@ export class PracticeTestsService {
     }
 
     const questions = this.normalizeQuestions(body.questions);
-    if (!body.pdfUrl?.startsWith('/storage/')) {
+    if (!body.pdfUrl || toStoragePath(body.pdfUrl) === null) {
       throw new ForbiddenException('File PDF không hợp lệ.');
     }
     const seb = normalizeSeb(body);
@@ -433,6 +434,12 @@ export class PracticeTestsService {
     if (!existing) throw new NotFoundException('Không tìm thấy.');
     if (!(await this.canManage(user.id, user.role, existing.courseId))) {
       throw new ForbiddenException('Không có quyền.');
+    }
+
+    // Cùng hàng rào như create(): chỉ nhận file nằm trong storage của mình, để
+    // không ghi được `javascript:` hay link ngoài vào DB qua đường sửa.
+    if (body.pdfUrl !== undefined && toStoragePath(body.pdfUrl) === null) {
+      throw new ForbiddenException('File PDF không hợp lệ.');
     }
 
     let nextStatus = existing.status;

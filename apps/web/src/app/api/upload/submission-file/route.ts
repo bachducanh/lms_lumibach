@@ -9,6 +9,7 @@ import {
   ensureBucket,
   getPublicUrl,
   isMinioConfigured,
+  toStoragePath,
 } from '@/lib/storage';
 
 // Mặc định khi giáo viên không đặt giới hạn riêng cho bài tập.
@@ -102,11 +103,12 @@ export async function DELETE(req: NextRequest) {
   const url = searchParams.get('url');
   if (!url) return NextResponse.json({ error: 'Thiếu url' }, { status: 400 });
 
+  const path = toStoragePath(url);
   const prefix = `/storage/${BUCKET_FILES}/`;
-  if (!url.startsWith(prefix))
+  if (!path?.startsWith(prefix))
     return NextResponse.json({ error: 'URL không hợp lệ' }, { status: 400 });
 
-  const objectName = url.slice(prefix.length);
+  const objectName = path.slice(prefix.length);
   // Chỉ được xoá file trong thư mục submissions của chính user.
   if (!objectName.startsWith(`submissions/`) || !objectName.includes(`/${session.user.id}/`))
     return NextResponse.json({ error: 'Không có quyền' }, { status: 403 });

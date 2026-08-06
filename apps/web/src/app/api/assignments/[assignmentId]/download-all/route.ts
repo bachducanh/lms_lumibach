@@ -4,7 +4,7 @@ import { Readable } from 'node:stream';
 import * as archiverNs from 'archiver';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { minioClient, BUCKET_FILES, isMinioConfigured } from '@/lib/storage';
+import { minioClient, BUCKET_FILES, isMinioConfigured, toStoragePath } from '@/lib/storage';
 import { hasMinRole } from '@/lib/permissions';
 import type { UserRole } from '@lumibach/db';
 
@@ -32,9 +32,12 @@ function sanitizeSegment(s: string): string {
 }
 
 function objectNameFromUrl(url: string): string | null {
+  // URL trong DB có thể là đường dẫn tương đối (dữ liệu cũ) hoặc URL tuyệt đối
+  // trên miền media — toStoragePath quy về cùng một dạng.
+  const path = toStoragePath(url);
   const prefix = `/storage/${BUCKET_FILES}/`;
-  if (!url.startsWith(prefix)) return null;
-  return url.slice(prefix.length);
+  if (!path?.startsWith(prefix)) return null;
+  return path.slice(prefix.length);
 }
 
 function escapeHtml(s: string): string {

@@ -5,6 +5,7 @@ import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { regradeQuizAttempts } from '../../common/grading/quiz-grading';
+import { toStoragePath } from '../../common/storage/storage-url';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -25,7 +26,7 @@ function normalizeSeb(body: {
   sebConfigName?: string | null;
 }): { sebEnabled: boolean; sebConfigUrl: string | null; sebConfigName: string | null } {
   const url = body.sebConfigUrl?.trim() || null;
-  const enabled = body.sebEnabled === true && !!url && url.startsWith('/storage/');
+  const enabled = body.sebEnabled === true && !!url && toStoragePath(url) !== null;
   return {
     sebEnabled: enabled,
     sebConfigUrl: enabled ? url : null,

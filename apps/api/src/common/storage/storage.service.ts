@@ -1,12 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as Minio from 'minio';
+import { KNOWN_BUCKETS, toStoragePath } from './storage-url';
 
-// Cấu hình phải khớp apps/web/src/lib/storage.ts — cùng trỏ vào một MinIO.
-const BUCKET_AVATARS = process.env.MINIO_BUCKET_AVATARS ?? 'lumibach-avatars';
-const BUCKET_FILES = process.env.MINIO_BUCKET_FILES ?? 'lumibach-files';
-
-// Chỉ cho phép xoá object nằm trong 2 bucket của hệ thống.
-const KNOWN_BUCKETS = new Set([BUCKET_AVATARS, BUCKET_FILES]);
+// Chỉ cho phép xoá object nằm trong 2 bucket của hệ thống — danh sách khai báo
+// một chỗ duy nhất ở storage-url.ts để không lệch nhau.
 
 type ParsedObject = { bucket: string; objectName: string };
 
@@ -71,11 +68,28 @@ export class StorageService {
     return { bucket, objectName };
   }
 
-  /** Gom nhiều URL trong nội dung rich-text (ảnh chèn qua editor). */
+  /**
+   * Gom URL file trong nội dung rich-text (ảnh chèn qua editor).
+   *
+   * Đây là dữ liệu do người dùng soạn nên phải kiểm origin. Nếu chỉ dò chuỗi
+   * `/storage/` thì `<img src="https://evil.com/storage/<bucket>/<object>">` cũng
+   * khớp, và khi dọn rác sẽ xoá đúng object đó trên MinIO của mình — tức là ai
+   * soạn được nội dung cũng xoá được file của người khác.
+   *
+   * Kết quả luôn được quy về dạng `/storage/…`. Nhờ vậy phép so `content contains
+   * <url>` ở LessonCleanupService khớp được cả nội dung lưu URL tuyệt đối (miền
+   * media) lẫn nội dung cũ lưu đường dẫn tương đối.
+   */
   extractUrlsFromHtml(html: string | null | undefined): string[] {
     if (!html) return [];
-    const matches = html.match(/\/storage\/[^\s"'()<>\\]+/g);
-    return matches ? [...new Set(matches)] : [];
+    // Bắt trọn URL tuyệt đối (để còn kiểm origin) HOẶC đường dẫn /storage/ tương
+    // đối, rồi để toStoragePath lọc — nó biết mọi dạng URL hợp lệ của hệ thống và
+    // loại bỏ host lạ. Trên miền media, URL không còn chứa "/storage/" nên không
+    // thể chỉ dò chuỗi đó nữa.
+    const matches = html.match(/https?:\/\/[^\s"'()<>\\]+|\/storage\/[^\s"'()<>\\]+/g);
+    if (!matches) return [];
+    const paths = matches.map((m) => toStoragePath(m)).filter((p): p is string => p !== null);
+    return [...new Set(paths)];
   }
 
   /**
