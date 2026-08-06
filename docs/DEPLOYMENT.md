@@ -94,6 +94,24 @@ Cả hai phải trả **200**. Kiểm worker đã lên:
 docker compose -f docker-compose.prod.yml logs worker | tail -3   # phải thấy "[email-worker] started"
 ```
 
+### Scratch — không cần làm gì
+
+Bản build trình soạn Scratch (`apps/web/public/scratch-gui/`, 498 file) **đã nằm
+sẵn trong git**, nên `git clone` là có luôn. Không phải chạy `build:scratch-gui`.
+
+Chỉ khi muốn **nâng cấp lên phiên bản Scratch mới** mới cần chạy lại — và lệnh đó
+cần `git`, Node 18+ cùng ~5GB trống vì nó clone TurboWarp rồi `npm install`:
+
+```bash
+pnpm --filter @lumibach/web build:scratch-gui
+```
+
+Kiểm nhanh sau khi triển khai:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/scratch-gui/editor.html   # 200
+```
+
 ### Judge0 — đừng quên
 
 `JUDGE0_API_URL` mặc định là `http://localhost:2358`, tức Judge0 phải chạy **trên

@@ -98,6 +98,13 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:2358/about   # 200
 rác không bao giờ được dọn; còn `/api/cron/due-soon` thì ngược lại, bỏ qua kiểm
 tra và ai gọi cũng được.
 
+**④ Trình soạn Scratch** — bản build đã có sẵn trong git, không phải làm gì thêm.
+Nhưng cứ kiểm cho chắc:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/scratch-gui/editor.html   # 200
+```
+
 ---
 
 ## 5. Kiểm tra sau khi lên
