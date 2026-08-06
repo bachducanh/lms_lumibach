@@ -10,21 +10,26 @@ Tài liệu dành cho người tiếp nhận vận hành hệ thống trên serv
 
 ## 1. Kiến trúc
 
-Ứng dụng gồm **2 container**, còn lại là dịch vụ có sẵn trên hạ tầng:
+Ứng dụng gồm **3 container**, còn lại là dịch vụ có sẵn trên hạ tầng:
 
-| Thành phần     | Nguồn                   | Cổng | Vai trò                                                      |
-| -------------- | ----------------------- | ---- | ------------------------------------------------------------ |
-| `lumibach-web` | `apps/web` (Next.js 16) | 3000 | Giao diện; rewrite `/api/v1/*`, `/storage/*`, `/socket.io/*` |
-| `lumibach-api` | `apps/api` (NestJS 11)  | 4000 | REST `/api/v1`, WebSocket, Swagger `/api/docs`               |
-| PostgreSQL     | máy riêng `.101`        | 5432 | Dữ liệu                                                      |
-| Redis          | máy riêng `.101`        | 6379 | Cache                                                        |
-| MinIO          | máy riêng `.105`        | 9000 | File, ảnh                                                    |
-| Judge0         | `docker-compose.yml`    | 2358 | Sandbox chấm code                                            |
+| Thành phần        | Nguồn                   | Cổng | Vai trò                                                      |
+| ----------------- | ----------------------- | ---- | ------------------------------------------------------------ |
+| `lumibach-web`    | `apps/web` (Next.js 16) | 3000 | Giao diện; rewrite `/api/v1/*`, `/storage/*`, `/socket.io/*` |
+| `lumibach-api`    | `apps/api` (NestJS 11)  | 4000 | REST `/api/v1`, WebSocket, Swagger `/api/docs`               |
+| `lumibach-worker` | `apps/web/src/workers`  | —    | Xử lý hàng đợi email thông báo                               |
+| PostgreSQL        | máy riêng `.101`        | 5432 | Dữ liệu                                                      |
+| Redis             | máy riêng `.101`        | 6379 | Cache **và hàng đợi email**                                  |
+| MinIO             | máy riêng `.105`        | 9000 | File, ảnh                                                    |
+| Judge0            | `docker-compose.yml`    | 2358 | Sandbox chấm code                                            |
 
 Trình duyệt chỉ nói chuyện với `lumibach.com`; mọi thứ khác đi vòng bên trong.
 
-> Kiến trúc cũ có thêm 2 worker hàng đợi trong `apps/web`. Sau khi backend chuyển
-> sang NestJS, API gọi thẳng Judge0 và tự gửi mail nên **không còn worker nào cần chạy**.
+> **Đừng bỏ container `worker`.** `lib/notifications.ts` đẩy email thông báo vào
+> hàng đợi Redis (cron nhắc hạn nộp bài, báo cáo tham gia); worker là tiến trình
+> duy nhất lấy ra và gửi đi. Không chạy nó thì email nằm im trong Redis mà web và
+> API **vẫn hoạt động bình thường** — rất dễ tưởng là ổn.
+>
+> Riêng worker chấm code trước đây đã bỏ: API gọi thẳng Judge0, không qua hàng đợi.
 
 ---
 
@@ -83,7 +88,11 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/login
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4000/api/v1/health
 ```
 
-Cả hai phải trả **200**.
+Cả hai phải trả **200**. Kiểm worker đã lên:
+
+```bash
+docker compose -f docker-compose.prod.yml logs worker | tail -3   # phải thấy "[email-worker] started"
+```
 
 ### Judge0 — đừng quên
 

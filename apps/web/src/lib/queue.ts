@@ -16,10 +16,6 @@ function parseRedisUrl(url: string) {
 
 export const redisConnection = parseRedisUrl(process.env.REDIS_URL ?? 'redis://localhost:6379');
 
-export type CodeExecutionJobData = {
-  submissionId: string;
-};
-
 export type EmailJobData = {
   to: string;
   recipientName: string;
@@ -38,14 +34,16 @@ const QUEUE_OPTIONS = {
   },
 } as const;
 
-let _codeQueue: Queue<CodeExecutionJobData> | null = null;
 let _emailQueue: Queue<EmailJobData> | null = null;
 
-export function getCodeQueue(): Queue<CodeExecutionJobData> {
-  if (!_codeQueue) _codeQueue = new Queue<CodeExecutionJobData>('code-execution', QUEUE_OPTIONS);
-  return _codeQueue;
-}
-
+/**
+ * Hàng đợi email thông báo. Người đẩy việc vào: lib/notifications.ts (cron
+ * nhắc hạn nộp bài, báo cáo tham gia). Người xử lý: workers/email.worker.ts —
+ * **phải chạy như một tiến trình riêng**, xem service `worker` trong
+ * docker-compose.prod.yml. Không chạy nó thì email nằm im trong Redis.
+ *
+ * (Trước đây còn hàng đợi 'code-execution', nay bỏ: API gọi thẳng Judge0.)
+ */
 export function getEmailQueue(): Queue<EmailJobData> {
   if (!_emailQueue) _emailQueue = new Queue<EmailJobData>('email', QUEUE_OPTIONS);
   return _emailQueue;

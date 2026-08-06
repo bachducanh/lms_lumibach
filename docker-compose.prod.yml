@@ -47,6 +47,26 @@ services:
       retries: 3
       start_period: 40s
 
+  # Xử lý hàng đợi email thông báo (lib/notifications.ts đẩy việc vào).
+  # KHÔNG chạy service này thì email nằm im trong Redis — không ai nhận được
+  # nhắc hạn nộp bài hay thông báo chấm điểm, mà web/api vẫn chạy bình thường
+  # nên rất dễ tưởng là ổn.
+  #
+  # Dùng stage `build` vì worker chạy bằng tsx — một devDependency đã bị loại
+  # khỏi image chạy thật.
+  worker:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: build
+    image: lumibach/worker:latest
+    container_name: lumibach-worker
+    env_file: .env
+    command: pnpm --filter @lumibach/web worker:email
+    depends_on:
+      - api
+    restart: unless-stopped
+
   web:
     build:
       context: .

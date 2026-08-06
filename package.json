@@ -25,7 +25,6 @@
     "api:dev": "pnpm --filter @lumibach/api dev",
     "api:build": "pnpm --filter @lumibach/api build",
     "api:start": "pnpm --filter @lumibach/api start",
-    "worker:dev": "pnpm --filter @lumibach/web worker:dev",
     "worker:email": "pnpm --filter @lumibach/web worker:email",
     "test:db:up": "docker compose -f docker-compose.test.yml up -d --wait && pnpm test:db:push",
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
