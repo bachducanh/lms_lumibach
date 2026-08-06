@@ -22,7 +22,12 @@ export function GET(req: Request) {
   const reason = url.searchParams.get('reason') ?? 'session-stale';
   const redirectTo = `/login?reason=${encodeURIComponent(reason)}`;
 
-  const res = NextResponse.redirect(new URL(redirectTo, req.url), 303);
+  // Location TƯƠNG ĐỐI có chủ đích. `NextResponse.redirect()` đòi URL tuyệt đối
+  // và sẽ dựng nó từ `req.url` — sau Cloudflare Tunnel, Next.js chuẩn hoá req.url
+  // về `localhost:3000`, nên người dùng ở lumibach.com bị ném về localhost.
+  // Location tương đối được trình duyệt tự ghép với origin nó đang truy cập, nên
+  // đúng ở cả localhost lẫn tên miền mà không cần biết mình đang chạy ở đâu.
+  const res = new NextResponse(null, { status: 303, headers: { Location: redirectTo } });
   // Overwrite each cookie with an immediately-expired empty value.
   // To reliably evict cookies that were originally set with `Secure` /
   // `__Host-` / `__Secure-` prefixes (which NextAuth uses when

@@ -49,9 +49,12 @@ type RequestOptions = {
 
 function getBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    // Browser: use relative path so requests go through Next.js rewrite.
-    // This works behind any tunnel/reverse-proxy without CORS issues.
-    return DEFAULT_RELATIVE;
+    // Browser: dùng NEXT_PUBLIC_API_URL khi đặt rõ một miền API riêng
+    // (https://api.lumibach.com/api/v1) — cần cookie có Domain=.lumibach.com,
+    // xem AUTH_COOKIE_DOMAIN trong apps/web/src/auth.ts.
+    // Để trống hoặc đặt "/api/v1" thì đi qua rewrite của Next.js: cùng origin nên
+    // không dính CORS và chạy được cả localhost lẫn IP LAN.
+    return process.env.NEXT_PUBLIC_API_URL || DEFAULT_RELATIVE;
   }
   // Server-side (Server Components, Route Handlers): call NestJS directly.
   // API_INTERNAL_URL is preferred; falls back to NEXT_PUBLIC_API_URL.

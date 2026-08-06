@@ -13,11 +13,44 @@ const loginSchema = z.object({
   password: z.string().min(6),
 });
 
+// Đặt ".lumibach.com" khi API nằm ở miền con (api.lumibach.com): cookie mặc định
+// của NextAuth là host-only nên sẽ KHÔNG được gửi sang miền con, làm mọi request
+// API trả 401. Để trống ở dev/LAN.
+//
+// Chỉ override sessionToken. TUYỆT ĐỐI không đặt domain cho csrfToken: cookie đó
+// mang tiền tố `__Host-`, mà chuẩn cookie cấm `__Host-` có thuộc tính Domain —
+// trình duyệt sẽ vứt cookie và đăng nhập hỏng hoàn toàn.
+// CHỈ áp dụng khi web thật sự chạy trên HTTPS. Cookie này mang tên `__Secure-`
+// và cờ secure=true nên trình duyệt từ chối nó trên http://localhost — tệ hơn,
+// lúc đăng xuất NextAuth sẽ đi xoá đúng cái tên/domain đã cấu hình, không khớp
+// cookie thật, khiến người dùng kẹt trong phiên và không đăng xuất nổi.
+const cookieDomain = (process.env.NEXT_PUBLIC_APP_URL ?? '').startsWith('https://')
+  ? process.env.AUTH_COOKIE_DOMAIN?.trim()
+  : undefined;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
   },
+  ...(cookieDomain
+    ? {
+        cookies: {
+          sessionToken: {
+            name: '__Secure-authjs.session-token',
+            options: {
+              domain: cookieDomain,
+              path: '/',
+              httpOnly: true,
+              // lumibach.com và api.lumibach.com là same-site (cùng domain đăng
+              // ký) nên 'lax' vẫn gửi kèm cookie, không cần 'none'.
+              sameSite: 'lax' as const,
+              secure: true,
+            },
+          },
+        },
+      }
+    : {}),
   providers: [
     Credentials({
       credentials: {

@@ -15,6 +15,24 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { LogOut, Settings, User } from 'lucide-react';
 
+/**
+ * Đăng xuất rồi tự điều hướng, KHÔNG để next-auth tự chuyển trang.
+ *
+ * `signOut({ callbackUrl: '/login' })` gửi đường dẫn tương đối lên server và để
+ * server ghép origin. Sau Cloudflare Tunnel, origin mà Auth.js dựng ra là
+ * `https://localhost:3000` (Next.js chuẩn hoá req.nextUrl về địa chỉ nó đang
+ * nghe, rồi Auth.js ghép với x-forwarded-proto) — nên người dùng ở lumibach.com
+ * bị ném về localhost.
+ *
+ * `redirect: false` vẫn gửi POST /api/auth/signout để server xoá cookie phiên
+ * (Set-Cookie đi cùng origin nên luôn đúng), còn việc chuyển trang do client lo.
+ * Nhờ vậy chạy đúng ở cả localhost lẫn tên miền mà không cần cấu hình gì thêm.
+ */
+async function handleSignOut() {
+  await signOut({ redirect: false });
+  window.location.href = '/login';
+}
+
 const roleLabel: Record<string, string> = {
   ADMIN: 'Quản trị',
   TEACHER: 'Giáo viên',
@@ -67,7 +85,7 @@ export function UserMenu() {
           Đổi mật khẩu
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => signOut({ callbackUrl: '/login' })}>
+        <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
           Đăng xuất
         </DropdownMenuItem>
