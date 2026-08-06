@@ -1,0 +1,7 @@
+# Bản build scratch-gui là artifact, phải giữ nguyên xi từng byte.
+# `-text` tắt việc git tự chuyển đổi LF/CRLF khi checkout — nếu để git đổi thì
+# nội dung file trên máy người clone khác với bản đã build và đã kiểm thử.
+apps/web/public/scratch-gui/** -text
+
+# Lockfile: luôn LF, tránh khác biệt giả giữa máy Windows và Linux.
+pnpm-lock.yaml text eol=lf

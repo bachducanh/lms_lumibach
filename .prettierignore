@@ -4,3 +4,7 @@ dist
 build
 *.lock
 prisma/migrations
+
+# Bản build scratch-gui: artifact đã minify, prettier định dạng lại là hỏng.
+apps/web/public/scratch-gui
+apps/web/external

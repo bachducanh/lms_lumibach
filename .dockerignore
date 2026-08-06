@@ -32,6 +32,10 @@ dist
 .vscode
 .idea
 
+# Mã nguồn scratch-gui đã clone: vài GB, chỉ dùng để build lại bản Scratch.
+# Bản build (apps/web/public/scratch-gui) thì PHẢI giữ — image cần nó.
+**/external/scratch-gui
+
 # Log, tệp tạm
 logs
 **/logs

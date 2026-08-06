@@ -74,7 +74,11 @@ uploads/
 # Scratch files
 /scratch/
 
-# Self-hosted scratch-gui — cloned source + build output
+# Self-hosted scratch-gui — CHỈ loại mã nguồn đã clone (vài GB).
+#
+# Bản build ở apps/web/public/scratch-gui/ thì CÓ trong git, cố ý: script
+# build:scratch-gui phải clone TurboWarp rồi npm install ~5GB, cần git + Node
+# trên máy build. Commit sẵn bản build thì người tiếp nhận chỉ cần `git clone`
+# + Docker là chạy được, đúng như DEPLOYMENT.md hứa.
 external/scratch-gui/
 apps/web/external/scratch-gui/
-apps/web/public/scratch-gui/
