@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
+  // Chỉ biên dịch src. tsconfig.json còn include cả test/ và vitest.config.ts để
+  // type-check; nếu để lọt vào bản build thì rootDir bị đẩy lên gốc package,
+  // output thành dist/src/main.js thay vì dist/main.js — vừa sai đường dẫn của
+  // script `start`, vừa làm main.ts dò sai vị trí .env (lùi 3 cấp ra ngoài).
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
 }
