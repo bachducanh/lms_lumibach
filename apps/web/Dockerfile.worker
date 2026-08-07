@@ -16,11 +16,18 @@ COPY apps/web/src/workers/email.worker.ts ./src/workers/
 COPY apps/web/src/lib/queue.ts ./src/lib/
 COPY apps/web/src/lib/email.ts ./src/lib/
 
+# Định nghĩa hàng đợi dùng chung giữa apps/api và apps/web. Chỉ chép thư mục
+# `emails`, KHÔNG chép cả packages/types: index.ts của gói đó kéo theo hàng chục
+# module khác và nhiều module trong số đó import kiểu từ @lumibach/db, làm
+# esbuild phải giải cả Prisma client — thứ worker hoàn toàn không dùng tới.
+COPY packages/types/src/emails ./src/shared/emails
+
 # Gộp mã của mình thành một file. Giữ 3 gói kia là external — bullmq đọc script
 # Lua từ đĩa lúc chạy nên KHÔNG được bundle vào.
 RUN npx --yes esbuild@0.25 src/workers/email.worker.ts \
   --bundle --platform=node --target=node20 --format=cjs \
   --alias:@=./src \
+  --alias:@lumibach/types=./src/shared/emails \
   --external:bullmq --external:nodemailer --external:dotenv \
   --outfile=/out/worker.js
 

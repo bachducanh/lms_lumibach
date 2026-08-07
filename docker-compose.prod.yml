@@ -54,15 +54,20 @@ services:
   #
   # Dùng stage `build` vì worker chạy bằng tsx — một devDependency đã bị loại
   # khỏi image chạy thật.
+  # Dựng từ Dockerfile.worker (bản gọn ~307MB), KHÔNG phải target `build` của
+  # apps/web/Dockerfile (~4.6GB kèm cả pnpm và mã nguồn monorepo).
+  #
+  # Phải khớp docker-compose.deploy.yml: file đó chạy image này trên máy chủ và
+  # cố tình KHÔNG đặt `command`, vì bản gọn đã có sẵn CMD ["node","worker.js"].
+  # Nếu ở đây dựng bản béo rồi đẩy lên registry, máy chủ sẽ kéo về một image
+  # không có worker.js ở gốc và container chết ngay khi khởi động.
   worker:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
-      target: build
+      dockerfile: apps/web/Dockerfile.worker
     image: lumibach/worker:latest
     container_name: lumibach-worker
     env_file: .env
-    command: pnpm --filter @lumibach/web worker:email
     depends_on:
       - api
     restart: unless-stopped
