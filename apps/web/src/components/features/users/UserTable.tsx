@@ -69,6 +69,23 @@ export function UserTable({ users }: { users: User[] }) {
     });
   }
 
+  function handleVerify(userId: string, name: string) {
+    startTransition(async () => {
+      try {
+        const res = await apiClient.post<{ message: string }>(`/users/${userId}/verify-email`, {});
+        // Cập nhật ngay tại chỗ để nút biến mất và trạng thái đổi, không phải
+        // chờ router.refresh() đi vòng qua máy chủ.
+        setLocalUsers((current) =>
+          current.map((u) => (u.id === userId ? { ...u, status: 'ACTIVE' as UserStatus } : u))
+        );
+        toast.success(`${name}: ${res.message}`);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi xác thực tài khoản');
+      }
+    });
+  }
+
   function handleResetPassword(userId: string, name: string) {
     startTransition(async () => {
       try {
@@ -171,6 +188,20 @@ export function UserTable({ users }: { users: User[] }) {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
+                      {/* Chỉ hiện với tài khoản đang chờ — lối thoát khi email
+                          xác thực không tới nơi (hộp thư rác, Gmail chặn,
+                          máy chủ mất đường ra Internet). */}
+                      {user.status === 'PENDING' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-emerald-600 hover:text-emerald-600"
+                          disabled={pending}
+                          onClick={() => handleVerify(user.id, displayName)}
+                        >
+                          Xác thực
+                        </Button>
+                      )}
                       <Link
                         href={`/admin/users/${user.id}/edit`}
                         className={buttonVariants({ variant: 'ghost', size: 'sm' })}

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -234,6 +235,52 @@ export class UsersService {
     });
 
     return { password: newPassword };
+  }
+
+  /**
+   * Xác thực email thay cho người dùng, dùng khi email không tới nơi.
+   *
+   * Đặt CẢ `status` lẫn `emailVerified`. Chỉ đổi `status` qua updateUser thì
+   * đăng nhập được nhưng `emailVerified` vẫn trống — dữ liệu mâu thuẫn, và
+   * sau này lọc "ai chưa xác thực" sẽ ra kết quả sai.
+   *
+   * Xoá luôn token còn treo: để lại thì link cũ trong hộp thư vẫn bấm được và
+   * báo lỗi khó hiểu cho người dùng đã được kích hoạt rồi.
+   */
+  async verifyEmailManually(actor: AuthUser, userId: string): Promise<{ message: string }> {
+    if (!hasMinRole(actor.role, 'ADMIN')) throw new ForbiddenException('Không có quyền');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.deletedAt) throw new NotFoundException('Không tìm thấy người dùng');
+
+    if (user.status === 'SUSPENDED') {
+      throw new BadRequestException('Tài khoản đang bị khoá. Bỏ khoá trước khi xác thực.');
+    }
+    if (user.status === 'ACTIVE' && user.emailVerified) {
+      return { message: 'Tài khoản đã được xác thực từ trước.' };
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { status: 'ACTIVE', emailVerified: user.emailVerified ?? new Date() },
+      }),
+      this.prisma.emailVerificationToken.deleteMany({ where: { userId } }),
+    ]);
+
+    this.audit.log({
+      userId: actor.id,
+      userRole: actor.role,
+      action: 'UPDATE_USER',
+      resource: 'User',
+      resourceId: userId,
+      changes: {
+        before: { status: user.status, emailVerified: user.emailVerified },
+        after: { status: 'ACTIVE', emailVerified: 'xác thực thủ công bởi quản trị viên' },
+      },
+    });
+
+    return { message: 'Đã xác thực tài khoản.' };
   }
 
   // ── Admin: import users ────────────────────────────────────────

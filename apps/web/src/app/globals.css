@@ -493,9 +493,21 @@
 }
 
 /* Route transition — wrapped around children in app/template.tsx.
-   Plays on every navigation thanks to template.tsx re-mounting. */
+   Plays on every navigation thanks to template.tsx re-mounting.
+
+   `backwards` chứ KHÔNG phải `both`. Với `both`, trình duyệt giữ lại trạng
+   thái khung hình cuối vĩnh viễn — tức `transform: translate3d(0,0,0)` và
+   `filter: blur(0)`. Cả hai đều là giá trị đơn vị nên trông như không có gì,
+   nhưng theo chuẩn CSS thì transform/filter khác `none` sẽ biến phần tử thành
+   **containing block** cho mọi con `position: fixed`.
+   Hậu quả: div này bọc TOÀN BỘ trang, nên mọi hộp thoại `fixed inset-0` trong
+   ứng dụng đều bám vào nó thay vì bám màn hình. Cuộn xuống cuối một danh sách
+   dài rồi mở hộp thoại thì nó hiện phía trên vùng nhìn thấy, người dùng tưởng
+   bấm không ăn. Đã đo trên /admin/users: hộp thoại nằm ở top -243px.
+   `backwards` chỉ áp trạng thái đầu trước khi chạy, chạy xong trả phần tử về
+   kiểu bình thường — hiệu ứng nhìn y hệt, nhưng không để lại transform. */
 .lb-page-enter {
-  animation: lb-page-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: lb-page-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* Scroll-triggered reveal: elements remain visible in the SSR HTML,

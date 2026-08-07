@@ -67,6 +67,12 @@ export class UsersController {
     return this.service.resetPassword(user, id);
   }
 
+  @Post(':id/verify-email')
+  @ApiOperation({ summary: 'Xác thực email thủ công cho tài khoản đang chờ (ADMIN)' })
+  verifyEmailManually(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.verifyEmailManually(user, id);
+  }
+
   @Post('import')
   @ApiOperation({ summary: 'Import danh sách người dùng từ JSON rows (ADMIN)' })
   importUsers(
