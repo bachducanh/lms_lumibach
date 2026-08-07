@@ -4,6 +4,7 @@ Tài liệu một-trang cho người tiếp nhận. Đọc hết trước khi tr
 sai là hệ thống **vẫn chạy** nhưng mất chức năng, rất khó phát hiện.
 
 Chi tiết kỹ thuật: [DEPLOYMENT.md](DEPLOYMENT.md) · Tên miền: [DOMAIN_SETUP.md](DOMAIN_SETUP.md)
+· Sửa code & phát hành: [DEVELOPMENT.md](DEVELOPMENT.md)
 
 ---
 
