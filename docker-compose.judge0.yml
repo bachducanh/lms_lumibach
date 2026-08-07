@@ -5,16 +5,14 @@
 #
 #   docker compose -f docker-compose.judge0.yml up -d
 #
-# ⚠️ BẮT BUỘC kiểm trước khi chạy — Judge0 1.13.1 dùng `isolate` chỉ hiểu cgroup v1:
+# Ghi chú về cgroup: nhiều hướng dẫn Judge0 trên mạng bảo phải hạ kernel về
+# cgroup v1 (`systemd.unified_cgroup_hierarchy=0`) rồi reboot. Với bản image này
+# thì KHÔNG cần — đã kiểm chứng chạy tốt trên máy có `stat -fc %T /sys/fs/cgroup`
+# trả về `cgroup2fs`. Đừng reboot máy chủ vì lý do đó.
 #
-#   stat -fc %T /sys/fs/cgroup
+# Nếu chấm bài nào cũng lỗi, xem log worker trước khi nghi ngờ cgroup:
 #
-#   tmpfs      → cgroup v1, chạy được
-#   cgroup2fs  → cgroup v2, PHẢI sửa kernel rồi reboot, nếu không Judge0 khởi
-#                động bình thường nhưng CHẤM BÀI NÀO CŨNG LỖI:
-#
-#     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 systemd.unified_cgroup_hierarchy=0"/' /etc/default/grub
-#     update-grub && reboot
+#   docker logs judge0-workers --tail 30
 #
 # Judge0 chạy `privileged: true` và JUDGE0_API_KEY để trống — TUYỆT ĐỐI không mở
 # cổng 2358 ra Internet. Nó chạy code tuỳ ý người gửi lên.

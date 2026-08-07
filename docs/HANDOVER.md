@@ -141,9 +141,20 @@ Nếu ứng dụng chạy **khác máy** với cloudflared thì đổi `localhos
 
 ---
 
-## 4. Ba lỗi im lặng — kiểm ngay sau khi triển khai
+## 4. Những lỗi im lặng — kiểm ngay sau khi triển khai
 
-Cả ba đều khiến hệ thống **trông như đang chạy tốt** mà thực ra mất chức năng.
+Tất cả đều khiến hệ thống **trông như đang chạy tốt** mà thực ra mất chức năng.
+
+**⓪ Sửa `.env` mà không tạo lại container.** Container giữ giá trị CŨ trong bộ
+nhớ — sửa file không có tác dụng, và `restart` cũng KHÔNG đủ:
+
+```bash
+docker compose -f docker-compose.deploy.yml up -d --force-recreate api
+docker exec lumibach-api printenv JUDGE0_API_URL     # giá trị THẬT đang dùng
+```
+
+Luôn kiểm bằng `printenv`, đừng tin vào nội dung file `.env`. Lỗi này từng làm
+chấm code chết dù `.env` trên máy chủ đã hoàn toàn đúng.
 
 **① Không có container `worker`** → email thông báo nằm im trong Redis, không ai
 nhận được nhắc hạn nộp bài.
@@ -158,13 +169,16 @@ Phải là `http://judge0-server:2358` — tên service trong mạng `lumibach-n
 **Không dùng `localhost:2358`**: bên trong container, `localhost` là chính
 container đó chứ không phải máy chủ.
 
-Kiểm bằng cách chấm thử một bài, gọi từ trong container api:
+Kiểm bằng cách chấm thử một bài từ trong container api. Lệnh dưới đọc
+`process.env.JUDGE0_API_URL` chứ **không ghi thẳng địa chỉ** — nếu ghi thẳng thì
+phép thử vẫn đạt trong khi ứng dụng thật vẫn hỏng:
 
 ```bash
-docker exec lumibach-api node -e "fetch('http://judge0-server:2358/submissions?base64_encoded=false&wait=true',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language_id:71,source_code:'print(2+3)'})}).then(r=>r.json()).then(d=>console.log(d.stdout,d.status&&d.status.description))"
+docker exec lumibach-api node -e "const u=process.env.JUDGE0_API_URL;console.log('dang dung:',u);fetch(u+'/submissions?base64_encoded=false&wait=true',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language_id:71,source_code:'print(2+3)'})}).then(r=>r.json()).then(d=>console.log(d.stdout,d.status&&d.status.description))"
 ```
 
-Phải ra `5` và `Accepted`.
+Phải ra `5` và `Accepted`. Sau đó vẫn nên chấm thử một bài **trên trình duyệt** —
+đó mới là đường đi thật của người dùng.
 
 **③ Thiếu `CRON_SECRET`** → `/api/cron/purge-trash` từ chối mọi lần gọi nên thùng
 rác không bao giờ được dọn; còn `/api/cron/due-soon` thì ngược lại, bỏ qua kiểm
