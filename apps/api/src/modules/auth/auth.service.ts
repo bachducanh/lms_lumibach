@@ -3,6 +3,12 @@ import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { PrismaClient } from '@lumibach/db';
 import { EmailService } from '../../common/email/email.service';
+import {
+  USERNAME_REGEX,
+  USERNAME_RULE_MESSAGE,
+  isEmailIdentifier,
+  normalizeUsername,
+} from '@lumibach/types';
 
 @Injectable()
 export class UserAuthService {
@@ -33,20 +39,51 @@ export class UserAuthService {
     return token;
   }
 
-  async checkStatus(email: string): Promise<'ok' | 'pending' | 'suspended' | 'not_found'> {
-    const user = await this.prisma.user.findUnique({
-      where: { email, deletedAt: null },
-      select: { status: true },
+  /**
+   * Tra theo email HOẶC tên đăng nhập. Trả về null nếu không có ai.
+   *
+   * Dùng chung cho check-status và resend-verification: người dùng đăng nhập
+   * bằng tên đăng nhập thì hai chỗ đó cũng phải tra được, nếu không thông báo
+   * "tài khoản chưa xác thực" sẽ không bao giờ hiện ra.
+   */
+  private async findByIdentifier<T extends object>(identifier: string, select: T) {
+    const lookup = normalizeUsername(identifier);
+    return this.prisma.user.findFirst({
+      where: {
+        deletedAt: null,
+        ...(isEmailIdentifier(identifier) ? { email: lookup } : { username: lookup }),
+      },
+      select,
     });
+  }
+
+  async checkStatus(identifier: string): Promise<'ok' | 'pending' | 'suspended' | 'not_found'> {
+    const user = await this.findByIdentifier(identifier, { status: true } as const);
     if (!user) return 'not_found';
     if (user.status === 'PENDING') return 'pending';
     if (user.status === 'SUSPENDED') return 'suspended';
     return 'ok';
   }
 
-  async register(input: { email: string; fullName: string; password: string }): Promise<string> {
+  async register(input: {
+    email: string;
+    fullName: string;
+    password: string;
+    username?: string;
+  }): Promise<string> {
     const existing = await this.prisma.user.findUnique({ where: { email: input.email } });
     if (existing) throw new BadRequestException('Email này đã được đăng ký.');
+
+    // Tên đăng nhập không bắt buộc — tài khoản cũ không có vẫn đăng nhập bằng
+    // email như thường.
+    let username: string | undefined;
+    if (input.username?.trim()) {
+      username = normalizeUsername(input.username);
+      if (!USERNAME_REGEX.test(username)) throw new BadRequestException(USERNAME_RULE_MESSAGE);
+
+      const taken = await this.prisma.user.findUnique({ where: { username } });
+      if (taken) throw new BadRequestException('Tên đăng nhập này đã có người dùng.');
+    }
 
     const parts = input.fullName.trim().split(/\s+/);
     const firstName = parts.slice(0, -1).join(' ') || input.fullName;
@@ -56,6 +93,7 @@ export class UserAuthService {
     const user = await this.prisma.user.create({
       data: {
         email: input.email,
+        username,
         fullName: input.fullName,
         firstName,
         lastName,
@@ -92,8 +130,12 @@ export class UserAuthService {
     return 'Email xác thực thành công! Bạn có thể đăng nhập.';
   }
 
-  async resendVerification(email: string): Promise<string> {
-    const user = await this.prisma.user.findUnique({ where: { email, deletedAt: null } });
+  async resendVerification(identifier: string): Promise<string> {
+    const user = await this.findByIdentifier(identifier, {
+      email: true,
+      status: true,
+      id: true,
+    } as const);
 
     if (user && user.status === 'PENDING') {
       const token = await this.createEmailVerificationToken(user.id);

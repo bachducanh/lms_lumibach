@@ -5,13 +5,21 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { logActivity } from '@/lib/activity';
 import type { UserRole } from '@lumibach/db';
+import { isEmailIdentifier, normalizeUsername } from '@lumibach/types';
 
 import '@/types/auth';
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
+// `identifier` nhận cả email lẫn tên đăng nhập nên KHÔNG validate .email() ở
+// đây. Ô nhập cũ tên là `email`; giữ lại làm phương án lùi để phiên đăng nhập
+// đang mở và mọi chỗ gọi signIn() cũ không gãy khi triển khai bản này.
+const loginSchema = z
+  .object({
+    identifier: z.string().trim().min(1).optional(),
+    email: z.string().trim().min(1).optional(),
+    password: z.string().min(6),
+  })
+  .transform((d) => ({ identifier: d.identifier ?? d.email ?? '', password: d.password }))
+  .refine((d) => d.identifier.length > 0, { message: 'Thiếu email hoặc tên đăng nhập' });
 
 // Đặt ".lumibach.com" khi API nằm ở miền con (api.lumibach.com): cookie mặc định
 // của NextAuth là host-only nên sẽ KHÔNG được gửi sang miền con, làm mọi request
@@ -54,7 +62,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        identifier: { label: 'Email hoặc tên đăng nhập', type: 'text' },
         password: { label: 'Mật khẩu', type: 'password' },
       },
       async authorize(credentials) {
@@ -64,12 +72,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const { email, password } = parsed.data;
+        const { identifier, password } = parsed.data;
+
+        // Email không phân biệt hoa thường trên thực tế, còn tên đăng nhập được
+        // lưu ở dạng chữ thường — nên tra cứu cả hai bằng bản đã hạ chữ thường.
+        const lookup = normalizeUsername(identifier);
 
         let user;
         try {
-          user = await prisma.user.findUnique({
-            where: { email, deletedAt: null },
+          user = await prisma.user.findFirst({
+            where: {
+              deletedAt: null,
+              ...(isEmailIdentifier(identifier) ? { email: lookup } : { username: lookup }),
+            },
             select: {
               id: true,
               email: true,
@@ -88,17 +103,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (!user) {
-          console.error('[auth] user not found:', email);
+          console.error('[auth] user not found:', lookup);
           return null;
         }
         if (user.status !== 'ACTIVE') {
-          console.error('[auth] user status not ACTIVE:', user.status, email);
+          console.error('[auth] user status not ACTIVE:', user.status, identifier);
           return null;
         }
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) {
-          console.error('[auth] wrong password for:', email);
+          console.error('[auth] wrong password for:', identifier);
           return null;
         }
 

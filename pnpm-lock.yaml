@@ -73,6 +73,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      bullmq:
+        specifier: ^5.76.3
+        version: 5.76.3
       cache-manager:
         specifier: ^6.4.0
         version: 6.4.3

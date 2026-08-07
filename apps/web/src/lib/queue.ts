@@ -1,4 +1,7 @@
 import { Queue } from 'bullmq';
+import { EMAIL_QUEUE_NAME, type EmailJobData } from '@lumibach/types';
+
+export type { EmailJobData };
 
 function parseRedisUrl(url: string) {
   try {
@@ -16,14 +19,6 @@ function parseRedisUrl(url: string) {
 
 export const redisConnection = parseRedisUrl(process.env.REDIS_URL ?? 'redis://localhost:6379');
 
-export type EmailJobData = {
-  to: string;
-  recipientName: string;
-  title: string;
-  body: string | null;
-  link: string | null;
-};
-
 const QUEUE_OPTIONS = {
   connection: redisConnection,
   defaultJobOptions: {
@@ -37,14 +32,15 @@ const QUEUE_OPTIONS = {
 let _emailQueue: Queue<EmailJobData> | null = null;
 
 /**
- * Hàng đợi email thông báo. Người đẩy việc vào: lib/notifications.ts (cron
- * nhắc hạn nộp bài, báo cáo tham gia). Người xử lý: workers/email.worker.ts —
- * **phải chạy như một tiến trình riêng**, xem service `worker` trong
- * docker-compose.prod.yml. Không chạy nó thì email nằm im trong Redis.
+ * Hàng đợi email. Người đẩy việc vào: lib/notifications.ts (cron nhắc hạn nộp
+ * bài, báo cáo tham gia) và apps/api (email xác thực, đặt lại mật khẩu). Người
+ * xử lý: workers/email.worker.ts — **phải chạy như một tiến trình riêng**, xem
+ * service `worker` trong docker-compose.prod.yml. Không chạy nó thì email nằm
+ * im trong Redis.
  *
  * (Trước đây còn hàng đợi 'code-execution', nay bỏ: API gọi thẳng Judge0.)
  */
 export function getEmailQueue(): Queue<EmailJobData> {
-  if (!_emailQueue) _emailQueue = new Queue<EmailJobData>('email', QUEUE_OPTIONS);
+  if (!_emailQueue) _emailQueue = new Queue<EmailJobData>(EMAIL_QUEUE_NAME, QUEUE_OPTIONS);
   return _emailQueue;
 }

@@ -157,8 +157,16 @@ docker exec lumibach-api printenv JUDGE0_API_URL     # giá trị THẬT đang d
 Luôn kiểm bằng `printenv`, đừng tin vào nội dung file `.env`. Lỗi này từng làm
 chấm code chết dù `.env` trên máy chủ đã hoàn toàn đúng.
 
-**① Không có container `worker`** → email thông báo nằm im trong Redis, không ai
-nhận được nhắc hạn nộp bài.
+**① Container `worker` không chạy, HOẶC chạy trên máy không có Internet** →
+email nằm im trong Redis, không ai nhận được gì.
+
+Worker là **nơi duy nhất thật sự gửi email**, nên nó phải đặt ở máy với tới được
+`smtp.gmail.com:587`. Máy ứng dụng `.103` không có Internet — đặt worker ở đó thì
+mọi email đều thất bại trong im lặng. Kiểm đường ra trước khi tin là xong:
+
+```bash
+timeout 10 bash -c 'exec 3<>/dev/tcp/smtp.gmail.com/587 && head -c 40 <&3'
+```
 
 ```bash
 docker compose -f docker-compose.prod.yml logs worker | tail -3   # "[email-worker] started"

@@ -8,15 +8,19 @@ import type { AuthUser } from '../../common/auth/auth.types';
 export class UserAuthController {
   constructor(private readonly service: UserAuthService) {}
 
+  // `identifier` nhận cả email lẫn tên đăng nhập. Vẫn đọc `email` làm phương án
+  // lùi cho bản web cũ còn nằm trong cache trình duyệt lúc vừa triển khai.
   @Public()
   @Post('check-status')
-  checkStatus(@Body('email') email: string) {
-    return this.service.checkStatus(email);
+  checkStatus(@Body('identifier') identifier: string, @Body('email') email: string) {
+    return this.service.checkStatus(identifier ?? email);
   }
 
   @Public()
   @Post('register')
-  async register(@Body() body: { email: string; fullName: string; password: string }) {
+  async register(
+    @Body() body: { email: string; fullName: string; password: string; username?: string }
+  ) {
     const message = await this.service.register(body);
     return { message };
   }
@@ -30,8 +34,8 @@ export class UserAuthController {
 
   @Public()
   @Post('resend-verification')
-  async resendVerification(@Body('email') email: string) {
-    const message = await this.service.resendVerification(email);
+  async resendVerification(@Body('identifier') identifier: string, @Body('email') email: string) {
+    const message = await this.service.resendVerification(identifier ?? email);
     return { message };
   }
 

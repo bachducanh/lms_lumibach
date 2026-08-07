@@ -11,10 +11,18 @@ import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { USERNAME_REGEX, USERNAME_RULE_MESSAGE } from '@lumibach/types';
 
 const schema = z
   .object({
     email: z.string().email('Email không hợp lệ'),
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(USERNAME_REGEX, USERNAME_RULE_MESSAGE)
+      .or(z.literal(''))
+      .optional(),
     fullName: z.string().min(2, 'Họ tên tối thiểu 2 ký tự'),
     password: z
       .string()
@@ -45,6 +53,9 @@ export function RegisterForm() {
         email: data.email,
         fullName: data.fullName,
         password: data.password,
+        // Bỏ trống thì không gửi trường này — cột username là unique, gửi chuỗi
+        // rỗng sẽ đụng nhau ngay từ người thứ hai.
+        ...(data.username ? { username: data.username } : {}),
       });
       setResult({ success: true, message: res.message });
     } catch (err) {
@@ -91,6 +102,25 @@ export function RegisterForm() {
           {...register('email')}
         />
         {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="username">
+          Tên đăng nhập <span className="text-muted-foreground font-normal">(không bắt buộc)</span>
+        </Label>
+        <Input
+          id="username"
+          placeholder="nguyenvana"
+          autoComplete="username"
+          {...register('username')}
+        />
+        {errors.username ? (
+          <p className="text-destructive text-xs">{errors.username.message}</p>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            Đặt để đăng nhập nhanh mà không cần gõ email. Bỏ trống cũng được.
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">

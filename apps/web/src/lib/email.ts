@@ -9,6 +9,12 @@ const transporter = isConfigured
       port: Number(process.env.SMTP_PORT ?? 587),
       secure: process.env.SMTP_SECURE === 'true',
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+      // Chặn trên thời gian chờ. Mặc định nodemailer chờ tới ~2 phút khi máy
+      // không có đường ra Internet — đủ lâu để BullMQ tưởng job treo và người
+      // dùng tưởng hệ thống chết. Thà báo hỏng sớm rồi để hàng đợi thử lại.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     })
   : null;
 
@@ -35,6 +41,14 @@ async function send(to: string, subject: string, html: string) {
     return;
   }
   await transporter.sendMail({ from: FROM, to, subject, html });
+}
+
+/**
+ * Gửi nội dung đã dựng sẵn. Dùng cho job `kind: 'raw'` — bên đẩy việc (apps/api)
+ * sở hữu mẫu email, worker chỉ làm mỗi việc gửi đi.
+ */
+export async function sendRawEmail(to: string, subject: string, html: string) {
+  await send(to, subject, html);
 }
 
 export async function sendVerificationEmail(email: string, token: string) {

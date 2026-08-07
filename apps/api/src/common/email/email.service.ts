@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { EmailQueue } from './email.queue';
 
 const LOG_FILE = path.join(process.cwd(), 'logs', 'dev-emails.log');
 
@@ -22,7 +23,10 @@ export class EmailService {
     }
   }
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly queue: EmailQueue
+  ) {
     const host = config.get<string>('SMTP_HOST');
     const user = config.get<string>('SMTP_USER');
     const pass = config.get<string>('SMTP_PASSWORD');
@@ -37,6 +41,12 @@ export class EmailService {
             port: Number(config.get('SMTP_PORT') ?? 587),
             secure: config.get('SMTP_SECURE') === 'true',
             auth: { user, pass },
+            // Chặn trên thời gian chờ. Mặc định nodemailer chờ tới ~2 phút khi
+            // máy không có đường ra Internet. Chỉ dùng cho nhánh gửi thẳng dự
+            // phòng — đường chính đã đi qua hàng đợi.
+            connectionTimeout: 10_000,
+            greetingTimeout: 10_000,
+            socketTimeout: 20_000,
           })
         : null;
   }
@@ -59,6 +69,16 @@ export class EmailService {
       );
       return;
     }
+
+    // Đường chính: xếp hàng rồi trả về ngay. Worker (chạy trên máy có Internet)
+    // sẽ gửi, kèm 3 lần thử lại. TUYỆT ĐỐI không await sendMail ở đây — máy chủ
+    // ứng dụng không ra được Internet nên lời gọi đó treo nguyên request.
+    if (await this.queue.enqueue(to, subject, html)) return;
+
+    // Dự phòng khi không có Redis (chạy lẻ, hoặc Redis chết): gửi thẳng. Trên
+    // máy có Internet thì vẫn tới nơi; trên máy chủ thì hỏng sau 10 giây chứ
+    // không treo, và link vẫn được ghi lại ở dưới.
+    this.logger.warn('Hàng đợi không dùng được — gửi thẳng, request có thể chậm.');
     try {
       await this.transporter.sendMail({ from: this.from, to, subject, html });
     } catch (err) {
@@ -107,6 +127,10 @@ export class EmailService {
 
   async sendPasswordResetEmail(email: string, token: string) {
     const url = `${this.appUrl}/reset-password?token=${token}`;
+    // Ghi lại như email xác thực: khi email không tới nơi (worker chết, Gmail
+    // chặn, hộp thư rác) thì quản trị viên vẫn lấy được link từ log.
+    process.stdout.write(`[email] reset URL for ${email}: ${url}\n`);
+    this.logToFile(`[reset-password] to=${email} url=${url}`);
     await this.send(
       email,
       'Đặt lại mật khẩu - LumiBach',

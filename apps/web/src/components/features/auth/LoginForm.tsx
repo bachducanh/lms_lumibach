@@ -15,7 +15,9 @@ import { Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
 const schema = z.object({
-  email: z.string().email('Email không hợp lệ'),
+  // Nhận cả email lẫn tên đăng nhập nên không ràng buộc định dạng ở đây; phía
+  // máy chủ mới là chỗ quyết định tài khoản có tồn tại hay không.
+  identifier: z.string().trim().min(1, 'Nhập email hoặc tên đăng nhập'),
   password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
 });
 
@@ -41,7 +43,7 @@ export function LoginForm({ next }: { next?: string | null }) {
     setResendDone(false);
 
     const result = await signIn('credentials', {
-      email: data.email,
+      identifier: data.identifier,
       password: data.password,
       redirect: false,
     });
@@ -55,7 +57,7 @@ export function LoginForm({ next }: { next?: string | null }) {
     // Xác định lý do thất bại
     try {
       const { status } = await apiClient.post<{ status: string }>('/auth/check-status', {
-        email: data.email,
+        identifier: data.identifier,
       });
       if (status === 'pending') setLoginError('pending');
       else if (status === 'suspended') setLoginError('suspended');
@@ -68,7 +70,7 @@ export function LoginForm({ next }: { next?: string | null }) {
   async function handleResend() {
     setResending(true);
     await apiClient
-      .post('/auth/resend-verification', { email: getValues('email') })
+      .post('/auth/resend-verification', { identifier: getValues('identifier') })
       .catch(() => null);
     setResending(false);
     setResendDone(true);
@@ -78,7 +80,7 @@ export function LoginForm({ next }: { next?: string | null }) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {loginError === 'credentials' && (
         <Alert className="border-destructive/50 text-destructive px-3 py-2 text-sm">
-          Email hoặc mật khẩu không đúng.
+          Thông tin đăng nhập hoặc mật khẩu không đúng.
         </Alert>
       )}
 
@@ -107,15 +109,19 @@ export function LoginForm({ next }: { next?: string | null }) {
       )}
 
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="identifier">Email hoặc tên đăng nhập</Label>
         <Input
-          id="email"
-          type="email"
-          placeholder="ten@truong.edu.vn"
-          autoComplete="email"
-          {...register('email')}
+          id="identifier"
+          // type="text" chứ không phải "email": trình duyệt sẽ chặn giá trị
+          // không có dấu @ và người dùng không gửi nổi tên đăng nhập.
+          type="text"
+          placeholder="ten@truong.edu.vn hoặc nguyenvana"
+          autoComplete="username"
+          {...register('identifier')}
         />
-        {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
+        {errors.identifier && (
+          <p className="text-destructive text-xs">{errors.identifier.message}</p>
+        )}
       </div>
 
       <div className="space-y-1.5">

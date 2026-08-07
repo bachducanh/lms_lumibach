@@ -1,4 +1,6 @@
 export * from './activity';
+export * from './emails';
+export * from './auth';
 export * from './analytics';
 export * from './notifications';
 export * from './forum';
