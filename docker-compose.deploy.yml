@@ -1,0 +1,89 @@
+# Chạy LumiBach trên máy KHÔNG có Internet và KHÔNG có mã nguồn.
+#
+# Khác docker-compose.prod.yml ở chỗ: file này chỉ KÉO image đã dựng sẵn từ
+# registry nội bộ, không có phần `build`. Dùng cho máy chủ bị cô lập.
+#
+# Trên máy có Internet (máy phát triển) dựng và đẩy image:
+#   docker compose -f docker-compose.prod.yml build
+#   docker tag lumibach/api:latest 192.168.53.100:5000/lumibach/api:latest    # và web, worker
+#   docker push 192.168.53.100:5000/lumibach/api:latest                       # và web, worker
+#
+# Trên máy chủ, chỉ cần file này + .env:
+#   docker login 192.168.53.100:5000
+#   docker compose -f docker-compose.deploy.yml --profile tools run --rm migrate
+#   docker compose -f docker-compose.deploy.yml up -d
+#
+# Registry chạy HTTP nên máy chủ phải khai nó là insecure trong
+# /etc/docker/daemon.json rồi `systemctl restart docker`:
+#   { "insecure-registries": ["192.168.53.100:5000"] }
+
+services:
+  # Chạy migration DB. KHÔNG tự chạy cùng `up` — gọi tay khi schema đổi:
+  #   docker compose -f docker-compose.deploy.yml --profile tools run --rm migrate
+  #
+  # Image riêng, gọn (423MB), chỉ chứa Prisma CLI và thư mục prisma/. Nhờ nó máy
+  # chủ tự chạy được migration, không phụ thuộc vào máy phát triển nào.
+  #
+  # An toàn khi chạy thừa: `migrate deploy` bỏ qua migration đã áp dụng và không
+  # bao giờ tự xoá dữ liệu.
+  migrate:
+    profiles: ['tools']
+    image: 192.168.53.100:5000/lumibach/migrate:latest
+    env_file: .env
+
+  api:
+    image: 192.168.53.100:5000/lumibach/api:latest
+    container_name: lumibach-api
+    env_file: .env
+    # Tham gia mạng chung để gọi Judge0 qua tên service. KHÔNG dùng localhost:2358
+    # — bên trong container, localhost là chính container đó chứ không phải máy chủ.
+    networks:
+      - default
+      - lumibach-net
+    ports:
+      - '${API_HOST_PORT:-4000}:4000'
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:4000/api/v1/health',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Xử lý hàng đợi email thông báo. Bỏ service này thì email nằm im trong Redis
+  # mà web/api vẫn chạy bình thường — rất dễ tưởng là ổn.
+  worker:
+    image: 192.168.53.100:5000/lumibach/worker:latest
+    container_name: lumibach-worker
+    env_file: .env
+    # KHÔNG đặt `command` ở đây. Image gọn đã có sẵn CMD ["node","worker.js"];
+    # ghi đè bằng lệnh pnpm của bản cũ sẽ lỗi MODULE_NOT_FOUND vì image này
+    # không có pnpm lẫn mã nguồn monorepo.
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  web:
+    image: 192.168.53.100:5000/lumibach/web:latest
+    container_name: lumibach-web
+    env_file: .env
+    # Trong mạng compose phải gọi api qua TÊN SERVICE, không phải localhost.
+    environment:
+      API_INTERNAL_URL: http://api:4000/api/v1
+    ports:
+      - '${WEB_HOST_PORT:-3000}:3000'
+    depends_on:
+      - api
+    restart: unless-stopped
+
+# Mạng dùng chung với Judge0 (docker-compose.judge0.yml). Tạo một lần trên máy chủ:
+#   docker network create lumibach-net
+networks:
+  lumibach-net:
+    external: true

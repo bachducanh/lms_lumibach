@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+#
+# Image chạy migration DB. Build từ GỐC repo:
+#   docker build -f packages/db/Dockerfile.migrate -t lumibach/migrate .
+#
+# Vì sao cần image riêng: máy chủ production không có mã nguồn lẫn Internet, nên
+# không tự chạy `prisma migrate deploy` được. Nếu không có image này thì mỗi lần
+# đổi schema đều phải có máy phát triển bật lên — hệ thống phụ thuộc vào một máy
+# cá nhân, không ổn khi bàn giao.
+#
+# Chỉ chứa Prisma CLI và thư mục prisma/ (schema + các file migration).
+
+FROM node:20-slim
+ENV NODE_ENV=production
+WORKDIR /app
+
+# openssl là phụ thuộc thời gian chạy của Prisma engine.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Phiên bản khớp packages/db/package.json — lệch phiên bản có thể sinh ra
+# migration không tương thích với dữ liệu đang có.
+RUN npm init -y > /dev/null \
+  && npm install --omit=dev --no-audit --no-fund prisma@^5 \
+  && npm cache clean --force
+
+# schema.prisma + toàn bộ lịch sử migration.
+COPY packages/db/prisma ./prisma
+
+# DATABASE_URL nạp lúc chạy qua env_file của compose.
+# `migrate deploy` chỉ áp dụng migration còn thiếu, an toàn khi chạy thừa và
+# KHÔNG bao giờ tự xoá dữ liệu (khác `migrate dev`).
+CMD ["npx", "prisma", "migrate", "deploy", "--schema=prisma/schema.prisma"]

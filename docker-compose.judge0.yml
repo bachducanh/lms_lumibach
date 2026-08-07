@@ -1,0 +1,89 @@
+# Judge0 CE cho máy chủ KHÔNG có Internet.
+#
+# Giống phần judge0 trong docker-compose.yml, chỉ khác: kéo image từ registry
+# nội bộ thay vì Docker Hub.
+#
+#   docker compose -f docker-compose.judge0.yml up -d
+#
+# ⚠️ BẮT BUỘC kiểm trước khi chạy — Judge0 1.13.1 dùng `isolate` chỉ hiểu cgroup v1:
+#
+#   stat -fc %T /sys/fs/cgroup
+#
+#   tmpfs      → cgroup v1, chạy được
+#   cgroup2fs  → cgroup v2, PHẢI sửa kernel rồi reboot, nếu không Judge0 khởi
+#                động bình thường nhưng CHẤM BÀI NÀO CŨNG LỖI:
+#
+#     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 systemd.unified_cgroup_hierarchy=0"/' /etc/default/grub
+#     update-grub && reboot
+#
+# Judge0 chạy `privileged: true` và JUDGE0_API_KEY để trống — TUYỆT ĐỐI không mở
+# cổng 2358 ra Internet. Nó chạy code tuỳ ý người gửi lên.
+
+services:
+  judge0-db:
+    image: 192.168.53.100:5000/lumibach/postgres_13:latest
+    container_name: judge0-db
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0_secret
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U judge0']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  judge0-redis:
+    image: 192.168.53.100:5000/lumibach/redis_6-alpine:latest
+    container_name: judge0-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - judge0_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  judge0-server:
+    image: 192.168.53.100:5000/lumibach/judge0_judge0_1.13.1:latest
+    container_name: judge0-server
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    # KHÔNG mở cổng ra máy chủ. Container api gọi thẳng qua tên service trong
+    # mạng chung `lumibach-net`, nên Judge0 không lộ ra bất kỳ giao diện mạng nào.
+    networks:
+      - default
+      - lumibach-net
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-workers:
+    image: 192.168.53.100:5000/lumibach/judge0_judge0_1.13.1:latest
+    container_name: judge0-workers
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    restart: unless-stopped
+    command: ['/api/scripts/workers']
+    depends_on:
+      - judge0-server
+
+volumes:
+  judge0_db_data:
+  judge0_redis_data:
+
+# Mạng dùng chung với ứng dụng. Tạo một lần trước khi chạy:
+#   docker network create lumibach-net
+networks:
+  lumibach-net:
+    external: true

@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+#
+# Worker xử lý hàng đợi email. Build từ GỐC repo:
+#   docker build -f apps/web/Dockerfile.worker -t lumibach/worker-slim .
+#
+# Vì sao có file riêng thay vì dùng lại tầng build của apps/web/Dockerfile:
+# tầng đó nặng 5.17GB (mang cả mã nguồn monorepo và devDependencies), trong khi
+# worker chỉ cần đúng 3 gói. Máy chủ production không có Internet nên image phải
+# chép tay qua đường truyền chậm — 5GB là bất khả thi, ~250MB thì được.
+
+FROM node:20-slim AS build
+WORKDIR /src
+
+# Chỉ 3 file nguồn worker thật sự cần.
+COPY apps/web/src/workers/email.worker.ts ./src/workers/
+COPY apps/web/src/lib/queue.ts ./src/lib/
+COPY apps/web/src/lib/email.ts ./src/lib/
+
+# Gộp mã của mình thành một file. Giữ 3 gói kia là external — bullmq đọc script
+# Lua từ đĩa lúc chạy nên KHÔNG được bundle vào.
+RUN npx --yes esbuild@0.25 src/workers/email.worker.ts \
+  --bundle --platform=node --target=node20 --format=cjs \
+  --alias:@=./src \
+  --external:bullmq --external:nodemailer --external:dotenv \
+  --outfile=/out/worker.js
+
+
+FROM node:20-slim AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Phiên bản khớp apps/web/package.json.
+RUN npm init -y > /dev/null \
+  && npm install --omit=dev --no-audit --no-fund \
+  bullmq@^5.76.3 nodemailer@^8.0.6 dotenv@^17.4.2 \
+  && npm cache clean --force
+
+COPY --from=build --chown=node:node /out/worker.js ./worker.js
+
+USER node
+
+# Biến môi trường nạp lúc chạy qua env_file của compose.
+CMD ["node", "worker.js"]
