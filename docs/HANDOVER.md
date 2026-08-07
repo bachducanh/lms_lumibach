@@ -18,27 +18,92 @@ Trình duyệt ──HTTPS──▶ Cloudflare ──tunnel──▶ cloudflared
 
 | Dịch vụ            | Máy                   | Ghi chú                                                    |
 | ------------------ | --------------------- | ---------------------------------------------------------- |
-| web / api / worker | **cần triển khai**    | 3 container, `docker-compose.prod.yml`                     |
+| web / api / worker | `192.168.53.103`      | 3 container, `docker-compose.deploy.yml`                   |
+| Judge0             | `192.168.53.103`      | 4 container, `docker-compose.judge0.yml`                   |
 | PostgreSQL         | `192.168.53.101:5432` | DB `lumibach_lms`                                          |
 | Redis              | `192.168.53.101:6379` | cache **và hàng đợi email**                                |
 | MinIO              | `192.168.53.105:9000` | dùng chung với dự án khác — chỉ đụng 2 bucket `lumibach-*` |
-| Judge0             | cùng máy với api      | chấm code, `docker-compose.yml`                            |
-| cloudflared        | `192.168.53.105`      | cổng vào tên miền                                          |
+| Docker Registry    | `192.168.53.100:5000` | kho image, tài khoản `admin`                               |
+| cloudflared        | `192.168.53.105`      | cổng vào tên miền, trỏ về `.103`                           |
 
 Tên miền: `lumibach.com` (web + API + WebSocket) và `media.lumibach.com` (file, ảnh).
 
 ---
 
-## 2. Triển khai
+## 2. Máy chủ KHÔNG có Internet — điều này quyết định mọi thứ
+
+`192.168.53.103` chỉ thấy mạng nội bộ, không ra được Internet. Nên **không build
+tại chỗ được** (build cần tải ~1200 gói npm và image nền).
+
+Thay vào đó:
+
+```
+Máy phát triển (có Internet)      Registry .100         Máy chủ .103
+   build image      ──push──▶     lưu image   ──pull──▶   chạy
+```
+
+Máy chủ chỉ cần **4 file**, không cần mã nguồn:
+
+```
+/opt/lumibach/
+├── .env                        ← bí mật, gửi riêng
+├── docker-compose.deploy.yml   ← web + api + worker + migrate
+├── docker-compose.judge0.yml   ← Judge0
+└── judge0.conf
+```
+
+### Triển khai lần đầu
 
 ```bash
-git clone https://github.com/bachducanh/lms_lumibach.git
-cd lms_lumibach
-cp .env.example .env && nano .env
-docker compose -f docker-compose.prod.yml --profile tools run --rm migrate
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose up -d judge0-db judge0-redis judge0-server judge0-workers
+mkdir -p /opt/lumibach && cd /opt/lumibach
+# chép 4 file trên sang, rồi:
+
+cat > /etc/docker/daemon.json <<'EOF'
+{ "insecure-registries": ["192.168.53.100:5000"] }
+EOF
+systemctl restart docker
+
+docker login 192.168.53.100:5000 -u admin
+docker network create lumibach-net
+
+docker compose -f docker-compose.deploy.yml --profile tools run --rm migrate
+docker compose -f docker-compose.deploy.yml up -d
+docker compose -f docker-compose.judge0.yml pull    # 14.2GB, mất 7-20 phút
+docker compose -f docker-compose.judge0.yml up -d
 ```
+
+### Phát hành phiên bản mới
+
+**Trên máy phát triển** (có mã nguồn và Internet):
+
+```bash
+git pull
+docker compose -f docker-compose.prod.yml build
+R=192.168.53.100:5000
+for n in api worker; do
+  docker tag lumibach/$n:latest $R/lumibach/$n:latest && docker push $R/lumibach/$n:latest
+done
+```
+
+**Trên máy chủ**:
+
+```bash
+cd /opt/lumibach
+docker compose -f docker-compose.deploy.yml pull
+docker compose -f docker-compose.deploy.yml --profile tools run --rm migrate
+docker compose -f docker-compose.deploy.yml up -d
+```
+
+> **Image `web` không đẩy qua registry được.** Proxy nội bộ của Docker Desktop
+> timeout với image lớn. Phải chuyển tay:
+>
+> ```bash
+> docker save lumibach/web:latest -o web.tar        # ~436MB
+> scp web.tar root@192.168.53.103:/opt/lumibach/
+> ssh root@192.168.53.103 'cd /opt/lumibach && docker load -i web.tar && docker tag lumibach/web:latest 192.168.53.100:5000/lumibach/web:latest'
+> ```
+>
+> Nếu sửa được cấu hình bỏ qua proxy cho dải `192.168.53.0/24` thì khỏi bước này.
 
 ### Bảy giá trị bí mật cần điền vào `.env`
 
@@ -87,12 +152,19 @@ nhận được nhắc hạn nộp bài.
 docker compose -f docker-compose.prod.yml logs worker | tail -3   # "[email-worker] started"
 ```
 
-**② Judge0 không cùng máy với api** → `JUDGE0_API_URL=http://localhost:2358` trỏ
-vào chỗ rỗng, chấm code chết trong khi mọi trang vẫn mở được.
+**② `JUDGE0_API_URL` sai** → chấm code chết trong khi mọi trang vẫn mở được.
+
+Phải là `http://judge0-server:2358` — tên service trong mạng `lumibach-net`.
+**Không dùng `localhost:2358`**: bên trong container, `localhost` là chính
+container đó chứ không phải máy chủ.
+
+Kiểm bằng cách chấm thử một bài, gọi từ trong container api:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:2358/about   # 200
+docker exec lumibach-api node -e "fetch('http://judge0-server:2358/submissions?base64_encoded=false&wait=true',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language_id:71,source_code:'print(2+3)'})}).then(r=>r.json()).then(d=>console.log(d.stdout,d.status&&d.status.description))"
 ```
+
+Phải ra `5` và `Accepted`.
 
 **③ Thiếu `CRON_SECRET`** → `/api/cron/purge-trash` từ chối mọi lần gọi nên thùng
 rác không bao giờ được dọn; còn `/api/cron/due-soon` thì ngược lại, bỏ qua kiểm
