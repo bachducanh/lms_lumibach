@@ -198,9 +198,33 @@ Tương tự với `/api/cron/due-soon` (nhắc hạn nộp bài) nếu muốn b
 
 Dữ liệu **không** nằm trong container — sao lưu ở hai nơi:
 
+Máy chủ `.103` **không có `pg_dump`**, và image `lumibach-api` cũng không —
+`docker exec lumibach-api sh -c 'pg_dump ...'` chỉ ra `pg_dump: not found` rồi
+để lại một file **0 byte** trông y như đã sao lưu xong. Luôn kiểm `ls -lh` sau
+khi chạy.
+
+Chạy từ máy phát triển (tới được `.101`), dùng image Postgres đúng phiên bản:
+
 ```bash
-pg_dump -h 192.168.53.101 -U lumibach -d lumibach_lms -Fc -f lumibach-$(date +%F).dump
+docker run --rm --env-file .env.prod postgres:17-alpine \
+  sh -c 'pg_dump "${DATABASE_URL%%\?*}" -Fc' > lumibach-$(date +%F).dump
+
 # MinIO: dùng `mc mirror`, hoặc sao lưu volume trên máy 192.168.53.105
+```
+
+Hai chi tiết bắt buộc:
+
+- **`postgres:17-alpine`**, không phải 16 — server đang chạy PostgreSQL 17.9 và
+  `pg_dump` cũ hơn server thì từ chối chạy.
+- **`${DATABASE_URL%%\?*}`** cắt phần `?schema=public`. Đó là tham số riêng của
+  Prisma; `psql`/`pg_dump` báo `invalid URI query parameter: "schema"`. Cắt ngay
+  trong container để chuỗi kết nối không lọt ra lịch sử lệnh.
+
+Kiểm bản dump đọc được trước khi tin là đã có sao lưu:
+
+```bash
+docker run --rm -v "//e/lumibach-backups:/backup" postgres:17-alpine \
+  pg_restore -l /backup/lumibach-2026-08-10.dump | head
 ```
 
 ### Bảo mật
