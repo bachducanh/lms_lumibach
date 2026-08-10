@@ -29,6 +29,8 @@ services:
     image: lumibach/api:latest
     container_name: lumibach-api
     env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     # Trong mạng của compose, web gọi api qua tên service. Cổng chỉ mở ra host để
     # cloudflared (chạy ngoài Docker) với tới được.
     ports:
@@ -68,6 +70,8 @@ services:
     image: lumibach/worker:latest
     container_name: lumibach-worker
     env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     depends_on:
       - api
     restart: unless-stopped
@@ -93,7 +97,10 @@ services:
     container_name: lumibach-web
     env_file: .env
     # Ghi đè: bên trong mạng compose phải gọi api qua tên service.
+    # Giờ Việt Nam cho mọi mốc thời gian render phía server. Không đặt thì
+    # container chạy UTC và hạn nộp / giờ mở hoạt động hiển thị lệch 7 tiếng.
     environment:
+      TZ: Asia/Ho_Chi_Minh
       API_INTERNAL_URL: http://api:4000/api/v1
     ports:
       - '${WEB_HOST_PORT:-3000}:3000'

@@ -36,6 +36,7 @@ type AssignmentFormValues = {
 };
 import { ChevronLeft, CalendarDays, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
 
 type Module = { id: string; name: string };
 
@@ -74,13 +75,6 @@ type Props =
       };
     };
 
-function toInputDate(d: string | Date | null | undefined): string {
-  if (!d) return '';
-  const dt = new Date(d);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-}
-
 export function AssignmentForm({
   mode,
   courseSlug,
@@ -97,9 +91,9 @@ export function AssignmentForm({
   const [type, setType] = useState(assignment?.type ?? 'TEXT');
   const [maxScore, setMaxScore] = useState(String(assignment?.maxScore ?? 100));
   const [weight, setWeight] = useState(String(assignment?.weight ?? 1));
-  const [availableFrom, setAvailableFrom] = useState(toInputDate(assignment?.availableFrom));
-  const [dueDate, setDueDate] = useState(toInputDate(assignment?.dueDate));
-  const [lateDeadline, setLateDeadline] = useState(toInputDate(assignment?.lateDeadline));
+  const [availableFrom, setAvailableFrom] = useState(toLocalInputValue(assignment?.availableFrom));
+  const [dueDate, setDueDate] = useState(toLocalInputValue(assignment?.dueDate));
+  const [lateDeadline, setLateDeadline] = useState(toLocalInputValue(assignment?.lateDeadline));
   const [latePolicy, setLatePolicy] = useState(assignment?.latePolicy ?? 'NONE');
   const [latePenalty, setLatePenalty] = useState(String(assignment?.latePenalty ?? ''));
   const [allowResubmit, setAllowResubmit] = useState(assignment?.allowResubmit ?? false);
@@ -115,9 +109,9 @@ export function AssignmentForm({
       type: type as AssignmentFormValues['type'],
       maxScore: Number(maxScore),
       weight: Number(weight),
-      availableFrom: availableFrom || null,
-      dueDate: dueDate || null,
-      lateDeadline: lateDeadline || null,
+      availableFrom: localInputToIso(availableFrom),
+      dueDate: localInputToIso(dueDate),
+      lateDeadline: localInputToIso(lateDeadline),
       latePolicy: latePolicy as AssignmentFormValues['latePolicy'],
       latePenalty: latePenalty ? Number(latePenalty) : null,
       allowResubmit,

@@ -6,16 +6,12 @@ import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { regradeQuizAttempts } from '../../common/grading/quiz-grading';
 import { toStoragePath } from '../../common/storage/storage-url';
+import { toDate } from '../../common/datetime';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
 function hasMinRole(r: string, min: Role) {
   return ROLE_ORDER.indexOf(r as Role) >= ROLE_ORDER.indexOf(min);
-}
-function toDate(s: string | null | undefined): Date | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
 }
 
 // Chuẩn hoá cấu hình Safe Exam Browser: chỉ bật khi có file cấu hình hợp lệ (.seb

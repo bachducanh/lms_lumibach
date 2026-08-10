@@ -5,6 +5,7 @@ import { PrismaClient, type Prisma } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { toStoragePath } from '../../common/storage/storage-url';
+import { toDate } from '../../common/datetime';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -12,12 +13,6 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function hasMinRole(role: string, minRole: Role): boolean {
   return ROLE_ORDER.indexOf(role as Role) >= ROLE_ORDER.indexOf(minRole);
-}
-
-function toDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function clampInt(value: unknown, fallback: number, min: number, max: number): number {

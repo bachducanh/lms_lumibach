@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
+import { formatDateTime } from '@/lib/datetime';
 
 function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'LESSON' && item.lessonId) return `/courses/${slug}/lessons/${item.lessonId}`;
@@ -87,14 +88,7 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 function formatDate(d: string | Date | null | undefined) {
-  if (!d) return null;
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(d));
+  return formatDateTime(d);
 }
 
 export default async function AssignmentViewPage({

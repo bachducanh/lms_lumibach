@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
 
 type QuizFormValues = {
   title: string;
@@ -50,14 +51,6 @@ type Props = {
   moduleId?: string;
 };
 
-function toInputValue(d: string | Date | null | undefined): string {
-  if (!d) return '';
-  const dt = new Date(d);
-  // format as datetime-local value: YYYY-MM-DDTHH:MM
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-}
-
 export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -74,8 +67,8 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
   const [shuffleQuestions, setShuffleQuestions] = useState(quiz?.shuffleQuestions ?? false);
   const [shuffleAnswers, setShuffleAnswers] = useState(quiz?.shuffleAnswers ?? false);
   const [showResults, setShowResults] = useState(quiz?.showResults ?? true);
-  const [availableFrom, setAvailableFrom] = useState(toInputValue(quiz?.availableFrom));
-  const [dueDate, setDueDate] = useState(toInputValue(quiz?.dueDate));
+  const [availableFrom, setAvailableFrom] = useState(toLocalInputValue(quiz?.availableFrom));
+  const [dueDate, setDueDate] = useState(toLocalInputValue(quiz?.dueDate));
   const [sebEnabled, setSebEnabled] = useState(quiz?.sebEnabled ?? false);
   const [sebConfig, setSebConfig] = useState<SebConfig>(
     quiz?.sebConfigUrl ? { url: quiz.sebConfigUrl, name: quiz.sebConfigName ?? 'config.seb' } : null
@@ -91,8 +84,8 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
       shuffleQuestions,
       shuffleAnswers,
       showResults,
-      availableFrom: availableFrom || null,
-      dueDate: dueDate || null,
+      availableFrom: localInputToIso(availableFrom),
+      dueDate: localInputToIso(dueDate),
       sebEnabled,
       sebConfigUrl: sebEnabled ? (sebConfig?.url ?? null) : null,
       sebConfigName: sebEnabled ? (sebConfig?.name ?? null) : null,

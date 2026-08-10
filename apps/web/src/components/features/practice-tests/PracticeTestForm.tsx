@@ -8,6 +8,7 @@ import { ArrowLeft, Check, FileQuestion, Loader2, Plus, Save, UploadCloud, X } f
 import { Button } from '@/components/ui/button';
 import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
 import { apiClient } from '@/lib/api-client';
+import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
 import type { PracticeQuestionInput, PracticeTestDetail, PracticeTestFile } from '@lumibach/types';
 
 type Props = {
@@ -48,13 +49,6 @@ function normalizeTfScores(scores: number[] | undefined, statementCount: number,
     if (!Number.isFinite(score)) return fallbackScore;
     return round2(Math.min(points, Math.max(0, score)));
   });
-}
-
-function toInputValue(d: string | Date | null | undefined): string {
-  if (!d) return '';
-  const dt = new Date(d);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 }
 
 function answerKeyToQuestion(q: PracticeTestDetail['questions'][number]): PracticeQuestionInput {
@@ -159,8 +153,10 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
     practiceTest?.maxAttempts != null ? String(practiceTest.maxAttempts) : ''
   );
   const [showResults, setShowResults] = useState(practiceTest?.showResults ?? true);
-  const [availableFrom, setAvailableFrom] = useState(toInputValue(practiceTest?.availableFrom));
-  const [dueDate, setDueDate] = useState(toInputValue(practiceTest?.dueDate));
+  const [availableFrom, setAvailableFrom] = useState(
+    toLocalInputValue(practiceTest?.availableFrom)
+  );
+  const [dueDate, setDueDate] = useState(toLocalInputValue(practiceTest?.dueDate));
   const [pdfFile, setPdfFile] = useState<PracticeTestFile | null>(
     practiceTest
       ? {
@@ -243,8 +239,8 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
       sebEnabled,
       sebConfigUrl: sebEnabled ? (sebConfig?.url ?? null) : null,
       sebConfigName: sebEnabled ? (sebConfig?.name ?? null) : null,
-      availableFrom: availableFrom || null,
-      dueDate: dueDate || null,
+      availableFrom: localInputToIso(availableFrom),
+      dueDate: localInputToIso(dueDate),
       moduleId,
       publish,
       questions: questions.map((q) => {

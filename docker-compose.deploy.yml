@@ -35,6 +35,8 @@ services:
     image: 192.168.53.100:5000/lumibach/api:latest
     container_name: lumibach-api
     env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     # Tham gia mạng chung để gọi Judge0 qua tên service. KHÔNG dùng localhost:2358
     # — bên trong container, localhost là chính container đó chứ không phải máy chủ.
     networks:
@@ -62,6 +64,8 @@ services:
     image: 192.168.53.100:5000/lumibach/worker:latest
     container_name: lumibach-worker
     env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     # KHÔNG đặt `command` ở đây. Image gọn đã có sẵn CMD ["node","worker.js"];
     # ghi đè bằng lệnh pnpm của bản cũ sẽ lỗi MODULE_NOT_FOUND vì image này
     # không có pnpm lẫn mã nguồn monorepo.
@@ -74,7 +78,10 @@ services:
     container_name: lumibach-web
     env_file: .env
     # Trong mạng compose phải gọi api qua TÊN SERVICE, không phải localhost.
+    # Giờ Việt Nam cho mọi mốc thời gian render phía server. Không đặt thì
+    # container chạy UTC và hạn nộp / giờ mở hoạt động hiển thị lệch 7 tiếng.
     environment:
+      TZ: Asia/Ho_Chi_Minh
       API_INTERNAL_URL: http://api:4000/api/v1
     ports:
       - '${WEB_HOST_PORT:-3000}:3000'

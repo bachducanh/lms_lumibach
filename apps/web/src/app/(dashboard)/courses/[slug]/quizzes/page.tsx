@@ -8,6 +8,7 @@ import { hasMinRole } from '@/lib/permissions';
 import { Brain, Clock, CheckCircle2, BookOpen, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
+import { formatDateTime } from '@/lib/datetime';
 
 export const metadata = { title: 'Quiz' };
 
@@ -23,14 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function formatDate(d: string | Date | null | undefined) {
-  if (!d) return null;
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(d));
+  return formatDateTime(d);
 }
 
 function QuizCard({ quiz, slug, isStaff }: { quiz: QuizListItem; slug: string; isStaff: boolean }) {

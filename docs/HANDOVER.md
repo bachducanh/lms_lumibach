@@ -193,7 +193,24 @@ Phải ra `5` và `Accepted`. Sau đó vẫn nên chấm thử một bài **trê
 rác không bao giờ được dọn; còn `/api/cron/due-soon` thì ngược lại, bỏ qua kiểm
 tra và ai gọi cũng được.
 
-**④ Trình soạn Scratch** — bản build đã có sẵn trong git, không phải làm gì thêm.
+**④ Thiếu `TZ=Asia/Ho_Chi_Minh`** → mọi mốc thời gian render phía server hiển thị
+lệch 7 tiếng. Ba compose file đã khai sẵn cho `api`, `web`, `worker`; nếu tự viết
+lệnh `docker run` thì phải tự thêm.
+
+```bash
+docker exec lumibach-web date        # phải ra giờ Việt Nam
+```
+
+Lần triển khai đầu sau bản fix múi giờ còn phải chạy **một lần duy nhất** script
+kéo lùi 7 tiếng cho các mốc đã lưu sai trước đó (xem đầu file
+`packages/db/scripts/shift-legacy-dates.ts` — chạy hai lần là hỏng dữ liệu):
+
+```bash
+pnpm --filter @lumibach/db db:shift-legacy-dates            # xem trước
+pnpm --filter @lumibach/db db:shift-legacy-dates --apply    # ghi thật
+```
+
+**⑤ Trình soạn Scratch** — bản build đã có sẵn trong git, không phải làm gì thêm.
 Nhưng cứ kiểm cho chắc:
 
 ```bash
