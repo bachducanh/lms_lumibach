@@ -14,6 +14,8 @@ import type { ImportCompetenciesResult, ImportCompetencyRow } from '@lumibach/ty
 const COLUMN_ALIASES = {
   categoryName: ['danh mục', 'danh muc', 'nhóm năng lực', 'category', 'category name'],
   categoryDescription: ['mô tả danh mục', 'mo ta danh muc', 'category description'],
+  componentName: ['thành phần', 'thanh phan', 'tên thành phần', 'component', 'component name'],
+  componentCode: ['mã thành phần', 'ma thanh phan', 'component code'],
   code: ['mã', 'ma', 'mã chỉ báo', 'code'],
   name: ['chỉ báo', 'chi bao', 'nội dung chỉ báo', 'indicator', 'name'],
   description: ['mô tả', 'mo ta', 'mô tả chỉ báo', 'description'],
@@ -23,6 +25,8 @@ const TEMPLATE_ROWS = [
   {
     'Danh mục': 'Năng lực giải quyết vấn đề với sự hỗ trợ của máy tính',
     'Mô tả danh mục': 'NLc theo Chương trình GDPT 2018 môn Tin học',
+    'Mã thành phần': 'NLc.1',
+    'Thành phần': 'Phân tích bài toán',
     Mã: 'NLc1',
     'Chỉ báo': 'Phân tích được bài toán và xác định dữ liệu đầu vào, đầu ra',
     'Mô tả': 'Minh chứng: phiếu phân tích bài toán, sơ đồ khối',
@@ -30,6 +34,8 @@ const TEMPLATE_ROWS = [
   {
     'Danh mục': 'Năng lực giải quyết vấn đề với sự hỗ trợ của máy tính',
     'Mô tả danh mục': '',
+    'Mã thành phần': 'NLc.2',
+    'Thành phần': 'Lập trình giải bài toán',
     Mã: 'NLc2',
     'Chỉ báo': 'Viết được chương trình giải bài toán bằng ngôn ngữ lập trình bậc cao',
     'Mô tả': '',
@@ -37,6 +43,8 @@ const TEMPLATE_ROWS = [
   {
     'Danh mục': 'Năng lực sử dụng và quản lí các phương tiện công nghệ thông tin',
     'Mô tả danh mục': 'NLa',
+    'Mã thành phần': 'NLa.1',
+    'Thành phần': 'Sử dụng thiết bị',
     Mã: 'NLa1',
     'Chỉ báo': 'Sử dụng đúng cách các thiết bị thông dụng của máy tính',
     'Mô tả': '',
@@ -64,7 +72,15 @@ function mapColumns(headers: string[]): Partial<Record<keyof ImportCompetencyRow
 
 export function downloadCompetencyTemplate() {
   const ws = utils.json_to_sheet(TEMPLATE_ROWS);
-  ws['!cols'] = [{ wch: 45 }, { wch: 35 }, { wch: 10 }, { wch: 60 }, { wch: 40 }];
+  ws['!cols'] = [
+    { wch: 45 },
+    { wch: 35 },
+    { wch: 14 },
+    { wch: 30 },
+    { wch: 10 },
+    { wch: 60 },
+    { wch: 40 },
+  ];
   const wb = utils.book_new();
   utils.book_append_sheet(wb, ws, 'Năng lực');
   writeFile(wb, 'mau-import-nang-luc.xlsx');
@@ -112,9 +128,9 @@ export function CompetencyImportDialog({ courseId, onClose, onImported }: Props)
         }
 
         const cols = mapColumns(Object.keys(raw[0] as object));
-        if (!cols.categoryName || !cols.name) {
+        if (!cols.categoryName || !cols.componentName || !cols.name) {
           setParseError(
-            'Không tìm thấy cột "Danh mục" và "Chỉ báo". Tải file mẫu để xem đúng tiêu đề cột.'
+            'Không tìm thấy cột "Danh mục", "Thành phần" và "Chỉ báo". Tải file mẫu để xem đúng tiêu đề cột.'
           );
           return;
         }
@@ -126,15 +142,17 @@ export function CompetencyImportDialog({ courseId, onClose, onImported }: Props)
           .map((row) => ({
             categoryName: text(row, cols.categoryName),
             categoryDescription: text(row, cols.categoryDescription) || undefined,
+            componentName: text(row, cols.componentName),
+            componentCode: text(row, cols.componentCode) || undefined,
             code: text(row, cols.code) || undefined,
             name: text(row, cols.name),
             description: text(row, cols.description) || undefined,
           }))
           // Dòng trống cuối bảng là chuyện thường trong Excel — bỏ im lặng.
-          .filter((r) => r.categoryName && r.name);
+          .filter((r) => r.categoryName && r.componentName && r.name);
 
         if (parsed.length === 0) {
-          setParseError('Mọi dòng đều thiếu danh mục hoặc nội dung chỉ báo.');
+          setParseError('Mọi dòng đều thiếu danh mục, thành phần hoặc nội dung chỉ báo.');
           return;
         }
         setRows(parsed);
@@ -226,6 +244,10 @@ export function CompetencyImportDialog({ courseId, onClose, onImported }: Props)
                 {result.categoriesReused > 0 && (
                   <Badge variant="secondary">{result.categoriesReused} danh mục dùng lại</Badge>
                 )}
+                <Badge variant="secondary">{result.componentsCreated} thành phần mới</Badge>
+                {result.componentsReused > 0 && (
+                  <Badge variant="secondary">{result.componentsReused} thành phần dùng lại</Badge>
+                )}
                 {result.indicatorsSkipped > 0 && (
                   <Badge variant="outline">{result.indicatorsSkipped} bỏ qua (đã có)</Badge>
                 )}
@@ -252,6 +274,7 @@ export function CompetencyImportDialog({ courseId, onClose, onImported }: Props)
                     <thead className="bg-muted/40 sticky top-0 text-left">
                       <tr>
                         <th className="px-3 py-2 font-semibold">Danh mục</th>
+                        <th className="px-3 py-2 font-semibold">Thành phần</th>
                         <th className="px-3 py-2 font-semibold">Mã</th>
                         <th className="px-3 py-2 font-semibold">Chỉ báo</th>
                       </tr>
@@ -260,6 +283,7 @@ export function CompetencyImportDialog({ courseId, onClose, onImported }: Props)
                       {rows.slice(0, 50).map((r, i) => (
                         <tr key={i} className="border-border/60 border-t">
                           <td className="px-3 py-1.5">{r.categoryName}</td>
+                          <td className="px-3 py-1.5">{r.componentName}</td>
                           <td className="text-primary px-3 py-1.5 font-mono">{r.code ?? ''}</td>
                           <td className="px-3 py-1.5">{r.name}</td>
                         </tr>

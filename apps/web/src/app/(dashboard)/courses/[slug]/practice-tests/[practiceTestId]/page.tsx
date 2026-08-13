@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import { auth } from '@/auth';
-import { apiServerClient } from '@/lib/api-client';
+import { apiServerClient, orNotFound } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
 import { hasMinRole } from '@/lib/permissions';
 import { PracticeTestRunner } from '@/components/features/practice-tests/PracticeTestRunner';
@@ -100,8 +100,8 @@ export default async function PracticeTestPage({
 
   const api = apiServerClient(await cookies());
   const [course, practiceTest] = await Promise.all([
-    api.get<CourseDetail>(`/courses/${slug}`).catch(() => null),
-    api.get<PracticeTestDetail>(`/practice-tests/${practiceTestId}`).catch(() => null),
+    orNotFound(api.get<CourseDetail>(`/courses/${slug}`)),
+    orNotFound(api.get<PracticeTestDetail>(`/practice-tests/${practiceTestId}`)),
   ]);
   if (!course || !practiceTest) notFound();
   if (practiceTest.courseId !== course.id) notFound();

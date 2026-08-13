@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
-import { apiServerClient } from '@/lib/api-client';
+import { apiServerClient, orNotFound } from '@/lib/api-client';
 import type {
   CourseDetail,
   CourseNavItem,
@@ -106,12 +106,10 @@ export default async function AssignmentViewPage({
   if (!role || !userId) redirect('/login');
 
   const api = apiServerClient(await cookies());
-  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
+  const course = await orNotFound(api.get<CourseDetail>(`/courses/${slug}`));
   if (!course) notFound();
 
-  const assignment = await api
-    .get<AssignmentDetail>(`/assignments/${assignmentId}`)
-    .catch(() => null);
+  const assignment = await orNotFound(api.get<AssignmentDetail>(`/assignments/${assignmentId}`));
   if (!assignment) notFound();
   if (assignment.courseId !== course.id) notFound();
 

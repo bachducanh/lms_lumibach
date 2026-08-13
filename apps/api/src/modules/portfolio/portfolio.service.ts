@@ -132,14 +132,19 @@ export class PortfolioService {
         where: { courseId },
         orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
         include: {
-          indicators: {
+          components: {
             orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-            select: { id: true, code: true, name: true },
+            include: {
+              indicators: {
+                orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+                select: { id: true, code: true, name: true },
+              },
+            },
           },
         },
       }),
       this.prisma.competencyAssessment.findMany({
-        where: { studentId, indicator: { category: { courseId } } },
+        where: { studentId, indicator: { component: { category: { courseId } } } },
         select: {
           indicatorId: true,
           level: true,
@@ -264,7 +269,7 @@ export class PortfolioService {
       categories: catalog.map((c) => ({
         id: c.id,
         name: c.name,
-        indicators: c.indicators,
+        indicators: c.components.flatMap((comp) => comp.indicators),
       })),
       cells: [...cellAgg.entries()].map(([key, v]): CompetencyMatrixCell => {
         const [indicatorId, moduleId] = key.split('::');

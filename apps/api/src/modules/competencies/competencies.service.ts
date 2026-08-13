@@ -7,11 +7,15 @@ import {
   learningPaceFromRate,
 } from '@lumibach/types';
 import type {
+  ActivityCompetencyIndicatorItem,
   ActivityType,
   CompetencyAssessmentItem,
   CompetencyCategoryItem,
   CompetencyCategoryLevelRow,
+  CompetencyComponentItem,
+  CompetencyComponentLevelRow,
   CompetencyEvidenceRow,
+  CompetencyExportData,
   CompetencyIndicatorItem,
   CompetencyLevelValue,
   CompetencyPeriod,
@@ -19,6 +23,7 @@ import type {
   CompetencyStats,
   CourseCompetencyCatalog,
   CreateCompetencyCategoryBody,
+  CreateCompetencyComponentBody,
   CreateCompetencyIndicatorBody,
   CreateCompetencyPeriodBody,
   ImportCompetenciesBody,
@@ -26,8 +31,10 @@ import type {
   ImportCompetencyRow,
   SetActivityCompetenciesBody,
   UpdateCompetencyCategoryBody,
+  UpdateCompetencyComponentBody,
   UpdateCompetencyIndicatorBody,
   UpdateCompetencyPeriodBody,
+  UpsertActivityCompetencyRubricBody,
   UpsertCompetencyAssessmentBody,
   UpsertCompetencyLevelTargetBody,
 } from '@lumibach/types';
@@ -148,7 +155,12 @@ export class CompetenciesService {
       where: { courseId },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       include: {
-        indicators: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
+        components: {
+          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+          include: {
+            indicators: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
+          },
+        },
       },
     });
 
@@ -160,7 +172,7 @@ export class CompetenciesService {
           name: c.name,
           description: c.description,
           position: c.position,
-          indicators: c.indicators.map(this.toIndicatorItem),
+          components: c.components.map(this.toComponentItem),
         })
       ),
     };
@@ -186,7 +198,6 @@ export class CompetenciesService {
         description: body.description?.trim() || null,
         position: (last?.position ?? -1) + 1,
       },
-      include: { indicators: true },
     });
 
     return {
@@ -195,8 +206,74 @@ export class CompetenciesService {
       name: created.name,
       description: created.description,
       position: created.position,
-      indicators: [],
+      components: [],
     };
+  }
+
+  async createComponent(
+    user: AuthUser,
+    categoryId: string,
+    body: CreateCompetencyComponentBody
+  ): Promise<CompetencyComponentItem> {
+    const cat = await this.prisma.competencyCategory.findUnique({
+      where: { id: categoryId },
+      select: { courseId: true },
+    });
+    if (!cat) throw new NotFoundException('Danh mục năng lực không tồn tại.');
+    await this.assertManage(user, cat.courseId);
+
+    const last = await this.prisma.competencyComponent.findFirst({
+      where: { categoryId },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+
+    const created = await this.prisma.competencyComponent.create({
+      data: {
+        categoryId,
+        code: body.code?.trim() || null,
+        name: body.name.trim(),
+        position: (last?.position ?? -1) + 1,
+      },
+      include: { indicators: true },
+    });
+
+    return this.toComponentItem(created);
+  }
+
+  async updateComponent(
+    user: AuthUser,
+    id: string,
+    body: UpdateCompetencyComponentBody
+  ): Promise<{ message: string }> {
+    const comp = await this.prisma.competencyComponent.findUnique({
+      where: { id },
+      select: { category: { select: { courseId: true } } },
+    });
+    if (!comp) throw new NotFoundException('Thành phần năng lực không tồn tại.');
+    await this.assertManage(user, comp.category.courseId);
+
+    await this.prisma.competencyComponent.update({
+      where: { id },
+      data: {
+        ...(body.code !== undefined && { code: body.code?.trim() || null }),
+        ...(body.name !== undefined && { name: body.name.trim() }),
+        ...(body.position !== undefined && { position: body.position }),
+      },
+    });
+    return { message: 'Đã cập nhật thành phần năng lực.' };
+  }
+
+  async deleteComponent(user: AuthUser, id: string): Promise<{ message: string }> {
+    const comp = await this.prisma.competencyComponent.findUnique({
+      where: { id },
+      select: { category: { select: { courseId: true } } },
+    });
+    if (!comp) throw new NotFoundException('Thành phần năng lực không tồn tại.');
+    await this.assertManage(user, comp.category.courseId);
+
+    await this.prisma.competencyComponent.delete({ where: { id } });
+    return { message: 'Đã xoá thành phần năng lực.' };
   }
 
   /**
@@ -217,25 +294,48 @@ export class CompetenciesService {
     const result: ImportCompetenciesResult = {
       categoriesCreated: 0,
       categoriesReused: 0,
+      componentsCreated: 0,
+      componentsReused: 0,
       indicatorsCreated: 0,
       indicatorsSkipped: 0,
       errors: [],
     };
 
-    // Gom theo danh mục, giữ nguyên thứ tự xuất hiện trong file.
-    const grouped = new Map<
-      string,
-      { name: string; description?: string; rows: { row: number; data: ImportCompetencyRow }[] }
-    >();
+    // Gom theo danh mục → thành phần, giữ nguyên thứ tự xuất hiện trong file.
+    type ComponentGroup = {
+      name: string;
+      code?: string;
+      rows: { row: number; data: ImportCompetencyRow }[];
+    };
+    type CategoryGroup = {
+      name: string;
+      description?: string;
+      components: Map<string, ComponentGroup>;
+    };
+    const grouped = new Map<string, CategoryGroup>();
     body.rows.forEach((data, index) => {
-      const name = data.categoryName.trim();
-      const key = name.toLocaleLowerCase('vi');
-      const group = grouped.get(key) ?? { name, description: data.categoryDescription, rows: [] };
+      const categoryName = data.categoryName.trim();
+      const categoryKey = categoryName.toLocaleLowerCase('vi');
+      const categoryGroup = grouped.get(categoryKey) ?? {
+        name: categoryName,
+        description: data.categoryDescription,
+        components: new Map<string, ComponentGroup>(),
+      };
+      if (!categoryGroup.description && data.categoryDescription)
+        categoryGroup.description = data.categoryDescription;
+      grouped.set(categoryKey, categoryGroup);
+
+      const componentName = data.componentName.trim();
+      const componentKey = componentName.toLocaleLowerCase('vi');
+      const componentGroup = categoryGroup.components.get(componentKey) ?? {
+        name: componentName,
+        code: data.componentCode,
+        rows: [],
+      };
       // +2: bỏ qua dòng tiêu đề, và Excel đánh số từ 1.
-      group.rows.push({ row: index + 2, data });
-      if (!group.description && data.categoryDescription)
-        group.description = data.categoryDescription;
-      grouped.set(key, group);
+      componentGroup.rows.push({ row: index + 2, data });
+      if (!componentGroup.code && data.componentCode) componentGroup.code = data.componentCode;
+      categoryGroup.components.set(componentKey, componentGroup);
     });
 
     const existingCategories = await this.prisma.competencyCategory.findMany({
@@ -246,7 +346,7 @@ export class CompetenciesService {
       existingCategories.map((c) => [c.name.trim().toLocaleLowerCase('vi'), c.id])
     );
 
-    let nextPosition =
+    let nextCategoryPosition =
       ((
         await this.prisma.competencyCategory.findFirst({
           where: { courseId },
@@ -255,62 +355,93 @@ export class CompetenciesService {
         })
       )?.position ?? -1) + 1;
 
-    for (const [key, group] of grouped) {
-      let categoryId = categoryByName.get(key);
+    for (const [categoryKey, categoryGroup] of grouped) {
+      let categoryId = categoryByName.get(categoryKey);
       if (categoryId) {
         result.categoriesReused += 1;
       } else {
         const created = await this.prisma.competencyCategory.create({
           data: {
             courseId,
-            name: group.name,
-            description: group.description?.trim() || null,
-            position: nextPosition++,
+            name: categoryGroup.name,
+            description: categoryGroup.description?.trim() || null,
+            position: nextCategoryPosition++,
           },
           select: { id: true },
         });
         categoryId = created.id;
-        categoryByName.set(key, categoryId);
+        categoryByName.set(categoryKey, categoryId);
         result.categoriesCreated += 1;
       }
 
-      const existingIndicators = await this.prisma.competencyIndicator.findMany({
+      const existingComponents = await this.prisma.competencyComponent.findMany({
         where: { categoryId },
-        select: { code: true, name: true, position: true },
+        select: { id: true, name: true, position: true },
       });
-      const seenCodes = new Set(
-        existingIndicators
-          .map((i) => i.code?.trim().toLocaleLowerCase('vi'))
-          .filter((v): v is string => !!v)
+      const componentByName = new Map(
+        existingComponents.map((c) => [c.name.trim().toLocaleLowerCase('vi'), c.id])
       );
-      const seenNames = new Set(
-        existingIndicators.map((i) => i.name.trim().toLocaleLowerCase('vi'))
-      );
-      let indicatorPosition = Math.max(-1, ...existingIndicators.map((i) => i.position ?? -1)) + 1;
+      let nextComponentPosition =
+        Math.max(-1, ...existingComponents.map((c) => c.position ?? -1)) + 1;
 
-      for (const { data } of group.rows) {
-        const code = data.code?.trim() || null;
-        const name = data.name.trim();
-        const codeKey = code?.toLocaleLowerCase('vi');
-        const nameKey = name.toLocaleLowerCase('vi');
-
-        if ((codeKey && seenCodes.has(codeKey)) || (!codeKey && seenNames.has(nameKey))) {
-          result.indicatorsSkipped += 1;
-          continue;
+      for (const [componentKey, componentGroup] of categoryGroup.components) {
+        let componentId = componentByName.get(componentKey);
+        if (componentId) {
+          result.componentsReused += 1;
+        } else {
+          const created = await this.prisma.competencyComponent.create({
+            data: {
+              categoryId,
+              code: componentGroup.code?.trim() || null,
+              name: componentGroup.name,
+              position: nextComponentPosition++,
+            },
+            select: { id: true },
+          });
+          componentId = created.id;
+          componentByName.set(componentKey, componentId);
+          result.componentsCreated += 1;
         }
 
-        await this.prisma.competencyIndicator.create({
-          data: {
-            categoryId,
-            code,
-            name,
-            description: data.description?.trim() || null,
-            position: indicatorPosition++,
-          },
+        const existingIndicators = await this.prisma.competencyIndicator.findMany({
+          where: { componentId },
+          select: { code: true, name: true, position: true },
         });
-        if (codeKey) seenCodes.add(codeKey);
-        seenNames.add(nameKey);
-        result.indicatorsCreated += 1;
+        const seenCodes = new Set(
+          existingIndicators
+            .map((i) => i.code?.trim().toLocaleLowerCase('vi'))
+            .filter((v): v is string => !!v)
+        );
+        const seenNames = new Set(
+          existingIndicators.map((i) => i.name.trim().toLocaleLowerCase('vi'))
+        );
+        let indicatorPosition =
+          Math.max(-1, ...existingIndicators.map((i) => i.position ?? -1)) + 1;
+
+        for (const { data } of componentGroup.rows) {
+          const code = data.code?.trim() || null;
+          const name = data.name.trim();
+          const codeKey = code?.toLocaleLowerCase('vi');
+          const nameKey = name.toLocaleLowerCase('vi');
+
+          if ((codeKey && seenCodes.has(codeKey)) || (!codeKey && seenNames.has(nameKey))) {
+            result.indicatorsSkipped += 1;
+            continue;
+          }
+
+          await this.prisma.competencyIndicator.create({
+            data: {
+              componentId,
+              code,
+              name,
+              description: data.description?.trim() || null,
+              position: indicatorPosition++,
+            },
+          });
+          if (codeKey) seenCodes.add(codeKey);
+          seenNames.add(nameKey);
+          result.indicatorsCreated += 1;
+        }
       }
     }
 
@@ -354,25 +485,25 @@ export class CompetenciesService {
 
   async createIndicator(
     user: AuthUser,
-    categoryId: string,
+    componentId: string,
     body: CreateCompetencyIndicatorBody
   ): Promise<CompetencyIndicatorItem> {
-    const cat = await this.prisma.competencyCategory.findUnique({
-      where: { id: categoryId },
-      select: { courseId: true },
+    const comp = await this.prisma.competencyComponent.findUnique({
+      where: { id: componentId },
+      select: { category: { select: { courseId: true } } },
     });
-    if (!cat) throw new NotFoundException('Danh mục năng lực không tồn tại.');
-    await this.assertManage(user, cat.courseId);
+    if (!comp) throw new NotFoundException('Thành phần năng lực không tồn tại.');
+    await this.assertManage(user, comp.category.courseId);
 
     const last = await this.prisma.competencyIndicator.findFirst({
-      where: { categoryId },
+      where: { componentId },
       orderBy: { position: 'desc' },
       select: { position: true },
     });
 
     const created = await this.prisma.competencyIndicator.create({
       data: {
-        categoryId,
+        componentId,
         code: body.code?.trim() || null,
         name: body.name.trim(),
         description: body.description?.trim() || null,
@@ -389,10 +520,10 @@ export class CompetenciesService {
   ): Promise<{ message: string }> {
     const ind = await this.prisma.competencyIndicator.findUnique({
       where: { id },
-      select: { category: { select: { courseId: true } } },
+      select: { component: { select: { category: { select: { courseId: true } } } } },
     });
     if (!ind) throw new NotFoundException('Chỉ báo năng lực không tồn tại.');
-    await this.assertManage(user, ind.category.courseId);
+    await this.assertManage(user, ind.component.category.courseId);
 
     await this.prisma.competencyIndicator.update({
       where: { id },
@@ -409,10 +540,10 @@ export class CompetenciesService {
   async deleteIndicator(user: AuthUser, id: string): Promise<{ message: string }> {
     const ind = await this.prisma.competencyIndicator.findUnique({
       where: { id },
-      select: { category: { select: { courseId: true } } },
+      select: { component: { select: { category: { select: { courseId: true } } } } },
     });
     if (!ind) throw new NotFoundException('Chỉ báo năng lực không tồn tại.');
-    await this.assertManage(user, ind.category.courseId);
+    await this.assertManage(user, ind.component.category.courseId);
 
     await this.prisma.competencyIndicator.delete({ where: { id } });
     return { message: 'Đã xoá chỉ báo năng lực.' };
@@ -512,11 +643,11 @@ export class CompetenciesService {
     if (!period) throw new NotFoundException('Kỳ đánh giá không tồn tại.');
     await this.assertGrade(user, period.courseId);
 
-    const category = await this.prisma.competencyCategory.findFirst({
-      where: { id: body.categoryId, courseId: period.courseId },
-      select: { id: true },
+    const component = await this.prisma.competencyComponent.findFirst({
+      where: { id: body.componentId, category: { courseId: period.courseId } },
+      select: { id: true, categoryId: true },
     });
-    if (!category) throw new NotFoundException('Danh mục năng lực không thuộc khoá học.');
+    if (!component) throw new NotFoundException('Thành phần năng lực không thuộc khoá học.');
 
     const student = await this.prisma.user.findFirst({
       where: {
@@ -530,16 +661,17 @@ export class CompetenciesService {
 
     await this.prisma.competencyLevelTarget.upsert({
       where: {
-        periodId_categoryId_studentId: {
+        periodId_componentId_studentId: {
           periodId: body.periodId,
-          categoryId: body.categoryId,
+          componentId: body.componentId,
           studentId: body.studentId,
         },
       },
       update: { startLevel: body.startLevel, targetLevel: body.targetLevel },
       create: {
         periodId: body.periodId,
-        categoryId: body.categoryId,
+        componentId: body.componentId,
+        categoryId: component.categoryId,
         studentId: body.studentId,
         startLevel: body.startLevel,
         targetLevel: body.targetLevel,
@@ -564,7 +696,12 @@ export class CompetenciesService {
       this.prisma.competencyCategory.findMany({
         where: { courseId },
         orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-        include: { indicators: { select: { id: true } } },
+        include: {
+          components: {
+            orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+            include: { indicators: { select: { id: true } } },
+          },
+        },
       }),
       this.prisma.enrollment.findMany({
         where: { courseId, status: 'ACTIVE', user: { role: 'STUDENT' } },
@@ -578,7 +715,7 @@ export class CompetenciesService {
       this.prisma.competencyLevelTarget.findMany({ where: { periodId } }),
       this.prisma.competencyAssessment.findMany({
         where: {
-          indicator: { category: { courseId } },
+          indicator: { component: { category: { courseId } } },
           ...(period.startDate && period.endDate
             ? { gradedAt: { gte: period.startDate, lte: period.endDate } }
             : {}),
@@ -587,25 +724,27 @@ export class CompetenciesService {
       }),
     ]);
 
-    // indicatorId -> categoryId, để tra ngược danh mục của 1 minh chứng.
-    const indicatorCategory = new Map<string, string>();
-    // categoryId -> tổng số chỉ báo (mẫu số của tỉ lệ % hoàn thành).
-    const categoryTotalIndicators = new Map<string, number>();
+    // indicatorId -> componentId, để tra ngược thành phần của 1 minh chứng.
+    const indicatorComponent = new Map<string, string>();
+    // componentId -> tổng số chỉ báo (mẫu số của tỉ lệ % hoàn thành).
+    const componentTotalIndicators = new Map<string, number>();
     for (const c of categories) {
-      categoryTotalIndicators.set(c.id, c.indicators.length);
-      for (const ind of c.indicators) indicatorCategory.set(ind.id, c.id);
+      for (const comp of c.components) {
+        componentTotalIndicators.set(comp.id, comp.indicators.length);
+        for (const ind of comp.indicators) indicatorComponent.set(ind.id, comp.id);
+      }
     }
 
-    // (categoryId -> studentId -> indicatorId -> levels[]) để áp dụng quy tắc hoàn thành
-    // chỉ báo (≥2 minh chứng Thành thạo/Vượt thành thạo) trước khi tính tỉ lệ % theo danh mục.
+    // (componentId -> studentId -> indicatorId -> levels[]) để áp dụng quy tắc hoàn thành
+    // chỉ báo (≥2 minh chứng Thành thạo/Vượt thành thạo) trước khi tính tỉ lệ % theo thành phần.
     const tally = new Map<string, Map<string, Map<string, CompetencyLevelValue[]>>>();
     for (const a of assessments) {
-      const categoryId = indicatorCategory.get(a.indicatorId);
-      if (!categoryId) continue;
-      let byStudent = tally.get(categoryId);
+      const componentId = indicatorComponent.get(a.indicatorId);
+      if (!componentId) continue;
+      let byStudent = tally.get(componentId);
       if (!byStudent) {
         byStudent = new Map();
-        tally.set(categoryId, byStudent);
+        tally.set(componentId, byStudent);
       }
       let byIndicator = byStudent.get(a.studentId);
       if (!byIndicator) {
@@ -620,40 +759,95 @@ export class CompetenciesService {
 
     const levelTargetByKey = new Map<string, { startLevel: number; targetLevel: number }>();
     for (const lt of levelTargets) {
-      levelTargetByKey.set(`${lt.categoryId}::${lt.studentId}`, {
+      levelTargetByKey.set(`${lt.componentId}::${lt.studentId}`, {
         startLevel: lt.startLevel,
         targetLevel: lt.targetLevel,
       });
     }
 
-    const rows: CompetencyCategoryLevelRow[] = [];
+    // ── Cấp thành phần: điểm = xuất phát + 2×tỉ lệ hoàn thành CỦA RIÊNG thành phần đó.
+    const componentRows: CompetencyComponentLevelRow[] = [];
     for (const { user: student } of enrollments) {
       for (const category of categories) {
-        const totalIndicators = categoryTotalIndicators.get(category.id) ?? 0;
-        const byIndicator = tally.get(category.id)?.get(student.id);
-        let completedIndicators = 0;
-        if (byIndicator) {
-          for (const levels of byIndicator.values()) {
-            if (this.isIndicatorCompleted(levels)) completedIndicators++;
+        for (const comp of category.components) {
+          const totalIndicators = componentTotalIndicators.get(comp.id) ?? 0;
+          const byIndicator = tally.get(comp.id)?.get(student.id);
+          let completedIndicators = 0;
+          if (byIndicator) {
+            for (const levels of byIndicator.values()) {
+              if (this.isIndicatorCompleted(levels)) completedIndicators++;
+            }
           }
+          const completionRate = totalIndicators > 0 ? completedIndicators / totalIndicators : null;
+          const target = levelTargetByKey.get(`${comp.id}::${student.id}`);
+
+          let competencyScore: number | null = null;
+          let growthScore: number | null = null;
+          if (target && completionRate !== null) {
+            competencyScore = target.startLevel + 2 * completionRate;
+            growthScore = competencyScore - target.startLevel;
+          }
+
+          componentRows.push({
+            studentId: student.id,
+            studentName: this.displayName(student),
+            componentId: comp.id,
+            componentName: comp.name,
+            categoryId: category.id,
+            categoryName: category.name,
+            startLevel: target?.startLevel ?? null,
+            targetLevel: target?.targetLevel ?? null,
+            completedIndicators,
+            totalIndicators,
+            completionRate,
+            competencyScore,
+            growthScore,
+            learningPace: completionRate !== null ? learningPaceFromRate(completionRate) : null,
+          });
         }
+      }
+    }
+
+    // ── Cấp danh mục (rollup, chỉ đọc): startLevel/targetLevel/competencyScore =
+    // trung bình cộng các thành phần; completionRate = tổng hoàn thành/tổng chỉ báo
+    // TOÀN DANH MỤC (gộp phẳng, đúng công thức Z3=Y3/Q3 trong file mẫu, không phải
+    // trung bình cộng các tỉ lệ thành phần).
+    const categoryRollups: CompetencyCategoryLevelRow[] = [];
+    for (const { user: student } of enrollments) {
+      for (const category of categories) {
+        const rowsOfCategory = componentRows.filter(
+          (r) => r.studentId === student.id && r.categoryId === category.id
+        );
+        const totalIndicators = rowsOfCategory.reduce((sum, r) => sum + r.totalIndicators, 0);
+        const completedIndicators = rowsOfCategory.reduce(
+          (sum, r) => sum + r.completedIndicators,
+          0
+        );
         const completionRate = totalIndicators > 0 ? completedIndicators / totalIndicators : null;
-        const target = levelTargetByKey.get(`${category.id}::${student.id}`);
 
-        let competencyScore: number | null = null;
-        let growthScore: number | null = null;
-        if (target && completionRate !== null) {
-          competencyScore = target.startLevel + 2 * completionRate;
-          growthScore = competencyScore - target.startLevel;
-        }
+        const hasComponents = rowsOfCategory.length > 0;
+        const allTargetsSet = hasComponents && rowsOfCategory.every((r) => r.startLevel !== null);
+        const startLevel = allTargetsSet
+          ? rowsOfCategory.reduce((sum, r) => sum + r.startLevel!, 0) / rowsOfCategory.length
+          : null;
+        const targetLevel = allTargetsSet
+          ? rowsOfCategory.reduce((sum, r) => sum + r.targetLevel!, 0) / rowsOfCategory.length
+          : null;
+        const scored = rowsOfCategory.filter((r) => r.competencyScore !== null);
+        const competencyScore =
+          allTargetsSet && scored.length > 0
+            ? scored.reduce((sum, r) => sum + r.competencyScore!, 0) / scored.length
+            : null;
+        const growthScore =
+          competencyScore !== null && startLevel !== null ? competencyScore - startLevel : null;
 
-        rows.push({
+        categoryRollups.push({
           studentId: student.id,
           studentName: this.displayName(student),
           categoryId: category.id,
           categoryName: category.name,
-          startLevel: target?.startLevel ?? null,
-          targetLevel: target?.targetLevel ?? null,
+          startLevel,
+          targetLevel,
           completedIndicators,
           totalIndicators,
           completionRate,
@@ -667,7 +861,11 @@ export class CompetenciesService {
     return {
       period: this.toPeriodItem(period),
       categories: categories.map((c) => ({ id: c.id, name: c.name })),
-      rows,
+      components: categories.flatMap((c) =>
+        c.components.map((comp) => ({ id: comp.id, categoryId: c.id, name: comp.name }))
+      ),
+      componentRows,
+      categoryRollups,
     };
   }
 
@@ -677,7 +875,10 @@ export class CompetenciesService {
     user: AuthUser,
     type: ActivityType,
     activityId: string
-  ): Promise<{ indicators: CompetencyIndicatorItem[]; assessments: CompetencyAssessmentItem[] }> {
+  ): Promise<{
+    indicators: ActivityCompetencyIndicatorItem[];
+    assessments: CompetencyAssessmentItem[];
+  }> {
     const { courseId } = await this.getActivityCourse(type, activityId);
     await this.assertGrade(user, courseId);
 
@@ -695,7 +896,18 @@ export class CompetenciesService {
     ]);
 
     const indicators = links
-      .map((l) => this.toIndicatorItem(l.indicator))
+      .map(
+        (l): ActivityCompetencyIndicatorItem => ({
+          ...this.toIndicatorItem(l.indicator),
+          rubric: {
+            noEvidence: l.rubricNoEvidence,
+            beginning: l.rubricBeginning,
+            approaching: l.rubricApproaching,
+            proficient: l.rubricProficient,
+            advanced: l.rubricAdvanced,
+          },
+        })
+      )
       .sort((a, b) => a.position - b.position);
 
     return {
@@ -714,7 +926,7 @@ export class CompetenciesService {
     // Chỉ chấp nhận chỉ báo thuộc khoá học này.
     const requestedIds = [...new Set(body.indicatorIds)];
     const valid = await this.prisma.competencyIndicator.findMany({
-      where: { id: { in: requestedIds }, category: { courseId } },
+      where: { id: { in: requestedIds }, component: { category: { courseId } } },
       select: { id: true },
     });
     const validIds = new Set(valid.map((v) => v.id));
@@ -735,6 +947,41 @@ export class CompetenciesService {
     return { message: 'Đã cập nhật chỉ báo năng lực cho hoạt động.' };
   }
 
+  async updateActivityCompetencyRubric(
+    user: AuthUser,
+    body: UpsertActivityCompetencyRubricBody
+  ): Promise<{ message: string }> {
+    const { courseId } = await this.getActivityCourse(body.activityType, body.activityId);
+    await this.assertManage(user, courseId);
+
+    const indicator = await this.prisma.competencyIndicator.findFirst({
+      where: { id: body.indicatorId, component: { category: { courseId } } },
+      select: { id: true },
+    });
+    if (!indicator) throw new NotFoundException('Chỉ báo năng lực không thuộc khoá học.');
+
+    const fk = this.activityFk(body.activityType, body.activityId);
+    const data = {
+      rubricNoEvidence: body.rubric.noEvidence?.trim() || null,
+      rubricBeginning: body.rubric.beginning?.trim() || null,
+      rubricApproaching: body.rubric.approaching?.trim() || null,
+      rubricProficient: body.rubric.proficient?.trim() || null,
+      rubricAdvanced: body.rubric.advanced?.trim() || null,
+    };
+
+    const updated = await this.prisma.activityCompetency.updateMany({
+      where: { indicatorId: body.indicatorId, ...fk },
+      data,
+    });
+    if (updated.count === 0) {
+      throw new NotFoundException(
+        'Chỉ báo này chưa được gắn vào hoạt động — gán trước khi sửa rubric.'
+      );
+    }
+
+    return { message: 'Đã cập nhật rubric.' };
+  }
+
   async upsertAssessment(
     user: AuthUser,
     body: UpsertCompetencyAssessmentBody
@@ -743,7 +990,7 @@ export class CompetenciesService {
     await this.assertGrade(user, courseId);
 
     const indicator = await this.prisma.competencyIndicator.findFirst({
-      where: { id: body.indicatorId, category: { courseId } },
+      where: { id: body.indicatorId, component: { category: { courseId } } },
       select: { id: true },
     });
     if (!indicator) throw new NotFoundException('Chỉ báo năng lực không thuộc khoá học.');
@@ -830,10 +1077,14 @@ export class CompetenciesService {
   async deleteAssessment(user: AuthUser, id: string): Promise<{ message: string }> {
     const assessment = await this.prisma.competencyAssessment.findUnique({
       where: { id },
-      select: { indicator: { select: { category: { select: { courseId: true } } } } },
+      select: {
+        indicator: {
+          select: { component: { select: { category: { select: { courseId: true } } } } },
+        },
+      },
     });
     if (!assessment) throw new NotFoundException('Đánh giá năng lực không tồn tại.');
-    await this.assertGrade(user, assessment.indicator.category.courseId);
+    await this.assertGrade(user, assessment.indicator.component.category.courseId);
 
     await this.prisma.competencyAssessment.delete({ where: { id } });
     return { message: 'Đã xoá đánh giá năng lực.' };
@@ -854,11 +1105,16 @@ export class CompetenciesService {
 
     const [rows, modules] = await Promise.all([
       this.prisma.competencyAssessment.findMany({
-        where: { studentId, indicator: { category: { courseId } } },
+        where: { studentId, indicator: { component: { category: { courseId } } } },
         orderBy: { gradedAt: 'desc' },
         include: {
           indicator: {
-            select: { id: true, name: true, code: true, category: { select: { name: true } } },
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              component: { select: { category: { select: { name: true } } } },
+            },
           },
           assignment: { select: { title: true } },
           quiz: { select: { title: true } },
@@ -1003,7 +1259,7 @@ export class CompetenciesService {
         activityType,
         activityId,
         activityTitle,
-        categoryName: r.indicator.category.name,
+        categoryName: r.indicator.component.category.name,
         indicatorId: r.indicator.id,
         indicatorName: r.indicator.name,
         indicatorCode: r.indicator.code,
@@ -1016,6 +1272,254 @@ export class CompetenciesService {
         viewerPath,
       };
     });
+  }
+
+  // ── Xuất Excel "Tổng hợp kết quả" (giống cấu trúc file mẫu H.A.S) ─────
+  // Phạm vi 1 lần xuất = 1 kỳ đánh giá × 1 danh mục, ở grain chi tiết hơn
+  // getPeriodGrid: liệt kê từng minh chứng riêng lẻ (kèm rubric của đúng
+  // hoạt động đã chấm), để FE dựng lại đúng bố cục sheet học sinh trong file
+  // mẫu. Tái dùng cùng công thức điểm với getPeriodGrid.
+
+  async getCategoryExportData(
+    user: AuthUser,
+    courseId: string,
+    periodId: string,
+    categoryId: string
+  ): Promise<CompetencyExportData> {
+    await this.assertGrade(user, courseId);
+
+    const period = await this.prisma.competencyAssessmentPeriod.findFirst({
+      where: { id: periodId, courseId },
+    });
+    if (!period) throw new NotFoundException('Kỳ đánh giá không tồn tại.');
+
+    const category = await this.prisma.competencyCategory.findFirst({
+      where: { id: categoryId, courseId },
+      include: {
+        components: {
+          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+          include: { indicators: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } },
+        },
+      },
+    });
+    if (!category) throw new NotFoundException('Danh mục năng lực không tồn tại.');
+
+    const indicatorIds = category.components.flatMap((c) => c.indicators.map((i) => i.id));
+
+    const [enrollments, levelTargets, assessments, activityLinks] = await Promise.all([
+      this.prisma.enrollment.findMany({
+        where: { courseId, status: 'ACTIVE', user: { role: 'STUDENT' } },
+        select: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              username: true,
+            },
+          },
+        },
+        orderBy: [{ user: { fullName: 'asc' } }, { user: { email: 'asc' } }],
+      }),
+      this.prisma.competencyLevelTarget.findMany({ where: { periodId, categoryId } }),
+      indicatorIds.length > 0
+        ? this.prisma.competencyAssessment.findMany({
+            where: {
+              indicatorId: { in: indicatorIds },
+              ...(period.startDate && period.endDate
+                ? { gradedAt: { gte: period.startDate, lte: period.endDate } }
+                : {}),
+            },
+            orderBy: { gradedAt: 'asc' },
+            include: {
+              assignment: { select: { title: true } },
+              quiz: { select: { title: true } },
+              codeExercise: { select: { title: true } },
+              practiceTest: { select: { title: true } },
+            },
+          })
+        : Promise.resolve([]),
+      indicatorIds.length > 0
+        ? this.prisma.activityCompetency.findMany({ where: { indicatorId: { in: indicatorIds } } })
+        : Promise.resolve([]),
+    ]);
+
+    // indicatorId -> componentId, để gộp minh chứng đúng thành phần.
+    const indicatorComponent = new Map<string, string>();
+    for (const comp of category.components) {
+      for (const ind of comp.indicators) indicatorComponent.set(ind.id, comp.id);
+    }
+
+    // `${indicatorId}::${activityKey}` -> rubric của đúng hoạt động đó.
+    const rubricByKey = new Map<
+      string,
+      {
+        noEvidence: string | null;
+        beginning: string | null;
+        approaching: string | null;
+        proficient: string | null;
+        advanced: string | null;
+      }
+    >();
+    for (const link of activityLinks) {
+      const activityKey = link.assignmentId
+        ? `assignment:${link.assignmentId}`
+        : link.quizId
+          ? `quiz:${link.quizId}`
+          : link.codeExerciseId
+            ? `code-exercise:${link.codeExerciseId}`
+            : `practice-test:${link.practiceTestId}`;
+      rubricByKey.set(`${link.indicatorId}::${activityKey}`, {
+        noEvidence: link.rubricNoEvidence,
+        beginning: link.rubricBeginning,
+        approaching: link.rubricApproaching,
+        proficient: link.rubricProficient,
+        advanced: link.rubricAdvanced,
+      });
+    }
+
+    // studentId -> componentId -> indicatorId -> minh chứng[]
+    type EvidenceRaw = {
+      level: CompetencyLevelValue;
+      activityTitle: string;
+      activityKey: string;
+      gradedAt: Date;
+    };
+    const evidenceTally = new Map<string, Map<string, Map<string, EvidenceRaw[]>>>();
+    for (const a of assessments) {
+      const componentId = indicatorComponent.get(a.indicatorId);
+      if (!componentId) continue;
+      const { activityType, activityTitle } = this.resolveActivity(a);
+      const activityKey =
+        activityType === 'assignment'
+          ? `assignment:${a.assignmentId}`
+          : activityType === 'quiz'
+            ? `quiz:${a.quizId}`
+            : activityType === 'code-exercise'
+              ? `code-exercise:${a.codeExerciseId}`
+              : `practice-test:${a.practiceTestId}`;
+
+      let byComponent = evidenceTally.get(a.studentId);
+      if (!byComponent) {
+        byComponent = new Map();
+        evidenceTally.set(a.studentId, byComponent);
+      }
+      let byIndicator = byComponent.get(componentId);
+      if (!byIndicator) {
+        byIndicator = new Map();
+        byComponent.set(componentId, byIndicator);
+      }
+      const list = byIndicator.get(a.indicatorId) ?? [];
+      list.push({
+        level: a.level as CompetencyLevelValue,
+        activityTitle,
+        activityKey,
+        gradedAt: a.gradedAt,
+      });
+      byIndicator.set(a.indicatorId, list);
+    }
+
+    const levelTargetByComponent = new Map<string, { startLevel: number; targetLevel: number }>();
+    for (const lt of levelTargets) {
+      levelTargetByComponent.set(`${lt.componentId}::${lt.studentId}`, {
+        startLevel: lt.startLevel,
+        targetLevel: lt.targetLevel,
+      });
+    }
+
+    const students = enrollments.map(({ user: student }) => {
+      const components = category.components.map((comp) => {
+        const byIndicator = evidenceTally.get(student.id)?.get(comp.id);
+        const target = levelTargetByComponent.get(`${comp.id}::${student.id}`);
+
+        const indicators = comp.indicators.map((ind) => {
+          const raw = byIndicator?.get(ind.id) ?? [];
+          const levels = raw.map((r) => r.level);
+          return {
+            indicatorId: ind.id,
+            code: ind.code,
+            name: ind.name,
+            completed: this.isIndicatorCompleted(levels),
+            evidences: raw
+              .sort((a, b) => a.gradedAt.getTime() - b.gradedAt.getTime())
+              .map((r) => {
+                const rubric = rubricByKey.get(`${ind.id}::${r.activityKey}`) ?? {
+                  noEvidence: null,
+                  beginning: null,
+                  approaching: null,
+                  proficient: null,
+                  advanced: null,
+                };
+                return {
+                  activityTitle: r.activityTitle,
+                  level: r.level,
+                  gradedAt: r.gradedAt.toISOString(),
+                  rubric,
+                };
+              }),
+          };
+        });
+
+        const totalCount = indicators.length;
+        const completedCount = indicators.filter((i) => i.completed).length;
+        const rate = totalCount > 0 ? completedCount / totalCount : null;
+        const score = target && rate !== null ? target.startLevel + 2 * rate : null;
+        const growth = score !== null && target ? score - target.startLevel : null;
+
+        return {
+          componentId: comp.id,
+          code: comp.code,
+          name: comp.name,
+          startLevel: target?.startLevel ?? null,
+          targetLevel: target?.targetLevel ?? null,
+          indicators,
+          completedCount,
+          totalCount,
+          rate,
+          score,
+          growth,
+        };
+      });
+
+      const totalCount = components.reduce((sum, c) => sum + c.totalCount, 0);
+      const completedCount = components.reduce((sum, c) => sum + c.completedCount, 0);
+      const categoryRate = totalCount > 0 ? completedCount / totalCount : null;
+      const allTargetsSet = components.length > 0 && components.every((c) => c.startLevel !== null);
+      const categoryStart = allTargetsSet
+        ? components.reduce((sum, c) => sum + c.startLevel!, 0) / components.length
+        : null;
+      const categoryTarget = allTargetsSet
+        ? components.reduce((sum, c) => sum + c.targetLevel!, 0) / components.length
+        : null;
+      const scored = components.filter((c) => c.score !== null);
+      const categoryScore =
+        allTargetsSet && scored.length > 0
+          ? scored.reduce((sum, c) => sum + c.score!, 0) / scored.length
+          : null;
+      const categoryGrowth =
+        categoryScore !== null && categoryStart !== null ? categoryScore - categoryStart : null;
+
+      return {
+        studentId: student.id,
+        studentCode: student.username ?? student.email,
+        fullName: this.displayName(student),
+        components,
+        categoryStart,
+        categoryTarget,
+        categoryRate,
+        categoryScore,
+        categoryGrowth,
+        learningPace: categoryRate !== null ? learningPaceFromRate(categoryRate) : null,
+      };
+    });
+
+    return {
+      category: { id: category.id, name: category.name },
+      period: { id: period.id, name: period.name },
+      students,
+    };
   }
 
   // ── Quy tắc hoàn thành chỉ báo (Chính sách đánh giá H.A.S) ────
@@ -1034,13 +1538,18 @@ export class CompetenciesService {
       this.prisma.competencyCategory.findMany({
         where: { courseId },
         orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-        include: { indicators: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } },
+        include: {
+          components: {
+            orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+            include: { indicators: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } },
+          },
+        },
       }),
       this.prisma.competencyAssessment.findMany({
-        where: { indicator: { category: { courseId } } },
+        where: { indicator: { component: { category: { courseId } } } },
         include: {
           indicator: {
-            select: { id: true, name: true, code: true, categoryId: true },
+            select: { id: true, name: true, code: true, componentId: true },
           },
           student: {
             select: { id: true, fullName: true, firstName: true, lastName: true, email: true },
@@ -1066,14 +1575,16 @@ export class CompetenciesService {
     let totalIndicators = 0;
     for (const c of categories) {
       categoryName.set(c.id, c.name);
-      for (const ind of c.indicators) {
-        totalIndicators++;
-        indicatorMeta.set(ind.id, {
-          name: ind.name,
-          code: ind.code,
-          categoryId: c.id,
-          categoryName: c.name,
-        });
+      for (const comp of c.components) {
+        for (const ind of comp.indicators) {
+          totalIndicators++;
+          indicatorMeta.set(ind.id, {
+            name: ind.name,
+            code: ind.code,
+            categoryId: c.id,
+            categoryName: c.name,
+          });
+        }
       }
     }
 
@@ -1272,18 +1783,41 @@ export class CompetenciesService {
 
   private toIndicatorItem = (i: {
     id: string;
-    categoryId: string;
+    componentId: string;
     code: string | null;
     name: string;
     description: string | null;
     position: number;
   }): CompetencyIndicatorItem => ({
     id: i.id,
-    categoryId: i.categoryId,
+    componentId: i.componentId,
     code: i.code,
     name: i.name,
     description: i.description,
     position: i.position,
+  });
+
+  private toComponentItem = (c: {
+    id: string;
+    categoryId: string;
+    code: string | null;
+    name: string;
+    position: number;
+    indicators: {
+      id: string;
+      componentId: string;
+      code: string | null;
+      name: string;
+      description: string | null;
+      position: number;
+    }[];
+  }): CompetencyComponentItem => ({
+    id: c.id,
+    categoryId: c.categoryId,
+    code: c.code,
+    name: c.name,
+    position: c.position,
+    indicators: c.indicators.map(this.toIndicatorItem),
   });
 
   private toAssessmentItem = (a: {

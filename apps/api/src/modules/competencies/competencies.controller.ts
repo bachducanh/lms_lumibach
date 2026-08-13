@@ -14,24 +14,30 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import {
   ActivityCompetencyQuerySchema,
   CreateCompetencyCategoryBodySchema,
+  CreateCompetencyComponentBodySchema,
   CreateCompetencyIndicatorBodySchema,
   CreateCompetencyPeriodBodySchema,
   ImportCompetenciesBodySchema,
   SetActivityCompetenciesBodySchema,
   UpdateCompetencyCategoryBodySchema,
+  UpdateCompetencyComponentBodySchema,
   UpdateCompetencyIndicatorBodySchema,
   UpdateCompetencyPeriodBodySchema,
+  UpsertActivityCompetencyRubricBodySchema,
   UpsertCompetencyAssessmentBodySchema,
   UpsertCompetencyLevelTargetBodySchema,
   type ActivityCompetencyQuery,
   type CreateCompetencyCategoryBody,
+  type CreateCompetencyComponentBody,
   type CreateCompetencyIndicatorBody,
   type CreateCompetencyPeriodBody,
   type ImportCompetenciesBody,
   type SetActivityCompetenciesBody,
   type UpdateCompetencyCategoryBody,
+  type UpdateCompetencyComponentBody,
   type UpdateCompetencyIndicatorBody,
   type UpdateCompetencyPeriodBody,
+  type UpsertActivityCompetencyRubricBody,
   type UpsertCompetencyAssessmentBody,
   type UpsertCompetencyLevelTargetBody,
 } from '@lumibach/types';
@@ -103,19 +109,47 @@ export class CompetenciesController {
 
   @Delete('competencies/categories/:id')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Xoá danh mục năng lực (xoá cả chỉ báo bên trong)' })
+  @ApiOperation({ summary: 'Xoá danh mục năng lực (xoá cả thành phần, chỉ báo bên trong)' })
   deleteCategory(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.deleteCategory(user, id);
   }
 
-  @Post('competencies/categories/:categoryId/indicators')
-  @ApiOperation({ summary: 'Tạo chỉ báo năng lực' })
-  createIndicator(
+  @Post('competencies/categories/:categoryId/components')
+  @ApiOperation({ summary: 'Tạo thành phần năng lực trong 1 danh mục' })
+  createComponent(
     @CurrentUser() user: AuthUser,
     @Param('categoryId') categoryId: string,
+    @Body(zodBody(CreateCompetencyComponentBodySchema)) body: CreateCompetencyComponentBody
+  ) {
+    return this.service.createComponent(user, categoryId, body);
+  }
+
+  @Patch('competencies/components/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Cập nhật thành phần năng lực' })
+  updateComponent(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(UpdateCompetencyComponentBodySchema)) body: UpdateCompetencyComponentBody
+  ) {
+    return this.service.updateComponent(user, id, body);
+  }
+
+  @Delete('competencies/components/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá thành phần năng lực (xoá cả chỉ báo bên trong)' })
+  deleteComponent(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.deleteComponent(user, id);
+  }
+
+  @Post('competencies/components/:componentId/indicators')
+  @ApiOperation({ summary: 'Tạo chỉ báo năng lực trong 1 thành phần' })
+  createIndicator(
+    @CurrentUser() user: AuthUser,
+    @Param('componentId') componentId: string,
     @Body(zodBody(CreateCompetencyIndicatorBodySchema)) body: CreateCompetencyIndicatorBody
   ) {
-    return this.service.createIndicator(user, categoryId, body);
+    return this.service.createIndicator(user, componentId, body);
   }
 
   @Patch('competencies/indicators/:id')
@@ -182,6 +216,17 @@ export class CompetenciesController {
     return this.service.getPeriodGrid(user, courseId, periodId);
   }
 
+  @Get('courses/:courseId/competencies/periods/:periodId/categories/:categoryId/export')
+  @ApiOperation({ summary: 'Dữ liệu chi tiết để xuất Excel "Tổng hợp kết quả" theo 1 danh mục' })
+  getCategoryExportData(
+    @CurrentUser() user: AuthUser,
+    @Param('courseId') courseId: string,
+    @Param('periodId') periodId: string,
+    @Param('categoryId') categoryId: string
+  ) {
+    return this.service.getCategoryExportData(user, courseId, periodId, categoryId);
+  }
+
   @Put('competencies/level-targets')
   @HttpCode(200)
   @ApiOperation({ summary: 'Nhập cấp độ năng lực xuất phát/đích cho 1 học sinh tại 1 kỳ' })
@@ -211,6 +256,17 @@ export class CompetenciesController {
     @Body(zodBody(SetActivityCompetenciesBodySchema)) body: SetActivityCompetenciesBody
   ) {
     return this.service.setActivityCompetencies(user, body);
+  }
+
+  @Patch('competencies/activity/rubric')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Sửa rubric 5 mức của 1 chỉ báo riêng cho hoạt động này' })
+  updateActivityCompetencyRubric(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(UpsertActivityCompetencyRubricBodySchema))
+    body: UpsertActivityCompetencyRubricBody
+  ) {
+    return this.service.updateActivityCompetencyRubric(user, body);
   }
 
   @Put('competencies/assessment')

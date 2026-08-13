@@ -239,6 +239,21 @@ export const UpdateCompetencyCategoryBodySchema = z.object({
 });
 export type UpdateCompetencyCategoryBody = z.infer<typeof UpdateCompetencyCategoryBodySchema>;
 
+// ── Zod: Thành phần năng lực (giữa Danh mục và Chỉ báo) ─────────
+
+export const CreateCompetencyComponentBodySchema = z.object({
+  code: z.string().max(50).nullable().optional(),
+  name: z.string().min(1, 'Tên thành phần không được trống').max(200),
+});
+export type CreateCompetencyComponentBody = z.infer<typeof CreateCompetencyComponentBodySchema>;
+
+export const UpdateCompetencyComponentBodySchema = z.object({
+  code: z.string().max(50).nullable().optional(),
+  name: z.string().min(1).max(200).optional(),
+  position: z.number().int().min(0).optional(),
+});
+export type UpdateCompetencyComponentBody = z.infer<typeof UpdateCompetencyComponentBodySchema>;
+
 // ── Zod: Chỉ báo năng lực ──────────────────────────────────────
 
 export const CreateCompetencyIndicatorBodySchema = z.object({
@@ -259,12 +274,15 @@ export type UpdateCompetencyIndicatorBody = z.infer<typeof UpdateCompetencyIndic
 // ── Zod: Import hàng loạt từ Excel ─────────────────────────────
 
 /**
- * Một dòng trong file Excel: chỉ báo thuộc danh mục nào. Danh mục lặp lại ở
- * nhiều dòng — server gom lại, tạo danh mục một lần rồi gắn chỉ báo vào.
+ * Một dòng trong file Excel: chỉ báo thuộc thành phần nào, thành phần thuộc
+ * danh mục nào. Danh mục/thành phần lặp lại ở nhiều dòng — server gom lại,
+ * tạo danh mục/thành phần một lần rồi gắn chỉ báo vào.
  */
 export const ImportCompetencyRowSchema = z.object({
   categoryName: z.string().min(1, 'Thiếu tên danh mục').max(200),
   categoryDescription: z.string().max(2000).optional(),
+  componentName: z.string().min(1, 'Thiếu tên thành phần').max(200),
+  componentCode: z.string().max(50).optional(),
   code: z.string().max(50).optional(),
   name: z.string().min(1, 'Thiếu nội dung chỉ báo').max(2000),
   description: z.string().max(2000).optional(),
@@ -279,8 +297,10 @@ export type ImportCompetenciesBody = z.infer<typeof ImportCompetenciesBodySchema
 export type ImportCompetenciesResult = {
   categoriesCreated: number;
   categoriesReused: number;
+  componentsCreated: number;
+  componentsReused: number;
   indicatorsCreated: number;
-  /** Chỉ báo bỏ qua vì đã có sẵn trong danh mục (trùng mã hoặc trùng nội dung). */
+  /** Chỉ báo bỏ qua vì đã có sẵn trong thành phần (trùng mã hoặc trùng nội dung). */
   indicatorsSkipped: number;
   /** Dòng không hợp lệ — số dòng tính theo file Excel (đã tính cả dòng tiêu đề). */
   errors: { row: number; reason: string }[];
@@ -338,22 +358,61 @@ const CompetencyLevelValueSchema = z.number().int().min(1).max(12);
 
 export const UpsertCompetencyLevelTargetBodySchema = z.object({
   periodId: z.string().min(1),
-  categoryId: z.string().min(1),
+  componentId: z.string().min(1),
   studentId: z.string().min(1),
   startLevel: CompetencyLevelValueSchema,
   targetLevel: CompetencyLevelValueSchema,
 });
 export type UpsertCompetencyLevelTargetBody = z.infer<typeof UpsertCompetencyLevelTargetBodySchema>;
 
+// ── Zod: Rubric 5 mức cho 1 cặp (chỉ báo, hoạt động) ────────────
+// Cùng 1 chỉ báo có thể được đánh giá bằng rubric khác nhau tuỳ hoạt động/bài
+// cụ thể, nên rubric gắn theo cặp (indicatorId, activityId) chứ không cố định
+// trên chỉ báo.
+
+export const CompetencyRubricTextSchema = z.object({
+  noEvidence: z.string().max(4000).nullable().optional(),
+  beginning: z.string().max(4000).nullable().optional(),
+  approaching: z.string().max(4000).nullable().optional(),
+  proficient: z.string().max(4000).nullable().optional(),
+  advanced: z.string().max(4000).nullable().optional(),
+});
+export type CompetencyRubricText = {
+  noEvidence: string | null;
+  beginning: string | null;
+  approaching: string | null;
+  proficient: string | null;
+  advanced: string | null;
+};
+
+export const UpsertActivityCompetencyRubricBodySchema = z.object({
+  activityType: ActivityTypeSchema,
+  activityId: z.string().min(1),
+  indicatorId: z.string().min(1),
+  rubric: CompetencyRubricTextSchema,
+});
+export type UpsertActivityCompetencyRubricBody = z.infer<
+  typeof UpsertActivityCompetencyRubricBodySchema
+>;
+
 // ── Response types ─────────────────────────────────────────────
 
 export type CompetencyIndicatorItem = {
   id: string;
-  categoryId: string;
+  componentId: string;
   code: string | null;
   name: string;
   description: string | null;
   position: number;
+};
+
+export type CompetencyComponentItem = {
+  id: string;
+  categoryId: string;
+  code: string | null;
+  name: string;
+  position: number;
+  indicators: CompetencyIndicatorItem[];
 };
 
 export type CompetencyCategoryItem = {
@@ -362,7 +421,7 @@ export type CompetencyCategoryItem = {
   name: string;
   description: string | null;
   position: number;
-  indicators: CompetencyIndicatorItem[];
+  components: CompetencyComponentItem[];
 };
 
 export type CourseCompetencyCatalog = {
@@ -380,9 +439,16 @@ export type CompetencyAssessmentItem = {
   gradedAt: string;
 };
 
-// Trạng thái năng lực của 1 hoạt động: chỉ báo đã gán + các đánh giá đã chấm.
+// Chỉ báo trong ngữ cảnh 1 hoạt động cụ thể — kèm rubric riêng của cặp
+// (chỉ báo, hoạt động) này (có thể toàn null nếu GV chưa nhập).
+export type ActivityCompetencyIndicatorItem = CompetencyIndicatorItem & {
+  rubric: CompetencyRubricText;
+};
+
+// Trạng thái năng lực của 1 hoạt động: chỉ báo đã gán (kèm rubric riêng) +
+// các đánh giá đã chấm.
 export type ActivityCompetencyState = {
-  indicators: CompetencyIndicatorItem[];
+  indicators: ActivityCompetencyIndicatorItem[];
   assessments: CompetencyAssessmentItem[];
 };
 
@@ -446,11 +512,14 @@ export type CompetencyPeriod = {
   endDate: string | null;
 };
 
-// Điểm năng lực của 1 học sinh, tại 1 danh mục, trong 1 kỳ đánh giá — theo công thức
-// Chính sách đánh giá H.A.S. startLevel/targetLevel null nếu GV chưa nhập cấp độ.
-export type CompetencyCategoryLevelRow = {
+// Điểm năng lực của 1 học sinh, tại 1 thành phần năng lực, trong 1 kỳ đánh
+// giá — theo công thức Chính sách đánh giá H.A.S, tính ở CẤP THÀNH PHẦN.
+// startLevel/targetLevel null nếu GV chưa nhập cấp độ (đây là nơi GV nhập).
+export type CompetencyComponentLevelRow = {
   studentId: string;
   studentName: string;
+  componentId: string;
+  componentName: string;
   categoryId: string;
   categoryName: string;
   startLevel: number | null;
@@ -463,10 +532,32 @@ export type CompetencyCategoryLevelRow = {
   learningPace: LearningPaceValue | null;
 };
 
+// Điểm năng lực của 1 học sinh, gộp lên cấp DANH MỤC — tính lại từ các dòng
+// thành phần (CompetencyComponentLevelRow) cùng danh mục: startLevel/
+// targetLevel/competencyScore = trung bình cộng các thành phần; completionRate
+// = tổng chỉ báo hoàn thành / tổng chỉ báo toàn danh mục (gộp phẳng, không
+// phải trung bình cộng tỉ lệ). Đây là dòng CHỈ ĐỌC — không nhập trực tiếp.
+export type CompetencyCategoryLevelRow = {
+  studentId: string;
+  studentName: string;
+  categoryId: string;
+  categoryName: string;
+  startLevel: number | null;
+  targetLevel: number | null;
+  completedIndicators: number;
+  totalIndicators: number;
+  completionRate: number | null;
+  competencyScore: number | null;
+  growthScore: number | null;
+  learningPace: LearningPaceValue | null;
+};
+
 export type CompetencyPeriodGrid = {
   period: CompetencyPeriod;
   categories: { id: string; name: string }[];
-  rows: CompetencyCategoryLevelRow[];
+  components: { id: string; categoryId: string; name: string }[];
+  componentRows: CompetencyComponentLevelRow[];
+  categoryRollups: CompetencyCategoryLevelRow[];
 };
 
 // Một dòng minh chứng năng lực cho hồ sơ học tập cá nhân (Phase 3 dùng lại).
@@ -488,4 +579,56 @@ export type CompetencyEvidenceRow = {
   // Đường dẫn (không có /courses/SLUG) tới trang xem bài làm cụ thể của học sinh.
   // Frontend prepend /courses/${slug}. Có thể null nếu HS chưa có bài nộp/lần làm.
   viewerPath: string | null;
+};
+
+// ── Xuất Excel "Tổng hợp kết quả" (giống cấu trúc file mẫu H.A.S) ───────
+// Phạm vi 1 lần xuất = 1 kỳ đánh giá × 1 danh mục năng lực, giống file mẫu
+// (1 sheet tổng hợp + 1 sheet/học sinh, mỗi sheet liệt kê từng minh chứng).
+
+export type CompetencyExportEvidence = {
+  activityTitle: string;
+  level: CompetencyLevelValue;
+  gradedAt: string;
+  rubric: CompetencyRubricText;
+};
+
+export type CompetencyExportIndicator = {
+  indicatorId: string;
+  code: string | null;
+  name: string;
+  completed: boolean;
+  evidences: CompetencyExportEvidence[];
+};
+
+export type CompetencyExportComponent = {
+  componentId: string;
+  code: string | null;
+  name: string;
+  startLevel: number | null;
+  targetLevel: number | null;
+  indicators: CompetencyExportIndicator[];
+  completedCount: number;
+  totalCount: number;
+  rate: number | null;
+  score: number | null;
+  growth: number | null;
+};
+
+export type CompetencyExportStudent = {
+  studentId: string;
+  studentCode: string;
+  fullName: string;
+  components: CompetencyExportComponent[];
+  categoryStart: number | null;
+  categoryTarget: number | null;
+  categoryRate: number | null;
+  categoryScore: number | null;
+  categoryGrowth: number | null;
+  learningPace: LearningPaceValue | null;
+};
+
+export type CompetencyExportData = {
+  category: { id: string; name: string };
+  period: { id: string; name: string };
+  students: CompetencyExportStudent[];
 };

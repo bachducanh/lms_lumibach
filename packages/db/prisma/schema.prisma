@@ -1317,16 +1317,35 @@ model CompetencyCategory {
   updatedAt   DateTime @updatedAt
 
   course       Course                  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  indicators   CompetencyIndicator[]
+  components   CompetencyComponent[]
   levelTargets CompetencyLevelTarget[]
 
   @@index([courseId])
 }
 
-// Chỉ báo năng lực — thuộc một danh mục.
-model CompetencyIndicator {
+// Thành phần năng lực — thuộc một danh mục, gom nhóm các chỉ báo cùng một
+// khía cạnh (vd "MATH.1.1 — Đặt câu hỏi"). Cấp độ xuất phát/đích và điểm
+// năng lực (Chính sách H.A.S) được chấm ở cấp này rồi mới gộp lên danh mục.
+model CompetencyComponent {
   id          String   @id @default(cuid())
   categoryId  String
+  code        String? // mã thành phần (tuỳ chọn), vd "MATH.1.1"
+  name        String // nội dung thành phần, vd "Đặt câu hỏi"
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category     CompetencyCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  indicators   CompetencyIndicator[]
+  levelTargets CompetencyLevelTarget[]
+
+  @@index([categoryId])
+}
+
+// Chỉ báo năng lực — thuộc một thành phần năng lực.
+model CompetencyIndicator {
+  id          String   @id @default(cuid())
+  componentId String
   code        String? // mã chỉ báo (tuỳ chọn), vd "1.1"
   name        String   @db.Text // nội dung chỉ báo
   description String?  @db.Text
@@ -1334,18 +1353,27 @@ model CompetencyIndicator {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  category      CompetencyCategory     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  component     CompetencyComponent    @relation(fields: [componentId], references: [id], onDelete: Cascade)
   activityLinks ActivityCompetency[]
   assessments   CompetencyAssessment[]
 
-  @@index([categoryId])
+  @@index([componentId])
 }
 
 // Liên kết chỉ báo ↔ hoạt động học tập (đa hình: đúng 1 trong 4 FK non-null).
+// Rubric 5 mức gắn ở đây (không gắn cố định trên chỉ báo) vì cùng 1 chỉ báo
+// có thể được đánh giá bằng rubric khác nhau tuỳ hoạt động/bài cụ thể.
 model ActivityCompetency {
   id          String   @id @default(cuid())
   indicatorId String
   createdAt   DateTime @default(now())
+
+  // Rubric 5 mức riêng cho lần gắn chỉ báo này vào hoạt động này.
+  rubricNoEvidence  String? @db.Text
+  rubricBeginning   String? @db.Text
+  rubricApproaching String? @db.Text
+  rubricProficient  String? @db.Text
+  rubricAdvanced    String? @db.Text
 
   assignmentId   String?
   quizId         String?
@@ -1426,10 +1454,13 @@ model CompetencyAssessmentPeriod {
   @@index([courseId])
 }
 
-// Cấp độ năng lực xuất phát/đích của 1 học sinh, cho 1 danh mục năng lực, tại 1 kỳ đánh giá.
+// Cấp độ năng lực xuất phát/đích của 1 học sinh, cho 1 thành phần năng lực,
+// tại 1 kỳ đánh giá. categoryId giữ lại (denormalized) để lọc/tổng hợp theo
+// danh mục mà không phải join qua component ở mọi câu truy vấn.
 model CompetencyLevelTarget {
   id          String   @id @default(cuid())
   periodId    String
+  componentId String
   categoryId  String
   studentId   String
   startLevel  Int // thang 1-12
@@ -1437,12 +1468,14 @@ model CompetencyLevelTarget {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  period   CompetencyAssessmentPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  category CompetencyCategory         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  student  User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  period    CompetencyAssessmentPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  component CompetencyComponent        @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  category  CompetencyCategory         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  student   User                       @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([periodId, categoryId, studentId])
+  @@unique([periodId, componentId, studentId])
   @@index([periodId])
+  @@index([componentId])
   @@index([categoryId])
   @@index([studentId])
 }

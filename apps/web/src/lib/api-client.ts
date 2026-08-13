@@ -150,3 +150,18 @@ export function apiServerClient(cookieStore: { toString(): string }) {
       request<T>('DELETE', path, { ...opts, cookieHeader }),
   };
 }
+
+/**
+ * Bọc 1 lời gọi GET chi tiết (dùng trước `notFound()` trong Server Component):
+ * chỉ trả `null` khi BE thật sự trả 404 (tài nguyên không tồn tại). Mọi lỗi
+ * khác (429 rate-limit, 5xx, mất mạng...) được ném lại để Next.js đưa lên
+ * `error.tsx` gần nhất — tránh hiển thị nhầm "không tồn tại" cho lỗi tạm thời.
+ */
+export async function orNotFound<T>(promise: Promise<T>): Promise<T | null> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}

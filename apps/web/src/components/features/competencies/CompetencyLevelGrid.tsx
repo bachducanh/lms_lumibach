@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SimpleSelect } from '@/components/ui/select';
 import { apiClient, ApiError } from '@/lib/api-client';
-import { Plus, Save } from 'lucide-react';
+import { exportCompetencyResultsToExcel } from '@/lib/export-competency-excel';
+import { Download, Plus, Save } from 'lucide-react';
 import {
   LEARNING_PACE_LEVELS,
   type CompetencyCategoryLevelRow,
+  type CompetencyComponentLevelRow,
+  type CompetencyExportData,
   type CompetencyPeriod,
   type CompetencyPeriodGrid,
 } from '@lumibach/types';
@@ -29,6 +32,36 @@ type Props = {
   grid: CompetencyPeriodGrid | null;
 };
 
+// Nhóm componentRows/categoryRollups theo học sinh → danh mục, giữ đúng thứ
+// tự học sinh/danh mục mà backend trả về (đã sort sẵn).
+type CategoryBlock = {
+  rollup: CompetencyCategoryLevelRow;
+  components: CompetencyComponentLevelRow[];
+};
+type StudentBlock = {
+  studentId: string;
+  studentName: string;
+  categories: CategoryBlock[];
+};
+
+function buildStudentBlocks(grid: CompetencyPeriodGrid): StudentBlock[] {
+  const blocks = new Map<string, StudentBlock>();
+  for (const rollup of grid.categoryRollups) {
+    let block = blocks.get(rollup.studentId);
+    if (!block) {
+      block = { studentId: rollup.studentId, studentName: rollup.studentName, categories: [] };
+      blocks.set(rollup.studentId, block);
+    }
+    block.categories.push({
+      rollup,
+      components: grid.componentRows.filter(
+        (r) => r.studentId === rollup.studentId && r.categoryId === rollup.categoryId
+      ),
+    });
+  }
+  return [...blocks.values()];
+}
+
 export function CompetencyLevelGrid({
   slug,
   courseId,
@@ -39,10 +72,29 @@ export function CompetencyLevelGrid({
 }: Props) {
   const router = useRouter();
   const [showAddPeriod, setShowAddPeriod] = useState(periods.length === 0);
+  const [exportCategoryId, setExportCategoryId] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   function goToPeriod(periodId: string) {
     router.push(`/courses/${slug}/competencies/levels?period=${periodId}`);
   }
+
+  async function handleExport() {
+    if (!grid || !exportCategoryId || exporting) return;
+    setExporting(true);
+    try {
+      const data = await apiClient.get<CompetencyExportData>(
+        `/courses/${courseId}/competencies/periods/${grid.period.id}/categories/${exportCategoryId}/export`
+      );
+      exportCompetencyResultsToExcel(data);
+    } catch (err) {
+      toast.error(fmtError(err, 'Lỗi xuất Excel'));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const studentBlocks = grid ? buildStudentBlocks(grid) : [];
 
   return (
     <div className="space-y-4">
@@ -61,6 +113,29 @@ export function CompetencyLevelGrid({
             <Plus className="mr-1.5 h-4 w-4" />
             Thêm kỳ đánh giá
           </Button>
+        )}
+        {grid && grid.categories.length > 0 && (
+          <>
+            <SimpleSelect
+              className="min-w-[200px]"
+              aria-label="Danh mục để xuất"
+              value={exportCategoryId}
+              onValueChange={setExportCategoryId}
+              options={[
+                { value: '', label: 'Chọn danh mục để xuất' },
+                ...grid.categories.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExport}
+              disabled={!exportCategoryId || exporting}
+            >
+              <Download className="mr-1.5 h-4 w-4" />
+              {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+            </Button>
+          </>
         )}
       </div>
 
@@ -81,7 +156,7 @@ export function CompetencyLevelGrid({
             Chọn hoặc tạo 1 kỳ đánh giá để nhập cấp độ năng lực.
           </p>
         </div>
-      ) : grid.rows.length === 0 ? (
+      ) : studentBlocks.length === 0 ? (
         <div className="border-border bg-card rounded-lg border border-dashed py-14 text-center">
           <p className="text-muted-foreground text-sm">
             Khoá học chưa có học sinh hoặc danh mục năng lực.
@@ -89,11 +164,11 @@ export function CompetencyLevelGrid({
         </div>
       ) : (
         <div className="border-border bg-card overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[960px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead className="border-border bg-muted/30 border-b text-left text-xs">
               <tr>
                 <Th>Học sinh</Th>
-                <Th>Danh mục</Th>
+                <Th>Danh mục / Thành phần</Th>
                 <Th align="right">Xuất phát</Th>
                 <Th align="right">Đích</Th>
                 <Th align="right">Hoàn thành</Th>
@@ -105,10 +180,10 @@ export function CompetencyLevelGrid({
               </tr>
             </thead>
             <tbody>
-              {grid.rows.map((row) => (
-                <LevelRow
-                  key={`${row.studentId}::${row.categoryId}`}
-                  row={row}
+              {studentBlocks.map((block) => (
+                <StudentRows
+                  key={block.studentId}
+                  block={block}
                   periodId={grid.period.id}
                   canEdit={canManage}
                   onSaved={() => router.refresh()}
@@ -122,13 +197,101 @@ export function CompetencyLevelGrid({
   );
 }
 
-function LevelRow({
+function StudentRows({
+  block,
+  periodId,
+  canEdit,
+  onSaved,
+}: {
+  block: StudentBlock;
+  periodId: string;
+  canEdit: boolean;
+  onSaved: () => void;
+}) {
+  const totalRows = block.categories.reduce((n, c) => n + 1 + c.components.length, 0);
+
+  return (
+    <>
+      {block.categories.map((cat, catIndex) => (
+        <Fragment key={cat.rollup.categoryId}>
+          <CategoryRollupRow
+            row={cat.rollup}
+            studentName={catIndex === 0 ? block.studentName : null}
+            studentRowSpan={catIndex === 0 ? totalRows : undefined}
+            canEdit={canEdit}
+          />
+          {cat.components.map((comp) => (
+            <ComponentRow
+              key={comp.componentId}
+              row={comp}
+              periodId={periodId}
+              canEdit={canEdit}
+              onSaved={onSaved}
+            />
+          ))}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function CategoryRollupRow({
+  row,
+  studentName,
+  studentRowSpan,
+  canEdit,
+}: {
+  row: CompetencyCategoryLevelRow;
+  studentName: string | null;
+  studentRowSpan?: number;
+  canEdit: boolean;
+}) {
+  const pace = row.learningPace
+    ? LEARNING_PACE_LEVELS.find((l) => l.value === row.learningPace)
+    : null;
+
+  return (
+    <tr className="border-border/50 bg-muted/20 border-b font-medium">
+      {studentName !== null ? (
+        <td rowSpan={studentRowSpan} className="border-border/50 border-r px-3 py-2.5 align-top">
+          {studentName}
+        </td>
+      ) : null}
+      <Td>{row.categoryName}</Td>
+      <Td align="right">{row.startLevel !== null ? row.startLevel.toFixed(2) : '—'}</Td>
+      <Td align="right">{row.targetLevel !== null ? row.targetLevel.toFixed(2) : '—'}</Td>
+      <Td align="right">
+        {row.completedIndicators}/{row.totalIndicators}
+      </Td>
+      <Td align="right">
+        {row.completionRate !== null ? `${Math.round(row.completionRate * 100)}%` : '—'}
+      </Td>
+      <Td align="right">{row.competencyScore !== null ? row.competencyScore.toFixed(2) : '—'}</Td>
+      <Td align="right">{row.growthScore !== null ? row.growthScore.toFixed(2) : '—'}</Td>
+      <Td>
+        {pace ? (
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+            style={{ backgroundColor: pace.color, color: pace.textColor }}
+          >
+            {pace.label}
+          </span>
+        ) : (
+          '—'
+        )}
+      </Td>
+      {canEdit && <Td align="right">{null}</Td>}
+    </tr>
+  );
+}
+
+function ComponentRow({
   row,
   periodId,
   canEdit,
   onSaved,
 }: {
-  row: CompetencyCategoryLevelRow;
+  row: CompetencyComponentLevelRow;
   periodId: string;
   canEdit: boolean;
   onSaved: () => void;
@@ -160,7 +323,7 @@ function LevelRow({
     try {
       await apiClient.put('/competencies/level-targets', {
         periodId,
-        categoryId: row.categoryId,
+        componentId: row.componentId,
         studentId: row.studentId,
         startLevel: startNum,
         targetLevel: targetNum,
@@ -180,9 +343,8 @@ function LevelRow({
 
   return (
     <tr className="border-border/50 hover:bg-muted/20 border-b">
-      <Td>{row.studentName}</Td>
       <Td>
-        <span className="text-muted-foreground text-xs">{row.categoryName}</span>
+        <span className="text-muted-foreground pl-4 text-xs">↳ {row.componentName}</span>
       </Td>
       <Td align="right">
         {canEdit ? (

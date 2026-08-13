@@ -33,6 +33,65 @@ type HandoverPhotoDraft = HandoverPhotoInput & {
 
 type UploadResponse = { photo: HandoverPhotoInput } | { error: string };
 
+// Ảnh chụp thẳng từ camera điện thoại thường vài MB, chưa nén — tải nguyên
+// văn lên dễ treo lâu ở mạng trường yếu. Nén/resize ngay trên trình duyệt
+// trước khi upload để giảm dung lượng đáng kể (server vẫn nén/resize lại lần
+// nữa, watermark — đây chỉ để rút ngắn thời gian truyền qua mạng).
+const NEN_ANH_CANH_TOI_DA = 1600;
+const NEN_ANH_CHAT_LUONG = 0.82;
+// Đủ dài cho ảnh nặng qua mạng 3G/4G yếu, đủ ngắn để không treo vô thời hạn.
+const UPLOAD_TIMEOUT_MS = 25_000;
+
+async function nenAnh(file: File): Promise<File | Blob> {
+  if (typeof createImageBitmap !== 'function') return file;
+  try {
+    // imageOrientation: 'from-image' để bake đúng chiều xoay theo EXIF vào pixel
+    // (canvas không giữ EXIF khi xuất ảnh) — khớp hành vi sharp().rotate() ở server.
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const scale = Math.min(1, NEN_ANH_CANH_TOI_DA / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', NEN_ANH_CHAT_LUONG)
+    );
+    // Chỉ dùng bản nén nếu thực sự nhỏ hơn — ảnh đã nhỏ sẵn (hoặc canvas nén
+    // kém với ảnh ít chi tiết) thì giữ nguyên bản gốc.
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    // Định dạng canvas không đọc được (hiếm, vd HEIC ở vài trình duyệt cũ) —
+    // gửi file gốc, không chặn luồng chụp ảnh vì lỗi nén.
+    return file;
+  }
+}
+
+async function uploadVoiTimeout(form: FormData): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+  try {
+    return await fetch('/api/upload/handover-photo', {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Mạng chậm, tải ảnh quá lâu — thử lại.', { cause: err });
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Màn hình nhận phòng / trả phòng.
  *
@@ -46,6 +105,9 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(
+    null
+  );
   const laNhanPhong = type === 'CHECKIN';
   const previewUrlsRef = useRef<string[]>([]);
 
@@ -130,17 +192,21 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
 
     const selected = Array.from(files).slice(0, remaining);
     setUploading(true);
+    setUploadProgress({ current: 0, total: selected.length });
     try {
       const uploaded: HandoverPhotoDraft[] = [];
-      for (const file of selected) {
+      for (const [i, file] of selected.entries()) {
+        setUploadProgress({ current: i + 1, total: selected.length });
+
+        const nen = await nenAnh(file);
         const form = new FormData();
-        form.set('file', file);
+        form.set('file', nen, file.name);
         // Kích thước thật do máy chủ tính lại sau khi xoay và nén; chỉ gửi mã
         // đơn để máy chủ kiểm quyền và lấy dữ liệu đóng watermark.
         form.set('bookingId', booking.id);
         form.set('capturedAtClient', new Date(file.lastModified || Date.now()).toISOString());
 
-        const res = await fetch('/api/upload/handover-photo', { method: 'POST', body: form });
+        const res = await uploadVoiTimeout(form);
         const body = (await res.json().catch(() => ({}))) as UploadResponse;
         if (!res.ok || !('photo' in body)) {
           throw new Error('error' in body ? body.error : 'Upload ảnh thất bại.');
@@ -155,6 +221,7 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
       setLoi(err instanceof Error ? err.message : 'Upload ảnh thất bại.');
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -266,7 +333,11 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
             ) : (
               <Camera className="h-4 w-4" />
             )}
-            {uploading ? 'Đang tải ảnh' : 'Chụp / tải ảnh'}
+            {uploading
+              ? uploadProgress
+                ? `Đang tải ảnh ${uploadProgress.current}/${uploadProgress.total}`
+                : 'Đang tải ảnh'
+              : 'Chụp / tải ảnh'}
             <input
               type="file"
               accept="image/*"

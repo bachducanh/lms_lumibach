@@ -63,6 +63,11 @@ async function bootstrap() {
   // long-polling đi qua rewrite của Next.js. Xem common/gateway/io-adapter.ts.
   app.useWebSocketAdapter(new SocketIoAdapter(app));
 
+  // Đọc đúng IP thật của client (X-Forwarded-For) khi chạy sau reverse proxy/
+  // Cloudflare Tunnel — nếu không, req.ip luôn là IP của tầng proxy, làm rate
+  // limiter theo IP (ThrottlerGuard) dồn hết mọi client vào chung 1 bucket.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.enableVersioning({

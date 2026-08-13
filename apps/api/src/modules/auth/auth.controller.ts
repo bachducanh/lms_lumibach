@@ -1,9 +1,15 @@
 import { Controller, Post, Patch, Body } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UserAuthService } from './auth.service';
 import { Public } from '../../common/auth/decorators/public.decorator';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/auth/auth.types';
 
+// Endpoint @Public() ở đây (register/forgot-password/reset-password/...) là bề mặt
+// dễ bị spam nhất của hệ thống — IP ở đây LÀ IP thật của trình duyệt gửi request
+// (khác với các trang Server Component khác), nên giới hạn theo IP có ý nghĩa thật.
+// Giữ mức chặt riêng cho controller này dù mức chung toàn hệ thống đã được nới ra.
+@Throttle({ default: { limit: 10, ttl: 60_000 } })
 @Controller('auth')
 export class UserAuthController {
   constructor(private readonly service: UserAuthService) {}

@@ -16,6 +16,7 @@ import {
   ChevronsUpDown,
   Download,
   FolderTree,
+  Layers,
   ListChecks,
   Pencil,
   Plus,
@@ -25,7 +26,11 @@ import {
   X,
 } from 'lucide-react';
 import { CompetencyImportDialog, downloadCompetencyTemplate } from './CompetencyImportDialog';
-import type { CompetencyCategoryItem, CompetencyIndicatorItem } from '@lumibach/types';
+import type {
+  CompetencyCategoryItem,
+  CompetencyComponentItem,
+  CompetencyIndicatorItem,
+} from '@lumibach/types';
 
 type Props = {
   courseId: string;
@@ -46,13 +51,18 @@ function fmtError(err: unknown, fallback = 'Có lỗi xảy ra'): string {
   return err.message || fallback;
 }
 
+function countIndicators(category: CompetencyCategoryItem): number {
+  return category.components.reduce((n, comp) => n + comp.indicators.length, 0);
+}
+
 export function CompetencyManager({ courseId, canManage, categories }: Props) {
   const router = useRouter();
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [confirmDialog, openConfirm] = useConfirmDialog();
   // Môn nhiều chỉ báo thì danh sách dài vô tận — mặc định thu gọn hết như
-  // chương trong modules, chỉ mở danh mục đang cần.
+  // chương trong modules, chỉ mở danh mục/thành phần đang cần. Id danh mục và
+  // thành phần đều là cuid duy nhất toàn cục nên dùng chung 1 Set an toàn.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   function toggleExpanded(id: string) {
@@ -64,7 +74,7 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
     });
   }
 
-  const allExpanded = categories.length > 0 && expandedIds.size === categories.length;
+  const allExpanded = categories.length > 0 && expandedIds.size >= categories.length;
 
   function refresh() {
     router.refresh();
@@ -107,8 +117,9 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
               <div>
                 <p className="text-sm font-semibold">Kho năng lực của khoá học</p>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Tạo danh mục lớn, sau đó thêm các chỉ báo cụ thể để gán vào hoạt động. Môn nhiều
-                  chỉ báo thì nên soạn sẵn trong Excel rồi import một lần.
+                  Tạo danh mục lớn, bên trong chia thành từng thành phần năng lực, rồi thêm các chỉ
+                  báo cụ thể để gán vào hoạt động. Môn nhiều chỉ báo thì nên soạn sẵn trong Excel
+                  rồi import một lần.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -143,14 +154,24 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs">
               {categories.length} danh mục ·{' '}
-              {categories.reduce((n, c) => n + c.indicators.length, 0)} chỉ báo
+              {categories.reduce((n, c) => n + c.components.length, 0)} thành phần ·{' '}
+              {categories.reduce((n, c) => n + countIndicators(c), 0)} chỉ báo
             </p>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                setExpandedIds(allExpanded ? new Set() : new Set(categories.map((c) => c.id)))
-              }
+              onClick={() => {
+                if (allExpanded) {
+                  setExpandedIds(new Set());
+                } else {
+                  const all = new Set<string>();
+                  for (const c of categories) {
+                    all.add(c.id);
+                    for (const comp of c.components) all.add(comp.id);
+                  }
+                  setExpandedIds(all);
+                }
+              }}
             >
               {allExpanded ? (
                 <ChevronsDownUp className="mr-1.5 h-4 w-4" />
@@ -166,8 +187,8 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
               key={category.id}
               category={category}
               canManage={canManage}
-              expanded={expandedIds.has(category.id)}
-              onToggleExpanded={() => toggleExpanded(category.id)}
+              expandedIds={expandedIds}
+              onToggleExpanded={toggleExpanded}
               onChanged={refresh}
               openConfirm={openConfirm}
             />
@@ -181,24 +202,27 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
 function CategoryCard({
   category,
   canManage,
-  expanded,
+  expandedIds,
   onToggleExpanded,
   onChanged,
   openConfirm,
 }: {
   category: CompetencyCategoryItem;
   canManage: boolean;
-  expanded: boolean;
-  onToggleExpanded: () => void;
+  expandedIds: Set<string>;
+  onToggleExpanded: (id: string) => void;
   onChanged: () => void;
   openConfirm: (message: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [showAddIndicator, setShowAddIndicator] = useState(false);
+  const [showAddComponent, setShowAddComponent] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const expanded = expandedIds.has(category.id);
 
   async function handleDelete() {
-    const ok = await openConfirm(`Xoá danh mục "${category.name}" và toàn bộ chỉ báo bên trong?`);
+    const ok = await openConfirm(
+      `Xoá danh mục "${category.name}" và toàn bộ thành phần, chỉ báo bên trong?`
+    );
     if (!ok) return;
     setDeleting(true);
     try {
@@ -228,7 +252,7 @@ function CategoryCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <button
               type="button"
-              onClick={onToggleExpanded}
+              onClick={() => onToggleExpanded(category.id)}
               aria-expanded={expanded}
               className="flex min-w-0 flex-1 items-start gap-3 text-left"
             >
@@ -244,7 +268,10 @@ function CategoryCard({
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold">{category.name}</h3>
                   <Badge variant="secondary" className="text-xs">
-                    {category.indicators.length} chỉ báo
+                    {category.components.length} thành phần
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {countIndicators(category)} chỉ báo
                   </Badge>
                 </div>
                 {category.description && (
@@ -273,12 +300,152 @@ function CategoryCard({
 
       {expanded && (
         <div className="divide-border divide-y">
-          {category.indicators.length === 0 ? (
+          {category.components.length === 0 ? (
             <p className="text-muted-foreground px-4 py-4 text-sm">
-              Chưa có chỉ báo trong danh mục này.
+              Chưa có thành phần trong danh mục này.
             </p>
           ) : (
-            category.indicators.map((indicator) => (
+            category.components.map((component) => (
+              <ComponentCard
+                key={component.id}
+                component={component}
+                canManage={canManage}
+                expanded={expandedIds.has(component.id)}
+                onToggleExpanded={() => onToggleExpanded(component.id)}
+                onChanged={onChanged}
+                openConfirm={openConfirm}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {expanded && canManage && (
+        <div className="border-t px-4 py-3">
+          {showAddComponent ? (
+            <ComponentForm
+              categoryId={category.id}
+              onDone={() => {
+                setShowAddComponent(false);
+                onChanged();
+              }}
+              onCancel={() => setShowAddComponent(false)}
+            />
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => setShowAddComponent(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Thêm thành phần
+            </Button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ComponentCard({
+  component,
+  canManage,
+  expanded,
+  onToggleExpanded,
+  onChanged,
+  openConfirm,
+}: {
+  component: CompetencyComponentItem;
+  canManage: boolean;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  onChanged: () => void;
+  openConfirm: (message: string) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [showAddIndicator, setShowAddIndicator] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    const ok = await openConfirm(
+      `Xoá thành phần "${component.name}" và toàn bộ chỉ báo bên trong?`
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/competencies/components/${component.id}`);
+      toast.success('Đã xoá thành phần năng lực.');
+      onChanged();
+    } catch (err) {
+      toast.error(fmtError(err, 'Lỗi xoá thành phần'));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="bg-background">
+      <div className="pl-8">
+        {editing ? (
+          <div className="px-4 py-3">
+            <ComponentForm
+              categoryId={component.categoryId}
+              component={component}
+              onDone={() => {
+                setEditing(false);
+                onChanged();
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-expanded={expanded}
+              className="flex min-w-0 flex-1 items-start gap-3 text-left"
+            >
+              <div className="bg-secondary/60 mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md">
+                <Layers className="text-muted-foreground h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  {component.code && (
+                    <span className="text-primary font-mono text-xs font-bold">
+                      {component.code}
+                    </span>
+                  )}
+                  <span className="text-sm font-medium">{component.name}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {component.indicators.length} chỉ báo
+                  </Badge>
+                </div>
+              </div>
+            </button>
+            {canManage && (
+              <div className="flex shrink-0 items-center gap-1">
+                <IconButton label="Sửa thành phần" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                </IconButton>
+                <IconButton
+                  label="Xoá thành phần"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  destructive
+                >
+                  <Trash2 className="h-4 w-4" />
+                </IconButton>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="divide-border bg-muted/10 divide-y pl-12">
+          {component.indicators.length === 0 ? (
+            <p className="text-muted-foreground px-4 py-4 text-sm">
+              Chưa có chỉ báo trong thành phần này.
+            </p>
+          ) : (
+            component.indicators.map((indicator) => (
               <IndicatorRow
                 key={indicator.id}
                 indicator={indicator}
@@ -292,10 +459,10 @@ function CategoryCard({
       )}
 
       {expanded && canManage && (
-        <div className="border-t px-4 py-3">
+        <div className="border-t py-3 pr-4 pl-12">
           {showAddIndicator ? (
             <IndicatorForm
-              categoryId={category.id}
+              componentId={component.id}
               onDone={() => {
                 setShowAddIndicator(false);
                 onChanged();
@@ -310,7 +477,7 @@ function CategoryCard({
           )}
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -347,7 +514,7 @@ function IndicatorRow({
     return (
       <div className="px-4 py-3">
         <IndicatorForm
-          categoryId={indicator.categoryId}
+          componentId={indicator.componentId}
           indicator={indicator}
           onDone={() => {
             setEditing(false);
@@ -469,13 +636,88 @@ function CategoryForm({
   );
 }
 
-function IndicatorForm({
+function ComponentForm({
   categoryId,
-  indicator,
+  component,
   onDone,
   onCancel,
 }: {
   categoryId: string;
+  component?: CompetencyComponentItem;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [code, setCode] = useState(component?.code ?? '');
+  const [name, setName] = useState(component?.name ?? '');
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+
+    const cleanCode = code.trim();
+    const cleanName = name.trim();
+    if (!cleanName) {
+      toast.error('Nhập tên thành phần năng lực.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (component) {
+        await apiClient.patch(`/competencies/components/${component.id}`, {
+          code: cleanCode || null,
+          name: cleanName,
+        });
+        toast.success('Đã cập nhật thành phần.');
+      } else {
+        await apiClient.post(`/competencies/categories/${categoryId}/components`, {
+          code: cleanCode || undefined,
+          name: cleanName,
+        });
+        toast.success('Đã thêm thành phần.');
+      }
+      onDone();
+    } catch (err) {
+      toast.error(fmtError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
+        <Input
+          placeholder="Mã (vd MATH.1.1)"
+          value={code}
+          maxLength={50}
+          onChange={(event) => setCode(event.target.value)}
+        />
+        <Input
+          autoFocus
+          placeholder="Tên thành phần năng lực"
+          value={name}
+          maxLength={200}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </div>
+      <FormActions
+        saving={saving}
+        submitLabel={component ? 'Lưu thành phần' : 'Thêm thành phần'}
+        onCancel={onCancel}
+      />
+    </form>
+  );
+}
+
+function IndicatorForm({
+  componentId,
+  indicator,
+  onDone,
+  onCancel,
+}: {
+  componentId: string;
   indicator?: CompetencyIndicatorItem;
   onDone: () => void;
   onCancel: () => void;
@@ -507,7 +749,7 @@ function IndicatorForm({
         });
         toast.success('Đã cập nhật chỉ báo.');
       } else {
-        await apiClient.post(`/competencies/categories/${categoryId}/indicators`, {
+        await apiClient.post(`/competencies/components/${componentId}/indicators`, {
           code: cleanCode || null,
           name: cleanName,
           description: cleanDescription || null,

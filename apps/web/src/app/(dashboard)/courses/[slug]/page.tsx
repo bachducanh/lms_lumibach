@@ -28,6 +28,7 @@ import {
   BarChart3,
   Target,
   FolderKanban,
+  Library,
 } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 
@@ -287,6 +288,13 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           >
             <HelpCircle className="text-muted-foreground h-4 w-4" />
             <span className="font-medium">Ngân hàng câu hỏi</span>
+          </Link>
+          <Link
+            href={`/courses/${slug}/modules/bank`}
+            className="border-border bg-card hover:bg-accent/40 flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors"
+          >
+            <Library className="text-muted-foreground h-4 w-4" />
+            <span className="font-medium">Ngân hàng nội dung</span>
           </Link>
           <Link
             href={`/courses/${slug}/competencies`}

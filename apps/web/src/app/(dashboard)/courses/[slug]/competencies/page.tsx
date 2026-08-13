@@ -28,7 +28,10 @@ export default async function CompetenciesPage({ params }: { params: Promise<{ s
     .get<CourseCompetencyCatalog>(`/courses/${course.id}/competencies`)
     .catch(() => ({ categories: [] }) as CourseCompetencyCatalog);
 
-  const totalIndicators = catalog.categories.reduce((s, c) => s + c.indicators.length, 0);
+  const totalIndicators = catalog.categories.reduce(
+    (s, c) => s + c.components.reduce((n, comp) => n + comp.indicators.length, 0),
+    0
+  );
 
   return (
     <div className="max-w-4xl space-y-6">

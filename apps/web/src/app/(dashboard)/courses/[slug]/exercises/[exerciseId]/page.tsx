@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies } from 'next/headers';
-import { apiServerClient } from '@/lib/api-client';
+import { apiServerClient, orNotFound } from '@/lib/api-client';
 import type { CourseDetail, CourseNavItem } from '@lumibach/types';
 import type {
   CodeExerciseDetail,
@@ -66,12 +66,10 @@ export default async function ExerciseViewPage({
   const userId = session?.user?.id;
 
   const api = apiServerClient(await cookies());
-  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
+  const course = await orNotFound(api.get<CourseDetail>(`/courses/${slug}`));
   if (!course) notFound();
 
-  const exercise = await api
-    .get<CodeExerciseDetail>(`/code-exercises/${exerciseId}`)
-    .catch(() => null);
+  const exercise = await orNotFound(api.get<CodeExerciseDetail>(`/code-exercises/${exerciseId}`));
   if (!exercise || exercise.courseId !== course.id) notFound();
 
   if (userId)

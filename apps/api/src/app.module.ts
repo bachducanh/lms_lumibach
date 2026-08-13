@@ -69,11 +69,17 @@ import { UserAuthModule } from './modules/auth/auth.module';
         },
       },
     }),
+    // Lưới an toàn chung — không phải hàng rào chính. Các trang Server Component
+    // (assignments/quizzes/exercises/practice-tests...) gọi API từ chính máy chủ
+    // Next.js, nên req.ip là IP máy chủ, GIỐNG NHAU cho mọi học sinh/mọi lượt xem
+    // trang. Nếu để mức thấp, cả trường cùng mở bài trong 1 phút sẽ cạn quota của
+    // 1 handler và bị 429 → hiện sai thành 404 ở FE. Mức bảo vệ thật sự nằm ở
+    // @Throttle() riêng trên UserAuthController (register/forgot-password/...).
     ThrottlerModule.forRoot([
       {
         name: 'default',
         ttl: 60_000,
-        limit: 100,
+        limit: 1000,
       },
     ]),
     PrismaModule,

@@ -13,15 +13,32 @@ import { cn } from '@/lib/utils';
 import {
   COMPETENCY_LEVELS,
   EVIDENCE_CATEGORIES,
+  type ActivityCompetencyIndicatorItem,
   type ActivityType,
   type ActivityCompetencyState,
   type CompetencyAssessmentItem,
   type CompetencyCategoryItem,
-  type CompetencyIndicatorItem,
+  type CompetencyRubricText,
   type CourseCompetencyCatalog,
   type CourseMember,
   type CourseMembersResponse,
 } from '@lumibach/types';
+
+const RUBRIC_LEVEL_KEYS = [
+  { key: 'noEvidence', value: 'NO_EVIDENCE' },
+  { key: 'beginning', value: 'BEGINNING' },
+  { key: 'approaching', value: 'APPROACHING' },
+  { key: 'proficient', value: 'PROFICIENT' },
+  { key: 'advanced', value: 'ADVANCED' },
+] as const satisfies { key: keyof CompetencyRubricText; value: string }[];
+
+const EMPTY_RUBRIC: CompetencyRubricText = {
+  noEvidence: null,
+  beginning: null,
+  approaching: null,
+  proficient: null,
+  advanced: null,
+};
 
 type Props = {
   courseId: string;
@@ -69,7 +86,7 @@ export function ActivityCompetencyWorkspace({
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [catalog, setCatalog] = useState<CompetencyCategoryItem[]>([]);
-  const [assigned, setAssigned] = useState<CompetencyIndicatorItem[]>([]);
+  const [assigned, setAssigned] = useState<ActivityCompetencyIndicatorItem[]>([]);
   const [assessments, setAssessments] = useState<CompetencyAssessmentItem[]>([]);
   const [students, setStudents] = useState<CourseMember[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -125,6 +142,10 @@ export function ActivityCompetencyWorkspace({
   }, [query, students]);
 
   const selectedStudent = students.find((student) => student.userId === selectedStudentId) ?? null;
+
+  function handleRubricSaved(indicatorId: string, rubric: CompetencyRubricText) {
+    setAssigned((prev) => prev.map((i) => (i.id === indicatorId ? { ...i, rubric } : i)));
+  }
 
   if (loading) {
     return (
@@ -188,6 +209,7 @@ export function ActivityCompetencyWorkspace({
         catalog={catalog}
         assigned={assigned}
         onSaved={(next) => setAssigned(next)}
+        onRubricSaved={handleRubricSaved}
       />
 
       {assigned.length === 0 ? (
@@ -282,20 +304,25 @@ function IndicatorAssignment({
   catalog,
   assigned,
   onSaved,
+  onRubricSaved,
 }: {
   courseSlug: string;
   activityType: ActivityType;
   activityId: string;
   canManage: boolean;
   catalog: CompetencyCategoryItem[];
-  assigned: CompetencyIndicatorItem[];
-  onSaved: (next: CompetencyIndicatorItem[]) => void;
+  assigned: ActivityCompetencyIndicatorItem[];
+  onSaved: (next: ActivityCompetencyIndicatorItem[]) => void;
+  onRubricSaved: (indicatorId: string, rubric: CompetencyRubricText) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [rubricEditingId, setRubricEditingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const indicators = catalog.flatMap((category) => category.indicators);
+  const indicators = catalog.flatMap((category) =>
+    category.components.flatMap((component) => component.indicators)
+  );
   const hasCatalog = indicators.length > 0;
 
   function startEdit() {
@@ -317,7 +344,17 @@ function IndicatorAssignment({
     startTransition(async () => {
       try {
         await apiClient.put('/competencies/activity', { activityType, activityId, indicatorIds });
-        onSaved(indicators.filter((indicator) => selected.has(indicator.id)));
+        // Chỉ báo vừa gán chưa có rubric riêng cho hoạt động này — GV sửa sau
+        // bằng nút "Sửa rubric". Chỉ báo đã gán từ trước giữ nguyên rubric cũ.
+        const assignedById = new Map(assigned.map((i) => [i.id, i]));
+        onSaved(
+          indicators
+            .filter((indicator) => selected.has(indicator.id))
+            .map(
+              (indicator) =>
+                assignedById.get(indicator.id) ?? { ...indicator, rubric: EMPTY_RUBRIC }
+            )
+        );
         setEditing(false);
         toast.success('Đã cập nhật chỉ báo năng lực cho hoạt động.');
       } catch (err) {
@@ -354,14 +391,41 @@ function IndicatorAssignment({
               .
             </p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {assigned.map((indicator) => (
-                <Badge key={indicator.id} variant="secondary" className="max-w-full text-xs">
-                  <span className="truncate">
-                    {indicator.code ? `${indicator.code} · ` : ''}
-                    {indicator.name}
-                  </span>
-                </Badge>
+                <div key={indicator.id}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="max-w-full text-xs">
+                      <span className="truncate">
+                        {indicator.code ? `${indicator.code} · ` : ''}
+                        {indicator.name}
+                      </span>
+                    </Badge>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRubricEditingId((cur) => (cur === indicator.id ? null : indicator.id))
+                        }
+                        className="text-muted-foreground hover:text-primary text-xs underline"
+                      >
+                        {rubricEditingId === indicator.id ? 'Đóng' : 'Sửa rubric'}
+                      </button>
+                    )}
+                  </div>
+                  {rubricEditingId === indicator.id && (
+                    <RubricForm
+                      activityType={activityType}
+                      activityId={activityId}
+                      indicator={indicator}
+                      onSaved={(rubric) => {
+                        onRubricSaved(indicator.id, rubric);
+                        setRubricEditingId(null);
+                      }}
+                      onCancel={() => setRubricEditingId(null)}
+                    />
+                  )}
+                </div>
               ))}
             </div>
           )
@@ -377,32 +441,44 @@ function IndicatorAssignment({
           <div className="space-y-4">
             <div className="grid max-h-[360px] gap-3 overflow-y-auto pr-1 md:grid-cols-2">
               {catalog
-                .filter((category) => category.indicators.length > 0)
+                .filter((category) => category.components.some((c) => c.indicators.length > 0))
                 .map((category) => (
                   <div key={category.id} className="border-border rounded-lg border p-3">
                     <p className="text-xs font-bold tracking-wide uppercase">{category.name}</p>
-                    <div className="mt-2 space-y-1">
-                      {category.indicators.map((indicator) => (
-                        <label
-                          key={indicator.id}
-                          className="hover:bg-muted/40 flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(indicator.id)}
-                            onChange={() => toggleIndicator(indicator.id)}
-                            className="mt-1"
-                          />
-                          <span className="min-w-0">
-                            {indicator.code && (
-                              <span className="text-primary mr-1.5 font-mono text-xs">
-                                {indicator.code}
-                              </span>
-                            )}
-                            {indicator.name}
-                          </span>
-                        </label>
-                      ))}
+                    <div className="mt-2 space-y-3">
+                      {category.components
+                        .filter((component) => component.indicators.length > 0)
+                        .map((component) => (
+                          <div key={component.id}>
+                            <p className="text-muted-foreground text-[11px] font-semibold">
+                              {component.code ? `${component.code} · ` : ''}
+                              {component.name}
+                            </p>
+                            <div className="space-y-1">
+                              {component.indicators.map((indicator) => (
+                                <label
+                                  key={indicator.id}
+                                  className="hover:bg-muted/40 flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selected.has(indicator.id)}
+                                    onChange={() => toggleIndicator(indicator.id)}
+                                    className="mt-1"
+                                  />
+                                  <span className="min-w-0">
+                                    {indicator.code && (
+                                      <span className="text-primary mr-1.5 font-mono text-xs">
+                                        {indicator.code}
+                                      </span>
+                                    )}
+                                    {indicator.name}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 ))}
@@ -423,6 +499,111 @@ function IndicatorAssignment({
   );
 }
 
+function RubricReference({ rubric }: { rubric: CompetencyRubricText }) {
+  const filled = RUBRIC_LEVEL_KEYS.map(({ key, value }) => ({
+    level: COMPETENCY_LEVELS.find((l) => l.value === value)!,
+    text: rubric[key],
+  })).filter((r) => r.text);
+
+  if (filled.length === 0) return null;
+
+  return (
+    <div className="border-border bg-muted/10 space-y-1.5 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground text-[11px] font-semibold uppercase">
+        Rubric của hoạt động này
+      </p>
+      {filled.map(({ level, text }) => (
+        <p key={level.value} className="text-xs leading-relaxed">
+          <span
+            className="mr-1.5 inline-block rounded px-1.5 py-0.5 font-semibold"
+            style={{ backgroundColor: level.color, color: level.textColor }}
+          >
+            {level.short}
+          </span>
+          {text}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function RubricForm({
+  activityType,
+  activityId,
+  indicator,
+  onSaved,
+  onCancel,
+}: {
+  activityType: ActivityType;
+  activityId: string;
+  indicator: ActivityCompetencyIndicatorItem;
+  onSaved: (rubric: CompetencyRubricText) => void;
+  onCancel: () => void;
+}) {
+  const [values, setValues] = useState<CompetencyRubricText>(indicator.rubric);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
+      await apiClient.patch('/competencies/activity/rubric', {
+        activityType,
+        activityId,
+        indicatorId: indicator.id,
+        rubric: values,
+      });
+      toast.success('Đã lưu rubric.');
+      onSaved(values);
+    } catch (err) {
+      toast.error(fmtError(err, 'Lỗi lưu rubric'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="border-border bg-muted/10 mt-2 space-y-2 rounded-lg border p-3"
+    >
+      <p className="text-muted-foreground text-xs">
+        Rubric riêng cho hoạt động này — chỉ báo có thể dùng rubric khác nhau ở mỗi hoạt động.
+      </p>
+      {RUBRIC_LEVEL_KEYS.map(({ key, value }) => {
+        const level = COMPETENCY_LEVELS.find((l) => l.value === value)!;
+        return (
+          <label key={key} className="block space-y-1">
+            <span
+              className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
+              style={{ backgroundColor: level.color, color: level.textColor }}
+            >
+              {level.label}
+            </span>
+            <textarea
+              value={values[key] ?? ''}
+              onChange={(event) => setValues((prev) => ({ ...prev, [key]: event.target.value }))}
+              rows={2}
+              maxLength={4000}
+              placeholder={`Tiêu chí mức "${level.label}" cho hoạt động này`}
+              className="border-border bg-background w-full rounded-md border px-2 py-1.5 text-sm"
+            />
+          </label>
+        );
+      })}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={saving}>
+          {saving ? 'Đang lưu...' : 'Lưu rubric'}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+          Huỷ
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function GradingBoard({
   activityType,
   activityId,
@@ -434,7 +615,7 @@ function GradingBoard({
   activityType: ActivityType;
   activityId: string;
   student: CourseMember | null;
-  assigned: CompetencyIndicatorItem[];
+  assigned: ActivityCompetencyIndicatorItem[];
   assessments: CompetencyAssessmentItem[];
   onAssessmentsChange: (next: CompetencyAssessmentItem[]) => void;
 }) {
@@ -607,6 +788,8 @@ function GradingBoard({
                   </div>
                 </div>
               </div>
+
+              <RubricReference rubric={indicator.rubric} />
 
               <Input
                 value={row.note}

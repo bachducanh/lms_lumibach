@@ -70,11 +70,16 @@ export class RoomBookingNotifier {
 
       const body = 'Đơn đã được duyệt. Vui lòng gặp Quản trị viên để nhận chìa khoá.';
 
+      // Trỏ thẳng tới bước nhận phòng (nơi có checkbox "đã đọc nội quy" bắt buộc)
+      // thay vì danh sách đơn chung chung — GV từng báo không tìm thấy chỗ xác
+      // nhận nội quy vì phải tự dò qua danh sách → chi tiết đơn → nút "Nhận phòng".
+      const checkinPath = `/rooms/bookings/${booking.id}/checkin`;
+
       await this.notifications.create(nguoiMuon.id, {
         type: 'ROOM_BOOKING_APPROVED',
         title: `Đơn mượn ${booking.roomName} đã được duyệt`,
         body,
-        link: '/rooms/bookings',
+        link: checkinPath,
       });
 
       if (await this.emailBat(nguoiMuon.id)) {
@@ -84,8 +89,8 @@ export class RoomBookingNotifier {
           heading: 'Đơn mượn phòng đã được duyệt',
           intro: body,
           lines: this.dongThongTin(booking),
-          ctaLabel: 'Xem đơn của tôi',
-          ctaPath: '/rooms/bookings',
+          ctaLabel: 'Xác nhận nội quy & nhận phòng',
+          ctaPath: checkinPath,
           extraHtml: ruleContent
             ? `<div style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fafafa">
                  <h3 style="margin:0 0 8px;color:#050E3C;font-size:15px">Nội quy phòng</h3>

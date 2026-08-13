@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@/auth';
 import { cookies, headers } from 'next/headers';
-import { apiServerClient } from '@/lib/api-client';
+import { apiServerClient, orNotFound } from '@/lib/api-client';
 import type { CourseDetail, CourseNavItem, QuizDetail, AttemptListItem } from '@lumibach/types';
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuizButton } from '@/components/features/quiz/DeleteQuizButton';
@@ -112,10 +112,10 @@ export default async function QuizDetailPage({
   const role = session?.user?.role as UserRole | undefined;
 
   const api = apiServerClient(await cookies());
-  const course = await api.get<CourseDetail>(`/courses/${slug}`).catch(() => null);
+  const course = await orNotFound(api.get<CourseDetail>(`/courses/${slug}`));
   if (!course) notFound();
 
-  const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
+  const quiz = await orNotFound(api.get<QuizDetail>(`/quizzes/${quizId}`));
   if (!quiz) notFound();
 
   const isStaff = role ? hasMinRole(role, 'TA') : false;

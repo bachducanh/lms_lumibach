@@ -148,7 +148,7 @@ export default async function CompetencyReportPage({
                 </tr>
               </thead>
               <tbody>
-                {periodGrid.rows.map((row) => {
+                {periodGrid.categoryRollups.map((row) => {
                   const pace = row.learningPace
                     ? LEARNING_PACE_LEVELS.find((l) => l.value === row.learningPace)
                     : null;
@@ -161,8 +161,12 @@ export default async function CompetencyReportPage({
                       <Td>
                         <span className="text-muted-foreground text-xs">{row.categoryName}</span>
                       </Td>
-                      <Td align="right">{row.startLevel ?? '—'}</Td>
-                      <Td align="right">{row.targetLevel ?? '—'}</Td>
+                      <Td align="right">
+                        {row.startLevel !== null ? row.startLevel.toFixed(2) : '—'}
+                      </Td>
+                      <Td align="right">
+                        {row.targetLevel !== null ? row.targetLevel.toFixed(2) : '—'}
+                      </Td>
                       <Td align="right">
                         {row.completedIndicators}/{row.totalIndicators}
                       </Td>
