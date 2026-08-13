@@ -59,6 +59,11 @@ Thumbs.db
 # Logs
 logs/
 *.log
+# ...nhưng `logs/` ở trên cũng khớp thư mục route Next.js của tab "Logs" trong
+# báo cáo khoá học, khiến trang đó không bao giờ được commit: ở máy dev thì vào
+# được, còn bản production dựng từ git lại 404. Mở lại đúng đường dẫn nguồn.
+!apps/web/src/app/**/reports/logs/
+!apps/web/src/app/**/reports/logs/**
 
 # Uploads (dev)
 uploads/

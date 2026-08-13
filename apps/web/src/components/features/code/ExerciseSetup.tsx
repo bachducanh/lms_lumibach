@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Loader2, ChevronDown, Settings2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { SimpleSelect } from '@/components/ui/select';
 import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';
 import { TestCaseBuilder } from './TestCaseBuilder';
 import { apiClient } from '@/lib/api-client';
@@ -146,20 +147,16 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
             <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Trạng thái
             </label>
-            <div className="relative">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ExerciseStatus)}
-                className="border-input bg-background focus:ring-ring cursor-pointer appearance-none rounded-md border py-1.5 pr-8 pl-3 text-sm focus:ring-1 focus:outline-none"
-              >
-                {(Object.keys(STATUS_LABEL) as ExerciseStatus[]).map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2" />
-            </div>
+            <SimpleSelect
+              size="sm"
+              aria-label="Trạng thái"
+              value={status}
+              onValueChange={(v) => setStatus(v as ExerciseStatus)}
+              options={(Object.keys(STATUS_LABEL) as ExerciseStatus[]).map((s) => ({
+                value: s,
+                label: STATUS_LABEL[s],
+              }))}
+            />
           </div>
 
           {exercise.language !== 'WEB' && (

@@ -5,6 +5,8 @@ import { cookies } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail } from '@lumibach/types';
 import { ArrowLeft } from 'lucide-react';
+import { hasMinRole } from '@/lib/permissions';
+import type { UserRole } from '@lumibach/db';
 import { NewTopicForm } from './NewTopicForm';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -14,8 +16,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: `Tạo chủ đề mới — ${course?.name ?? 'Khoá học'}` };
 }
 
-export default async function NewTopicPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function NewTopicPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ forumId?: string }>;
+}) {
   const { slug } = await params;
+  const { forumId } = await searchParams;
   const session = await auth();
   if (!session?.user) redirect('/login');
 
@@ -27,7 +36,7 @@ export default async function NewTopicPage({ params }: { params: Promise<{ slug:
     <div className="max-w-2xl space-y-5">
       <div className="flex items-center gap-2">
         <Link
-          href={`/courses/${slug}/forum`}
+          href={`/courses/${slug}/forum${forumId ? `?forumId=${forumId}` : ''}`}
           className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -37,7 +46,12 @@ export default async function NewTopicPage({ params }: { params: Promise<{ slug:
 
       <h1 className="text-xl font-bold">Tạo chủ đề mới</h1>
 
-      <NewTopicForm courseId={course.id} slug={slug} />
+      <NewTopicForm
+        courseId={course.id}
+        slug={slug}
+        forumId={forumId}
+        canUploadImages={hasMinRole(session.user.role as UserRole | undefined, 'TEACHER')}
+      />
     </div>
   );
 }

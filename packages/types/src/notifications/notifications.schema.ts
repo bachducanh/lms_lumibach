@@ -6,6 +6,8 @@ import { z } from 'zod';
  * Notification.createdAt: ISO datetime string (BE Date → JSON.stringify).
  */
 
+// Phải khớp đúng enum NotificationType trong schema.prisma — thêm giá trị ở một
+// nơi mà quên nơi kia thì type-check của apps/api sẽ đỏ.
 export const NotificationTypeSchema = z.enum([
   'QUIZ_GRADED',
   'ASSIGNMENT_GRADED',
@@ -14,6 +16,11 @@ export const NotificationTypeSchema = z.enum([
   'ASSIGNMENT_DUE_SOON',
   'ANNOUNCEMENT',
   'FORUM_REPLY',
+  'ROOM_BOOKING_SUBMITTED',
+  'ROOM_BOOKING_APPROVED',
+  'ROOM_BOOKING_REJECTED',
+  'ROOM_BOOKING_CHECKED_OUT',
+  'ROOM_BOOKING_NO_SHOW',
 ]);
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 

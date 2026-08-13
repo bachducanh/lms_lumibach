@@ -194,6 +194,27 @@ endpoint từ chối mọi lần gọi** và thùng rác không bao giờ đư�
 
 Tương tự với `/api/cron/due-soon` (nhắc hạn nộp bài) nếu muốn bật.
 
+### Cron của Phòng chức năng
+
+Hai việc này gọi thẳng vào **API cổng 4000**, không qua web như hai cron ở trên —
+nghiệp vụ phòng (chuyển trạng thái, thông báo, nhật ký) nằm ở `apps/api`, đi
+vòng qua web chỉ thêm một chặng mà không được gì. Vẫn dùng chung `CRON_SECRET`.
+
+```cron
+*/15 * * * * curl -s -X POST -H "x-cron-secret: GIÁ_TRỊ_THẬT" http://localhost:4000/api/v1/room-jobs/no-show >> /var/log/lumibach-cron.log 2>&1
+30 3 * * * curl -s -X POST -H "x-cron-secret: GIÁ_TRỊ_THẬT" http://localhost:4000/api/v1/room-jobs/purge-photos >> /var/log/lumibach-cron.log 2>&1
+```
+
+- **`no-show`** đánh dấu đơn đã duyệt mà quá giờ kết thúc vẫn chưa ai nhận
+  phòng, rồi báo cho người mượn. Mốc là giờ KẾT THÚC chứ không phải giờ bắt
+  đầu — người mượn được phép nhận muộn cho tới hết khung giờ, đánh dấu sớm hơn
+  sẽ huỷ oan đơn của người đến trễ. Chạy 15 phút một lần là đủ; chạy thưa hơn
+  thì phòng bị giữ chỗ lâu hơn mức cần.
+- **`purge-photos`** dọn ảnh minh chứng quá hạn lưu giữ (mặc định 12 tháng, đặt
+  riêng được cho từng phòng). **Chỉ xoá file ảnh, giữ nguyên bản ghi bàn giao** —
+  số liệu kiểm đếm và mô tả tình trạng vẫn cần tra cứu. Đặt thời hạn `0` nghĩa
+  là giữ vĩnh viễn, không phải xoá sạch.
+
 ### Sao lưu
 
 Dữ liệu **không** nằm trong container — sao lưu ở hai nơi:

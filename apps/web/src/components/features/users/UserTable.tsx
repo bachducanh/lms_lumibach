@@ -50,6 +50,8 @@ export function UserTable({ users }: { users: User[] }) {
   const [localUsers, setLocalUsers] = useState(users);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState<{ name: string; password: string } | null>(null);
+  // Người đang được đổi mật khẩu; mở hộp thoại cho nhập tay hoặc chọn ngẫu nhiên.
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     setLocalUsers(users);
@@ -86,13 +88,15 @@ export function UserTable({ users }: { users: User[] }) {
     });
   }
 
-  function handleResetPassword(userId: string, name: string) {
+  /** `password` bỏ trống = để hệ thống sinh ngẫu nhiên. */
+  function handleResetPassword(userId: string, name: string, password?: string) {
     startTransition(async () => {
       try {
         const data = await apiClient.post<{ password: string }>(
           `/users/${userId}/reset-password`,
-          {}
+          password ? { password } : {}
         );
+        setResetTarget(null);
         setNewPassword({ name, password: data.password });
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Lỗi đặt lại mật khẩu');
@@ -132,6 +136,15 @@ export function UserTable({ users }: { users: User[] }) {
             </div>
           </div>
         </div>
+      )}
+
+      {resetTarget && (
+        <ResetPasswordDialog
+          name={resetTarget.name}
+          pending={pending}
+          onCancel={() => setResetTarget(null)}
+          onSubmit={(pwd) => handleResetPassword(resetTarget.id, resetTarget.name, pwd)}
+        />
       )}
 
       {newPassword && (
@@ -212,7 +225,7 @@ export function UserTable({ users }: { users: User[] }) {
                         variant="ghost"
                         size="sm"
                         disabled={pending}
-                        onClick={() => handleResetPassword(user.id, displayName)}
+                        onClick={() => setResetTarget({ id: user.id, name: displayName })}
                       >
                         Đổi MK
                       </Button>
@@ -234,5 +247,101 @@ export function UserTable({ users }: { users: User[] }) {
         </table>
       </div>
     </>
+  );
+}
+
+/**
+ * Hộp thoại đổi mật khẩu cho một tài khoản.
+ *
+ * Hai lối dùng: tự gõ mật khẩu (đọc cho học sinh ngay tại lớp) hoặc để hệ thống
+ * sinh ngẫu nhiên như trước. Ô nhập để `type="text"` có nút ẩn/hiện — quản trị
+ * viên cần đọc lại đúng chuỗi mình vừa đặt, che đi thì dễ gõ sai.
+ */
+function ResetPasswordDialog({
+  name,
+  pending,
+  onCancel,
+  onSubmit,
+}: {
+  name: string;
+  pending: boolean;
+  onCancel: () => void;
+  onSubmit: (password?: string) => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [visible, setVisible] = useState(true);
+
+  const tooShort = password.length > 0 && password.length < 8;
+
+  function submitManual(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) return;
+    onSubmit(password);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <form
+        onSubmit={submitManual}
+        className="bg-card ring-foreground/10 w-full max-w-sm space-y-4 rounded-xl p-6 shadow-xl ring-1"
+      >
+        <div>
+          <p className="font-medium">Đổi mật khẩu</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Tài khoản <strong>{name}</strong>
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="new-password" className="text-sm font-medium">
+            Mật khẩu mới
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="new-password"
+              autoFocus
+              type={visible ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Tối thiểu 8 ký tự"
+              autoComplete="new-password"
+              className="border-input bg-background focus:ring-ring h-9 w-full rounded-md border px-3 font-mono text-sm focus:ring-1 focus:outline-none"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setVisible((v) => !v)}
+              className="shrink-0"
+            >
+              {visible ? 'Ẩn' : 'Hiện'}
+            </Button>
+          </div>
+          {tooShort && <p className="text-destructive text-xs">Mật khẩu tối thiểu 8 ký tự.</p>}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Button type="submit" disabled={pending || password.length < 8}>
+            {pending ? 'Đang lưu...' : 'Đặt mật khẩu này'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={() => onSubmit(undefined)}
+          >
+            Tạo mật khẩu ngẫu nhiên
+          </Button>
+          <Button type="button" variant="ghost" disabled={pending} onClick={onCancel}>
+            Huỷ
+          </Button>
+        </div>
+
+        <p className="text-muted-foreground text-xs">
+          Người dùng sẽ đăng nhập bằng mật khẩu này ngay lập tức. Phiên đang đăng nhập của họ không
+          bị đóng.
+        </p>
+      </form>
+    </div>
   );
 }

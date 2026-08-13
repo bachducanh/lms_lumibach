@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
+import { TRANG_THAI_OPTIONS, VAI_TRO_OPTIONS } from './CreateUserForm';
 import type { UserRole, UserStatus } from '@lumibach/db';
 
 const schema = z.object({
@@ -40,9 +42,6 @@ type UserData = {
   status: UserStatus;
   phone: string | null;
 };
-
-const selectClass =
-  'h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-card';
 
 export function EditUserForm({ user }: { user: UserData }) {
   const router = useRouter();
@@ -94,12 +93,13 @@ export function EditUserForm({ user }: { user: UserData }) {
             <FormItem>
               <FormLabel>Vai trò</FormLabel>
               <FormControl>
-                <select className={selectClass} value={field.value} onChange={field.onChange}>
-                  <option value="STUDENT">Học sinh</option>
-                  <option value="TA">Trợ giảng (TA)</option>
-                  <option value="TEACHER">Giáo viên</option>
-                  <option value="ADMIN">Quản trị viên</option>
-                </select>
+                <SimpleSelect
+                  className="w-full"
+                  aria-label="Vai trò"
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  options={VAI_TRO_OPTIONS}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -112,12 +112,13 @@ export function EditUserForm({ user }: { user: UserData }) {
             <FormItem>
               <FormLabel>Trạng thái</FormLabel>
               <FormControl>
-                <select className={selectClass} value={field.value} onChange={field.onChange}>
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="INACTIVE">Không hoạt động</option>
-                  <option value="SUSPENDED">Tạm khóa</option>
-                  <option value="PENDING">Chờ xác thực</option>
-                </select>
+                <SimpleSelect
+                  className="w-full"
+                  aria-label="Trạng thái"
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  options={TRANG_THAI_OPTIONS}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

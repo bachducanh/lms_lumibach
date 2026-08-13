@@ -15,8 +15,9 @@ function escapeCell(value: CsvCellValue): string {
 
 export function exportRowsToCsv({ rows, fileName }: { rows: CsvCellValue[][]; fileName: string }) {
   const content = rows.map((row) => row.map(escapeCell).join(',')).join('\r\n');
-  // ﻿ = BOM
-  const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8;' });
+  // \uFEFF = BOM, bat buoc de Excel doc dung tieng Viet. Viet dang escape
+  // thay vi ky tu that: ky tu BOM tho vo hinh trong editor va bi linter chan.
+  const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

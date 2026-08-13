@@ -26,6 +26,25 @@ export const UpdateUserBodySchema = z.object({
 });
 export type UpdateUserBody = z.infer<typeof UpdateUserBodySchema>;
 
+// ── Admin: đặt lại mật khẩu ────────────────────────────────────
+
+/**
+ * Bỏ trống `password` thì hệ thống sinh mật khẩu ngẫu nhiên (hành vi cũ).
+ * Truyền vào thì dùng đúng chuỗi đó — dành cho lúc giáo viên đọc mật khẩu
+ * trực tiếp cho học sinh ở lớp, chuỗi ngẫu nhiên khó đọc và khó gõ.
+ */
+export const ResetPasswordBodySchema = z.object({
+  password: z
+    .string()
+    .min(8, 'Mật khẩu tối thiểu 8 ký tự')
+    // bcrypt chỉ băm 72 byte đầu và cắt phần dư trong im lặng — hai mật khẩu
+    // dài khác nhau có thể cùng đăng nhập được. Đo theo BYTE vì tiếng Việt có
+    // dấu tốn 2-3 byte mỗi ký tự.
+    .refine((v) => new TextEncoder().encode(v).length <= 72, 'Mật khẩu quá dài (tối đa 72 byte)')
+    .optional(),
+});
+export type ResetPasswordBody = z.infer<typeof ResetPasswordBodySchema>;
+
 // ── Update own profile ─────────────────────────────────────────
 
 export const UpdateProfileBodySchema = z.object({

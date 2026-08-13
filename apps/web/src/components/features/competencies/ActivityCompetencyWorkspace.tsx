@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SimpleSelect } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Loader2, Pencil, Save, Search, Target, Users } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -548,25 +549,25 @@ function GradingBoard({
               <div className="grid gap-3 xl:grid-cols-[minmax(220px,280px)_1fr]">
                 <label className="space-y-1">
                   <span className="text-muted-foreground text-xs font-medium">Loại minh chứng</span>
-                  <select
+                  <SimpleSelect
+                    className="w-full"
+                    aria-label="Loại minh chứng"
                     value={row.evidenceType}
-                    onChange={(event) => {
-                      setRow(indicator.id, { evidenceType: event.target.value });
-                      void saveRow(indicator.id, { evidenceType: event.target.value });
+                    onValueChange={(v) => {
+                      setRow(indicator.id, { evidenceType: v });
+                      void saveRow(indicator.id, { evidenceType: v });
                     }}
-                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                  >
-                    <option value="">Chọn loại minh chứng</option>
-                    {EVIDENCE_CATEGORIES.map((category) => (
-                      <optgroup key={category.key} label={category.label}>
-                        {category.types.map((type) => (
-                          <option key={type.key} value={type.key}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                    options={[
+                      { value: '', label: 'Chọn loại minh chứng' },
+                      ...EVIDENCE_CATEGORIES.flatMap((category) =>
+                        category.types.map((type) => ({
+                          value: type.key,
+                          label: type.label,
+                          group: category.label,
+                        }))
+                      ),
+                    ]}
+                  />
                 </label>
 
                 <div className="space-y-1">

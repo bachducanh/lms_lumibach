@@ -16,6 +16,7 @@ import {
   CreateCompetencyCategoryBodySchema,
   CreateCompetencyIndicatorBodySchema,
   CreateCompetencyPeriodBodySchema,
+  ImportCompetenciesBodySchema,
   SetActivityCompetenciesBodySchema,
   UpdateCompetencyCategoryBodySchema,
   UpdateCompetencyIndicatorBodySchema,
@@ -26,6 +27,7 @@ import {
   type CreateCompetencyCategoryBody,
   type CreateCompetencyIndicatorBody,
   type CreateCompetencyPeriodBody,
+  type ImportCompetenciesBody,
   type SetActivityCompetenciesBody,
   type UpdateCompetencyCategoryBody,
   type UpdateCompetencyIndicatorBody,
@@ -75,6 +77,17 @@ export class CompetenciesController {
     @Body(zodBody(CreateCompetencyCategoryBodySchema)) body: CreateCompetencyCategoryBody
   ) {
     return this.service.createCategory(user, courseId, body);
+  }
+
+  @Post('courses/:courseId/competencies/import')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Import danh mục + chỉ báo năng lực từ file Excel' })
+  importCatalog(
+    @CurrentUser() user: AuthUser,
+    @Param('courseId') courseId: string,
+    @Body(zodBody(ImportCompetenciesBodySchema)) body: ImportCompetenciesBody
+  ) {
+    return this.service.importCatalog(user, courseId, body);
   }
 
   @Patch('competencies/categories/:id')

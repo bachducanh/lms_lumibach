@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SimpleSelect } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, Trash2, UserPlus, Shuffle, X, Pencil, Layers } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -358,18 +359,16 @@ function GroupCard({
         {canManage && available.length > 0 && (
           <div className="flex items-center gap-2">
             <UserPlus className="text-muted-foreground h-4 w-4" />
-            <select
+            <SimpleSelect
+              className="flex-1"
+              aria-label="Thêm thành viên vào nhóm"
               value={addId}
-              onChange={(e) => addMember(e.target.value)}
-              className="border-input bg-background h-9 flex-1 rounded-md border px-2 text-sm"
-            >
-              <option value="">+ Thêm thành viên…</option>
-              {available.map((s) => (
-                <option key={s.userId} value={s.userId}>
-                  {displayName(s.user)}
-                </option>
-              ))}
-            </select>
+              onValueChange={addMember}
+              options={[
+                { value: '', label: '+ Thêm thành viên…' },
+                ...available.map((s) => ({ value: s.userId, label: displayName(s.user) })),
+              ]}
+            />
           </div>
         )}
       </CardContent>

@@ -5,12 +5,18 @@ import {
   CreateTopicBodySchema,
   UpdateTopicBodySchema,
   CreatePostBodySchema,
+  CreateForumBodySchema,
   MarkAnswerBodySchema,
+  UpdateForumBodySchema,
+  UpdatePostBodySchema,
   type ForumTopicsQuery,
   type CreateTopicBody,
   type UpdateTopicBody,
   type CreatePostBody,
+  type CreateForumBody,
   type MarkAnswerBody,
+  type UpdateForumBody,
+  type UpdatePostBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
@@ -28,7 +34,41 @@ export class ForumController {
     @CurrentUser() user: AuthUser,
     @Query(zodQuery(ForumTopicsQuerySchema)) query: ForumTopicsQuery
   ) {
-    return this.service.listTopics(user, query.courseId);
+    return this.service.listTopics(user, query.courseId, query.forumId);
+  }
+
+  // ── Diễn đàn (hoạt động trong chương) ────────────────────────
+
+  @Get('courses/:courseId')
+  @ApiOperation({ summary: 'Diễn đàn của khoá học, nhóm theo chương' })
+  listForums(@CurrentUser() user: AuthUser, @Param('courseId') courseId: string) {
+    return this.service.listForums(user, courseId);
+  }
+
+  @Get('forums/:id')
+  @ApiOperation({ summary: 'Chi tiết một diễn đàn' })
+  getForum(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.getForum(user, id);
+  }
+
+  @Post('forums')
+  @ApiOperation({ summary: 'Tạo diễn đàn trong một chương (TEACHER+)' })
+  createForum(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(CreateForumBodySchema)) body: CreateForumBody
+  ) {
+    return this.service.createForum(user, body);
+  }
+
+  @Patch('forums/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Sửa tên / mô tả diễn đàn (TEACHER+)' })
+  updateForum(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(UpdateForumBodySchema)) body: UpdateForumBody
+  ) {
+    return this.service.updateForum(user, id, body);
   }
 
   @Get('topics/:id')
@@ -71,6 +111,17 @@ export class ForumController {
     @Body(zodBody(CreatePostBodySchema)) body: CreatePostBody
   ) {
     return this.service.createPost(user, body);
+  }
+
+  @Patch('posts/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Sửa nội dung bài viết / trả lời (tác giả hoặc TEACHER+)' })
+  updatePost(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(UpdatePostBodySchema)) body: UpdatePostBody
+  ) {
+    return this.service.updatePost(user, id, body);
   }
 
   @Patch('posts/:id/answer')

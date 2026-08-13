@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Input } from '@/components/ui/input';
+import { SimpleSelect } from '@/components/ui/select';
 
 type Props = {
   q: string;
@@ -39,28 +40,32 @@ export function UserFilterBar({ q, role, status }: Props) {
           );
         }}
       />
-      <select
-        className="border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-card h-8 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
+      <SimpleSelect
+        size="sm"
+        aria-label="Lọc theo vai trò"
         value={role}
-        onChange={(e) => navigate({ role: e.target.value })}
-      >
-        <option value="">Tất cả vai trò</option>
-        <option value="ADMIN">Admin</option>
-        <option value="TEACHER">Giáo viên</option>
-        <option value="TA">Trợ giảng (TA)</option>
-        <option value="STUDENT">Học sinh</option>
-      </select>
-      <select
-        className="border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-card h-8 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
+        onValueChange={(v) => navigate({ role: v })}
+        options={[
+          { value: '', label: 'Tất cả vai trò' },
+          { value: 'ADMIN', label: 'Quản trị viên' },
+          { value: 'TEACHER', label: 'Giáo viên' },
+          { value: 'TA', label: 'Trợ giảng (TA)' },
+          { value: 'STUDENT', label: 'Học sinh' },
+        ]}
+      />
+      <SimpleSelect
+        size="sm"
+        aria-label="Lọc theo trạng thái"
         value={status}
-        onChange={(e) => navigate({ status: e.target.value })}
-      >
-        <option value="">Tất cả trạng thái</option>
-        <option value="ACTIVE">Hoạt động</option>
-        <option value="INACTIVE">Không hoạt động</option>
-        <option value="SUSPENDED">Tạm khóa</option>
-        <option value="PENDING">Chờ xác thực</option>
-      </select>
+        onValueChange={(v) => navigate({ status: v })}
+        options={[
+          { value: '', label: 'Tất cả trạng thái' },
+          { value: 'ACTIVE', label: 'Hoạt động' },
+          { value: 'INACTIVE', label: 'Không hoạt động' },
+          { value: 'SUSPENDED', label: 'Tạm khoá' },
+          { value: 'PENDING', label: 'Chờ xác thực' },
+        ]}
+      />
     </div>
   );
 }

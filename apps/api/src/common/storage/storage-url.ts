@@ -13,6 +13,10 @@ const TRUSTED_BASES = [MEDIA_BASE, APP_BASE].filter(Boolean);
 export const KNOWN_BUCKETS = new Set([
   process.env.MINIO_BUCKET_AVATARS ?? 'lumibach-avatars',
   process.env.MINIO_BUCKET_FILES ?? 'lumibach-files',
+  // Ảnh minh chứng bàn giao. Có mặt ở đây để StorageService dọn được file khi
+  // job xoá ảnh cũ chạy — KHÔNG có nghĩa là bucket này được phục vụ công khai;
+  // nó chỉ ra ngoài qua endpoint /handover-photos/:id/file có kiểm quyền.
+  process.env.MINIO_BUCKET_HANDOVERS ?? 'lumibach-handovers',
 ]);
 
 /**

@@ -3,11 +3,14 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
-import type { ForumPost } from '@lumibach/types';
+import type { ForumPost, ForumReply } from '@lumibach/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Trash2, Reply, CornerDownRight } from 'lucide-react';
+import { CheckCircle2, Trash2, Reply, CornerDownRight, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { toRichHtml } from '@/lib/utils';
 import { ReplyForm } from './ReplyForm';
+import { PostEditor } from './PostEditor';
 
 function timeAgo(date: Date | string) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -39,20 +42,27 @@ export function PostCard({
   post,
   currentUserId,
   canManage,
+  canEditOthers,
+  canUploadImages,
   slug,
   topicId,
 }: {
   post: ForumPost;
   currentUserId: string;
   canManage: boolean;
+  /** Quản lý / giáo viên / trợ giảng sửa được nội dung do người khác viết. */
+  canEditOthers: boolean;
+  canUploadImages: boolean;
   slug: string;
   topicId: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showReply, setShowReply] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const canDelete = canManage || post.authorId === currentUserId;
+  const canEdit = canEditOthers || post.authorId === currentUserId;
 
   function handleMarkAnswer() {
     startTransition(async () => {
@@ -119,9 +129,16 @@ export function PostCard({
             <span className="text-muted-foreground text-xs">{timeAgo(post.createdAt)}</span>
           </div>
 
-          <pre className="text-foreground/90 font-sans text-sm leading-relaxed whitespace-pre-wrap">
-            {post.content}
-          </pre>
+          {editing ? (
+            <PostEditor
+              postId={post.id}
+              initialContent={post.content}
+              canUploadImages={canUploadImages}
+              onDone={() => setEditing(false)}
+            />
+          ) : (
+            <RichTextView html={toRichHtml(post.content)} className="text-foreground/90 text-sm" />
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-1">
@@ -134,6 +151,17 @@ export function PostCard({
               <Reply className="mr-1 h-3.5 w-3.5" />
               Trả lời
             </Button>
+            {canEdit && !editing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground h-7 text-xs"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="mr-1 h-3.5 w-3.5" />
+                Sửa
+              </Button>
+            )}
             {canManage && (
               <Button
                 variant="ghost"
@@ -166,6 +194,7 @@ export function PostCard({
                 topicId={topicId}
                 slug={slug}
                 parentId={post.id}
+                canUploadImages={canUploadImages}
                 onDone={() => setShowReply(false)}
               />
             </div>
@@ -175,29 +204,67 @@ export function PostCard({
           {post.replies.length > 0 && (
             <div className="border-border mt-3 space-y-3 border-l-2 pl-3">
               {post.replies.map((reply) => (
-                <div key={reply.id} className="flex gap-3">
-                  <CornerDownRight className="text-muted-foreground/40 mt-1 h-3.5 w-3.5 shrink-0" />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold">{authorName(reply.author)}</span>
-                      {roleLabel(reply.author.role) && (
-                        <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px]">
-                          {roleLabel(reply.author.role)}
-                        </span>
-                      )}
-                      <span className="text-muted-foreground ml-auto text-xs">
-                        {timeAgo(reply.createdAt)}
-                      </span>
-                    </div>
-                    <pre className="text-foreground/80 font-sans text-sm leading-relaxed whitespace-pre-wrap">
-                      {reply.content}
-                    </pre>
-                  </div>
-                </div>
+                <ReplyRow
+                  key={reply.id}
+                  reply={reply}
+                  canEdit={canEditOthers || reply.authorId === currentUserId}
+                  canUploadImages={canUploadImages}
+                />
               ))}
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Một trả lời lồng bên trong bài viết ────────────────────────
+
+function ReplyRow({
+  reply,
+  canEdit,
+  canUploadImages,
+}: {
+  reply: ForumReply;
+  canEdit: boolean;
+  canUploadImages: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  return (
+    <div className="flex gap-3">
+      <CornerDownRight className="text-muted-foreground/40 mt-1 h-3.5 w-3.5 shrink-0" />
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold">{authorName(reply.author)}</span>
+          {roleLabel(reply.author.role) && (
+            <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px]">
+              {roleLabel(reply.author.role)}
+            </span>
+          )}
+          <span className="text-muted-foreground ml-auto text-xs">{timeAgo(reply.createdAt)}</span>
+          {canEdit && !editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="text-muted-foreground hover:text-foreground"
+              title="Sửa trả lời"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+        {editing ? (
+          <PostEditor
+            postId={reply.id}
+            initialContent={reply.content}
+            canUploadImages={canUploadImages}
+            onDone={() => setEditing(false)}
+          />
+        ) : (
+          <RichTextView html={toRichHtml(reply.content)} className="text-foreground/80 text-sm" />
+        )}
       </div>
     </div>
   );

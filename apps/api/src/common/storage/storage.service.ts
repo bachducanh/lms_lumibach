@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import * as Minio from 'minio';
 import { KNOWN_BUCKETS, toStoragePath } from './storage-url';
 
@@ -123,5 +124,40 @@ export class StorageService {
       }
     }
     return removed;
+  }
+
+  async getObject(bucket: string, objectName: string) {
+    if (!this.client) {
+      throw new ServiceUnavailableException('Storage chưa được cấu hình.');
+    }
+    return this.client.getObject(bucket, objectName);
+  }
+
+  /**
+   * Nhân bản một object sang key mới trong cùng bucket, trả về URL của bản sao.
+   *
+   * Dùng khi sao chép hoạt động sang khoá học khác. KHÔNG dùng chung một object
+   * cho hai bản ghi: lúc xoá bản này, StorageService sẽ gỡ file khỏi MinIO và
+   * làm hỏng luôn bản kia — bản ghi vẫn còn nhưng file thì mất.
+   *
+   * Trả `null` (kèm log) nếu URL không thuộc storage của mình, storage chưa cấu
+   * hình, hoặc copy hỏng. Bên gọi tự quyết định: bỏ file hay huỷ cả thao tác.
+   */
+  async copyByUrl(url: string | null | undefined, keyPrefix: string): Promise<string | null> {
+    const parsed = this.parseUrl(url);
+    if (!parsed || !this.client) return null;
+
+    // Giữ nguyên phần đuôi mở rộng để trình duyệt đoán đúng kiểu file.
+    const dot = parsed.objectName.lastIndexOf('.');
+    const ext = dot > -1 ? parsed.objectName.slice(dot) : '';
+    const target = `${keyPrefix}/${randomUUID()}${ext}`;
+
+    try {
+      await this.client.copyObject(parsed.bucket, target, `/${parsed.bucket}/${parsed.objectName}`);
+      return `/storage/${parsed.bucket}/${target}`;
+    } catch (err) {
+      this.logger.warn(`Không nhân bản được file "${parsed.objectName}": ${String(err)}`);
+      return null;
+    }
   }
 }

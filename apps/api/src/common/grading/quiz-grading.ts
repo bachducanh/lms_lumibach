@@ -61,6 +61,48 @@ function parseJsonRecord(raw: string | null | undefined): Record<string, string>
   }
 }
 
+/**
+ * Vế phải của một cặp ghép nối. `content` là JSON `{ left, right }`; nội dung
+ * hỏng thì trả chuỗi rỗng để cặp đó không bao giờ được tính đúng.
+ */
+function matchingRightText(content: string): string {
+  try {
+    const parsed = JSON.parse(content) as { right?: unknown };
+    return typeof parsed.right === 'string' ? parsed.right.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Bỏ dấu tiếng Việt + hạ chữ thường, để so nhãn không phụ thuộc cách gõ. */
+function normalizeLabel(raw: string): string {
+  return raw.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').trim().toLowerCase();
+}
+
+const TRUE_LABELS = new Set(['dung', 'true', 'yes', 'y', 't', 'co', 'x']);
+const FALSE_LABELS = new Set(['sai', 'false', 'no', 'n', 'f', 'khong']);
+
+/**
+ * Đáp án của câu Đúng/Sai: `true` nghĩa là "Đúng", `null` nghĩa là đề chưa đánh
+ * dấu đáp án nào.
+ *
+ * Trước đây so thẳng `content === 'Đúng'`, nên chỉ cần nhãn khác đi một chút —
+ * câu nhập từ nguồn khác ghi "True", hay dư một khoảng trắng — là mọi bài chọn
+ * "Đúng" đều bị 0 điểm mà không ai biết. Giờ so theo nhãn đã chuẩn hoá, và nếu
+ * vẫn không nhận ra thì dựa vào vị trí: ô đầu tiên luôn là "Đúng".
+ */
+function trueFalseCorrectValue(options: GradableOption[]): boolean | null {
+  const correct = options.find((o) => o.isCorrect);
+  if (!correct) return null;
+
+  const label = normalizeLabel(correct.content);
+  if (TRUE_LABELS.has(label)) return true;
+  if (FALSE_LABELS.has(label)) return false;
+
+  const sorted = [...options].sort((a, b) => a.position - b.position);
+  return sorted[0]?.id === correct.id;
+}
+
 function ratioScore(correct: number, total: number, points: number): number {
   return total > 0 ? Math.round((correct / total) * points * 10) / 10 : 0;
 }
@@ -91,13 +133,23 @@ export function gradeOptionAnswer(
   }
 
   if (type === 'TRUE_FALSE') {
-    const correctIsDong = options.find((o) => o.content === 'Đúng')?.isCorrect ?? false;
-    const isCorrect = (answer?.booleanAnswer ?? null) === correctIsDong;
+    const correctIsDong = trueFalseCorrectValue(options);
+    // Chưa trả lời, hoặc đề không xác định được đáp án → không cho điểm.
+    if (correctIsDong === null || answer?.booleanAnswer == null) {
+      return { isCorrect: false, score: 0 };
+    }
+    const isCorrect = answer.booleanAnswer === correctIsDong;
     return { isCorrect, score: isCorrect ? points : 0 };
   }
 
   if (type === 'TRUE_FALSE_MULTI') {
-    const studentDong = new Set(parseJsonArray<string>(answer?.selectedOptionIds, []));
+    // Bỏ trắng KHÁC "chọn Sai cho tất cả". Học sinh bấm Sai thì client vẫn lưu
+    // một dòng Answer với mảng rỗng; không đụng vào câu thì không có dòng nào.
+    // Không phân biệt hai ca này thì bỏ trắng vẫn ăn điểm mọi ý đáp án là Sai.
+    if (!answer || answer.selectedOptionIds === null) {
+      return { isCorrect: false, score: 0 };
+    }
+    const studentDong = new Set(parseJsonArray<string>(answer.selectedOptionIds, []));
     let correct = 0;
     for (const opt of options) {
       if (studentDong.has(opt.id) === opt.isCorrect) correct++;
@@ -122,12 +174,23 @@ export function gradeOptionAnswer(
   }
 
   if (type === 'MATCHING') {
-    // textAnswer = JSON map { leftOptionId: rightOptionId }. Mỗi option giữ một cặp,
-    // nên ghép đúng khi vế phải được chọn thuộc chính option đó.
+    // textAnswer = JSON map { leftOptionId: rightOptionId }. Mỗi option giữ một cặp
+    // left/right trong `content`.
+    //
+    // So sánh theo NỘI DUNG vế phải chứ không theo id option. Giáo viên rất hay
+    // đặt trùng vế phải cho nhiều vế trái (nhiều mục cùng đáp án). Cột phải chỉ
+    // hiện chữ, nên hai thẻ trùng chữ là không phân biệt được — học sinh ghép
+    // đúng nghĩa nhưng bốc trúng thẻ của option kia thì id lệch và bị 0 điểm.
     const map = parseJsonRecord(answer?.textAnswer);
+    const rightTextById = new Map(options.map((o) => [o.id, matchingRightText(o.content)]));
+
     let correct = 0;
     for (const opt of options) {
-      if (map[opt.id] === opt.id) correct++;
+      const chosenId = map[opt.id];
+      if (!chosenId) continue;
+      const expected = rightTextById.get(opt.id) ?? '';
+      const chosen = rightTextById.get(chosenId) ?? '';
+      if (expected !== '' && chosen === expected) correct++;
     }
     return {
       isCorrect: options.length > 0 && correct === options.length,
@@ -188,7 +251,11 @@ export async function regradeQuizAttempts(prisma: PrismaClient, quizId: string):
 
       if (isManualQuestionType(type) || isCodeAutoQuestionType(type)) {
         if (stored?.score != null) totalScore += stored.score;
-        else if (isManualQuestionType(type)) needsManualGrading = true;
+        // Chưa có điểm: câu tự luận thì chờ giáo viên chấm, còn câu code thì
+        // điểm null nghĩa là lúc nộp Judge0 không gọi được. Cả hai đều phải giữ
+        // bài ở trạng thái chờ — chấm lại mà đóng bài luôn thì lần sập dịch vụ
+        // đó biến thành 0 điểm vĩnh viễn.
+        else needsManualGrading = true;
         continue;
       }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -12,8 +12,9 @@ import Highlight from '@tiptap/extension-highlight';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import { TableKit } from '@tiptap/extension-table';
-import ImageExt from '@tiptap/extension-image';
 import type { Editor } from '@tiptap/react';
+import type { EditorView } from '@tiptap/pm/view';
+import { ResizableImage } from './extensions/ResizableImage';
 import {
   Bold,
   Italic,
@@ -53,9 +54,13 @@ import { toast } from 'sonner';
 
 // ─── Preset palettes ──────────────────────────────────────────────────────────
 
+// Lưu ý: KHÔNG dùng #000000 cho ô "Đen". Ở chế độ tối, globals.css chủ động
+// trung hoà mọi inline color đen tuyền (rác dán từ Word) về màu chữ của theme,
+// nên chọn đen thật sẽ có cảm giác "bấm mà không ăn". #111827 nhìn vẫn là đen
+// trên nền sáng nhưng không bị luật đó bắt.
 const TEXT_COLORS = [
   { value: null, label: 'Màu mặc định' },
-  { value: '#000000', label: 'Đen' },
+  { value: '#111827', label: 'Đen' },
   { value: '#374151', label: 'Xám đậm' },
   { value: '#6b7280', label: 'Xám' },
   { value: '#dc2626', label: 'Đỏ' },
@@ -81,6 +86,11 @@ const HIGHLIGHT_COLORS = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Các file ảnh trong một clipboard / drag payload. */
+function imageFilesOf(data: DataTransfer | null | undefined): File[] {
+  return Array.from(data?.files ?? []).filter((f) => f.type.startsWith('image/'));
+}
 
 function countWords(html: string): number {
   const text = html
@@ -389,6 +399,11 @@ type Props = {
   className?: string;
   editable?: boolean;
   compact?: boolean;
+  /**
+   * Cho phép chèn / dán ảnh. Tắt ở những ô mà người viết là học sinh —
+   * endpoint upload chỉ mở cho GV trở lên nên nút sẽ luôn báo lỗi.
+   */
+  allowImages?: boolean;
 };
 
 export function RichTextEditor({
@@ -398,10 +413,50 @@ export function RichTextEditor({
   className,
   editable = true,
   compact = false,
+  allowImages = true,
 }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [promptDialog, openPrompt] = usePromptDialog();
+
+  /** Upload một file ảnh, trả về URL public hoặc null nếu hỏng. */
+  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    setImageUploading(true);
+    try {
+      const res = await fetch('/api/upload/editor-image', { method: 'POST', body: fd });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (data.url) return data.url;
+      toast.error(data.error ?? 'Upload ảnh thất bại');
+    } catch {
+      toast.error('Upload ảnh thất bại');
+    } finally {
+      setImageUploading(false);
+    }
+    return null;
+  }, []);
+
+  /**
+   * Ảnh dán / kéo-thả vào editor. Clipboard của Snipping Tool, Print Screen hay
+   * "copy image" trên trình duyệt chỉ chứa file ảnh, không có URL nào để chèn —
+   * phải tự upload rồi mới chèn được. Nếu clipboard còn kèm chữ (dán cả đoạn
+   * Word) thì nhường lại cho TipTap để không mất phần văn bản.
+   */
+  const insertImageFiles = useCallback(
+    (view: EditorView, files: File[]) => {
+      void (async () => {
+        for (const file of files) {
+          const url = await uploadImage(file);
+          if (!url) continue;
+          const node = view.state.schema.nodes.image?.create({ src: url });
+          if (!node) continue;
+          view.dispatch(view.state.tr.replaceSelectionWith(node).scrollIntoView());
+        }
+      })();
+    },
+    [uploadImage]
+  );
 
   const editor = useEditor({
     extensions: [
@@ -426,7 +481,7 @@ export function RichTextEditor({
       TableKit.configure({
         table: { resizable: true, lastColumnResizable: true, renderWrapper: true },
       }),
-      ImageExt.configure({ HTMLAttributes: { class: 'rounded-md max-w-full' } }),
+      ResizableImage.configure({ HTMLAttributes: { class: 'rounded-md max-w-full' } }),
     ],
     content,
     editable,
@@ -437,10 +492,29 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: !editable
-          ? 'prose prose-sm dark:prose-invert max-w-none focus:outline-none px-0 py-0 text-sm leading-relaxed'
+          ? 'max-w-none focus:outline-none px-0 py-0 text-sm leading-relaxed'
           : compact
-            ? 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[160px] px-4 py-3 text-sm leading-relaxed'
-            : 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[460px] px-6 py-5 text-[15px] leading-relaxed',
+            ? 'max-w-none focus:outline-none min-h-[160px] px-4 py-3 text-sm leading-relaxed'
+            : 'max-w-none focus:outline-none min-h-[460px] px-6 py-5 text-[15px] leading-relaxed',
+      },
+      handlePaste(view, event) {
+        if (!allowImages || !editable) return false;
+        const files = imageFilesOf(event.clipboardData);
+        if (files.length === 0) return false;
+        // Còn chữ trong clipboard → để TipTap dán bình thường.
+        const html = event.clipboardData?.getData('text/html') ?? '';
+        if (html.replace(/<[^>]*>/g, '').trim().length > 0) return false;
+        event.preventDefault();
+        insertImageFiles(view, files);
+        return true;
+      },
+      handleDrop(view, event) {
+        if (!allowImages || !editable) return false;
+        const files = imageFilesOf((event as DragEvent).dataTransfer);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        insertImageFiles(view, files);
+        return true;
       },
     },
   });
@@ -473,25 +547,14 @@ export function RichTextEditor({
   }
 
   async function handleImageFileUpload(file: File) {
-    setImageUploading(true);
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await fetch('/api/upload/editor-image', { method: 'POST', body: fd });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (data.url) ed.chain().focus().setImage({ src: data.url }).run();
-      else toast.error(data.error ?? 'Upload thất bại');
-    } catch {
-      toast.error('Upload thất bại');
-    } finally {
-      setImageUploading(false);
-    }
+    const url = await uploadImage(file);
+    if (url) ed.chain().focus().setImage({ src: url }).run();
   }
 
   // read-only view
   if (!editable) {
     return (
-      <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
+      <div className={cn('max-w-none', className)}>
         <EditorContent editor={editor} />
       </div>
     );
@@ -720,46 +783,48 @@ export function RichTextEditor({
           >
             <LinkIcon className="h-4 w-4" />
           </TBtn>
-          <Dropdown
-            trigger={(open) => (
-              <button
-                type="button"
-                title="Chèn hình ảnh"
-                className={cn(
-                  'flex h-7 items-center gap-0.5 rounded px-1.5 text-sm transition-colors',
-                  imageUploading
-                    ? 'cursor-wait opacity-50'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  open && 'bg-muted text-foreground'
-                )}
-              >
-                <ImagePlus className="h-4 w-4" />
-              </button>
-            )}
-          >
-            {(close) => (
-              <div className="min-w-40 py-1 text-sm">
-                <MenuItem
-                  onClick={() => {
-                    imageInputRef.current?.click();
-                    close();
-                  }}
-                  icon={<Upload className="h-3.5 w-3.5" />}
+          {allowImages && (
+            <Dropdown
+              trigger={(open) => (
+                <button
+                  type="button"
+                  title="Chèn hình ảnh (hoặc dán trực tiếp bằng Ctrl+V)"
+                  className={cn(
+                    'flex h-7 items-center gap-0.5 rounded px-1.5 text-sm transition-colors',
+                    imageUploading
+                      ? 'cursor-wait opacity-50'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    open && 'bg-muted text-foreground'
+                  )}
                 >
-                  {imageUploading ? 'Đang upload...' : 'Từ máy tính'}
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    handleInsertImage();
-                    close();
-                  }}
-                  icon={<Link2 className="h-3.5 w-3.5" />}
-                >
-                  Nhập URL
-                </MenuItem>
-              </div>
-            )}
-          </Dropdown>
+                  <ImagePlus className="h-4 w-4" />
+                </button>
+              )}
+            >
+              {(close) => (
+                <div className="min-w-40 py-1 text-sm">
+                  <MenuItem
+                    onClick={() => {
+                      imageInputRef.current?.click();
+                      close();
+                    }}
+                    icon={<Upload className="h-3.5 w-3.5" />}
+                  >
+                    {imageUploading ? 'Đang upload...' : 'Từ máy tính'}
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      handleInsertImage();
+                      close();
+                    }}
+                    icon={<Link2 className="h-3.5 w-3.5" />}
+                  >
+                    Nhập URL
+                  </MenuItem>
+                </div>
+              )}
+            </Dropdown>
+          )}
           <TBtn title="Nhúng video YouTube" onClick={handleInsertYoutube}>
             <PlaySquare className="h-4 w-4" />
           </TBtn>

@@ -9,6 +9,9 @@ import {
   ModulesQuerySchema,
   NavItemsQuerySchema,
   UpdateModuleItemGroupSettingsBodySchema,
+  ContentBankQuerySchema,
+  CopyContentBodySchema,
+  ShareContentBodySchema,
   type CreateModuleBody,
   type UpdateModuleBody,
   type ReorderModulesBody,
@@ -17,16 +20,56 @@ import {
   type ModulesQuery,
   type NavItemsQuery,
   type UpdateModuleItemGroupSettingsBody,
+  type ContentBankQuery,
+  type CopyContentBody,
+  type ShareContentBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { ModulesService } from './modules.service';
+import { ContentBankService } from './content-bank.service';
 
 @ApiTags('modules')
 @Controller({ path: 'modules', version: '1' })
 export class ModulesController {
-  constructor(private readonly service: ModulesService) {}
+  constructor(
+    private readonly service: ModulesService,
+    private readonly bank: ContentBankService
+  ) {}
+
+  // ── Ngân hàng nội dung theo danh mục khoá học ─────────────────
+  // Khai TRƯỚC @Get(':id')-kiểu route để "bank" không bị bắt làm id.
+
+  @Get('bank')
+  @ApiOperation({ summary: 'Hoạt động được chia sẻ từ khoá khác cùng nhánh danh mục' })
+  listBank(
+    @CurrentUser() user: AuthUser,
+    @Query(zodQuery(ContentBankQuerySchema)) query: ContentBankQuery
+  ) {
+    return this.bank.list(user, query);
+  }
+
+  @Patch('items/:itemId/share')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Bật / tắt chia sẻ hoạt động ra ngân hàng nội dung' })
+  shareItem(
+    @CurrentUser() user: AuthUser,
+    @Param('itemId') itemId: string,
+    @Body(zodBody(ShareContentBodySchema)) body: ShareContentBody
+  ) {
+    return this.bank.setShared(user, itemId, body.shared);
+  }
+
+  @Post('items/:itemId/copy')
+  @ApiOperation({ summary: 'Nhân bản hoạt động từ ngân hàng vào một chương' })
+  copyItem(
+    @CurrentUser() user: AuthUser,
+    @Param('itemId') itemId: string,
+    @Body(zodBody(CopyContentBodySchema)) body: CopyContentBody
+  ) {
+    return this.bank.copy(user, itemId, body);
+  }
 
   @Get()
   @ApiOperation({ summary: 'Danh sách chương của khoá học' })

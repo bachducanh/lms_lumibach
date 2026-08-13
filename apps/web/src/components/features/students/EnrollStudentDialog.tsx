@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -69,19 +70,16 @@ export function EnrollStudentDialog({ studentId, studentName, courses, onEnrolle
         </p>
 
         <form onSubmit={handleSubmit} className="mt-1 space-y-4">
-          <select
+          <SimpleSelect
+            className="w-full"
+            aria-label="Chọn khoá học"
             value={courseId}
-            onChange={(e) => setCourseId(e.target.value)}
-            className="border-input bg-background focus:ring-ring h-9 w-full rounded-md border px-3 text-sm focus:ring-2 focus:outline-none"
-            required
-          >
-            <option value="">— Chọn khóa học —</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setCourseId}
+            options={[
+              { value: '', label: '— Chọn khoá học —' },
+              ...courses.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

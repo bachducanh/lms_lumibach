@@ -4,6 +4,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { ACTION_LABELS_VI } from '@/lib/activity-labels';
+import { SimpleSelect } from '@/components/ui/select';
 import type { ActivityAction } from '@lumibach/db';
 
 type StudentOption = { id: string; name: string };
@@ -58,49 +59,40 @@ export function ActivityLogFilter({
 
       {/* Student select (course log) */}
       {showUser && students && (
-        <select
+        <SimpleSelect
+          aria-label="Lọc theo học sinh"
           value={val('userId')}
-          onChange={(e) => update('userId', e.target.value)}
-          className="border-input bg-background focus:ring-ring h-9 rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
-        >
-          <option value="">— Tất cả học sinh —</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update('userId', v)}
+          options={[
+            { value: '', label: '— Tất cả học sinh —' },
+            ...students.map((s) => ({ value: s.id, label: s.name })),
+          ]}
+        />
       )}
 
       {/* Course select (admin system log) */}
       {showCourse && courses && (
-        <select
+        <SimpleSelect
+          aria-label="Lọc theo khoá học"
           value={val('courseId')}
-          onChange={(e) => update('courseId', e.target.value)}
-          className="border-input bg-background focus:ring-ring h-9 rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
-        >
-          <option value="">— Tất cả khóa học —</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update('courseId', v)}
+          options={[
+            { value: '', label: '— Tất cả khoá học —' },
+            ...courses.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
       )}
 
       {/* Action type */}
-      <select
+      <SimpleSelect
+        aria-label="Lọc theo hoạt động"
         value={val('action')}
-        onChange={(e) => update('action', e.target.value)}
-        className="border-input bg-background focus:ring-ring h-9 rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
-      >
-        <option value="">— Tất cả hoạt động —</option>
-        {ALL_ACTIONS.map((a) => (
-          <option key={a} value={a}>
-            {ACTION_LABELS_VI[a]}
-          </option>
-        ))}
-      </select>
+        onValueChange={(v) => update('action', v)}
+        options={[
+          { value: '', label: '— Tất cả hoạt động —' },
+          ...ALL_ACTIONS.map((a) => ({ value: a, label: ACTION_LABELS_VI[a] })),
+        ]}
+      />
 
       {/* Date from */}
       <input

@@ -45,6 +45,7 @@ enum ModuleItemType {
   QUIZ
   CODE_EXERCISE
   PRACTICE_TEST
+  FORUM
   FILE
   EXTERNAL_URL
 }
@@ -157,6 +158,11 @@ enum NotificationType {
   ASSIGNMENT_DUE_SOON
   ANNOUNCEMENT
   FORUM_REPLY
+  ROOM_BOOKING_SUBMITTED // gửi cho admin khi có đơn mượn phòng mới
+  ROOM_BOOKING_APPROVED
+  ROOM_BOOKING_REJECTED
+  ROOM_BOOKING_CHECKED_OUT // nhắc người mượn mang trả chìa khoá
+  ROOM_BOOKING_NO_SHOW
 }
 
 enum ActivityAction {
@@ -188,6 +194,47 @@ enum GroupMode {
   NO_GROUPS // Không có nhóm
   SEPARATE_GROUPS // Nhóm riêng biệt (chỉ thấy nhóm mình)
   VISIBLE_GROUPS // Nhóm hiện hữu (thấy nhóm khác, chỉ xem)
+}
+
+// Vòng đời một đơn mượn phòng / mượn thiết bị. Chuyển trạng thái đi qua state
+// machine tường minh ở apps/api/src/modules/rooms/booking-state.ts — đừng gán
+// status trực tiếp ở service.
+enum RoomBookingStatus {
+  PENDING // Chờ duyệt (VẪN GIỮ CHỖ trên lịch)
+  APPROVED // Đã duyệt, chờ đến giờ nhận phòng
+  CHECKED_IN // Đã nhận phòng/thiết bị
+  CHECKED_OUT // Đã trả, chờ admin xác nhận nhận lại chìa khoá
+  COMPLETED // Hoàn tất
+  REJECTED // Bị từ chối (bắt buộc có lý do)
+  CANCELLED // Người mượn tự huỷ
+  NO_SHOW // Quá giờ mà không nhận phòng (job cron đánh dấu)
+}
+
+// Kiểu dữ liệu của một trường bàn giao động do admin cấu hình.
+enum HandoverFieldType {
+  NUMBER
+  TEXT
+  SELECT
+  BOOLEAN
+}
+
+// Trường bàn giao áp dụng ở lượt nào.
+enum HandoverFieldApplies {
+  CHECKIN
+  CHECKOUT
+  BOTH
+}
+
+enum HandoverType {
+  CHECKIN
+  CHECKOUT
+}
+
+// Loại đơn mà một lượt bàn giao gắn vào. Xem ghi chú ở model Handover về lý do
+// không dùng khoá ngoại đa hình.
+enum BookableType {
+  ROOM
+  EQUIPMENT
 }
 
 // ============================================================
@@ -242,6 +289,17 @@ model User {
   competencyLevelTargets CompetencyLevelTarget[]
   groupMemberships       GroupMember[]
   portfolioReflections   PortfolioReflection[]
+
+  // Phòng chức năng — chỉ là quan hệ ngược, KHÔNG thêm cột nào vào bảng User.
+  staffProfile              StaffProfile?
+  roomRuleEdits             RoomRule[]         @relation("RoomRuleEditor")
+  roomBookings              RoomBooking[]      @relation("RoomBookingOwner")
+  roomBookingApprovals      RoomBooking[]      @relation("RoomBookingApprover")
+  roomKeyReturnConfirms     RoomBooking[]      @relation("RoomBookingKeyReturner")
+  equipmentBookings         EquipmentBooking[] @relation("EquipmentBookingOwner")
+  equipmentBookingApprovals EquipmentBooking[] @relation("EquipmentBookingApprover")
+  equipmentReturnConfirms   EquipmentBooking[] @relation("EquipmentBookingReturner")
+  handoversPerformed        Handover[]         @relation("HandoverPerformer")
 
   @@index([email])
   @@index([username])
@@ -338,6 +396,9 @@ model Course {
   enrollmentCode String?      @unique
   groupMode      GroupMode    @default(NO_GROUPS)
 
+  // Khi vào khoá học, các chương đổ xuống sẵn (true) hay chỉ hiện tên (false).
+  modulesExpandedByDefault Boolean @default(true)
+
   startDate DateTime?
   endDate   DateTime?
   settings  Json?
@@ -365,6 +426,7 @@ model Course {
   questionCategories          QuestionCategory[]
   exercises                   CodeExercise[]
   activityLogs                ActivityLog[]
+  forums                      Forum[]
   forumTopics                 ForumTopic[]
   competencyCategories        CompetencyCategory[]
   competencyAssessmentPeriods CompetencyAssessmentPeriod[]
@@ -472,6 +534,13 @@ model ModuleItem {
   quizId         String?
   codeExerciseId String?
   practiceTestId String?
+  forumId        String?
+
+  // Đưa hoạt động vào ngân hàng nội dung của danh mục khoá học: khoá khác cùng
+  // nhánh danh mục xem được và nhân bản về chương của mình. Cờ đặt ở ModuleItem
+  // chứ không ở từng bảng nội dung vì đây mới là "một hoạt động trong khoá" —
+  // và Lesson thì không có courseId để tự biết mình thuộc khoá nào.
+  sharedToCategory Boolean @default(false)
 
   // Cài đặt nhóm theo từng hoạt động (Moodle-style)
   // NO_GROUPS: mọi HS xem được. VISIBLE_GROUPS: chỉ HS thuộc visibleGroups xem.
@@ -485,6 +554,7 @@ model ModuleItem {
   quiz          Quiz?                  @relation(fields: [quizId], references: [id], onDelete: SetNull)
   codeExercise  CodeExercise?          @relation(fields: [codeExerciseId], references: [id], onDelete: SetNull)
   practiceTest  PracticeTest?          @relation(fields: [practiceTestId], references: [id], onDelete: SetNull)
+  forum         Forum?                 @relation(fields: [forumId], references: [id], onDelete: SetNull)
   grouping      Grouping?              @relation(fields: [groupingId], references: [id], onDelete: SetNull)
   completions   ModuleItemCompletion[]
   visibleGroups ModuleItemGroup[]
@@ -492,6 +562,8 @@ model ModuleItem {
   @@index([moduleId])
   @@index([moduleId, position])
   @@index([groupingId])
+  @@index([forumId])
+  @@index([sharedToCategory])
 }
 
 // Bảng nối ModuleItem ↔ Group cho chế độ VISIBLE_GROUPS (chỉ nhóm được liệt kê có thể xem).
@@ -783,6 +855,12 @@ model Question {
   explanation String?      @db.Text
   points      Float        @default(1)
 
+  // Đưa câu hỏi vào ngân hàng chung của danh mục khoá học: khoá khác cùng nhánh
+  // danh mục xem được và sao chép về kho riêng. Chỉ là cờ hiển thị — câu hỏi
+  // vẫn thuộc về khoá đã tạo ra nó, nơi khác dùng thì nhận một BẢN SAO nên sửa
+  // đề bên này không làm đổi đề lớp bên kia giữa chừng.
+  sharedToCategory Boolean @default(false)
+
   createdBy String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -805,6 +883,7 @@ model Question {
   @@index([categoryId])
   @@index([type])
   @@index([deletedAt])
+  @@index([sharedToCategory])
 }
 
 model QuestionTestCase {
@@ -1158,9 +1237,29 @@ model ActivityLog {
 // DISCUSSION FORUM
 // ============================================================
 
+// Diễn đàn — một hoạt động học tập, gắn vào chương qua ModuleItem giống
+// assignment/quiz. Chủ đề (ForumTopic) nằm trong một diễn đàn; forumId để
+// null nghĩa là chủ đề cũ ở cấp khoá học, tạo trước khi có model này.
+model Forum {
+  id          String  @id @default(cuid())
+  courseId    String
+  title       String
+  description String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  topics      ForumTopic[]
+  moduleItems ModuleItem[]
+
+  @@index([courseId])
+}
+
 model ForumTopic {
   id        String   @id @default(cuid())
   courseId  String
+  forumId   String?
   authorId  String
   title     String
   isPinned  Boolean  @default(false)
@@ -1171,11 +1270,13 @@ model ForumTopic {
   updatedAt DateTime @updatedAt
 
   course Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  forum  Forum?      @relation(fields: [forumId], references: [id], onDelete: Cascade)
   author User        @relation("ForumTopicAuthor", fields: [authorId], references: [id])
   group  Group?      @relation(fields: [groupId], references: [id], onDelete: SetNull)
   posts  ForumPost[]
 
   @@index([courseId])
+  @@index([forumId])
   @@index([authorId])
   @@index([courseId, createdAt])
   @@index([groupId])
@@ -1432,4 +1533,317 @@ model PortfolioReflection {
   student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([courseId, studentId])
+}
+
+// ============================================================
+// PHÒNG CHỨC NĂNG (đăng ký mượn phòng & mượn thiết bị)
+// ============================================================
+//
+// Quy ước thời gian của RIÊNG module này: mọi mốc thời gian khai
+// `@db.Timestamptz(3)` thay vì `TIMESTAMP(3)` mặc định của Prisma. Lý do bắt
+// buộc: ràng buộc chống trùng lịch dùng `tstzrange(...)` ở tầng CSDL, mà hàm đó
+// chỉ nhận cột có múi giờ. Đổi lại, mọi so sánh giờ đều tường minh là UTC —
+// tránh lặp lại lỗi lệch 7 tiếng đã gặp ở phần giờ mở/đóng hoạt động.
+
+// Hồ sơ công tác do chính giáo viên tự điền. Tách khỏi bảng User để không đụng
+// vào bảng dùng chung của toàn hệ thống; quan hệ khai ở đây KHÔNG thêm cột nào
+// vào bảng User.
+model StaffProfile {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  staffCode  String? // mã nhân viên
+  department String? // tổ chuyên môn
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([staffCode])
+  @@index([department])
+}
+
+model FunctionRoom {
+  id          String  @id @default(cuid())
+  name        String
+  code        String  @unique // dùng làm URL: /rooms/tin-hoc-1
+  location    String?
+  capacity    Int?
+  description String? @db.Text
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  rules             RoomRule[]
+  handoverFields    HandoverField[]
+  setting           RoomBookingSetting?
+  bookings          RoomBooking[]
+  equipment         Equipment[]
+  equipmentBookings EquipmentBooking[]
+
+  @@index([isActive, sortOrder])
+  @@index([deletedAt])
+}
+
+// Nội quy phòng — bảng CHỈ GHI THÊM (append-only). Sửa nội quy = tạo bản ghi
+// version mới, không UPDATE bản cũ; nhờ vậy đơn đã duyệt vẫn tra ngược được
+// đúng bản nội quy người mượn đã chấp nhận. Vì thế model này không có updatedAt.
+model RoomRule {
+  id          String @id @default(cuid())
+  roomId      String
+  content     String @db.Text // HTML từ TipTap
+  version     Int
+  updatedById String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  room      FunctionRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  updatedBy User         @relation("RoomRuleEditor", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@unique([roomId, version])
+  @@index([roomId, createdAt])
+}
+
+// Trường bàn giao động do admin cấu hình. roomId = null → áp dụng cho mọi phòng.
+model HandoverField {
+  id         String               @id @default(cuid())
+  roomId     String?
+  label      String
+  key        String // định danh dùng trong Handover.fieldValues
+  dataType   HandoverFieldType
+  options    Json? // danh sách lựa chọn khi dataType = SELECT
+  isRequired Boolean              @default(false)
+  appliesTo  HandoverFieldApplies @default(BOTH)
+  sortOrder  Int                  @default(0)
+  isActive   Boolean              @default(true)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  room FunctionRoom? @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, key])
+  @@index([roomId, isActive, sortOrder])
+}
+
+// Tham số đặt phòng. roomId = null → bản mặc định toàn hệ thống; bản của từng
+// phòng ghi đè bản mặc định.
+model RoomBookingSetting {
+  id     String  @id @default(cuid())
+  roomId String? @unique
+
+  openTime             String  @default("07:00") // HH:mm theo giờ Việt Nam
+  closeTime            String  @default("17:30")
+  slotStepMinutes      Int     @default(30)
+  minDurationMinutes   Int     @default(30)
+  maxDurationMinutes   Int     @default(300)
+  maxAdvanceDays       Int     @default(30)
+  allowWeekend         Boolean @default(true)
+  checkinWindowMinutes Int     @default(15)
+  minPhotosPerHandover Int     @default(1)
+  maxPhotosPerHandover Int     @default(5)
+  photoRetentionMonths Int     @default(12)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  room FunctionRoom? @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+// Đơn mượn phòng.
+//
+// Chống trùng giờ: ràng buộc EXCLUDE USING gist khai bằng SQL tay trong file
+// migration (Prisma không mô hình hoá được) — khoảng thời gian nửa mở
+// [start, end) và chỉ chặn giữa các trạng thái còn giữ chỗ.
+model RoomBooking {
+  id     String @id @default(cuid())
+  roomId String
+  userId String
+
+  // Chụp lại tại thời điểm nộp đơn, KHÔNG join ngược StaffProfile khi hiển thị:
+  // hồ sơ đổi về sau không được phép làm sai lệch đơn đã nộp.
+  fullName   String
+  staffCode  String?
+  department String?
+  reason     String  @db.Text
+
+  startAt DateTime @db.Timestamptz(3)
+  endAt   DateTime @db.Timestamptz(3)
+
+  status RoomBookingStatus @default(PENDING)
+
+  // Phiên bản nội quy chốt tại thời điểm DUYỆT đơn. Admin sửa nội quy sau đó
+  // không ảnh hưởng tới đơn này.
+  ruleVersionAccepted Int?
+
+  approvedById String?
+  approvedAt   DateTime? @db.Timestamptz(3)
+  rejectReason String?   @db.Text
+
+  keyReturnedAt   DateTime? @db.Timestamptz(3)
+  keyReturnedById String?
+
+  // Bật khi số liệu bàn giao lúc trả lệch so với lúc nhận.
+  hasDiscrepancy  Boolean @default(false)
+  adminReviewNote String? @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  room          FunctionRoom @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  user          User         @relation("RoomBookingOwner", fields: [userId], references: [id], onDelete: Restrict)
+  approvedBy    User?        @relation("RoomBookingApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  keyReturnedBy User?        @relation("RoomBookingKeyReturner", fields: [keyReturnedById], references: [id], onDelete: SetNull)
+  handovers     Handover[]
+
+  @@index([roomId, startAt])
+  @@index([userId, startAt])
+  @@index([status])
+  @@index([department])
+}
+
+model Equipment {
+  id            String  @id @default(cuid())
+  roomId        String
+  name          String
+  code          String?
+  unit          String  @default("cái")
+  totalQuantity Int
+  description   String? @db.Text
+  isActive      Boolean @default(true)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt DateTime? @db.Timestamptz(3)
+
+  room  FunctionRoom           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  items EquipmentBookingItem[]
+
+  @@index([roomId, isActive])
+  @@index([deletedAt])
+}
+
+// Đơn mượn thiết bị. KHÔNG chiếm slot phòng trên lịch (giáo viên mang thiết bị
+// đi lớp khác được); ràng buộc là tổng số lượng thiết bị trong các khung giờ
+// giao nhau, kiểm ở tầng service bằng khoá bi quan.
+model EquipmentBooking {
+  id     String @id @default(cuid())
+  roomId String
+  userId String
+
+  fullName   String
+  staffCode  String?
+  department String?
+  reason     String  @db.Text
+
+  startAt DateTime @db.Timestamptz(3)
+  endAt   DateTime @db.Timestamptz(3)
+
+  status RoomBookingStatus @default(PENDING)
+
+  ruleVersionAccepted Int?
+
+  approvedById String?
+  approvedAt   DateTime? @db.Timestamptz(3)
+  rejectReason String?   @db.Text
+
+  returnedAt      DateTime? @db.Timestamptz(3)
+  returnedById    String?
+  hasDiscrepancy  Boolean   @default(false)
+  adminReviewNote String?   @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  room       FunctionRoom           @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  user       User                   @relation("EquipmentBookingOwner", fields: [userId], references: [id], onDelete: Restrict)
+  approvedBy User?                  @relation("EquipmentBookingApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  returnedBy User?                  @relation("EquipmentBookingReturner", fields: [returnedById], references: [id], onDelete: SetNull)
+  items      EquipmentBookingItem[]
+  handovers  Handover[]
+
+  @@index([roomId, startAt])
+  @@index([userId, startAt])
+  @@index([status])
+}
+
+model EquipmentBookingItem {
+  id                 String @id @default(cuid())
+  equipmentBookingId String
+  equipmentId        String
+  quantity           Int
+
+  booking   EquipmentBooking @relation(fields: [equipmentBookingId], references: [id], onDelete: Cascade)
+  equipment Equipment        @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+
+  @@unique([equipmentBookingId, equipmentId])
+  @@index([equipmentId])
+}
+
+// Một lượt bàn giao (nhận hoặc trả).
+//
+// Đề xuất ban đầu là khoá ngoại đa hình (bookableType + bookableId). Prisma
+// không mô hình hoá được kiểu đó — mất `include` và mất ràng buộc khoá ngoại
+// thật. Thay bằng HAI khoá ngoại nullable kèm CHECK "đúng một cái khác NULL"
+// (khai trong migration.sql). Cột bookableType giữ lại để lọc cho gọn.
+model Handover {
+  id           String       @id @default(cuid())
+  bookableType BookableType
+  type         HandoverType
+
+  roomBookingId      String?
+  equipmentBookingId String?
+
+  performedById String
+  performedAt   DateTime @default(now()) @db.Timestamptz(3) // LUÔN là giờ server
+
+  ruleAccepted  Boolean @default(false)
+  conditionNote String  @db.Text
+  fieldValues   Json // { [HandoverField.key]: string | number | boolean }
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  roomBooking      RoomBooking?      @relation(fields: [roomBookingId], references: [id], onDelete: Cascade)
+  equipmentBooking EquipmentBooking? @relation(fields: [equipmentBookingId], references: [id], onDelete: Cascade)
+  performedBy      User              @relation("HandoverPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+  photos           HandoverPhoto[]
+
+  // Mỗi đơn chỉ có tối đa 1 lượt nhận và 1 lượt trả.
+  @@unique([roomBookingId, type])
+  @@unique([equipmentBookingId, type])
+  @@index([performedById])
+  @@index([performedAt])
+}
+
+// Ảnh minh chứng. Không có URL công khai: file nằm ở bucket riêng, chỉ phục vụ
+// qua endpoint có kiểm quyền (chủ đơn + admin).
+model HandoverPhoto {
+  id         String @id @default(cuid())
+  handoverId String
+
+  bucket     String
+  objectName String
+  mime       String
+  size       Int
+  sha256     String // phát hiện ảnh trùng / bị chỉnh sửa
+  width      Int
+  height     Int
+
+  // Giờ client tự khai — CHỈ để đối chiếu, không bao giờ dùng làm mốc nghiệp vụ.
+  capturedAtClient DateTime? @db.Timestamptz(3)
+  serverReceivedAt DateTime  @default(now()) @db.Timestamptz(3)
+  clockSkewSeconds Int? // lệch giữa giờ client và giờ server
+  flagged          Boolean   @default(false) // lệch quá ngưỡng → admin xem lại
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+
+  @@index([handoverId])
+  @@index([sha256])
+  @@index([createdAt])
 }

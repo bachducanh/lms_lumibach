@@ -34,6 +34,8 @@ function navItemUrl(item: CourseNavItem, slug: string): string {
   if (item.type === 'QUIZ' && item.quizId) return `/courses/${slug}/quizzes/${item.quizId}`;
   if (item.type === 'PRACTICE_TEST' && item.practiceTestId)
     return `/courses/${slug}/practice-tests/${item.practiceTestId}`;
+  if (item.type === 'FORUM' && item.forumId)
+    return `/courses/${slug}/forum?forumId=${item.forumId}`;
   if (item.type === 'CODE_EXERCISE' && item.codeExerciseId) {
     return item.codeExercise?.language === 'SCRATCH'
       ? `/courses/${slug}/scratch/${item.codeExerciseId}`

@@ -21,6 +21,9 @@ import type {
   CreateCompetencyCategoryBody,
   CreateCompetencyIndicatorBody,
   CreateCompetencyPeriodBody,
+  ImportCompetenciesBody,
+  ImportCompetenciesResult,
+  ImportCompetencyRow,
   SetActivityCompetenciesBody,
   UpdateCompetencyCategoryBody,
   UpdateCompetencyIndicatorBody,
@@ -194,6 +197,124 @@ export class CompetenciesService {
       position: created.position,
       indicators: [],
     };
+  }
+
+  /**
+   * Import hàng loạt từ Excel.
+   *
+   * Chạy được nhiều lần trên cùng một file: danh mục trùng tên thì dùng lại,
+   * chỉ báo trùng mã (hoặc trùng nội dung khi không có mã) trong cùng danh mục
+   * thì bỏ qua. Nhờ vậy giáo viên bổ sung vài dòng vào file cũ rồi đẩy lên lại
+   * mà không sinh bản sao.
+   */
+  async importCatalog(
+    user: AuthUser,
+    courseId: string,
+    body: ImportCompetenciesBody
+  ): Promise<ImportCompetenciesResult> {
+    await this.assertManage(user, courseId);
+
+    const result: ImportCompetenciesResult = {
+      categoriesCreated: 0,
+      categoriesReused: 0,
+      indicatorsCreated: 0,
+      indicatorsSkipped: 0,
+      errors: [],
+    };
+
+    // Gom theo danh mục, giữ nguyên thứ tự xuất hiện trong file.
+    const grouped = new Map<
+      string,
+      { name: string; description?: string; rows: { row: number; data: ImportCompetencyRow }[] }
+    >();
+    body.rows.forEach((data, index) => {
+      const name = data.categoryName.trim();
+      const key = name.toLocaleLowerCase('vi');
+      const group = grouped.get(key) ?? { name, description: data.categoryDescription, rows: [] };
+      // +2: bỏ qua dòng tiêu đề, và Excel đánh số từ 1.
+      group.rows.push({ row: index + 2, data });
+      if (!group.description && data.categoryDescription)
+        group.description = data.categoryDescription;
+      grouped.set(key, group);
+    });
+
+    const existingCategories = await this.prisma.competencyCategory.findMany({
+      where: { courseId },
+      select: { id: true, name: true },
+    });
+    const categoryByName = new Map(
+      existingCategories.map((c) => [c.name.trim().toLocaleLowerCase('vi'), c.id])
+    );
+
+    let nextPosition =
+      ((
+        await this.prisma.competencyCategory.findFirst({
+          where: { courseId },
+          orderBy: { position: 'desc' },
+          select: { position: true },
+        })
+      )?.position ?? -1) + 1;
+
+    for (const [key, group] of grouped) {
+      let categoryId = categoryByName.get(key);
+      if (categoryId) {
+        result.categoriesReused += 1;
+      } else {
+        const created = await this.prisma.competencyCategory.create({
+          data: {
+            courseId,
+            name: group.name,
+            description: group.description?.trim() || null,
+            position: nextPosition++,
+          },
+          select: { id: true },
+        });
+        categoryId = created.id;
+        categoryByName.set(key, categoryId);
+        result.categoriesCreated += 1;
+      }
+
+      const existingIndicators = await this.prisma.competencyIndicator.findMany({
+        where: { categoryId },
+        select: { code: true, name: true, position: true },
+      });
+      const seenCodes = new Set(
+        existingIndicators
+          .map((i) => i.code?.trim().toLocaleLowerCase('vi'))
+          .filter((v): v is string => !!v)
+      );
+      const seenNames = new Set(
+        existingIndicators.map((i) => i.name.trim().toLocaleLowerCase('vi'))
+      );
+      let indicatorPosition = Math.max(-1, ...existingIndicators.map((i) => i.position ?? -1)) + 1;
+
+      for (const { data } of group.rows) {
+        const code = data.code?.trim() || null;
+        const name = data.name.trim();
+        const codeKey = code?.toLocaleLowerCase('vi');
+        const nameKey = name.toLocaleLowerCase('vi');
+
+        if ((codeKey && seenCodes.has(codeKey)) || (!codeKey && seenNames.has(nameKey))) {
+          result.indicatorsSkipped += 1;
+          continue;
+        }
+
+        await this.prisma.competencyIndicator.create({
+          data: {
+            categoryId,
+            code,
+            name,
+            description: data.description?.trim() || null,
+            position: indicatorPosition++,
+          },
+        });
+        if (codeKey) seenCodes.add(codeKey);
+        seenNames.add(nameKey);
+        result.indicatorsCreated += 1;
+      }
+    }
+
+    return result;
   }
 
   async updateCategory(

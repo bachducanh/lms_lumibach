@@ -8,6 +8,8 @@ type Props = {
   courseId: string;
   modules: ModuleWithItems[];
   canManage: boolean;
+  /** Cài đặt khoá học: chương đổ xuống sẵn hay chỉ hiện tên. */
+  modulesExpandedByDefault?: boolean;
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;

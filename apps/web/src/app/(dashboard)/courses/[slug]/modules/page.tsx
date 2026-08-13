@@ -180,6 +180,7 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
           courseId={course.id}
           modules={modules}
           canManage={canManage}
+          modulesExpandedByDefault={course.modulesExpandedByDefault}
           completedIds={completedIds}
           submittedAssignmentIds={submittedAssignmentIds}
           submittedQuizIds={submittedQuizIds}

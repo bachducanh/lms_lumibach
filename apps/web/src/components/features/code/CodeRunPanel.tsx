@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Play, Loader2, ChevronDown } from 'lucide-react';
+import { Play, Loader2 } from 'lucide-react';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { SimpleSelect } from '@/components/ui/select';
 import { apiClient } from '@/lib/api-client';
 import type { SandboxRunResult } from '@lumibach/types';
 import { LANGUAGE_ID } from '@/lib/judge0';
@@ -97,37 +98,26 @@ export function CodeRunPanel({
       {/* ── Toolbar ──────────────────────────────────────── */}
       <div className="border-border bg-muted/40 flex items-center gap-2 border-b px-3 py-2">
         {/* Language */}
-        <div className="relative">
-          <select
-            value={langKey}
-            onChange={(e) => handleLangChange(e.target.value as LangKey)}
-            disabled={lockedLanguage}
-            className="border-input bg-background focus:ring-ring cursor-pointer appearance-none rounded-md border py-1 pr-7 pl-3 text-sm focus:ring-1 focus:outline-none disabled:opacity-60"
-          >
-            {LANGUAGES.map((l) => (
-              <option key={l.key} value={l.key}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2" />
-        </div>
+        <SimpleSelect
+          size="sm"
+          aria-label="Ngôn ngữ"
+          value={langKey}
+          onValueChange={(v) => handleLangChange(v as LangKey)}
+          disabled={lockedLanguage}
+          options={LANGUAGES.map((l) => ({ value: l.key, label: l.label }))}
+        />
 
         {/* Font size */}
-        <div className="relative">
-          <select
-            value={fontSize}
-            onChange={(e) => setFontSize(Number(e.target.value))}
-            className="border-input bg-background focus:ring-ring cursor-pointer appearance-none rounded-md border py-1 pr-7 pl-3 text-sm focus:ring-1 focus:outline-none"
-          >
-            {[12, 13, 14, 15, 16, 18, 20].map((s) => (
-              <option key={s} value={s}>
-                {s}px
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2" />
-        </div>
+        <SimpleSelect
+          size="sm"
+          aria-label="Cỡ chữ"
+          value={String(fontSize)}
+          onValueChange={(v) => setFontSize(Number(v))}
+          options={[12, 13, 14, 15, 16, 18, 20].map((s) => ({
+            value: String(s),
+            label: `${s}px`,
+          }))}
+        />
 
         <div className="flex-1" />
 

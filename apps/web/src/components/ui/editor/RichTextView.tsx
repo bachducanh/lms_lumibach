@@ -17,11 +17,16 @@ type Props = {
   className?: string;
 };
 
-/** Hiển thị nội dung rich-text (read-only) với cùng kiểu prose như RichTextEditor. */
+/**
+ * Hiển thị nội dung rich-text (read-only).
+ *
+ * Class `rich-content` gắn vào cùng bộ CSS với `.ProseMirror` trong globals.css,
+ * nên bảng, ảnh, căn lề… hiện giống hệt lúc soạn và giống trang bài tập.
+ */
 export function RichTextView({ html, className }: Props) {
   return (
     <div
-      className={cn('prose prose-sm dark:prose-invert max-w-none', className)}
+      className={cn('rich-content max-w-none', className)}
       dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
     />
   );

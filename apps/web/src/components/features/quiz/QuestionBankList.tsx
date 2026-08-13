@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn, stripHtml } from '@/lib/utils';
@@ -21,8 +21,9 @@ import {
   Check,
   X,
   ArrowRight,
+  Share2,
 } from 'lucide-react';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, ApiError } from '@/lib/api-client';
 import type { QuestionItem, CategoryWithQuestions } from '@lumibach/types';
 // QuestionType extended beyond Prisma enum — use string
 
@@ -49,6 +50,58 @@ function parseMatchPairs(options: { id: string; content: string }[]) {
 }
 
 // ── Question row ─────────────────────────────────────────────
+
+/**
+ * Bật / tắt đưa câu hỏi vào ngân hàng chung của danh mục khoá học.
+ *
+ * Cập nhật lạc quan rồi mới gọi API: thao tác này hay bấm hàng loạt khi soạn
+ * đề, chờ round-trip từng cái thì rất khựng.
+ */
+function ShareToggle({
+  questionId,
+  initialShared,
+}: {
+  questionId: string;
+  initialShared: boolean;
+}) {
+  const [shared, setShared] = useState(initialShared);
+  const [pending, startTransition] = useTransition();
+
+  function toggle() {
+    const next = !shared;
+    setShared(next);
+    startTransition(async () => {
+      try {
+        await apiClient.patch(`/questions/${questionId}/share`, { shared: next });
+        toast.success(next ? 'Đã đưa vào ngân hàng chung.' : 'Đã gỡ khỏi ngân hàng chung.');
+      } catch (err) {
+        setShared(!next);
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật chia sẻ');
+      }
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={pending}
+      title={
+        shared
+          ? 'Đang chia sẻ vào ngân hàng chung — bấm để gỡ'
+          : 'Chia sẻ câu hỏi này vào ngân hàng chung của danh mục'
+      }
+      className={cn(
+        'rounded-md p-1.5 transition-colors disabled:opacity-50',
+        shared
+          ? 'text-primary hover:bg-primary/10'
+          : 'text-muted-foreground/40 hover:text-foreground hover:bg-muted'
+      )}
+    >
+      <Share2 className="h-3.5 w-3.5" />
+    </button>
+  );
+}
 
 function QuestionRow({
   q,
@@ -82,6 +135,7 @@ function QuestionRow({
           <span className="text-muted-foreground text-xs">{q.points}đ</span>
           {canManage && (
             <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+              <ShareToggle questionId={q.id} initialShared={q.sharedToCategory ?? false} />
               <Link
                 href={`/courses/${courseSlug}/questions/${q.id}/edit`}
                 className={cn(

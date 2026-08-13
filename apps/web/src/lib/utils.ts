@@ -24,6 +24,20 @@ export function richTextIsEmpty(html: string): boolean {
   return stripHtml(html) === '';
 }
 
+/**
+ * Đưa nội dung về HTML để render bằng RichTextView.
+ *
+ * Bài diễn đàn cũ lưu văn bản thô (trước khi diễn đàn dùng rich text) — nếu
+ * đổ thẳng vào innerHTML thì mất hết xuống dòng và ký tự `<` sẽ bị nuốt. Chuỗi
+ * nào không có thẻ HTML thì escape rồi chuyển xuống dòng thành <br>.
+ */
+export function toRichHtml(content: string): string {
+  if (!content) return '';
+  if (/<\/?[a-z][\s\S]*>/i.test(content)) return content;
+  const escaped = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<p>${escaped.replace(/\n/g, '<br>')}</p>`;
+}
+
 export function slugify(text: string): string {
   return text
     .normalize('NFD')

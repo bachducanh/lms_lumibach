@@ -24,3 +24,4 @@ export * from './gradebook';
 export * from './code-exercises';
 export * from './sandbox';
 export * from './scratch';
+export * from './rooms';

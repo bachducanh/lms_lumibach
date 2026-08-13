@@ -7,6 +7,7 @@ import { canManageCourse } from '../../common/auth/course-access';
 import { regradeQuizAttempts } from '../../common/grading/quiz-grading';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
+import { syncModuleItemTitle } from '../../common/module-item-title';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -329,6 +330,7 @@ export class QuizzesService {
       },
     });
 
+    await syncModuleItemTitle(this.prisma, 'quizId', id, body.title);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã cập nhật quiz.' };
   }

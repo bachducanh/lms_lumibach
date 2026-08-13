@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SimpleSelect } from '@/components/ui/select';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { Plus, Save } from 'lucide-react';
 import {
@@ -47,17 +48,13 @@ export function CompetencyLevelGrid({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         {periods.length > 0 && (
-          <select
+          <SimpleSelect
+            className="min-w-[200px]"
+            aria-label="Kỳ đánh giá"
             value={selectedPeriodId ?? ''}
-            onChange={(event) => goToPeriod(event.target.value)}
-            className="border-input bg-background focus:ring-ring h-10 min-w-[200px] rounded-lg border px-3 text-sm shadow-sm focus:ring-1 focus:outline-none"
-          >
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={goToPeriod}
+            options={periods.map((p) => ({ value: p.id, label: p.name }))}
+          />
         )}
         {canManage && (
           <Button size="sm" variant="outline" onClick={() => setShowAddPeriod((s) => !s)}>

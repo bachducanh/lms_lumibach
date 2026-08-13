@@ -50,8 +50,9 @@ export function ClusteringDataset({ courseSlug }: Props) {
   }
 
   useEffect(() => {
+    // Cố ý chỉ phụ thuộc courseSlug: `load` được dựng lại mỗi lần render nên
+    // đưa vào danh sách phụ thuộc sẽ gọi lại API liên tục.
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseSlug]);
 
   function exportCsv() {

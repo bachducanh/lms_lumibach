@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from './SidebarContext';
 import {
   BookOpen,
+  DoorOpen,
   Terminal,
   GraduationCap,
   LayoutDashboard,
@@ -25,6 +26,8 @@ import {
 type NavItem = {
   label: string;
   href: string;
+  adminHref?: string;
+  activeHrefs?: string[];
   icon: React.ComponentType<{ className?: string }>;
   roles?: string[];
 };
@@ -34,6 +37,14 @@ const mainNavItems: NavItem[] = [
   { label: 'Khóa học', href: '/courses', icon: BookOpen },
   { label: 'Sandbox', href: '/sandbox', icon: Terminal },
   { label: 'Học sinh', href: '/students', icon: GraduationCap, roles: ['ADMIN', 'TEACHER', 'TA'] },
+  {
+    label: 'Phòng chức năng',
+    href: '/rooms',
+    adminHref: '/admin/rooms',
+    activeHrefs: ['/rooms', '/admin/rooms'],
+    icon: DoorOpen,
+    roles: ['ADMIN', 'TEACHER', 'TA'],
+  },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -59,17 +70,23 @@ function NavLink({
   item,
   pathname,
   collapsed,
+  role,
 }: {
   item: NavItem;
   pathname: string;
   collapsed: boolean;
+  role?: string;
 }) {
   const Icon = item.icon;
-  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+  const href = role === 'ADMIN' && item.adminHref ? item.adminHref : item.href;
+  const activeHrefs = item.activeHrefs ?? [href];
+  const isActive = activeHrefs.some(
+    (activeHref) => pathname === activeHref || pathname.startsWith(activeHref + '/')
+  );
 
   return (
     <Link
-      href={item.href}
+      href={href}
       title={collapsed ? item.label : undefined}
       className={cn(
         'group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
@@ -187,7 +204,13 @@ export function Sidebar() {
         {/* ── Main nav ─────────────────────────────────────────── */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
           {visibleMain.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} collapsed={isCollapsed} />
+            <NavLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              collapsed={isCollapsed}
+              role={role}
+            />
           ))}
 
           {visibleAdmin.length > 0 && (
@@ -200,7 +223,13 @@ export function Sidebar() {
                 <div className="bg-sidebar-foreground/10 h-px flex-1" />
               </div>
               {visibleAdmin.map((item) => (
-                <NavLink key={item.href} item={item} pathname={pathname} collapsed={isCollapsed} />
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  collapsed={isCollapsed}
+                  role={role}
+                />
               ))}
             </>
           )}
@@ -214,7 +243,13 @@ export function Sidebar() {
           )}
         >
           {bottomNavItems.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} collapsed={isCollapsed} />
+            <NavLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              collapsed={isCollapsed}
+              role={role}
+            />
           ))}
 
           {/* User profile card */}

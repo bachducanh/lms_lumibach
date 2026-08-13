@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { apiServerClient } from '@/lib/api-client';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
 import { sendParticipationReminderAction } from './actions';
 import type { CourseDetail } from '@lumibach/types';
 import type { ActivityAction, ModuleItemType } from '@lumibach/db';
@@ -108,33 +109,37 @@ export default async function CourseParticipationPage({
           <label className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
             Tài liệu / bài tập
           </label>
-          <select
+          <SimpleSelect
             name="resource"
+            className="min-w-[320px]"
+            aria-label="Tài liệu / bài tập"
             defaultValue={selected?.key ?? ''}
-            className="border-input bg-background h-10 min-w-[320px] rounded-lg border px-3 text-sm"
-          >
-            {options.length === 0 && <option value="">Chưa có nội dung</option>}
-            {options.map((option) => (
-              <option key={option.key} value={option.key}>
-                {option.moduleName} / {option.title}
-              </option>
-            ))}
-          </select>
+            options={
+              options.length === 0
+                ? [{ value: '', label: 'Chưa có nội dung' }]
+                : options.map((option) => ({
+                    value: option.key,
+                    label: `${option.moduleName} / ${option.title}`,
+                  }))
+            }
+          />
         </div>
         <div className="space-y-1">
           <label className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
             Trạng thái
           </label>
-          <select
+          <SimpleSelect
             name="status"
+            className="min-w-[180px]"
+            aria-label="Trạng thái"
             defaultValue={status}
-            className="border-input bg-background h-10 min-w-[180px] rounded-lg border px-3 text-sm"
-          >
-            <option value="">Tất cả</option>
-            <option value="viewed">Đã xem</option>
-            <option value="interacted">Đã tương tác</option>
-            <option value="not-viewed">Chưa xem</option>
-          </select>
+            options={[
+              { value: '', label: 'Tất cả' },
+              { value: 'viewed', label: 'Đã xem' },
+              { value: 'interacted', label: 'Đã tương tác' },
+              { value: 'not-viewed', label: 'Chưa xem' },
+            ]}
+          />
         </div>
         <button type="submit" className={buttonVariants()}>
           Get participation

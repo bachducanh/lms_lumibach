@@ -18,6 +18,22 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
+
+/** Dùng chung cho form tạo và form sửa người dùng. */
+export const VAI_TRO_OPTIONS = [
+  { value: 'STUDENT', label: 'Học sinh' },
+  { value: 'TA', label: 'Trợ giảng (TA)' },
+  { value: 'TEACHER', label: 'Giáo viên' },
+  { value: 'ADMIN', label: 'Quản trị viên' },
+] as const;
+
+export const TRANG_THAI_OPTIONS = [
+  { value: 'ACTIVE', label: 'Hoạt động' },
+  { value: 'INACTIVE', label: 'Không hoạt động' },
+  { value: 'SUSPENDED', label: 'Tạm khoá' },
+  { value: 'PENDING', label: 'Chờ xác thực' },
+] as const;
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -126,16 +142,13 @@ export function CreateUserForm() {
             <FormItem>
               <FormLabel>Vai trò *</FormLabel>
               <FormControl>
-                <select
-                  className="border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-card h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
+                <SimpleSelect
+                  className="w-full"
+                  aria-label="Vai trò"
                   value={field.value}
-                  onChange={field.onChange}
-                >
-                  <option value="STUDENT">Học sinh</option>
-                  <option value="TA">Trợ giảng (TA)</option>
-                  <option value="TEACHER">Giáo viên</option>
-                  <option value="ADMIN">Quản trị viên</option>
-                </select>
+                  onValueChange={field.onChange}
+                  options={VAI_TRO_OPTIONS}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

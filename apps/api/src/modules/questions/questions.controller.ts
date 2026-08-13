@@ -1,13 +1,59 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  CopyQuestionBodySchema,
+  QuestionBankQuerySchema,
+  ShareQuestionBodySchema,
+  type CopyQuestionBody,
+  type QuestionBankQuery,
+  type ShareQuestionBody,
+} from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
+import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { QuestionsService } from './questions.service';
+import { QuestionBankService } from './question-bank.service';
 
 @ApiTags('questions')
 @Controller({ path: 'questions', version: '1' })
 export class QuestionsController {
-  constructor(private readonly service: QuestionsService) {}
+  constructor(
+    private readonly service: QuestionsService,
+    private readonly bank: QuestionBankService
+  ) {}
+
+  // ── Ngân hàng dùng chung theo danh mục khoá học ────────────────
+  // Khai TRƯỚC @Get(':id') để "bank" không bị bắt làm id câu hỏi.
+
+  @Get('bank')
+  @ApiOperation({ summary: 'Câu hỏi chia sẻ từ khoá khác cùng nhánh danh mục' })
+  listBank(
+    @CurrentUser() user: AuthUser,
+    @Query(zodQuery(QuestionBankQuerySchema)) query: QuestionBankQuery
+  ) {
+    return this.bank.list(user, query);
+  }
+
+  @Patch(':id/share')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Bật / tắt chia sẻ câu hỏi ra ngân hàng chung' })
+  setShared(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(ShareQuestionBodySchema)) body: ShareQuestionBody
+  ) {
+    return this.bank.setShared(user, id, body.shared);
+  }
+
+  @Post(':id/copy')
+  @ApiOperation({ summary: 'Sao chép câu hỏi từ ngân hàng về kho của khoá học' })
+  copyFromBank(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(CopyQuestionBodySchema)) body: CopyQuestionBody
+  ) {
+    return this.bank.copy(user, id, body);
+  }
 
   // ── Categories ────────────────────────────────────────────────
 

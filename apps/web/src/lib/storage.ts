@@ -13,6 +13,16 @@ const internalPort = parseInt(
 export const BUCKET_AVATARS = process.env.MINIO_BUCKET_AVATARS ?? 'lumibach-avatars';
 export const BUCKET_FILES = process.env.MINIO_BUCKET_FILES ?? 'lumibach-files';
 
+/**
+ * Ảnh minh chứng bàn giao phòng — bucket RIÊNG, KHÔNG bao giờ đặt public.
+ *
+ * Tách khỏi `lumibach-files` vì bucket đó được phục vụ công khai qua Nginx cho
+ * file bài giảng; để chung thì bất kỳ ai đoán được đường dẫn cũng xem được ảnh
+ * hiện trạng phòng. Ảnh ở đây chỉ ra ngoài qua endpoint có kiểm quyền
+ * `/api/v1/handover-photos/:id/file`.
+ */
+export const BUCKET_HANDOVERS = process.env.MINIO_BUCKET_HANDOVERS ?? 'lumibach-handovers';
+
 export const minioClient = new Minio.Client({
   endPoint: internalEndpoint,
   port: internalPort,
@@ -25,22 +35,53 @@ export function isMinioConfigured(): boolean {
   return !!(process.env.MINIO_ACCESS_KEY && process.env.MINIO_SECRET_KEY);
 }
 
+/** Chính sách cho phép đọc ẩn danh — file phục vụ qua rewrite `/storage/*`. */
+function publicReadPolicy(bucket: string): string {
+  return JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: { AWS: ['*'] },
+        Action: ['s3:GetObject'],
+        Resource: [`arn:aws:s3:::${bucket}/*`],
+      },
+    ],
+  });
+}
+
+/**
+ * Bucket được phép đọc ẩn danh — file của chúng phục vụ thẳng qua rewrite
+ * `/storage/*`. Mọi bucket KHÔNG có tên ở đây (ví dụ lumibach-handovers) phải
+ * giữ nguyên chế độ riêng tư: đây là danh sách cho phép, không phải chặn.
+ */
+const PUBLIC_READ_BUCKETS = new Set([BUCKET_AVATARS, BUCKET_FILES]);
+
+/**
+ * Đảm bảo bucket tồn tại, và với bucket công khai thì đọc được ẩn danh.
+ *
+ * Trước đây chính sách chỉ được đặt trong nhánh `makeBucket`. Ở máy dev thì
+ * đúng vì code này tạo bucket, nhưng trên hạ tầng thật MinIO là dịch vụ có sẵn
+ * và bucket thường đã được tạo sẵn bằng tay/bằng mc — nhánh đó không bao giờ
+ * chạy, bucket ở chế độ private, nên upload thì được mà tải xuống / xem ảnh,
+ * xem PDF đều 403. Đặt lại chính sách mỗi lần là thao tác idempotent và rẻ.
+ */
 export async function ensureBucket(bucket: string): Promise<void> {
   const exists = await minioClient.bucketExists(bucket);
-  if (!exists) {
-    await minioClient.makeBucket(bucket);
-    const policy = JSON.stringify({
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Effect: 'Allow',
-          Principal: { AWS: ['*'] },
-          Action: ['s3:GetObject'],
-          Resource: [`arn:aws:s3:::${bucket}/*`],
-        },
-      ],
-    });
-    await minioClient.setBucketPolicy(bucket, policy);
+  if (!exists) await minioClient.makeBucket(bucket);
+
+  if (!PUBLIC_READ_BUCKETS.has(bucket)) return;
+
+  try {
+    const current = await minioClient.getBucketPolicy(bucket).catch(() => '');
+    // Chỉ ghi khi thiếu quyền đọc ẩn danh, tránh đè chính sách người khác đặt.
+    if (!current.includes('s3:GetObject')) {
+      await minioClient.setBucketPolicy(bucket, publicReadPolicy(bucket));
+    }
+  } catch (err) {
+    // Không chặn upload nếu tài khoản MinIO không được phép sửa policy — chỉ
+    // cảnh báo để người vận hành biết mà đặt tay.
+    console.warn(`[storage] không đặt được policy đọc công khai cho bucket "${bucket}":`, err);
   }
 }
 

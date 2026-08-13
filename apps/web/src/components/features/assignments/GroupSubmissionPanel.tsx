@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { UsersRound } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
@@ -72,18 +73,16 @@ export function GroupSubmissionPanel({
       {enabled && (
         <div className="space-y-1">
           <label className="text-muted-foreground text-xs">Phân nhóm áp dụng</label>
-          <select
+          <SimpleSelect
+            className="w-full max-w-sm"
+            aria-label="Chọn phân nhóm"
             value={groupingId}
-            onChange={(e) => setGroupingId(e.target.value)}
-            className="border-input bg-background h-9 w-full max-w-sm rounded-md border px-2 text-sm"
-          >
-            <option value="">— Chọn phân nhóm —</option>
-            {groupings.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setGroupingId}
+            options={[
+              { value: '', label: '— Chọn phân nhóm —' },
+              ...groupings.map((g) => ({ value: g.id, label: g.name })),
+            ]}
+          />
           {groupings.length === 0 && (
             <p className="text-muted-foreground text-xs">
               Chưa có phân nhóm. Tạo ở mục Thành viên → tab Nhóm.

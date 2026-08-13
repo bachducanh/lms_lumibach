@@ -256,6 +256,36 @@ export const UpdateCompetencyIndicatorBodySchema = z.object({
 });
 export type UpdateCompetencyIndicatorBody = z.infer<typeof UpdateCompetencyIndicatorBodySchema>;
 
+// ── Zod: Import hàng loạt từ Excel ─────────────────────────────
+
+/**
+ * Một dòng trong file Excel: chỉ báo thuộc danh mục nào. Danh mục lặp lại ở
+ * nhiều dòng — server gom lại, tạo danh mục một lần rồi gắn chỉ báo vào.
+ */
+export const ImportCompetencyRowSchema = z.object({
+  categoryName: z.string().min(1, 'Thiếu tên danh mục').max(200),
+  categoryDescription: z.string().max(2000).optional(),
+  code: z.string().max(50).optional(),
+  name: z.string().min(1, 'Thiếu nội dung chỉ báo').max(2000),
+  description: z.string().max(2000).optional(),
+});
+export type ImportCompetencyRow = z.infer<typeof ImportCompetencyRowSchema>;
+
+export const ImportCompetenciesBodySchema = z.object({
+  rows: z.array(ImportCompetencyRowSchema).min(1, 'File không có dòng nào').max(2000),
+});
+export type ImportCompetenciesBody = z.infer<typeof ImportCompetenciesBodySchema>;
+
+export type ImportCompetenciesResult = {
+  categoriesCreated: number;
+  categoriesReused: number;
+  indicatorsCreated: number;
+  /** Chỉ báo bỏ qua vì đã có sẵn trong danh mục (trùng mã hoặc trùng nội dung). */
+  indicatorsSkipped: number;
+  /** Dòng không hợp lệ — số dòng tính theo file Excel (đã tính cả dòng tiêu đề). */
+  errors: { row: number; reason: string }[];
+};
+
 // ── Zod: Gán chỉ báo cho hoạt động ─────────────────────────────
 
 export const SetActivityCompetenciesBodySchema = z.object({

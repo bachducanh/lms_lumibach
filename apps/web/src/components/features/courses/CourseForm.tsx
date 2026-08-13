@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SimpleSelect } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ImagePlus } from 'lucide-react';
 import { createCourseAction, updateCourseAction } from '@/app/(dashboard)/courses/actions';
@@ -45,6 +46,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
     categoryId: course?.categoryId ?? initialCategoryId ?? '',
     status: (course?.status as CourseFormValues['status']) ?? 'DRAFT',
     isPublic: course?.isPublic ?? false,
+    modulesExpandedByDefault: course?.modulesExpandedByDefault ?? true,
     startDate: course?.startDate ? new Date(course.startDate).toISOString().slice(0, 10) : '',
     endDate: course?.endDate ? new Date(course.endDate).toISOString().slice(0, 10) : '',
   });
@@ -199,19 +201,16 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
 
           <div className="space-y-1.5">
             <Label htmlFor="subject">Môn học</Label>
-            <select
+            <SimpleSelect
               id="subject"
+              className="w-full"
               value={values.subject ?? ''}
-              onChange={(e) => set('subject', e.target.value)}
-              className="border-input bg-background text-foreground dark:bg-card w-full rounded-md border px-3 py-2 text-sm"
-            >
-              <option value="">— Chọn môn —</option>
-              {SUBJECT_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              onValueChange={(v) => set('subject', v)}
+              options={[
+                { value: '', label: '— Chọn môn —' },
+                ...SUBJECT_OPTIONS.map((s) => ({ value: s, label: s })),
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -238,18 +237,13 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="status">Trạng thái</Label>
-              <select
+              <SimpleSelect
                 id="status"
+                className="w-full"
                 value={values.status}
-                onChange={(e) => set('status', e.target.value as CourseFormValues['status'])}
-                className="border-input bg-background text-foreground dark:bg-card w-full rounded-md border px-3 py-2 text-sm"
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                onValueChange={(v) => set('status', v as CourseFormValues['status'])}
+                options={STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
+              />
             </div>
             <div className="flex items-center gap-2 pt-6">
               <input
@@ -263,6 +257,24 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
                 Công khai
               </Label>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="modulesExpandedByDefault">Hiển thị chương khi vào khoá học</Label>
+            <SimpleSelect
+              id="modulesExpandedByDefault"
+              className="w-full"
+              value={values.modulesExpandedByDefault ? 'expanded' : 'collapsed'}
+              onValueChange={(v) => set('modulesExpandedByDefault', v === 'expanded')}
+              options={[
+                { value: 'expanded', label: 'Mặc định mở — thấy ngay hoạt động của từng chương' },
+                { value: 'collapsed', label: 'Mặc định thu gọn — chỉ hiện tên chương' },
+              ]}
+            />
+            <p className="text-muted-foreground text-xs">
+              Khoá nhiều chương nên chọn thu gọn để danh sách ngắn, người học tự bấm mũi tên mở
+              chương cần xem.
+            </p>
           </div>
         </CardContent>
       </Card>

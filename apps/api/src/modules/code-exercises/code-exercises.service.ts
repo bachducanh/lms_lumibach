@@ -12,6 +12,7 @@ import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { Judge0Service } from '../../common/judge0/judge0.service';
+import { syncModuleItemTitle } from '../../common/module-item-title';
 import { CodeExecutionGateway } from './code-execution.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -95,7 +96,18 @@ export class CodeExercisesService {
 
   async update(user: AuthUser, exerciseId: string, body: Record<string, unknown>) {
     if (!hasMinRole(user.role, 'TA')) throw new ForbiddenException('Không có quyền.');
-    await this.prisma.codeExercise.update({ where: { id: exerciseId }, data: body as any });
+    const updated = await this.prisma.codeExercise.update({
+      where: { id: exerciseId },
+      data: body as any,
+      select: { courseId: true },
+    });
+    await syncModuleItemTitle(
+      this.prisma,
+      'codeExerciseId',
+      exerciseId,
+      typeof body.title === 'string' ? body.title : undefined
+    );
+    await this.invalidateModuleCache(updated.courseId);
     return { message: 'Đã lưu cấu hình' };
   }
 

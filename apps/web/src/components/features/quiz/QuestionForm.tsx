@@ -42,6 +42,7 @@ type QuestionFormValues = {
   memoryLimit: number | null | undefined;
 };
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { SimpleSelect } from '@/components/ui/select';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { cn, richTextIsEmpty } from '@/lib/utils';
 
@@ -143,6 +144,13 @@ type Props = {
   returnTo?: string;
   defaultCategoryId?: string;
 };
+
+/** Ngôn ngữ dùng cho câu hỏi Parsons và điền khuyết. */
+const NGON_NGU_CODE_OPTIONS = [
+  { value: 'PYTHON3', label: 'Python' },
+  { value: 'JAVASCRIPT', label: 'JavaScript' },
+  { value: 'CPP17', label: 'C++' },
+] as const;
 
 export function QuestionForm({
   courseId,
@@ -684,15 +692,13 @@ export function QuestionForm({
               <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 Nhập toàn bộ code đúng
               </label>
-              <select
+              <SimpleSelect
+                size="sm"
+                aria-label="Ngôn ngữ"
                 value={parsonsLang}
-                onChange={(e) => setParsonsLang(e.target.value as typeof parsonsLang)}
-                className="border-input bg-background rounded border px-2 py-0.5 text-xs focus:outline-none"
-              >
-                <option value="PYTHON3">Python</option>
-                <option value="JAVASCRIPT">JavaScript</option>
-                <option value="CPP17">C++</option>
-              </select>
+                onValueChange={(v) => setParsonsLang(v as typeof parsonsLang)}
+                options={NGON_NGU_CODE_OPTIONS}
+              />
             </div>
             <div className="border-border overflow-hidden rounded-xl border">
               <CodeEditor
@@ -773,15 +779,13 @@ export function QuestionForm({
               <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 Template code (dùng ___ cho chỗ trống)
               </label>
-              <select
+              <SimpleSelect
+                size="sm"
+                aria-label="Ngôn ngữ"
                 value={fillLang}
-                onChange={(e) => setFillLang(e.target.value as typeof fillLang)}
-                className="border-input bg-background rounded border px-2 py-0.5 text-xs focus:outline-none"
-              >
-                <option value="PYTHON3">Python</option>
-                <option value="JAVASCRIPT">JavaScript</option>
-                <option value="CPP17">C++</option>
-              </select>
+                onValueChange={(v) => setFillLang(v as typeof fillLang)}
+                options={NGON_NGU_CODE_OPTIONS}
+              />
             </div>
             <div className="border-border overflow-hidden rounded-xl border">
               <CodeEditor

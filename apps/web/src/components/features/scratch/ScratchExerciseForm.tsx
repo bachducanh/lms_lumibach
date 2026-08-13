@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Sb3Upload } from './Sb3Upload';
 import { apiClient } from '@/lib/api-client';
@@ -142,15 +143,17 @@ export function ScratchExerciseForm(props: Props) {
           <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Trạng thái
           </label>
-          <select
+          <SimpleSelect
+            className="w-full"
+            aria-label="Trạng thái"
             value={status}
-            onChange={(e) => setStatus(e.target.value as typeof status)}
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
-          >
-            <option value="DRAFT">Nháp (Draft)</option>
-            <option value="PUBLISHED">Công bố (Published)</option>
-            <option value="CLOSED">Đóng (Closed)</option>
-          </select>
+            onValueChange={(v) => setStatus(v as typeof status)}
+            options={[
+              { value: 'DRAFT', label: 'Nháp' },
+              { value: 'PUBLISHED', label: 'Đã công bố' },
+              { value: 'CLOSED', label: 'Đã đóng' },
+            ]}
+          />
         </div>
       )}
 

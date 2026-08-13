@@ -21,6 +21,11 @@ const ParsonsQuestion = nextDynamic(
     })),
   { ssr: false }
 );
+const RichTextEditor = nextDynamic(
+  () =>
+    import('@/components/ui/editor/RichTextEditor').then((m) => ({ default: m.RichTextEditor })),
+  { ssr: false, loading: () => <div className="bg-muted/30 h-40 animate-pulse rounded-xl" /> }
+);
 const MatchingQuestion = nextDynamic(
   () =>
     import('@/components/features/quiz/MatchingQuestion').then((m) => ({
@@ -29,7 +34,7 @@ const MatchingQuestion = nextDynamic(
   { ssr: false }
 );
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { cn } from '@/lib/utils';
+import { cn, richTextIsEmpty, toRichHtml } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import type { CodeLanguage } from '@lumibach/db';
 
@@ -104,6 +109,18 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     const m: Record<string, string> = {};
     for (const a of attempt.answers) {
       if (a.textAnswer !== null) m[a.questionId] = a.textAnswer;
+    }
+    return m;
+  });
+
+  // Nội dung nạp vào ô tự luận lúc mở bài. TipTap chỉ đọc prop `content` khi
+  // khởi tạo, nên phải chốt một bản đầu — truyền `texts` trực tiếp sẽ khiến mỗi
+  // lần gõ lại dựng lại object và dễ hiểu nhầm là ô được điều khiển.
+  // Bài làm dở từ trước khi có rich text là văn bản thô → nâng lên HTML.
+  const [essayInitial] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const a of attempt.answers) {
+      if (a.textAnswer !== null) m[a.questionId] = toRichHtml(a.textAnswer);
     }
     return m;
   });
@@ -244,8 +261,11 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
         'CODE_DEBUG_PYTHON',
         'CODE_DEBUG_CPP',
       ];
+      // Tự luận lưu HTML — `<p></p>` rỗng vẫn dài hơn 0 ký tự nên phải bóc thẻ.
+      if (t === 'ESSAY') return !richTextIsEmpty(texts[q.questionId] ?? '');
       if (codeTypes.includes(t)) return (texts[q.questionId] ?? '').trim().length > 0;
       if (t === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
+      if (t === 'TRUE_FALSE_MULTI') return selected[q.questionId] !== undefined;
       if (t === 'PARSONS' || t === 'ORDERING') {
         try {
           return (JSON.parse(texts[q.questionId] ?? '[]') as string[]).length > 0;
@@ -360,6 +380,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
               'CODE_DEBUG_PYTHON',
               'CODE_DEBUG_CPP',
             ];
+            if (qType === 'ESSAY') return !richTextIsEmpty(texts[q.questionId] ?? '');
             if (codeTypes.includes(qType)) return (texts[q.questionId] ?? '').trim().length > 0;
             if (qType === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
             if (qType === 'PARSONS' || qType === 'ORDERING') {
@@ -384,6 +405,9 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                 return false;
               }
             }
+            // Đúng/Sai nhiều ý: bấm "Sai" cho mọi phát biểu là một câu trả lời
+            // hợp lệ, dù mảng id rỗng. Chỉ cần học sinh đã đụng vào câu này.
+            if (qType === 'TRUE_FALSE_MULTI') return selected[q.questionId] !== undefined;
             return (selected[q.questionId]?.length ?? 0) > 0;
           })();
 
@@ -568,12 +592,15 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
               {/* ESSAY */}
               {qType === 'ESSAY' && (
                 <div className="pl-10">
-                  <textarea
-                    value={texts[q.questionId] ?? ''}
-                    onChange={(e) => handleEssay(q.questionId, e.target.value)}
+                  {/* Soạn thảo đầy đủ như lúc giáo viên ra đề: đậm/nghiêng, màu
+                      chữ, danh sách, bảng, công thức… Upload ảnh tắt vì endpoint
+                      chỉ mở cho GV trở lên. */}
+                  <RichTextEditor
+                    content={essayInitial[q.questionId] ?? ''}
+                    onChange={(html) => handleEssay(q.questionId, html)}
                     placeholder="Nhập câu trả lời của bạn..."
-                    rows={5}
-                    className="border-input bg-background focus:ring-ring w-full resize-none rounded-xl border px-4 py-3 text-sm focus:ring-1 focus:outline-none"
+                    allowImages={false}
+                    compact
                   />
                 </div>
               )}

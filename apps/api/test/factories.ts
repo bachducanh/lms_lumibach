@@ -1,4 +1,4 @@
-import type { UserRole, UserStatus, CourseStatus } from '@lumibach/db';
+import type { UserRole, UserStatus, CourseStatus, RoomBookingStatus } from '@lumibach/db';
 import { testPrisma } from './db';
 
 /**
@@ -92,6 +92,73 @@ export async function createTestEnrollment(input: CreateEnrollmentInput) {
       userId: input.userId,
       courseId: input.courseId,
       status: 'ACTIVE',
+    },
+  });
+}
+
+// ── Phòng chức năng ────────────────────────────────────────────
+
+export type CreateRoomInput = {
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+  capacity?: number | null;
+  location?: string | null;
+};
+
+export async function createTestRoom(input: CreateRoomInput = {}) {
+  const stamp = uniq();
+  return testPrisma.functionRoom.create({
+    data: {
+      name: input.name ?? `Phòng test ${stamp}`,
+      code: input.code ?? `phong-test-${stamp}`,
+      isActive: input.isActive ?? true,
+      sortOrder: input.sortOrder ?? 0,
+      capacity: input.capacity ?? 30,
+      location: input.location ?? 'Tầng 2',
+    },
+  });
+}
+
+export type CreateRoomBookingInput = {
+  roomId: string;
+  userId: string;
+  startAt: Date;
+  endAt: Date;
+  status?: RoomBookingStatus;
+  department?: string | null;
+};
+
+export async function createTestRoomBooking(input: CreateRoomBookingInput) {
+  return testPrisma.roomBooking.create({
+    data: {
+      roomId: input.roomId,
+      userId: input.userId,
+      fullName: 'Giáo viên Test',
+      department: input.department ?? 'Tổ Toán - Tin',
+      reason: 'Dạy thực hành',
+      startAt: input.startAt,
+      endAt: input.endAt,
+      status: input.status ?? 'PENDING',
+    },
+  });
+}
+
+export type CreateRoomRuleInput = {
+  roomId: string;
+  updatedById: string;
+  version: number;
+  content?: string;
+};
+
+export async function createTestRoomRule(input: CreateRoomRuleInput) {
+  return testPrisma.roomRule.create({
+    data: {
+      roomId: input.roomId,
+      updatedById: input.updatedById,
+      version: input.version,
+      content: input.content ?? `<p>Nội quy bản ${input.version}</p>`,
     },
   });
 }

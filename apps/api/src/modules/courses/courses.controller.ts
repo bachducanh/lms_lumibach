@@ -19,17 +19,22 @@ import {
   type CreateCourseBody,
   type UpdateCourseBody,
   type CoursesQuery,
+  type TrashedActivityKind,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { Public } from '../../common/auth/decorators/public.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { CoursesService } from './courses.service';
+import { ActivityTrashService } from './activity-trash.service';
 
 @ApiTags('courses')
 @Controller({ path: 'courses', version: '1' })
 export class CoursesController {
-  constructor(private readonly service: CoursesService) {}
+  constructor(
+    private readonly service: CoursesService,
+    private readonly activityTrash: ActivityTrashService
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Danh sách khoá học (phân trang, role-scoped)' })
@@ -45,6 +50,35 @@ export class CoursesController {
   @ApiOperation({ summary: 'Danh sách khoá học trong thùng rác (ADMIN: tất cả, GV: của mình)' })
   listTrash(@CurrentUser() user: AuthUser) {
     return this.service.listTrash(user);
+  }
+
+  // Hai segment nên không đụng @Get(':slug'), nhưng vẫn để cạnh 'trash' cho dễ đọc.
+  @Get('trash/activities')
+  @ApiOperation({ summary: 'Hoạt động đã xoá trong thùng rác (bài tập, quiz, bài code, đề ôn)' })
+  listTrashedActivities(@CurrentUser() user: AuthUser) {
+    return this.activityTrash.list(user);
+  }
+
+  @Post('trash/activities/:kind/:id/restore')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Khôi phục hoạt động khỏi thùng rác' })
+  restoreActivity(
+    @CurrentUser() user: AuthUser,
+    @Param('kind') kind: TrashedActivityKind,
+    @Param('id') id: string
+  ) {
+    return this.activityTrash.restore(user, kind, id);
+  }
+
+  @Delete('trash/activities/:kind/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá vĩnh viễn hoạt động khỏi thùng rác' })
+  purgeActivity(
+    @CurrentUser() user: AuthUser,
+    @Param('kind') kind: TrashedActivityKind,
+    @Param('id') id: string
+  ) {
+    return this.activityTrash.purge(user, kind, id);
   }
 
   @Get(':slug')
@@ -105,6 +139,13 @@ export class CoursesController {
   purgeExpired(@Headers('x-cron-secret') secret?: string) {
     const expected = process.env.CRON_SECRET;
     if (!expected || secret !== expected) throw new UnauthorizedException('Sai cron secret');
-    return this.service.purgeExpired();
+    return this.purgeAllExpired();
+  }
+
+  /** Dọn cả khoá học lẫn hoạt động lẻ quá hạn trong cùng một lượt cron. */
+  private async purgeAllExpired() {
+    const courses = await this.service.purgeExpired();
+    const activities = await this.activityTrash.purgeExpired();
+    return { ...courses, purgedActivities: activities.purged };
   }
 }

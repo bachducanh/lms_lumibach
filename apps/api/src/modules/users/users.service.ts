@@ -216,13 +216,28 @@ export class UsersService {
 
   // ── Admin: reset password ──────────────────────────────────────
 
-  async resetPassword(actor: AuthUser, userId: string): Promise<{ password: string }> {
+  /**
+   * @param chosenPassword Mật khẩu do quản trị viên tự đặt. Bỏ trống thì sinh
+   * ngẫu nhiên như trước. Có tuỳ chọn này vì lúc xử lý tại lớp, đọc một chuỗi
+   * ngẫu nhiên cho học sinh gõ lại rất dễ sai.
+   */
+  async resetPassword(
+    actor: AuthUser,
+    userId: string,
+    chosenPassword?: string
+  ): Promise<{ password: string }> {
     if (!hasMinRole(actor.role, 'ADMIN')) throw new ForbiddenException('Không có quyền');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.deletedAt) throw new NotFoundException('Không tìm thấy người dùng');
 
-    const newPassword = generatePassword();
+    // Chặn ở tầng service nữa, không chỉ dựa vào zod: service còn được gọi từ
+    // chỗ khác trong tương lai, và mật khẩu ngắn là lỗi nghiêm trọng.
+    if (chosenPassword !== undefined && chosenPassword.length < 8) {
+      throw new BadRequestException('Mật khẩu tối thiểu 8 ký tự');
+    }
+
+    const newPassword = chosenPassword || generatePassword();
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 
@@ -232,6 +247,9 @@ export class UsersService {
       action: 'RESET_PASSWORD',
       resource: 'User',
       resourceId: userId,
+      // KHÔNG ghi mật khẩu vào nhật ký — chỉ ghi cách đặt, để còn truy vết được
+      // ai tự đặt tay cho ai mà không làm rò rỉ mật khẩu qua bảng audit.
+      metadata: { mode: chosenPassword ? 'manual' : 'random' },
     });
 
     return { password: newPassword };

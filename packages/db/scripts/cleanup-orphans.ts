@@ -14,6 +14,10 @@
  *   B. Lesson không còn ModuleItem nào trỏ tới (Lesson không có courseId nên
  *      cascade chưa bao giờ chạm tới nó).
  *   C. ModuleItem trỏ tới bài tập/quiz/đề đã soft-delete → mục "rác" trong chương.
+ *   D. Bài tập / quiz / bài code / đề ôn còn sống nhưng KHÔNG chương nào trỏ tới.
+ *      Đây là rác tích tụ từ thời xoá mục trong chương không xoá theo nội dung:
+ *      chúng biến mất khỏi chương nhưng vẫn nằm ở tab riêng, nhóm "chưa thuộc
+ *      chương nào". Nhóm này chỉ soft-delete (vào thùng rác) để còn khôi phục.
  *
  * KHÔNG đụng tới: ảnh chèn trong nội dung rich-text. Chúng có thể nằm rải rác ở
  * nhiều cột (nội dung bài giảng, đề bài, câu hỏi, bài đăng diễn đàn...) nên quét
@@ -254,6 +258,66 @@ async function purgeStaleModuleItems() {
   return { items: stale.length };
 }
 
+// ── D. Hoạt động không còn nằm trong chương nào ───────────────────────────
+type OrphanKind = 'assignment' | 'quiz' | 'codeExercise' | 'practiceTest';
+
+const ORPHAN_LABELS: Record<OrphanKind, string> = {
+  assignment: 'Bài tập',
+  quiz: 'Quiz',
+  codeExercise: 'Bài code / Scratch',
+  practiceTest: 'Đề ôn tập',
+};
+
+// Hoạt động được tạo rồi mới gắn ModuleItem ở lời gọi kế tiếp — bỏ qua bản ghi
+// vừa tạo để không xoá nhầm thứ giáo viên đang soạn dở.
+const ORPHAN_MIN_AGE_MS = 60 * 60 * 1000;
+
+async function purgeOrphanActivities() {
+  const cutoff = new Date(Date.now() - ORPHAN_MIN_AGE_MS);
+  const where = { deletedAt: null, moduleItems: { none: {} }, createdAt: { lt: cutoff } };
+
+  const found = {
+    assignment: await prisma.assignment.findMany({ where, select: { id: true, title: true } }),
+    quiz: await prisma.quiz.findMany({ where, select: { id: true, title: true } }),
+    codeExercise: await prisma.codeExercise.findMany({ where, select: { id: true, title: true } }),
+    practiceTest: await prisma.practiceTest.findMany({ where, select: { id: true, title: true } }),
+  } satisfies Record<OrphanKind, { id: string; title: string }[]>;
+
+  const total = Object.values(found).reduce((n, rows) => n + rows.length, 0);
+  console.log(`\n[D] Hoạt động không thuộc chương nào (vẫn hiện ở tab riêng): ${total}`);
+  if (total === 0) return { activities: 0 };
+
+  for (const [kind, rows] of Object.entries(found) as [OrphanKind, typeof found.quiz][]) {
+    for (const row of rows.slice(0, 20)) {
+      console.log(`  - [${ORPHAN_LABELS[kind]}] "${row.title}"`);
+    }
+    if (rows.length > 20) console.log(`  ... và ${rows.length - 20} mục nữa`);
+  }
+
+  if (APPLY) {
+    const deletedAt = new Date();
+    await prisma.$transaction([
+      prisma.assignment.updateMany({
+        where: { id: { in: found.assignment.map((r) => r.id) } },
+        data: { deletedAt },
+      }),
+      prisma.quiz.updateMany({
+        where: { id: { in: found.quiz.map((r) => r.id) } },
+        data: { deletedAt },
+      }),
+      prisma.codeExercise.updateMany({
+        where: { id: { in: found.codeExercise.map((r) => r.id) } },
+        data: { deletedAt },
+      }),
+      prisma.practiceTest.updateMany({
+        where: { id: { in: found.practiceTest.map((r) => r.id) } },
+        data: { deletedAt },
+      }),
+    ]);
+  }
+  return { activities: total };
+}
+
 async function main() {
   const dbHost = (process.env.DATABASE_URL ?? '').replace(/\/\/[^@]*@/, '//***@');
   console.log(APPLY ? '=== CHẾ ĐỘ THỰC THI (--apply) ===' : '=== CHẠY THỬ (chưa xoá gì) ===');
@@ -263,12 +327,14 @@ async function main() {
   const a = await purgeSoftDeletedCourses();
   const b = await purgeOrphanLessons();
   const c = await purgeStaleModuleItems();
+  const d = await purgeOrphanActivities();
 
   console.log('\n──────── TỔNG KẾT ────────');
-  console.log(`Khoá học xoá hẳn:   ${a.courses}`);
-  console.log(`Bài giảng mồ côi:   ${b.lessons}`);
-  console.log(`Mục rác trong chương: ${c.items}`);
-  console.log(`File trên MinIO:    ${a.files + b.files}`);
+  console.log(`Khoá học xoá hẳn:      ${a.courses}`);
+  console.log(`Bài giảng mồ côi:      ${b.lessons}`);
+  console.log(`Mục rác trong chương:  ${c.items}`);
+  console.log(`Hoạt động mồ côi:      ${d.activities} (chuyển vào thùng rác)`);
+  console.log(`File trên MinIO:       ${a.files + b.files}`);
   console.log(
     APPLY
       ? '\nĐã thực thi xong.'

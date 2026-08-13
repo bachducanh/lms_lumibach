@@ -6,6 +6,7 @@ import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
+import { syncModuleItemTitle } from '../../common/module-item-title';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -307,6 +308,7 @@ export class AssignmentsService {
       },
     });
 
+    await syncModuleItemTitle(this.prisma, 'assignmentId', id, body.title);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã cập nhật bài tập.' };
   }

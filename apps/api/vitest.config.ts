@@ -25,6 +25,13 @@ export default defineConfig({
     poolOptions: {
       forks: { singleFork: true },
     },
+    // BẮT BUỘC đi kèm singleFork. `singleFork` chỉ gom mọi file vào MỘT tiến
+    // trình, nó KHÔNG khiến các file chạy lần lượt: Vitest vẫn xen kẽ chúng
+    // bằng bất đồng bộ. Mà mọi file lại dùng chung một DB test và cùng chạy
+    // TRUNCATE ở beforeEach — nên lệnh xoá của file này quét mất dữ liệu file
+    // kia đang dùng dở, sinh ra lỗi "khoá ngoại không tồn tại" hoặc 401 rải rác,
+    // chạy riêng từng file thì lại xanh. Tắt chạy song song để loại hẳn lớp lỗi này.
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

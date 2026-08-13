@@ -3,9 +3,11 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { apiServerClient } from '@/lib/api-client';
+import { hasMinRole } from '@/lib/permissions';
 import { ProfileForm } from '@/components/features/users/ProfileForm';
 import { LearningPortfolioOverview } from '@/components/features/portfolio/LearningPortfolioOverview';
-import type { PortfolioOverview } from '@lumibach/types';
+import { StaffProfileCard } from '@/components/features/rooms/StaffProfileCard';
+import type { PortfolioOverview, StaffProfileDto } from '@lumibach/types';
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -37,6 +39,11 @@ export default async function ProfilePage() {
       ? await api.get<PortfolioOverview>('/portfolio/me/overview').catch(() => null)
       : null;
 
+  // Hồ sơ công tác chỉ liên quan tới người dùng được phép mượn phòng chức năng.
+  const staffProfile = hasMinRole(user.role, 'TA')
+    ? await api.get<StaffProfileDto>('/staff-profile').catch(() => null)
+    : null;
+
   return (
     <div className="lb-stagger mx-auto max-w-5xl space-y-6">
       <div style={{ ['--i' as string]: 0 }}>
@@ -47,7 +54,10 @@ export default async function ProfilePage() {
         className={portfolio ? 'grid gap-6 lg:grid-cols-[minmax(320px,420px)_1fr]' : 'max-w-lg'}
         style={{ ['--i' as string]: 1 }}
       >
-        <ProfileForm user={user} />
+        <div className="space-y-6">
+          <ProfileForm user={user} />
+          {staffProfile && <StaffProfileCard profile={staffProfile} />}
+        </div>
         {portfolio && <LearningPortfolioOverview overview={portfolio} />}
       </div>
     </div>

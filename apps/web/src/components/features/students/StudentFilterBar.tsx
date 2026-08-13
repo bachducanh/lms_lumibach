@@ -3,6 +3,7 @@
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
 import { Search } from 'lucide-react';
+import { SimpleSelect } from '@/components/ui/select';
 
 type Props = {
   q: string;
@@ -40,18 +41,15 @@ export function StudentFilterBar({ q, courseId, courses }: Props) {
 
       {/* Course filter */}
       {courses.length > 0 && (
-        <select
+        <SimpleSelect
+          aria-label="Lọc theo khoá học"
           value={courseId}
-          onChange={(e) => update('courseId', e.target.value)}
-          className="border-input bg-background focus:ring-ring h-9 rounded-md border px-3 text-sm focus:ring-2 focus:outline-none"
-        >
-          <option value="">Tất cả khóa học</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onValueChange={(v) => update('courseId', v)}
+          options={[
+            { value: '', label: 'Tất cả khoá học' },
+            ...courses.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
       )}
     </div>
   );

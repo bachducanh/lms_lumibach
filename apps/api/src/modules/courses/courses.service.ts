@@ -16,7 +16,7 @@ import type { AuthUser } from '../../common/auth/auth.types';
 import { resolveCourseAccess } from '../../common/auth/course-access';
 import { AuditService } from '../../common/audit/audit.service';
 import { StorageService } from '../../common/storage/storage.service';
-import { LessonCleanupService } from '../../common/storage/lesson-cleanup.service';
+import { ModuleItemCleanupService } from '../../common/storage/module-item-cleanup.service';
 import { CategoriesService } from '../categories/categories.service';
 
 function slugify(text: string): string {
@@ -53,7 +53,7 @@ export class CoursesService {
     private readonly audit: AuditService,
     private readonly categories: CategoriesService,
     private readonly storage: StorageService,
-    private readonly lessonCleanup: LessonCleanupService
+    private readonly cleanup: ModuleItemCleanupService
   ) {}
 
   async createCourse(actor: AuthUser, body: CreateCourseBody): Promise<{ slug: string }> {
@@ -83,6 +83,7 @@ export class CoursesService {
         categoryId: body.categoryId,
         status: (body.status ?? 'DRAFT') as any,
         isPublic: body.isPublic ?? false,
+        modulesExpandedByDefault: body.modulesExpandedByDefault ?? true,
         startDate: body.startDate ? new Date(body.startDate) : null,
         endDate: body.endDate ? new Date(body.endDate) : null,
         ownerId: actor.id,
@@ -141,6 +142,9 @@ export class CoursesService {
         ...(body.categoryId !== undefined ? { categoryId: body.categoryId } : {}),
         ...(body.status !== undefined ? { status: body.status as any } : {}),
         ...(body.isPublic !== undefined ? { isPublic: body.isPublic } : {}),
+        ...(body.modulesExpandedByDefault !== undefined
+          ? { modulesExpandedByDefault: body.modulesExpandedByDefault }
+          : {}),
         ...(body.startDate !== undefined
           ? { startDate: body.startDate ? new Date(body.startDate) : null }
           : {}),
@@ -297,8 +301,8 @@ export class CoursesService {
 
   /** Dọn thật một khoá học: nội dung con + Lesson + file trên MinIO. */
   private async purge(courseId: string, slug: string, thumbnail: string | null): Promise<void> {
-    const itemIds = await this.lessonCleanup.moduleItemIdsOfCourse(courseId);
-    const lessonPlan = await this.lessonCleanup.planPurge(itemIds);
+    const itemIds = await this.cleanup.moduleItemIdsOfCourse(courseId);
+    const lessonPlan = await this.cleanup.planPurge(itemIds);
     const courseFiles = await this.collectCourseFileUrls(courseId, thumbnail);
 
     // Xoá DB trước, file sau: nếu MinIO lỗi thì chỉ còn file rác (vô hại), còn
@@ -492,6 +496,7 @@ export class CoursesService {
           category: { select: CATEGORY_SELECT },
           status: true,
           isPublic: true,
+          modulesExpandedByDefault: true,
           startDate: true,
           endDate: true,
           createdAt: true,
@@ -555,6 +560,7 @@ export class CoursesService {
         category: categoryRef,
         status: c.status as string,
         isPublic: c.isPublic,
+        modulesExpandedByDefault: c.modulesExpandedByDefault,
         description: c.description,
         enrollmentCode: c.enrollmentCode,
         ownerId: c.ownerId,

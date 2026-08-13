@@ -32,6 +32,7 @@ import { ScratchModule } from './modules/scratch/scratch.module';
 import { CompetenciesModule } from './modules/competencies/competencies.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
+import { RoomsModule } from './modules/rooms/rooms.module';
 import { UserAuthModule } from './modules/auth/auth.module';
 
 @Module({
@@ -104,6 +105,7 @@ import { UserAuthModule } from './modules/auth/auth.module';
     CompetenciesModule,
     GroupsModule,
     PortfolioModule,
+    RoomsModule,
     UserAuthModule,
   ],
   providers: [

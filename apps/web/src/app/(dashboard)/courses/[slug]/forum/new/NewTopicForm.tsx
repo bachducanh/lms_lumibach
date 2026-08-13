@@ -1,15 +1,33 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import nextDynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { richTextIsEmpty } from '@/lib/utils';
 
-export function NewTopicForm({ courseId, slug }: { courseId: string; slug: string }) {
+const RichTextEditor = nextDynamic(
+  () =>
+    import('@/components/ui/editor/RichTextEditor').then((m) => ({ default: m.RichTextEditor })),
+  { ssr: false, loading: () => <div className="bg-muted/30 h-40 animate-pulse rounded-xl" /> }
+);
+
+export function NewTopicForm({
+  courseId,
+  slug,
+  forumId,
+  canUploadImages,
+}: {
+  courseId: string;
+  slug: string;
+  forumId?: string;
+  /** Upload ảnh chỉ mở cho GV trở lên — ẩn nút với học sinh thay vì để bấm rồi lỗi. */
+  canUploadImages: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [title, setTitle] = useState('');
@@ -17,10 +35,15 @@ export function NewTopicForm({ courseId, slug }: { courseId: string; slug: strin
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (richTextIsEmpty(content)) {
+      toast.error('Nhập nội dung chủ đề.');
+      return;
+    }
     startTransition(async () => {
       try {
         const data = await apiClient.post<{ topicId: string }>('/forum/topics', {
           courseId,
+          forumId: forumId ?? null,
           title,
           content,
         });
@@ -49,16 +72,14 @@ export function NewTopicForm({ courseId, slug }: { courseId: string; slug: strin
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="content">Nội dung</Label>
-          <Textarea
-            id="content"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
+          <Label>Nội dung</Label>
+          <RichTextEditor
+            content={content}
+            onChange={setContent}
             placeholder="Mô tả chi tiết câu hỏi hoặc chủ đề thảo luận..."
-            rows={8}
-            required
+            allowImages={canUploadImages}
+            compact
           />
-          <p className="text-muted-foreground text-xs">Hỗ trợ định dạng văn bản thô</p>
         </div>
       </div>
 

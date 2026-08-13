@@ -36,8 +36,25 @@ const cookieDomain = (process.env.NEXT_PUBLIC_APP_URL ?? '').startsWith('https:/
   ? process.env.AUTH_COOKIE_DOMAIN?.trim()
   : undefined;
 
+// Phiên đăng nhập sống bao lâu kể từ lần hoạt động cuối (giờ).
+//
+// Máy phòng máy dùng chung: học sinh tiết trước hiếm khi bấm Đăng xuất, chỉ
+// đóng tab hoặc bỏ đi. Mặc định của Auth.js là 30 NGÀY và cookie ghi kèm hạn
+// nên đóng trình duyệt cũng không mất — tiết sau máy đó vẫn đang là phiên của
+// bạn trước, mở ra thấy khoá học của lớp khác, và tệ hơn là làm bài hộ được.
+// Rút xuống một buổi học, và trượt theo hoạt động nhờ `updateAge`: còn dùng thì
+// còn gia hạn, bỏ đó quá lâu thì phải đăng nhập lại.
+const SESSION_MAX_AGE_HOURS = Number(process.env.AUTH_SESSION_MAX_AGE_HOURS ?? 4);
+const SESSION_MAX_AGE_SECONDS = Math.max(1, SESSION_MAX_AGE_HOURS) * 60 * 60;
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  session: { strategy: 'jwt' },
+  session: {
+    strategy: 'jwt',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    // Gia hạn token khi người dùng còn hoạt động, tối đa 15 phút ghi lại một lần
+    // để không phải ký lại JWT ở mọi request.
+    updateAge: 15 * 60,
+  },
   pages: {
     signIn: '/login',
   },

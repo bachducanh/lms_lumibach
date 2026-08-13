@@ -113,6 +113,9 @@ export type ModuleItemSummary = {
   quizId: string | null;
   codeExerciseId: string | null;
   practiceTestId: string | null;
+  forumId: string | null;
+  /** Đã đưa vào ngân hàng nội dung của danh mục khoá học chưa. */
+  sharedToCategory?: boolean;
   groupMode: 'NO_GROUPS' | 'SEPARATE_GROUPS' | 'VISIBLE_GROUPS';
   groupingId: string | null;
   visibleGroupIds: string[];
@@ -120,6 +123,7 @@ export type ModuleItemSummary = {
   quiz?: { id: string; title: string; status: string } | null;
   codeExercise?: { id: string; title: string; language: string; status: string } | null;
   practiceTest?: { id: string; title: string; status: string } | null;
+  forum?: { id: string; title: string } | null;
 };
 
 export type ModuleWithItems = {
@@ -143,6 +147,48 @@ export type CourseNavItem = {
   quizId: string | null;
   codeExerciseId: string | null;
   practiceTestId: string | null;
+  forumId: string | null;
   codeExercise?: { language: string } | null;
   practiceTest?: { status: string } | null;
+};
+
+// ── Ngân hàng nội dung dùng chung theo danh mục khoá học ───────
+
+export const ShareContentBodySchema = z.object({
+  shared: z.boolean(),
+});
+export type ShareContentBody = z.infer<typeof ShareContentBodySchema>;
+
+export const ContentBankQuerySchema = z.object({
+  /** Khoá học đang đứng — quyết định nhánh danh mục được phép nhìn. */
+  courseId: z.string().min(1),
+  q: z.string().trim().optional(),
+  type: z.string().trim().optional(),
+});
+export type ContentBankQuery = z.infer<typeof ContentBankQuerySchema>;
+
+export const CopyContentBodySchema = z.object({
+  /** Chương của khoá đích sẽ nhận bản sao. */
+  moduleId: z.string().min(1),
+});
+export type CopyContentBody = z.infer<typeof CopyContentBodySchema>;
+
+export type ContentBankItem = {
+  moduleItemId: string;
+  type: string;
+  title: string;
+  updatedAt: string;
+  sourceCourseId: string;
+  sourceCourseName: string;
+  sourceModuleName: string;
+  /** Đường dẫn danh mục của khoá nguồn, ví dụ "2026-2027 / 12A1". */
+  sourceCategoryPath: string;
+  /** Mô tả ngắn theo loại: số câu hỏi, số test case, thời lượng… */
+  detail: string;
+};
+
+export type ContentBankResult = {
+  items: ContentBankItem[];
+  /** Số khoá học đang góp nội dung mà khoá này nhìn thấy. */
+  sourceCourseCount: number;
 };

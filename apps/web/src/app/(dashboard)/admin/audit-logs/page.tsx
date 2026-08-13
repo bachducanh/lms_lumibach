@@ -1,3 +1,4 @@
+import * as React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { HelpCircle, Radio, ScrollText } from 'lucide-react';
@@ -13,6 +14,7 @@ import {
   getEventContext,
 } from '@/lib/activity-labels';
 import type { ActivityAction, Prisma, UserRole } from '@lumibach/db';
+import { SimpleSelect } from '@/components/ui/select';
 
 export const metadata = { title: 'Nhật ký hoạt động' };
 export const dynamic = 'force-dynamic';
@@ -21,20 +23,54 @@ const PAGE_SIZE = 50;
 const SITE_NAME = 'LMS FOR LUMIBACH';
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
-  CREATE_USER: 'User created',
-  UPDATE_USER: 'User updated',
-  DELETE_USER: 'User deleted',
-  RESET_PASSWORD: 'Password reset',
-  IMPORT_USERS: 'Users imported',
-  REGISTER: 'User registered',
-  VERIFY_EMAIL: 'Email verified',
-  CHANGE_PASSWORD: 'Password changed',
-  ASSIGN_TA: 'Teaching assistant assigned',
-  COURSE_UPDATE: 'Course updated',
-  COURSE_CREATE: 'Course created',
-  COURSE_DELETE: 'Course deleted',
-  ENROLL_USER: 'User enrolled',
-  LOGIN_FAILED: 'Login failed',
+  CREATE_USER: 'Tạo người dùng',
+  UPDATE_USER: 'Sửa người dùng',
+  DELETE_USER: 'Xoá người dùng',
+  RESET_PASSWORD: 'Đặt lại mật khẩu',
+  IMPORT_USERS: 'Nhập người dùng hàng loạt',
+  REGISTER: 'Đăng ký tài khoản',
+  VERIFY_EMAIL: 'Xác thực email',
+  CHANGE_PASSWORD: 'Đổi mật khẩu',
+  ASSIGN_TA: 'Phân công trợ giảng',
+  COURSE_UPDATE: 'Sửa khoá học',
+  COURSE_CREATE: 'Tạo khoá học',
+  COURSE_DELETE: 'Xoá khoá học',
+  ENROLL_USER: 'Ghi danh học sinh',
+  LOGIN_FAILED: 'Đăng nhập thất bại',
+
+  // Phòng chức năng — mượn phòng
+  ROOM_BOOKING_CREATE: 'Đăng ký mượn phòng',
+  ROOM_BOOKING_UPDATE: 'Sửa đơn mượn phòng',
+  ROOM_BOOKING_CANCEL: 'Huỷ đơn mượn phòng',
+  ROOM_BOOKING_APPROVE: 'Duyệt đơn mượn phòng',
+  ROOM_BOOKING_REJECT: 'Từ chối đơn mượn phòng',
+  ROOM_BOOKING_CHECKIN: 'Nhận phòng',
+  ROOM_BOOKING_CHECKOUT: 'Trả phòng',
+  ROOM_BOOKING_KEY_RETURNED: 'Xác nhận nhận lại chìa khoá',
+
+  // Phòng chức năng — mượn thiết bị
+  EQUIPMENT_BOOKING_CREATE: 'Đăng ký mượn thiết bị',
+  EQUIPMENT_BOOKING_UPDATE: 'Sửa đơn mượn thiết bị',
+  EQUIPMENT_BOOKING_CANCEL: 'Huỷ đơn mượn thiết bị',
+  EQUIPMENT_BOOKING_APPROVE: 'Duyệt đơn mượn thiết bị',
+  EQUIPMENT_BOOKING_REJECT: 'Từ chối đơn mượn thiết bị',
+  EQUIPMENT_BOOKING_CHECKIN: 'Nhận thiết bị',
+  EQUIPMENT_BOOKING_CHECKOUT: 'Trả thiết bị',
+  EQUIPMENT_BOOKING_RETURNED: 'Xác nhận đã nhận lại thiết bị',
+
+  // Phòng chức năng — quản trị
+  ROOM_CREATE: 'Tạo phòng chức năng',
+  ROOM_UPDATE: 'Sửa phòng chức năng',
+  ROOM_DELETE: 'Xoá phòng chức năng',
+  ROOM_RULE_CREATE: 'Cập nhật nội quy phòng',
+  ROOM_BOOKING_SETTING_UPDATE: 'Sửa tham số đặt phòng',
+  EQUIPMENT_CREATE: 'Thêm thiết bị',
+  EQUIPMENT_UPDATE: 'Sửa thiết bị',
+  EQUIPMENT_DELETE: 'Xoá thiết bị',
+  HANDOVER_FIELD_CREATE: 'Thêm trường bàn giao',
+  HANDOVER_FIELD_UPDATE: 'Sửa trường bàn giao',
+  HANDOVER_FIELD_DELETE: 'Xoá trường bàn giao',
+  HANDOVER_FIELD_DEACTIVATE: 'Ẩn trường bàn giao',
 };
 
 const ACTIVITY_ACTIONS: ActivityAction[] = [
@@ -538,19 +574,54 @@ function formatLogTime(date: Date): string {
   }).format(date);
 }
 
+/**
+ * Bộ lọc dạng dropdown của trang này.
+ *
+ * Vẫn nhận `<option>` làm children như thẻ select gốc, nhưng bên trong dựng
+ * bằng SimpleSelect. Giữ nguyên chữ ký cũ để 8 chỗ gọi phía trên không phải
+ * sửa; children được quy đổi sang danh sách {value, label}.
+ */
 function Select({
   children,
   className = '',
-  ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  name,
+  defaultValue,
+  'aria-label': ariaLabel,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  name?: string;
+  defaultValue?: string;
+  'aria-label'?: string;
+}) {
+  const options: { value: string; label: string }[] = [];
+
+  for (const child of React.Children.toArray(children)) {
+    if (!React.isValidElement(child) || child.type !== 'option') continue;
+    const props = child.props as { value?: string; children?: React.ReactNode };
+    options.push({
+      value: String(props.value ?? ''),
+      label: nhanCuaOption(props.children),
+    });
+  }
+
   return (
-    <select
-      {...props}
-      className={`border-input bg-background focus:ring-ring h-10 rounded-lg border px-3 text-sm shadow-sm focus:ring-1 focus:outline-none ${className}`}
-    >
-      {children}
-    </select>
+    <SimpleSelect
+      name={name}
+      defaultValue={defaultValue}
+      className={className}
+      aria-label={ariaLabel ?? name}
+      options={options}
+    />
   );
+}
+
+/** Gộp children của một <option> thành chuỗi nhãn, kể cả khi bị chia nhiều mảnh. */
+function nhanCuaOption(children: React.ReactNode): string {
+  return React.Children.toArray(children)
+    .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : ''))
+    .join('')
+    .trim();
 }
 
 function Th({ children }: { children: React.ReactNode }) {

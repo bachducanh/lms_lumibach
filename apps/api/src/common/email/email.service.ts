@@ -125,6 +125,58 @@ export class EmailService {
     );
   }
 
+  /**
+   * Email thông báo của module Phòng chức năng.
+   *
+   * Đi qua cùng đường `send()` như email xác thực: xếp hàng đợi rồi trả về
+   * ngay, vì máy chủ ứng dụng không có đường ra Internet.
+   *
+   * @param extraHtml Khối HTML phụ chèn dưới nội dung chính — dùng để đính kèm
+   * nội quy phòng khi đơn được duyệt.
+   */
+  async sendRoomBookingEmail(params: {
+    to: string;
+    subject: string;
+    heading: string;
+    intro: string;
+    lines: { label: string; value: string }[];
+    ctaLabel?: string;
+    ctaPath?: string;
+    extraHtml?: string;
+  }) {
+    const { to, subject, heading, intro, lines, ctaLabel, ctaPath, extraHtml } = params;
+    const url = ctaPath ? `${this.appUrl}${ctaPath}` : null;
+
+    const bangThongTin = lines
+      .map(
+        (l) =>
+          `<tr>
+            <td style="padding:4px 12px 4px 0;color:#888;white-space:nowrap;vertical-align:top">${l.label}</td>
+            <td style="padding:4px 0;color:#222">${l.value}</td>
+          </tr>`
+      )
+      .join('');
+
+    await this.send(
+      to,
+      subject,
+      `<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:24px">
+        <h2 style="color:#050E3C;margin-bottom:8px">${heading}</h2>
+        <p style="color:#444;margin-bottom:16px">${intro}</p>
+        <table style="border-collapse:collapse;font-size:14px;margin-bottom:24px">${bangThongTin}</table>
+        ${
+          url && ctaLabel
+            ? `<a href="${url}" style="display:inline-block;background:#050E3C;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">${ctaLabel}</a>`
+            : ''
+        }
+        ${extraHtml ?? ''}
+        <p style="color:#888;font-size:12px;margin-top:24px">
+          Email tự động từ hệ thống LumiBach. Vui lòng không trả lời email này.
+        </p>
+      </div>`
+    );
+  }
+
   async sendPasswordResetEmail(email: string, token: string) {
     const url = `${this.appUrl}/reset-password?token=${token}`;
     // Ghi lại như email xác thực: khi email không tới nơi (worker chết, Gmail

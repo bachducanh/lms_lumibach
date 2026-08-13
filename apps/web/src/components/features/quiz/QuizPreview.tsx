@@ -20,6 +20,7 @@ import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import nextDynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { toRichHtml } from '@/lib/utils';
 
 // dnd-kit generates random IDs on mount which mismatch between SSR and CSR,
 // so load ParsonsQuestion client-only.
@@ -529,9 +530,10 @@ export function QuizPreview({ quiz }: Props) {
                 {qType === 'ESSAY' && (
                   <div className="pl-10">
                     {textVal ? (
-                      <div className="border-border bg-muted/20 rounded-xl border px-4 py-3 text-sm whitespace-pre-wrap">
-                        {textVal}
-                      </div>
+                      <RichTextView
+                        html={toRichHtml(textVal)}
+                        className="border-border bg-muted/20 rounded-xl border px-4 py-3 text-sm"
+                      />
                     ) : (
                       <p className="text-muted-foreground text-xs italic">Chưa trả lời.</p>
                     )}

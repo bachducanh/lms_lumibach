@@ -3,14 +3,21 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type {
+  CourseForums,
+  CreateForumBody,
   CreatePostBody,
   CreateTopicBody,
+  ForumModuleGroup,
+  ForumSummary,
   ForumTopicDetail,
   ForumTopicSummary,
   MarkAnswerBody,
+  UpdateForumBody,
+  UpdatePostBody,
   UpdateTopicBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageCourse } from '../../common/auth/course-access';
 
 const TOPIC_LIST_TTL_MS = 30_000;
 const TOPIC_DETAIL_TTL_MS = 30_000;
@@ -38,11 +45,16 @@ export class ForumService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache
   ) {}
 
-  async listTopics(user: AuthUser, courseId: string): Promise<ForumTopicSummary[]> {
+  async listTopics(
+    user: AuthUser,
+    courseId: string,
+    forumId?: string
+  ): Promise<ForumTopicSummary[]> {
     await this.assertEnrolled(courseId, user.id, user.role);
-    const all = await this.cached(`forum:topics:${courseId}`, TOPIC_LIST_TTL_MS, async () => {
+    const cacheKey = forumId ? `forum:topics:${courseId}:${forumId}` : `forum:topics:${courseId}`;
+    const all = await this.cached(cacheKey, TOPIC_LIST_TTL_MS, async () => {
       const topics = await this.prisma.forumTopic.findMany({
-        where: { courseId },
+        where: { courseId, ...(forumId ? { forumId } : {}) },
         orderBy: [{ isPinned: 'desc' }, { updatedAt: 'desc' }],
         include: {
           author: { select: AUTHOR_SELECT },
@@ -60,6 +72,7 @@ export class ForumService {
       return topics.map((t) => ({
         id: t.id,
         courseId: t.courseId,
+        forumId: t.forumId,
         authorId: t.authorId,
         title: t.title,
         isPinned: t.isPinned,
@@ -139,6 +152,7 @@ export class ForumService {
         where: { id: topicId },
         include: {
           course: { select: { id: true, slug: true, name: true } },
+          forum: { select: { title: true } },
           author: { select: AUTHOR_SELECT },
           group: { select: { name: true } },
           posts: {
@@ -159,6 +173,8 @@ export class ForumService {
       const result: ForumTopicDetail = {
         id: topic.id,
         courseId: topic.courseId,
+        forumId: topic.forumId,
+        forumTitle: topic.forum?.title ?? null,
         authorId: topic.authorId,
         title: topic.title,
         isPinned: topic.isPinned,
@@ -221,23 +237,76 @@ export class ForumService {
   async createTopic(user: AuthUser, body: CreateTopicBody): Promise<{ topicId: string }> {
     await this.assertEnrolled(body.courseId, user.id, user.role);
     const groupId = await this.resolveTopicGroupId(user, body.courseId, body.groupId);
+
+    // Diễn đàn phải thuộc đúng khoá học — chặn việc đăng xuyên khoá bằng id đoán được.
+    let forumId: string | null = null;
+    if (body.forumId) {
+      const forum = await this.prisma.forum.findFirst({
+        where: { id: body.forumId, courseId: body.courseId },
+        select: { id: true },
+      });
+      if (!forum) throw new NotFoundException('Diễn đàn không tồn tại trong khoá học này');
+      forumId = forum.id;
+    }
+
     const topic = await this.prisma.$transaction(async (tx) => {
       const t = await tx.forumTopic.create({
-        data: { courseId: body.courseId, authorId: user.id, title: body.title, groupId },
+        data: { courseId: body.courseId, forumId, authorId: user.id, title: body.title, groupId },
       });
       await tx.forumPost.create({
         data: { topicId: t.id, authorId: user.id, content: body.content },
       });
       return t;
     });
-    await this.cache.del(`forum:topics:${body.courseId}`);
+    await this.invalidateTopicLists(body.courseId, forumId);
     return { topicId: topic.id };
   }
 
   async updateTopic(user: AuthUser, topicId: string, body: UpdateTopicBody): Promise<void> {
-    if (!hasMinRole(user.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
+    const topic = await this.prisma.forumTopic.findUnique({
+      where: { id: topicId },
+      select: { courseId: true, forumId: true, authorId: true },
+    });
+    if (!topic) throw new NotFoundException('Không tìm thấy chủ đề');
+
+    // Ghim / khoá là thao tác điều hành, chỉ GV trở lên. Sửa tiêu đề thì tác giả
+    // cũng được, giống quyền sửa nội dung ở updatePost.
+    const isStaff = hasMinRole(user.role, 'TEACHER');
+    const onlyTitle = body.isPinned === undefined && body.isLocked === undefined;
+    if (!isStaff && !(onlyTitle && topic.authorId === user.id)) {
+      throw new ForbiddenException('Không có quyền');
+    }
+
     await this.prisma.forumTopic.update({ where: { id: topicId }, data: body });
-    await this.cache.del(`forum:topic:${topicId}`);
+    await Promise.all([
+      this.invalidateTopicLists(topic.courseId, topic.forumId),
+      this.cache.del(`forum:topic:${topicId}`),
+    ]);
+  }
+
+  /**
+   * Sửa nội dung một bài viết. Bài đầu tiên của chủ đề chính là phần thân chủ
+   * đề, nên đây cũng là đường để quản lý / giáo viên / trợ giảng sửa nội dung
+   * chủ đề do người khác viết.
+   */
+  async updatePost(user: AuthUser, postId: string, body: UpdatePostBody): Promise<void> {
+    const post = await this.prisma.forumPost.findUnique({
+      where: { id: postId },
+      select: {
+        authorId: true,
+        topicId: true,
+        topic: { select: { courseId: true, forumId: true } },
+      },
+    });
+    if (!post) throw new NotFoundException('Không tìm thấy bài viết');
+    if (!hasMinRole(user.role, 'TA') && post.authorId !== user.id)
+      throw new ForbiddenException('Không có quyền');
+
+    await this.prisma.forumPost.update({ where: { id: postId }, data: { content: body.content } });
+    await Promise.all([
+      this.invalidateTopicLists(post.topic.courseId, post.topic.forumId),
+      this.cache.del(`forum:topic:${post.topicId}`),
+    ]);
   }
 
   async deleteTopic(user: AuthUser, topicId: string): Promise<void> {
@@ -247,7 +316,7 @@ export class ForumService {
       throw new ForbiddenException('Không có quyền');
     await this.prisma.forumTopic.delete({ where: { id: topicId } });
     await Promise.all([
-      this.cache.del(`forum:topics:${topic.courseId}`),
+      this.invalidateTopicLists(topic.courseId, topic.forumId),
       this.cache.del(`forum:topic:${topicId}`),
     ]);
   }
@@ -282,7 +351,7 @@ export class ForumService {
     }
 
     await Promise.all([
-      this.cache.del(`forum:topics:${topic.courseId}`),
+      this.invalidateTopicLists(topic.courseId, topic.forumId),
       this.cache.del(`forum:topic:${body.topicId}`),
     ]);
     return { postId: post.id };
@@ -312,7 +381,210 @@ export class ForumService {
     await this.cache.del(`forum:topic:${post.topicId}`);
   }
 
+  // ── Diễn đàn (hoạt động trong chương) ──────────────────────────
+
+  /**
+   * Diễn đàn của khoá, nhóm theo chương — bày giống tab Bài tập.
+   *
+   * Học sinh chỉ thấy diễn đàn đã đăng; giáo viên thấy cả bản nháp để còn sửa.
+   * Chủ đề cũ (tạo trước khi có model Forum) không thuộc chương nào, trả về
+   * dưới dạng legacyTopicCount để trang forum còn chỗ dẫn tới chúng.
+   */
+  async listForums(user: AuthUser, courseId: string): Promise<CourseForums> {
+    await this.assertEnrolled(courseId, user.id, user.role);
+    const canManage = await this.canManageForums(user, courseId);
+
+    const [forums, legacyTopicCount] = await Promise.all([
+      this.prisma.forum.findMany({
+        where: { courseId },
+        include: {
+          moduleItems: {
+            include: { module: { select: { id: true, name: true, position: true } } },
+          },
+          topics: {
+            select: { updatedAt: true, _count: { select: { posts: true } } },
+          },
+        },
+      }),
+      this.prisma.forumTopic.count({ where: { courseId, forumId: null } }),
+    ]);
+
+    const groups = new Map<string, ForumModuleGroup>();
+    for (const forum of forums) {
+      const item = forum.moduleItems[0];
+      if (!canManage && !item?.isPublished) continue;
+
+      const key = item?.module.id ?? '__none__';
+      const group = groups.get(key) ?? {
+        moduleId: item?.module.id ?? null,
+        moduleName: item?.module.name ?? 'Chưa thuộc chương nào',
+        // Mục chưa gắn chương xếp cuối.
+        modulePosition: item?.module.position ?? Number.MAX_SAFE_INTEGER,
+        forums: [],
+      };
+
+      const lastActivity = forum.topics.reduce<Date | null>(
+        (latest, t) => (!latest || t.updatedAt > latest ? t.updatedAt : latest),
+        null
+      );
+
+      group.forums.push({
+        id: forum.id,
+        title: forum.title,
+        description: forum.description,
+        moduleItemId: item?.id ?? null,
+        isPublished: item?.isPublished ?? false,
+        topicCount: forum.topics.length,
+        postCount: forum.topics.reduce((n, t) => n + t._count.posts, 0),
+        lastActivityAt: lastActivity?.toISOString() ?? null,
+      } satisfies ForumSummary);
+      groups.set(key, group);
+    }
+
+    return {
+      groups: [...groups.values()].sort((a, b) => a.modulePosition - b.modulePosition),
+      legacyTopicCount,
+    };
+  }
+
+  async getForum(
+    user: AuthUser,
+    forumId: string
+  ): Promise<ForumSummary & { courseId: string; courseSlug: string; moduleName: string | null }> {
+    const forum = await this.prisma.forum.findUnique({
+      where: { id: forumId },
+      include: {
+        course: { select: { id: true, slug: true } },
+        moduleItems: { include: { module: { select: { name: true } } } },
+        topics: { select: { updatedAt: true, _count: { select: { posts: true } } } },
+      },
+    });
+    if (!forum) throw new NotFoundException('Diễn đàn không tồn tại');
+    await this.assertEnrolled(forum.course.id, user.id, user.role);
+
+    const item = forum.moduleItems[0];
+    if (!item?.isPublished && !(await this.canManageForums(user, forum.course.id))) {
+      throw new ForbiddenException('Diễn đàn chưa được mở');
+    }
+
+    const lastActivity = forum.topics.reduce<Date | null>(
+      (latest, t) => (!latest || t.updatedAt > latest ? t.updatedAt : latest),
+      null
+    );
+
+    return {
+      id: forum.id,
+      title: forum.title,
+      description: forum.description,
+      moduleItemId: item?.id ?? null,
+      isPublished: item?.isPublished ?? false,
+      topicCount: forum.topics.length,
+      postCount: forum.topics.reduce((n, t) => n + t._count.posts, 0),
+      lastActivityAt: lastActivity?.toISOString() ?? null,
+      courseId: forum.course.id,
+      courseSlug: forum.course.slug,
+      moduleName: item?.module.name ?? null,
+    };
+  }
+
+  /** Tạo diễn đàn kèm ModuleItem — như mọi hoạt động khác trong chương. */
+  async createForum(user: AuthUser, body: CreateForumBody): Promise<{ id: string }> {
+    await this.assertCanManageForums(user, body.courseId);
+
+    const mod = await this.prisma.module.findFirst({
+      where: { id: body.moduleId, courseId: body.courseId },
+      select: { id: true },
+    });
+    if (!mod) throw new NotFoundException('Chương không tồn tại trong khoá học này');
+
+    const last = await this.prisma.moduleItem.findFirst({
+      where: { moduleId: body.moduleId },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+
+    const forum = await this.prisma.$transaction(async (tx) => {
+      const f = await tx.forum.create({
+        data: {
+          courseId: body.courseId,
+          title: body.title.trim(),
+          description: body.description?.trim() || null,
+        },
+      });
+      await tx.moduleItem.create({
+        data: {
+          moduleId: body.moduleId,
+          type: 'FORUM',
+          position: (last?.position ?? -1) + 1,
+          title: f.title,
+          forumId: f.id,
+        },
+      });
+      return f;
+    });
+
+    await this.invalidateCourseCaches(body.courseId);
+    return { id: forum.id };
+  }
+
+  async updateForum(user: AuthUser, forumId: string, body: UpdateForumBody): Promise<void> {
+    const forum = await this.prisma.forum.findUnique({
+      where: { id: forumId },
+      select: { courseId: true },
+    });
+    if (!forum) throw new NotFoundException('Diễn đàn không tồn tại');
+    await this.assertCanManageForums(user, forum.courseId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.forum.update({
+        where: { id: forumId },
+        data: {
+          ...(body.title !== undefined && { title: body.title.trim() }),
+          ...(body.description !== undefined && { description: body.description?.trim() || null }),
+        },
+      });
+      // Tên hiển thị ở trang Chương là bản sao — đồng bộ lại.
+      if (body.title !== undefined) {
+        await tx.moduleItem.updateMany({
+          where: { forumId },
+          data: { title: body.title.trim() },
+        });
+      }
+    });
+
+    await this.invalidateCourseCaches(forum.courseId);
+  }
+
   // ── Internals ──────────────────────────────────────────────────
+
+  private async canManageForums(user: AuthUser, courseId: string): Promise<boolean> {
+    if (!hasMinRole(user.role, 'TEACHER')) return false;
+    return canManageCourse(this.prisma, user, courseId);
+  }
+
+  private async assertCanManageForums(user: AuthUser, courseId: string): Promise<void> {
+    if (!(await this.canManageForums(user, courseId)))
+      throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
+  }
+
+  /** Danh sách chủ đề được cache ở hai key: theo khoá và theo từng diễn đàn. */
+  private async invalidateTopicLists(courseId: string, forumId: string | null): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`forum:topics:${courseId}`),
+      ...(forumId ? [this.cache.del(`forum:topics:${courseId}:${forumId}`)] : []),
+    ]);
+  }
+
+  /** Diễn đàn hiện trong cây chương nên cache modules cũng phải bỏ. */
+  private async invalidateCourseCaches(courseId: string): Promise<void> {
+    await Promise.allSettled([
+      this.cache.del(`forum:topics:${courseId}`),
+      this.cache.del(`modules:${courseId}`),
+      this.cache.del(`modules:pub:${courseId}`),
+      this.cache.del(`modules:nav:${courseId}`),
+      this.cache.del(`modules:nav:pub:${courseId}`),
+    ]);
+  }
 
   private async assertEnrolled(courseId: string, userId: string, role: string): Promise<void> {
     if (hasMinRole(role, 'TEACHER')) return;

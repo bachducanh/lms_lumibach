@@ -10,7 +10,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { FolderTree, ListChecks, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  FolderTree,
+  ListChecks,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
+import { CompetencyImportDialog, downloadCompetencyTemplate } from './CompetencyImportDialog';
 import type { CompetencyCategoryItem, CompetencyIndicatorItem } from '@lumibach/types';
 
 type Props = {
@@ -35,7 +49,22 @@ function fmtError(err: unknown, fallback = 'Có lỗi xảy ra'): string {
 export function CompetencyManager({ courseId, canManage, categories }: Props) {
   const router = useRouter();
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [confirmDialog, openConfirm] = useConfirmDialog();
+  // Môn nhiều chỉ báo thì danh sách dài vô tận — mặc định thu gọn hết như
+  // chương trong modules, chỉ mở danh mục đang cần.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allExpanded = categories.length > 0 && expandedIds.size === categories.length;
 
   function refresh() {
     router.refresh();
@@ -54,6 +83,14 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
     <div className="space-y-4">
       {confirmDialog}
 
+      {showImport && (
+        <CompetencyImportDialog
+          courseId={courseId}
+          onClose={() => setShowImport(false)}
+          onImported={refresh}
+        />
+      )}
+
       {canManage && (
         <div className="border-border bg-card rounded-lg border p-4">
           {showAddCategory ? (
@@ -70,13 +107,24 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
               <div>
                 <p className="text-sm font-semibold">Kho năng lực của khoá học</p>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Tạo danh mục lớn, sau đó thêm các chỉ báo cụ thể để gán vào hoạt động.
+                  Tạo danh mục lớn, sau đó thêm các chỉ báo cụ thể để gán vào hoạt động. Môn nhiều
+                  chỉ báo thì nên soạn sẵn trong Excel rồi import một lần.
                 </p>
               </div>
-              <Button size="sm" onClick={() => setShowAddCategory(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Thêm danh mục
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="ghost" onClick={downloadCompetencyTemplate}>
+                  <Download className="mr-1.5 h-4 w-4" />
+                  File mẫu
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowImport(true)}>
+                  <Upload className="mr-1.5 h-4 w-4" />
+                  Import Excel
+                </Button>
+                <Button size="sm" onClick={() => setShowAddCategory(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Thêm danh mục
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -92,11 +140,34 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
         </div>
       ) : (
         <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-muted-foreground text-xs">
+              {categories.length} danh mục ·{' '}
+              {categories.reduce((n, c) => n + c.indicators.length, 0)} chỉ báo
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setExpandedIds(allExpanded ? new Set() : new Set(categories.map((c) => c.id)))
+              }
+            >
+              {allExpanded ? (
+                <ChevronsDownUp className="mr-1.5 h-4 w-4" />
+              ) : (
+                <ChevronsUpDown className="mr-1.5 h-4 w-4" />
+              )}
+              {allExpanded ? 'Thu gọn tất cả' : 'Mở tất cả'}
+            </Button>
+          </div>
+
           {categories.map((category) => (
             <CategoryCard
               key={category.id}
               category={category}
               canManage={canManage}
+              expanded={expandedIds.has(category.id)}
+              onToggleExpanded={() => toggleExpanded(category.id)}
               onChanged={refresh}
               openConfirm={openConfirm}
             />
@@ -110,11 +181,15 @@ export function CompetencyManager({ courseId, canManage, categories }: Props) {
 function CategoryCard({
   category,
   canManage,
+  expanded,
+  onToggleExpanded,
   onChanged,
   openConfirm,
 }: {
   category: CompetencyCategoryItem;
   canManage: boolean;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   onChanged: () => void;
   openConfirm: (message: string) => Promise<boolean>;
 }) {
@@ -151,9 +226,19 @@ function CategoryCard({
           />
         ) : (
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-expanded={expanded}
+              className="flex min-w-0 flex-1 items-start gap-3 text-left"
+            >
               <div className="bg-primary/10 border-primary/20 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
-                <FolderTree className="text-primary h-4 w-4" />
+                <ChevronDown
+                  className={cn(
+                    'text-primary h-4 w-4 transition-transform',
+                    !expanded && '-rotate-90'
+                  )}
+                />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -166,7 +251,7 @@ function CategoryCard({
                   <p className="text-muted-foreground mt-1 text-sm">{category.description}</p>
                 )}
               </div>
-            </div>
+            </button>
             {canManage && (
               <div className="flex shrink-0 items-center gap-1">
                 <IconButton label="Sửa danh mục" onClick={() => setEditing(true)}>
@@ -186,25 +271,27 @@ function CategoryCard({
         )}
       </div>
 
-      <div className="divide-border divide-y">
-        {category.indicators.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-4 text-sm">
-            Chưa có chỉ báo trong danh mục này.
-          </p>
-        ) : (
-          category.indicators.map((indicator) => (
-            <IndicatorRow
-              key={indicator.id}
-              indicator={indicator}
-              canManage={canManage}
-              onChanged={onChanged}
-              openConfirm={openConfirm}
-            />
-          ))
-        )}
-      </div>
+      {expanded && (
+        <div className="divide-border divide-y">
+          {category.indicators.length === 0 ? (
+            <p className="text-muted-foreground px-4 py-4 text-sm">
+              Chưa có chỉ báo trong danh mục này.
+            </p>
+          ) : (
+            category.indicators.map((indicator) => (
+              <IndicatorRow
+                key={indicator.id}
+                indicator={indicator}
+                canManage={canManage}
+                onChanged={onChanged}
+                openConfirm={openConfirm}
+              />
+            ))
+          )}
+        </div>
+      )}
 
-      {canManage && (
+      {expanded && canManage && (
         <div className="border-t px-4 py-3">
           {showAddIndicator ? (
             <IndicatorForm

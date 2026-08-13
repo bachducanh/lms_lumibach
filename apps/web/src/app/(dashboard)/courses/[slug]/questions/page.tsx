@@ -6,7 +6,8 @@ import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, QuestionBankData } from '@lumibach/types';
 import { QuestionBankList } from '@/components/features/quiz/QuestionBankList';
 import { hasMinRole } from '@/lib/permissions';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Library } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
 import type { UserRole } from '@lumibach/db';
 
 export const metadata = { title: 'Ngân hàng câu hỏi' };
@@ -37,11 +38,22 @@ export default async function QuestionsPage({ params }: { params: Promise<{ slug
         {course.name}
       </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold">Ngân hàng câu hỏi</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          {categories.length} danh mục · {totalQ} câu hỏi · {course.name}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Ngân hàng câu hỏi</h1>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            {categories.length} danh mục · {totalQ} câu hỏi · {course.name}
+          </p>
+        </div>
+        {canManage && (
+          <Link
+            href={`/courses/${slug}/questions/bank`}
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          >
+            <Library className="mr-1.5 h-4 w-4" />
+            Ngân hàng chung
+          </Link>
+        )}
       </div>
 
       <QuestionBankList

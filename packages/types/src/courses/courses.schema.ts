@@ -16,6 +16,8 @@ export const CreateCourseBodySchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   thumbnail: z.string().optional(),
+  /** Vào khoá học: các chương đổ xuống sẵn (true) hay chỉ hiện tên chương. */
+  modulesExpandedByDefault: z.boolean().default(true),
 });
 export type CreateCourseBody = z.infer<typeof CreateCourseBodySchema>;
 
@@ -65,6 +67,7 @@ export type CourseListItem = {
   category: CourseCategoryRef;
   status: string;
   isPublic: boolean;
+  modulesExpandedByDefault: boolean;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -94,6 +97,36 @@ export type TrashedCourseItem = {
     quizzes: number;
     enrollments: number;
   };
+};
+
+/** Loại hoạt động có thể nằm trong thùng rác (đều dùng cột deletedAt). */
+export const TRASHED_ACTIVITY_KINDS = [
+  'assignment',
+  'quiz',
+  'code-exercise',
+  'practice-test',
+] as const;
+export type TrashedActivityKind = (typeof TRASHED_ACTIVITY_KINDS)[number];
+
+export const TRASHED_ACTIVITY_LABEL: Record<TrashedActivityKind, string> = {
+  assignment: 'Bài tập',
+  quiz: 'Quiz',
+  'code-exercise': 'Bài code / Scratch',
+  'practice-test': 'Đề ôn tập',
+};
+
+export type TrashedActivityItem = {
+  id: string;
+  kind: TrashedActivityKind;
+  title: string;
+  courseId: string;
+  courseName: string;
+  courseSlug: string;
+  deletedAt: string;
+  /** Số ngày còn lại trước khi tự xoá vĩnh viễn (0 = sẽ xoá ở lần dọn kế tiếp). */
+  daysLeft: number;
+  /** Bài làm của học sinh sẽ mất nếu xoá vĩnh viễn — hiện để cảnh báo. */
+  submissionCount: number;
 };
 
 export type CourseDetail = CourseListItem & {

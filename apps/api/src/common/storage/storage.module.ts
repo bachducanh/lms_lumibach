@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { StorageService } from './storage.service';
-import { LessonCleanupService } from './lesson-cleanup.service';
+import { ModuleItemCleanupService } from './module-item-cleanup.service';
 
 @Module({
-  providers: [StorageService, LessonCleanupService],
-  exports: [StorageService, LessonCleanupService],
+  providers: [StorageService, ModuleItemCleanupService],
+  exports: [StorageService, ModuleItemCleanupService],
 })
 export class StorageModule {}

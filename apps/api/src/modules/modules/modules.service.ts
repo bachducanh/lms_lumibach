@@ -15,7 +15,8 @@ import type {
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { StorageService } from '../../common/storage/storage.service';
-import { LessonCleanupService } from '../../common/storage/lesson-cleanup.service';
+import type { ModuleItemPurgePlan } from '../../common/storage/module-item-cleanup.service';
+import { ModuleItemCleanupService } from '../../common/storage/module-item-cleanup.service';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -30,8 +31,38 @@ export class ModulesService {
     private readonly prisma: PrismaClient,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly storage: StorageService,
-    private readonly lessonCleanup: LessonCleanupService
+    private readonly cleanup: ModuleItemCleanupService
   ) {}
+
+  /**
+   * Các thao tác DB dọn nội dung của một kế hoạch purge — dùng chung cho xoá
+   * một hoạt động, xoá cả chương. Trả về mảng để bên gọi ghép vào transaction
+   * của mình cùng lệnh xoá ModuleItem/Module.
+   */
+  private purgeOperations(plan: ModuleItemPurgePlan) {
+    const now = new Date();
+    const softDelete = { deletedAt: now };
+    return [
+      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
+      this.prisma.forum.deleteMany({ where: { id: { in: plan.forumIds } } }),
+      this.prisma.assignment.updateMany({
+        where: { id: { in: plan.assignmentIds }, deletedAt: null },
+        data: softDelete,
+      }),
+      this.prisma.quiz.updateMany({
+        where: { id: { in: plan.quizIds }, deletedAt: null },
+        data: softDelete,
+      }),
+      this.prisma.codeExercise.updateMany({
+        where: { id: { in: plan.codeExerciseIds }, deletedAt: null },
+        data: softDelete,
+      }),
+      this.prisma.practiceTest.updateMany({
+        where: { id: { in: plan.practiceTestIds }, deletedAt: null },
+        data: softDelete,
+      }),
+    ];
+  }
 
   private async assertCanManage(courseId: string, actor: AuthUser): Promise<void> {
     if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
@@ -88,12 +119,12 @@ export class ModulesService {
     if (!mod) throw new NotFoundException('Chương không tồn tại');
     await this.assertCanManage(mod.courseId, actor);
 
-    // Cascade xoá được ModuleItem nhưng không chạm tới Lesson — dọn tay trước.
-    const itemIds = await this.lessonCleanup.moduleItemIdsOfModule(moduleId);
-    const plan = await this.lessonCleanup.planPurge(itemIds);
+    // Cascade chỉ xoá được ModuleItem, nội dung bên trong phải dọn tay.
+    const itemIds = await this.cleanup.moduleItemIdsOfModule(moduleId);
+    const plan = await this.cleanup.planPurge(itemIds);
 
     await this.prisma.$transaction([
-      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
+      ...this.purgeOperations(plan),
       this.prisma.module.delete({ where: { id: moduleId } }),
     ]);
 
@@ -194,11 +225,12 @@ export class ModulesService {
     if (!item) throw new NotFoundException('Không tìm thấy');
     await this.assertCanManage(item.module.courseId, actor);
 
-    // Lesson không cascade theo ModuleItem (quan hệ là SetNull) — phải dọn tay.
-    const plan = await this.lessonCleanup.planPurge([itemId]);
+    // Nội dung không cascade theo ModuleItem (quan hệ là SetNull) — dọn tay,
+    // nếu không bài tập/quiz/bài code sẽ ở lại tab riêng dưới dạng mồ côi.
+    const plan = await this.cleanup.planPurge([itemId]);
 
     await this.prisma.$transaction([
-      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
+      ...this.purgeOperations(plan),
       this.prisma.moduleItem.delete({ where: { id: itemId } }),
     ]);
 
@@ -233,6 +265,7 @@ export class ModulesService {
               quiz: { select: { id: true, title: true, status: true } } as any,
               codeExercise: { select: { id: true, title: true, language: true, status: true } },
               practiceTest: { select: { id: true, title: true, status: true } } as any,
+              forum: { select: { id: true, title: true } },
               visibleGroups: { select: { groupId: true } },
             },
           },
@@ -382,7 +415,7 @@ export class ModulesService {
       const items = await this.prisma.moduleItem.findMany({
         where: {
           module: { courseId, ...(publishedOnly ? { isPublished: true } : {}) },
-          type: { in: ['LESSON', 'ASSIGNMENT', 'QUIZ', 'CODE_EXERCISE', 'PRACTICE_TEST'] },
+          type: { in: ['LESSON', 'ASSIGNMENT', 'QUIZ', 'CODE_EXERCISE', 'PRACTICE_TEST', 'FORUM'] },
           ...(publishedOnly ? { isPublished: true } : {}),
           ...(publishedOnly
             ? {
@@ -407,6 +440,7 @@ export class ModulesService {
           quizId: true,
           codeExerciseId: true,
           practiceTestId: true,
+          forumId: true,
           codeExercise: { select: { language: true } },
           practiceTest: { select: { status: true } } as any,
         },

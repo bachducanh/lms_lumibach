@@ -273,6 +273,10 @@ export class AttemptsService {
         }
 
         let codeScore = 0;
+        // Judge0 không gọi được thì KHÔNG được coi là làm sai: chấm 0 rồi đóng
+        // bài lại nghĩa là một lần sập dịch vụ xoá trắng bài code của cả lớp mà
+        // không ai hay. Ghi nhận lại để chuyển câu đó sang chấm tay.
+        let judge0Down = false;
         const maxTcPts = testCases.reduce((s: number, tc: any) => s + (tc.points as number), 0);
 
         await Promise.all(
@@ -293,10 +297,23 @@ export class AttemptsService {
                 codeScore += tc.points as number;
               }
             } catch {
-              /* Judge0 unavailable — skip */
+              judge0Down = true;
             }
           })
         );
+
+        if (judge0Down) {
+          needsManualGrading = true;
+          updates.push({
+            questionId: qq.questionId,
+            selectedOptionIds: null,
+            booleanAnswer: null,
+            textAnswer: code,
+            isCorrect: null,
+            score: null,
+          });
+          continue;
+        }
 
         const score = maxTcPts > 0 ? Math.round((codeScore / maxTcPts) * pts * 10) / 10 : 0;
         totalScore += score;
@@ -312,7 +329,21 @@ export class AttemptsService {
       }
 
       const graded = gradeOptionAnswer(type, opts, pts, ans ?? null);
-      if (!graded) continue;
+      if (!graded) {
+        // Loại câu hỏi mới chưa có luật chấm: để giáo viên chấm tay còn hơn bỏ
+        // qua âm thầm — bỏ qua thì câu đó không có dòng Answer nào mà maxScore
+        // vẫn cộng, học sinh mất điểm không rõ lý do.
+        needsManualGrading = true;
+        updates.push({
+          questionId: qq.questionId,
+          selectedOptionIds: ans?.selectedOptionIds ?? null,
+          booleanAnswer: ans?.booleanAnswer ?? null,
+          textAnswer: ans?.textAnswer ?? null,
+          isCorrect: null,
+          score: null,
+        });
+        continue;
+      }
       totalScore += graded.score;
       updates.push({
         questionId: qq.questionId,

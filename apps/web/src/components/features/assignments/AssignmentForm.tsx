@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
+import { SimpleSelect } from '@/components/ui/select';
 
 const RichTextEditor = dynamic(
   () =>
@@ -213,16 +214,18 @@ export function AssignmentForm({
             <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Kiểu nộp
             </label>
-            <select
+            <SimpleSelect
+              className="w-full"
+              aria-label="Hình thức nộp bài"
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
-            >
-              <option value="TEXT">Văn bản</option>
-              <option value="FILE">File đính kèm</option>
-              <option value="BOTH">Văn bản + File</option>
-              <option value="CODE">Lập trình (code)</option>
-            </select>
+              onValueChange={setType}
+              options={[
+                { value: 'TEXT', label: 'Văn bản' },
+                { value: 'FILE', label: 'File đính kèm' },
+                { value: 'BOTH', label: 'Văn bản + File' },
+                { value: 'CODE', label: 'Lập trình (code)' },
+              ]}
+            />
           </div>
 
           {/* Max score */}
@@ -262,15 +265,17 @@ export function AssignmentForm({
             <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Chính sách trễ
             </label>
-            <select
+            <SimpleSelect
+              className="w-full"
+              aria-label="Chính sách nộp muộn"
               value={latePolicy}
-              onChange={(e) => setLatePolicy(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
-            >
-              <option value="NONE">Không nhận</option>
-              <option value="ALLOW">Nhận (không trừ)</option>
-              <option value="DEDUCT">Trừ điểm</option>
-            </select>
+              onValueChange={setLatePolicy}
+              options={[
+                { value: 'NONE', label: 'Không nhận' },
+                { value: 'ALLOW', label: 'Nhận (không trừ)' },
+                { value: 'DEDUCT', label: 'Trừ điểm' },
+              ]}
+            />
           </div>
         </div>
 
@@ -414,18 +419,16 @@ export function AssignmentForm({
             <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Thêm vào chương
             </label>
-            <select
+            <SimpleSelect
+              className="w-full max-w-sm"
+              aria-label="Chương"
               value={moduleId}
-              onChange={(e) => setModuleId(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full max-w-sm rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
-            >
-              <option value="">— Không thêm vào chương —</option>
-              {modules.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={setModuleId}
+              options={[
+                { value: '', label: '— Không thêm vào chương —' },
+                ...modules.map((m) => ({ value: m.id, label: m.name })),
+              ]}
+            />
           </div>
         )}
 

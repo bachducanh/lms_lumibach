@@ -9,6 +9,7 @@ import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { toRichHtml } from '@/lib/utils';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { hasMinRole } from '@/lib/permissions';
 import { CheckCircle2, XCircle, Minus, Brain, Code, ArrowRight } from 'lucide-react';
@@ -391,9 +392,10 @@ export default async function AttemptPage({
                 {isEssay && (
                   <div className="space-y-3 pl-9">
                     {ans?.textAnswer ? (
-                      <div className="bg-muted/30 rounded-lg px-4 py-3 text-sm whitespace-pre-wrap">
-                        {ans.textAnswer}
-                      </div>
+                      <RichTextView
+                        html={toRichHtml(ans.textAnswer)}
+                        className="bg-muted/30 rounded-lg px-4 py-3 text-sm"
+                      />
                     ) : (
                       <p className="text-muted-foreground text-xs italic">Không có câu trả lời</p>
                     )}

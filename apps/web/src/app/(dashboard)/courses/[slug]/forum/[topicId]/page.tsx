@@ -7,7 +7,10 @@ import type { ForumTopicDetail } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Pin, Lock, Eye, MessageSquare } from 'lucide-react';
+import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { toRichHtml } from '@/lib/utils';
 import { TopicControls } from './TopicControls';
+import { FirstPostBody } from './FirstPostBody';
 import { ReplyForm } from './ReplyForm';
 import { PostCard } from './PostCard';
 import type { UserRole } from '@lumibach/db';
@@ -70,6 +73,9 @@ export default async function TopicDetailPage({
   const role = session.user.role as UserRole;
   const userId = session.user.id!;
   const canManage = hasMinRole(role, 'TEACHER');
+  // Trợ giảng cũng được sửa nội dung bài của người khác (biên tập, gỡ nội dung sai).
+  const canEditOthers = hasMinRole(role, 'TA');
+  const canUploadImages = hasMinRole(role, 'TEACHER');
   const canReply = !topic.isLocked || canManage;
 
   const [firstPost, ...replyPosts] = topic.posts;
@@ -79,11 +85,11 @@ export default async function TopicDetailPage({
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         <Link
-          href={`/courses/${slug}/forum`}
+          href={`/courses/${slug}/forum${topic.forumId ? `?forumId=${topic.forumId}` : ''}`}
           className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Diễn đàn
+          {topic.forumTitle ?? 'Diễn đàn'}
         </Link>
       </div>
 
@@ -120,12 +126,15 @@ export default async function TopicDetailPage({
               </span>
             </p>
           </div>
-          {canManage && (
+          {(canManage || topic.authorId === userId) && (
             <TopicControls
               topicId={topicId}
               slug={slug}
+              title={topic.title}
+              forumId={topic.forumId ?? null}
               isPinned={topic.isPinned}
               isLocked={topic.isLocked}
+              canModerate={canManage}
             />
           )}
         </div>
@@ -163,11 +172,18 @@ export default async function TopicDetailPage({
                   {timeAgo(firstPost.createdAt)}
                 </span>
               </div>
-              <div className="prose prose-sm prose-invert max-w-none">
-                <pre className="text-foreground/90 font-sans text-sm leading-relaxed whitespace-pre-wrap">
-                  {firstPost.content}
-                </pre>
-              </div>
+              {canEditOthers || firstPost.authorId === userId ? (
+                <FirstPostBody
+                  postId={firstPost.id}
+                  content={firstPost.content}
+                  canUploadImages={canUploadImages}
+                />
+              ) : (
+                <RichTextView
+                  html={toRichHtml(firstPost.content)}
+                  className="text-foreground/90 text-sm"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -186,6 +202,8 @@ export default async function TopicDetailPage({
                 post={post}
                 currentUserId={userId}
                 canManage={canManage}
+                canEditOthers={canEditOthers}
+                canUploadImages={canUploadImages}
                 slug={slug}
                 topicId={topicId}
               />
@@ -200,7 +218,7 @@ export default async function TopicDetailPage({
           <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Trả lời
           </p>
-          <ReplyForm topicId={topicId} slug={slug} />
+          <ReplyForm topicId={topicId} slug={slug} canUploadImages={canUploadImages} />
         </div>
       ) : (
         <div className="border-border text-muted-foreground rounded-xl border border-dashed p-5 text-center text-sm">

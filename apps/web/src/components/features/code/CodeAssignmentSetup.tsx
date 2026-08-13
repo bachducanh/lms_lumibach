@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { Loader2, ChevronDown, Settings2 } from 'lucide-react';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
+import { SimpleSelect } from '@/components/ui/select';
 import { TestCaseBuilder } from './TestCaseBuilder';
 import type { CodeLanguage } from '@lumibach/db';
 
@@ -70,20 +71,13 @@ export function CodeAssignmentSetup({ existing }: Props) {
           <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Ngôn ngữ
           </label>
-          <div className="relative">
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as CodeLanguage)}
-              className="border-input bg-background focus:ring-ring cursor-pointer appearance-none rounded-md border py-1.5 pr-8 pl-3 text-sm focus:ring-1 focus:outline-none"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.key} value={l.key}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2" />
-          </div>
+          <SimpleSelect
+            size="sm"
+            aria-label="Ngôn ngữ"
+            value={language}
+            onValueChange={(v) => setLanguage(v as CodeLanguage)}
+            options={LANGUAGES.map((l) => ({ value: l.key, label: l.label }))}
+          />
         </div>
 
         {/* Time limit */}

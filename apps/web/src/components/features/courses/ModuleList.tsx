@@ -37,6 +37,9 @@ import {
   ChevronDown,
   ChevronsUpDown,
   UsersRound,
+  MessagesSquare,
+  Share2,
+  Library,
 } from 'lucide-react';
 import {
   DndContext,
@@ -68,6 +71,8 @@ type Props = {
   courseId: string;
   modules: ModuleWithItems[];
   canManage: boolean;
+  /** Cài đặt khoá học: chương đổ xuống sẵn hay chỉ hiện tên. */
+  modulesExpandedByDefault?: boolean;
   completedIds?: Set<string>;
   submittedAssignmentIds?: Set<string>;
   submittedQuizIds?: Set<string>;
@@ -136,6 +141,14 @@ const ACTIVITY_DEFS: ActivityDef[] = [
     borderGlow: 'hover:border-orange-500/40 hover:shadow-[0_0_15px_rgba(251,146,60,0.2)]',
   },
   {
+    id: 'forum',
+    label: 'Diễn đàn',
+    description: 'Không gian thảo luận theo chủ đề cho chương này',
+    icon: <MessagesSquare className="h-7 w-7 text-sky-400" />,
+    iconBg: 'bg-sky-500/10',
+    borderGlow: 'hover:border-sky-500/40 hover:shadow-[0_0_15px_rgba(56,189,248,0.2)]',
+  },
+  {
     id: 'external_url',
     label: 'Link ngoài',
     description: 'Liên kết tới tài nguyên bên ngoài',
@@ -151,13 +164,16 @@ type ModalProps = {
   courseSlug: string;
   moduleId: string;
   onClose: () => void;
-  onSelectUrl: () => void;
+  onSelectInline: (kind: InlineFormKind) => void;
 };
 
-function AddActivityModal({ courseSlug, moduleId, onClose, onSelectUrl }: ModalProps) {
+/** Hoạt động tạo được ngay tại chỗ, không cần sang trang riêng. */
+type InlineFormKind = 'external_url' | 'forum';
+
+function AddActivityModal({ courseSlug, moduleId, onClose, onSelectInline }: ModalProps) {
   function handleSelect(id: string) {
-    if (id === 'external_url') {
-      onSelectUrl();
+    if (id === 'external_url' || id === 'forum') {
+      onSelectInline(id);
       onClose();
     }
   }
@@ -463,6 +479,140 @@ function AddExternalUrlForm({
   );
 }
 
+function AddForumForm({
+  courseId,
+  moduleId,
+  onAdded,
+  onClose,
+}: {
+  courseId: string;
+  moduleId: string;
+  onAdded: () => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [pending, startTransition] = useTransition();
+
+  function handleSubmit(e: { preventDefault(): void }) {
+    e.preventDefault();
+    startTransition(async () => {
+      try {
+        await apiClient.post('/forum/forums', {
+          courseId,
+          moduleId,
+          title,
+          description: description.trim() || undefined,
+        });
+        toast.success('Đã tạo diễn đàn.');
+        setTitle('');
+        setDescription('');
+        onAdded();
+        onClose();
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi tạo diễn đàn');
+      }
+    });
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="border-primary/30 bg-primary/5 relative mt-2 space-y-3 overflow-hidden rounded-xl border p-4"
+    >
+      <div className="bg-primary absolute top-0 bottom-0 left-0 w-1" />
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-primary flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase">
+          <MessagesSquare className="h-3.5 w-3.5" />
+          Thêm diễn đàn
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Tên diễn đàn (VD: Hỏi đáp Bài 1)"
+        required
+        minLength={3}
+        className="border-border bg-card focus:ring-primary h-9 w-full rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Mô tả ngắn (tuỳ chọn) — nội dung nào được thảo luận ở đây?"
+        rows={2}
+        className="border-border bg-card focus:ring-primary w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+      />
+      <div className="flex gap-2 pt-1">
+        <Button
+          type="submit"
+          size="sm"
+          disabled={pending}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        >
+          {pending ? 'Đang tạo...' : 'Tạo diễn đàn'}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+          Huỷ
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Bật / tắt đưa hoạt động vào ngân hàng nội dung của danh mục khoá học.
+ *
+ * Cập nhật lạc quan rồi mới gọi API — soạn xong một chương thường bấm chia sẻ
+ * cả loạt, chờ round-trip từng cái thì rất khựng.
+ */
+function ShareItemToggle({ itemId, initialShared }: { itemId: string; initialShared: boolean }) {
+  const [shared, setShared] = useState(initialShared);
+  const [pending, startTransition] = useTransition();
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = !shared;
+    setShared(next);
+    startTransition(async () => {
+      try {
+        await apiClient.patch(`/modules/items/${itemId}/share`, { shared: next });
+        toast.success(next ? 'Đã đưa vào ngân hàng nội dung.' : 'Đã gỡ khỏi ngân hàng nội dung.');
+      } catch (err) {
+        setShared(!next);
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi cập nhật chia sẻ');
+      }
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={pending}
+      title={
+        shared
+          ? 'Đang chia sẻ vào ngân hàng nội dung — bấm để gỡ'
+          : 'Chia sẻ hoạt động này cho khoá khác cùng danh mục'
+      }
+      className={`rounded-md p-1.5 transition-colors disabled:opacity-50 ${
+        shared
+          ? 'text-primary hover:bg-primary/10'
+          : 'text-muted-foreground/40 hover:text-foreground hover:bg-muted'
+      }`}
+    >
+      <Share2 className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 // ── Sortable item row ─────────────────────────────────────────
 
 type ItemRowProps = {
@@ -511,6 +661,8 @@ function SortableItemRow({
   const isQuiz = item.type === 'QUIZ';
   const isPracticeTest = item.type === 'PRACTICE_TEST';
   const isCodeExercise = item.type === 'CODE_EXERCISE';
+  const isForum = item.type === 'FORUM';
+  const forumId = item.forum?.id ?? item.forumId;
   const quizId = item.quiz?.id ?? item.quizId;
   const practiceTestId = item.practiceTest?.id ?? item.practiceTestId;
   const codeExId = item.codeExercise?.id ?? item.codeExerciseId;
@@ -575,6 +727,14 @@ function SortableItemRow({
       glowColor: 'rgb(251, 146, 60)',
       bgRgba: 'rgba(251, 146, 60, 0.15)',
     },
+    forum: {
+      border: 'border-l-sky-500',
+      bg: 'bg-sky-500/15',
+      icon: 'text-sky-500',
+      text: 'Diễn đàn',
+      glowColor: 'rgb(14, 165, 233)',
+      bgRgba: 'rgba(14, 165, 233, 0.15)',
+    },
     external: {
       border: 'border-l-amber-500',
       bg: 'bg-amber-500/15',
@@ -587,6 +747,7 @@ function SortableItemRow({
 
   let typeKey: keyof typeof typeColors = 'lesson';
   if (isExternalUrl) typeKey = 'external';
+  else if (isForum) typeKey = 'forum';
   else if (isAssignment) typeKey = 'assignment';
   else if (isQuiz) typeKey = 'quiz';
   else if (isPracticeTest) typeKey = 'practice';
@@ -607,7 +768,8 @@ function SortableItemRow({
             ? isScratch
               ? `/courses/${courseSlug}/scratch/${codeExId}/edit`
               : `/courses/${courseSlug}/exercises/${codeExId}/edit`
-            : null;
+            : // Diễn đàn không có trang sửa riêng — đổi tên qua nút Sửa trong chương.
+              null;
 
   return (
     <div
@@ -643,6 +805,8 @@ function SortableItemRow({
       >
         {isExternalUrl ? (
           <Link2 className={`h-5 w-5 ${colors.icon}`} />
+        ) : isForum ? (
+          <MessagesSquare className={`h-5 w-5 ${colors.icon}`} />
         ) : isAssignment ? (
           <ClipboardList className={`h-5 w-5 ${colors.icon}`} />
         ) : isQuiz ? (
@@ -675,6 +839,13 @@ function SortableItemRow({
             </p>
             <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
           </a>
+        ) : isForum && forumId ? (
+          <Link href={`/courses/${courseSlug}/forum?forumId=${forumId}`} className="block">
+            <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
+              {item.title}
+            </p>
+            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+          </Link>
         ) : isAssignment && item.assignmentId ? (
           <Link href={`/courses/${courseSlug}/assignments/${item.assignmentId}`} className="block">
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
@@ -731,6 +902,9 @@ function SortableItemRow({
 
       {/* Right side - Status badges and actions */}
       <div className="flex shrink-0 items-center gap-2">
+        {canManage && (
+          <ShareItemToggle itemId={item.id} initialShared={item.sharedToCategory ?? false} />
+        )}
         {isDone && (
           <div
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/20"
@@ -829,7 +1003,7 @@ type ModuleRowProps = {
   submittedQuizIds?: Set<string>;
   submittedPracticeTestIds?: Set<string>;
   submittedCodeExerciseIds?: Set<string>;
-  openUrlFormId: string | null;
+  inlineForm: InlineFormKind | null;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onTogglePublish: (id: string) => void;
@@ -837,7 +1011,7 @@ type ModuleRowProps = {
   onAddActivity: (id: string) => void;
   onDeleteItem: (id: string) => void;
   onToggleItemPublish: (id: string) => void;
-  onOpenUrlForm: (id: string | null) => void;
+  onCloseInlineForm: () => void;
   onRefresh: () => void;
 };
 
@@ -851,7 +1025,7 @@ function SortableModuleRow({
   submittedQuizIds,
   submittedPracticeTestIds,
   submittedCodeExerciseIds,
-  openUrlFormId,
+  inlineForm,
   isCollapsed,
   onToggleCollapse,
   onTogglePublish,
@@ -859,7 +1033,7 @@ function SortableModuleRow({
   onAddActivity,
   onDeleteItem,
   onToggleItemPublish,
-  onOpenUrlForm,
+  onCloseInlineForm,
   onRefresh,
 }: ModuleRowProps) {
   const [, startItemTransition] = useTransition();
@@ -1084,11 +1258,18 @@ function SortableModuleRow({
           {/* Add activity button */}
           {canManage && (
             <div className="pt-2">
-              {openUrlFormId === mod.id ? (
+              {inlineForm === 'external_url' ? (
                 <AddExternalUrlForm
                   moduleId={mod.id}
                   onAdded={onRefresh}
-                  onClose={() => onOpenUrlForm(null)}
+                  onClose={onCloseInlineForm}
+                />
+              ) : inlineForm === 'forum' ? (
+                <AddForumForm
+                  courseId={courseId}
+                  moduleId={mod.id}
+                  onAdded={onRefresh}
+                  onClose={onCloseInlineForm}
                 />
               ) : (
                 <button
@@ -1115,6 +1296,7 @@ export function ModuleList({
   courseId,
   modules,
   canManage,
+  modulesExpandedByDefault = true,
   completedIds,
   submittedAssignmentIds,
   submittedQuizIds,
@@ -1126,8 +1308,14 @@ export function ModuleList({
   const [localModules, setLocalModules] = useState<ModuleWithItems[]>(modules);
   const [showAddModule, setShowAddModule] = useState(false);
   const [modalModuleId, setModalModuleId] = useState<string | null>(null);
-  const [openUrlFormId, setOpenUrlFormId] = useState<string | null>(null);
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  // Hoạt động tạo tại chỗ (link ngoài / diễn đàn): mở form ngay dưới chương nào.
+  const [inlineForm, setInlineForm] = useState<{ moduleId: string; kind: InlineFormKind } | null>(
+    null
+  );
+  // Trạng thái ban đầu theo cài đặt khoá học; sau đó người xem tự bấm đổi.
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() =>
+    modulesExpandedByDefault ? new Set() : new Set(modules.map((m) => m.id))
+  );
   const [confirmDialog, openConfirm] = useConfirmDialog();
 
   function toggleCollapse(id: string) {
@@ -1181,7 +1369,8 @@ export function ModuleList({
 
   async function handleDeleteModule(id: string, name: string) {
     const ok = await openConfirm(
-      `Xoá chương "${name}"? Tất cả bài học trong chương cũng sẽ bị xoá.`
+      `Xoá chương "${name}"? Mọi hoạt động trong chương — bài giảng, bài tập, ` +
+        `quiz, bài code, diễn đàn — cũng bị xoá và biến mất khỏi các tab tương ứng.`
     );
     if (!ok) return;
     setLocalModules((prev) => prev.filter((m) => m.id !== id));
@@ -1213,7 +1402,10 @@ export function ModuleList({
   }
 
   async function handleDeleteItem(id: string) {
-    const ok = await openConfirm('Xoá mục này khỏi chương?');
+    const ok = await openConfirm(
+      'Xoá mục này? Hoạt động tương ứng cũng bị xoá khỏi tab riêng của nó ' +
+        '(bài tập / quiz / bài code / diễn đàn), không chỉ gỡ khỏi chương.'
+    );
     if (!ok) return;
     setLocalModules((prev) =>
       prev.map((m) => ({ ...m, items: m.items.filter((i) => i.id !== id) }))
@@ -1257,14 +1449,26 @@ export function ModuleList({
           courseSlug={courseSlug}
           moduleId={modalModuleId}
           onClose={() => setModalModuleId(null)}
-          onSelectUrl={() => {
-            setOpenUrlFormId(modalModuleId);
+          onSelectInline={(kind) => {
+            setInlineForm({ moduleId: modalModuleId, kind });
             setModalModuleId(null);
           }}
         />
       )}
 
       <div className="space-y-6">
+        {canManage && (
+          <div className="flex justify-end">
+            <Link
+              href={`/courses/${courseSlug}/modules/bank`}
+              className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+            >
+              <Library className="h-3.5 w-3.5" />
+              Ngân hàng nội dung
+            </Link>
+          </div>
+        )}
+
         {localModules.length > 0 && (
           <div className="flex items-center justify-end gap-3">
             <button
@@ -1338,7 +1542,7 @@ export function ModuleList({
                   submittedQuizIds={submittedQuizIds}
                   submittedPracticeTestIds={submittedPracticeTestIds}
                   submittedCodeExerciseIds={submittedCodeExerciseIds}
-                  openUrlFormId={openUrlFormId}
+                  inlineForm={inlineForm?.moduleId === mod.id ? inlineForm.kind : null}
                   isCollapsed={collapsedIds.has(mod.id)}
                   onToggleCollapse={() => toggleCollapse(mod.id)}
                   onTogglePublish={handleTogglePublish}
@@ -1346,7 +1550,7 @@ export function ModuleList({
                   onAddActivity={(id) => setModalModuleId(id)}
                   onDeleteItem={handleDeleteItem}
                   onToggleItemPublish={handleToggleItemPublish}
-                  onOpenUrlForm={setOpenUrlFormId}
+                  onCloseInlineForm={() => setInlineForm(null)}
                   onRefresh={refresh}
                 />
               ))}

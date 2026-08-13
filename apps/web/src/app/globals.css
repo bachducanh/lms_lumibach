@@ -216,24 +216,29 @@
   }
 }
 
-/* ── TipTap editor — content styles ────────────────────────── */
-.ProseMirror h1 { font-size: 1.875rem; font-weight: 700; line-height: 1.2; margin: 1.5rem 0 0.625rem; }
-.ProseMirror h2 { font-size: 1.5rem;   font-weight: 700; line-height: 1.25; margin: 1.25rem 0 0.5rem; }
-.ProseMirror h3 { font-size: 1.25rem;  font-weight: 600; line-height: 1.3;  margin: 1rem 0 0.375rem; }
-.ProseMirror h1:first-child,
-.ProseMirror h2:first-child,
-.ProseMirror h3:first-child { margin-top: 0; }
+/* ── Rich-text content styles ───────────────────────────────
+   Dùng chung cho editor (.ProseMirror) và chế độ chỉ xem
+   (.rich-content của RichTextView). Trước đây chỉ .ProseMirror
+   được tạo kiểu, nên cùng một nội dung hiện khác nhau giữa trang
+   bài tập (render bằng editor read-only) và trang quiz (render
+   bằng RichTextView) — bảng mất viền, căn lề sai. */
+:is(.ProseMirror, .rich-content) h1 { font-size: 1.875rem; font-weight: 700; line-height: 1.2; margin: 1.5rem 0 0.625rem; }
+:is(.ProseMirror, .rich-content) h2 { font-size: 1.5rem;   font-weight: 700; line-height: 1.25; margin: 1.25rem 0 0.5rem; }
+:is(.ProseMirror, .rich-content) h3 { font-size: 1.25rem;  font-weight: 600; line-height: 1.3;  margin: 1rem 0 0.375rem; }
+:is(.ProseMirror, .rich-content) h1:first-child,
+:is(.ProseMirror, .rich-content) h2:first-child,
+:is(.ProseMirror, .rich-content) h3:first-child { margin-top: 0; }
 
-.ProseMirror p  { margin: 0.5rem 0; }
-.ProseMirror p:first-child { margin-top: 0; }
-.ProseMirror p:last-child  { margin-bottom: 0; }
+:is(.ProseMirror, .rich-content) p  { margin: 0.5rem 0; }
+:is(.ProseMirror, .rich-content) p:first-child { margin-top: 0; }
+:is(.ProseMirror, .rich-content) p:last-child  { margin-bottom: 0; }
 
-.ProseMirror ul { list-style-type: disc;    padding-left: 1.5rem; margin: 0.5rem 0; }
-.ProseMirror ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
-.ProseMirror li { margin: 0.2rem 0; }
-.ProseMirror li > p { margin: 0; }
+:is(.ProseMirror, .rich-content) ul { list-style-type: disc;    padding-left: 1.5rem; margin: 0.5rem 0; }
+:is(.ProseMirror, .rich-content) ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+:is(.ProseMirror, .rich-content) li { margin: 0.2rem 0; }
+:is(.ProseMirror, .rich-content) li > p { margin: 0; }
 
-.ProseMirror code:not(pre code) {
+:is(.ProseMirror, .rich-content) code:not(pre code) {
   background: var(--muted);
   color: var(--foreground);
   border-radius: 0.25rem;
@@ -241,7 +246,7 @@
   font-size: 0.875em;
 }
 
-.ProseMirror blockquote {
+:is(.ProseMirror, .rich-content) blockquote {
   border-left: 3px solid var(--border);
   padding-left: 1rem;
   margin: 0.75rem 0;
@@ -253,44 +258,51 @@
    own tokens so it never gets stuck on the typography palette — this is
    what makes lesson text flip colour correctly in dark mode. (Inline
    colours picked in the editor still win, by design.) */
-.ProseMirror {
+:is(.ProseMirror, .rich-content) {
   color: var(--foreground);
 }
-.ProseMirror :is(h1, h2, h3, h4, h5, h6),
-.ProseMirror strong {
+:is(.ProseMirror, .rich-content) :is(h1, h2, h3, h4, h5, h6) {
   color: var(--foreground);
 }
-.ProseMirror a {
+
+/* KHÔNG ép màu cho <strong>. Extension TextStyle của TipTap có priority 101,
+   cao hơn Bold, nên chữ vừa đậm vừa đổi màu được serialize thành
+   <span style="color:…"><strong>…</strong></span> — tức thẻ mang màu là thẻ
+   CHA. Một luật `strong { color: … }` sẽ thắng màu thừa kế đó và bôi lại chữ
+   theo màu theme, khiến giáo viên bấm đổi màu mà đoạn in đậm không hề đổi.
+   Bỏ luật đi là đủ: <strong> vốn thừa kế màu, và khối .ProseMirror ở trên đã
+   đặt màu theo theme cho toàn bộ nội dung rồi. */
+:is(.ProseMirror, .rich-content) a {
   color: var(--primary);
 }
 
 /* Dark mode: content pasted from Word/Google Docs wraps every run in an inline
-   `color: black`, which beats our themed .ProseMirror colour and leaves the
+   `color: black`, which beats our themed :is(.ProseMirror, .rich-content) colour and leaves the
    text near-invisible on the dark surface. Neutralise pure-black (and Word's
    `windowtext`) inline colours back to the theme foreground. Deliberate
    non-black colours picked in the editor are left untouched. */
-.dark .ProseMirror [style*="color: rgb(0, 0, 0)"],
-.dark .ProseMirror [style*="color:rgb(0,0,0)"],
-.dark .ProseMirror [style*="color: #000000"],
-.dark .ProseMirror [style*="color:#000000"],
-.dark .ProseMirror [style*="color: #000;"],
-.dark .ProseMirror [style*="color:#000;"],
-.dark .ProseMirror [style*="color: black"],
-.dark .ProseMirror [style*="color:black"],
-.dark .ProseMirror [style*="windowtext"] {
+.dark :is(.ProseMirror, .rich-content) [style*="color: rgb(0, 0, 0)"],
+.dark :is(.ProseMirror, .rich-content) [style*="color:rgb(0,0,0)"],
+.dark :is(.ProseMirror, .rich-content) [style*="color: #000000"],
+.dark :is(.ProseMirror, .rich-content) [style*="color:#000000"],
+.dark :is(.ProseMirror, .rich-content) [style*="color: #000;"],
+.dark :is(.ProseMirror, .rich-content) [style*="color:#000;"],
+.dark :is(.ProseMirror, .rich-content) [style*="color: black"],
+.dark :is(.ProseMirror, .rich-content) [style*="color:black"],
+.dark :is(.ProseMirror, .rich-content) [style*="windowtext"] {
   color: var(--foreground) !important;
 }
 
 /* ── TipTap editor — table styles ──────────────────────────── */
 /* Wrapper added by the Table extension — lets wide tables scroll
    horizontally instead of squashing columns (esp. on mobile). */
-.ProseMirror .tableWrapper {
+:is(.ProseMirror, .rich-content) .tableWrapper {
   overflow-x: auto;
   max-width: 100%;
   margin: 1rem 0;
 }
 
-.ProseMirror table {
+:is(.ProseMirror, .rich-content) table {
   border-collapse: collapse;
   width: 100%;
   margin: 1rem 0;
@@ -299,7 +311,7 @@
 }
 
 /* Inside the scroll wrapper the table already owns its margin */
-.ProseMirror .tableWrapper table {
+:is(.ProseMirror, .rich-content) .tableWrapper table {
   margin: 0;
 }
 
@@ -313,18 +325,18 @@
    this, a stored wide column (colwidth) crushes the others into one
    character per line on narrow screens. The .tableWrapper scrolls if the
    content-sized table is wider than the screen. */
-.ProseMirror[contenteditable='false'] table {
+:is(.ProseMirror[contenteditable='false'], .rich-content) table {
   table-layout: auto;
 }
-.ProseMirror[contenteditable='false'] table td,
-.ProseMirror[contenteditable='false'] table th {
+:is(.ProseMirror[contenteditable='false'], .rich-content) table td,
+:is(.ProseMirror[contenteditable='false'], .rich-content) table th {
   white-space: normal;
   word-break: normal;
   overflow-wrap: break-word;
 }
 
-.ProseMirror table td,
-.ProseMirror table th {
+:is(.ProseMirror, .rich-content) table td,
+:is(.ProseMirror, .rich-content) table th {
   border: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   min-width: 80px;
@@ -333,7 +345,7 @@
   box-sizing: border-box;
 }
 
-.ProseMirror table th {
+:is(.ProseMirror, .rich-content) table th {
   background-color: var(--muted);
   font-weight: 600;
   text-align: left;
@@ -365,12 +377,12 @@
   /* On phones, size columns to content (auto) even in the editor so text
      stays readable. Precise column-resizing is a desktop interaction; on
      touch we favour legibility. The .tableWrapper scrolls horizontally. */
-  .ProseMirror table {
+  :is(.ProseMirror, .rich-content) table {
     table-layout: auto;
     min-width: 30rem;
   }
-  .ProseMirror table td,
-  .ProseMirror table th {
+  :is(.ProseMirror, .rich-content) table td,
+  :is(.ProseMirror, .rich-content) table th {
     padding: 0.375rem 0.5rem;
     min-width: 4rem;
     font-size: 0.8125rem;
@@ -381,8 +393,32 @@
   }
 }
 
-.ProseMirror .youtube-embed,
-.ProseMirror iframe[src*="youtube"] {
+/* Ảnh chèn trong nội dung. Kích thước do người soạn kéo được lưu vào
+   thuộc tính width/style của chính thẻ <img>, nên chỉ chặn tràn khung. */
+:is(.ProseMirror, .rich-content) img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+
+:is(.ProseMirror, .rich-content) hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+
+:is(.ProseMirror, .rich-content) pre {
+  background: var(--muted);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.875rem;
+  margin: 0.75rem 0;
+}
+
+:is(.ProseMirror, .rich-content) .youtube-embed,
+:is(.ProseMirror, .rich-content) iframe[src*="youtube"] {
   width: 100%;
   max-width: 100%;
   border-radius: 0.5rem;

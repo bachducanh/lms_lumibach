@@ -5,11 +5,13 @@ import {
   UpdateUserBodySchema,
   UpdateProfileBodySchema,
   ImportUsersBodySchema,
+  ResetPasswordBodySchema,
   StudentsQuerySchema,
   type CreateUserBody,
   type UpdateUserBody,
   type UpdateProfileBody,
   type ImportUsersBody,
+  type ResetPasswordBody,
   type StudentsQuery,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
@@ -62,9 +64,13 @@ export class UsersController {
   }
 
   @Post(':id/reset-password')
-  @ApiOperation({ summary: 'Đặt lại mật khẩu (ADMIN)' })
-  resetPassword(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-    return this.service.resetPassword(user, id);
+  @ApiOperation({ summary: 'Đặt lại mật khẩu — tự nhập hoặc để trống cho ngẫu nhiên (ADMIN)' })
+  resetPassword(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(ResetPasswordBodySchema)) body: ResetPasswordBody
+  ) {
+    return this.service.resetPassword(user, id, body.password);
   }
 
   @Post(':id/verify-email')
