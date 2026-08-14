@@ -20,25 +20,33 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import type { AttachmentDTO } from '@lumibach/types';
 import { ChevronLeft, Clock, Paperclip } from 'lucide-react';
 
+/**
+ * Bài giảng soạn được ở hai nơi, và chỗ khác nhau duy nhất là điểm đến khi lưu:
+ *   - `course` — chương của một khoá học (đường cũ)
+ *   - `bank`   — chương trong ngân hàng nội dung của một danh mục
+ * Nội dung soạn thảo, đính kèm, nút bấm đều dùng chung.
+ */
+type Owner =
+  | { kind: 'course'; courseSlug: string; courseId: string }
+  | { kind: 'bank'; categoryId: string };
+
 type Props =
   | {
       mode: 'create';
-      courseSlug: string;
-      courseId: string;
+      owner: Owner;
       moduleId: string;
       lesson?: undefined;
       attachments?: undefined;
     }
   | {
       mode: 'edit';
-      courseSlug: string;
-      courseId: string;
+      owner: Owner;
       moduleId: string;
       lesson: { id: string; title: string; content: string; estimatedMinutes: number | null };
       attachments: AttachmentDTO[];
     };
 
-export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, attachments }: Props) {
+export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [title, setTitle] = useState(lesson?.title ?? '');
@@ -47,20 +55,37 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
     lesson?.estimatedMinutes ? String(lesson.estimatedMinutes) : ''
   );
 
+  // Hai điểm đến duy nhất khác nhau giữa hai nơi soạn: chỗ quay lại khi huỷ, và
+  // chỗ tới sau khi lưu.
+  const backHref =
+    owner.kind === 'bank'
+      ? `/question-banks/${owner.categoryId}/content`
+      : `/courses/${owner.courseSlug}/modules`;
+  const afterSaveHref =
+    owner.kind === 'bank'
+      ? backHref
+      : mode === 'edit' && lesson
+        ? `/courses/${owner.courseSlug}/lessons/${lesson.id}`
+        : backHref;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
       try {
         if (mode === 'create') {
-          const data = await apiClient.post<{ lessonId: string }>('/lessons', {
-            courseId,
+          const payload = {
             moduleId,
             title,
             content,
             estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : undefined,
-          });
+          };
+          if (owner.kind === 'bank') {
+            await apiClient.post(`/modules/bank-modules/${moduleId}/lessons`, payload);
+          } else {
+            await apiClient.post('/lessons', { courseId: owner.courseId, ...payload });
+          }
           toast.success('Đã tạo bài giảng.');
-          router.push(`/courses/${courseSlug}/lessons/${data.lessonId}`);
+          router.push(afterSaveHref);
         } else {
           await apiClient.patch(`/lessons/${lesson!.id}`, {
             title,
@@ -68,7 +93,7 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
             estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null,
           });
           toast.success('Đã cập nhật bài giảng.');
-          router.push(`/courses/${courseSlug}/lessons/${lesson!.id}`);
+          router.push(afterSaveHref);
         }
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Lỗi lưu bài giảng');
@@ -83,7 +108,7 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
       {/* ── Sticky action bar ─────────────────────────────── */}
       <div className="bg-muted/20 -mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b px-4">
         <Link
-          href={`/courses/${courseSlug}/modules`}
+          href={backHref}
           className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-sm transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -101,13 +126,7 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() =>
-              router.push(
-                mode === 'edit' && lesson
-                  ? `/courses/${courseSlug}/lessons/${lesson.id}`
-                  : `/courses/${courseSlug}/modules`
-              )
-            }
+            onClick={() => router.push(afterSaveHref)}
             disabled={pending}
           >
             Huỷ
@@ -170,13 +189,7 @@ export function LessonEditor({ mode, courseSlug, courseId, moduleId, lesson, att
         <Button
           type="button"
           variant="outline"
-          onClick={() =>
-            router.push(
-              mode === 'edit' && lesson
-                ? `/courses/${courseSlug}/lessons/${lesson.id}`
-                : `/courses/${courseSlug}/modules`
-            )
-          }
+          onClick={() => router.push(mode === 'edit' && lesson ? afterSaveHref : backHref)}
           disabled={pending}
         >
           Huỷ

@@ -13,6 +13,13 @@ services:
   #
   # Dùng lại stage `build` vì Prisma CLI là devDependency, đã bị loại khỏi image
   # chạy thật cho gọn.
+  # ĐỪNG đặt `image: lumibach/migrate:latest` cho service này. Đây chỉ là lối
+  # chạy migration tiện tay lúc dev: nó mượn stage `build` của API và dựa hoàn
+  # toàn vào `command:` bên dưới. Image sinh ra KHÔNG có CMD nào — chạy trần là
+  # rơi vào REPL của Node chứ không migrate gì.
+  #
+  # Image `lumibach/migrate` mà máy chủ kéo về là thứ khác hẳn, dựng từ
+  # packages/db/Dockerfile.migrate và tự chạy được. Xem docs/HANDOVER.md.
   migrate:
     profiles: ['tools']
     build:

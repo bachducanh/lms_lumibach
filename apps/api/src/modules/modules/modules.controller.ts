@@ -12,6 +12,8 @@ import {
   ContentBankQuerySchema,
   CopyContentBodySchema,
   ShareContentBodySchema,
+  BankModuleBodySchema,
+  CreateBankLessonBodySchema,
   type CreateModuleBody,
   type UpdateModuleBody,
   type ReorderModulesBody,
@@ -23,20 +25,78 @@ import {
   type ContentBankQuery,
   type CopyContentBody,
   type ShareContentBody,
+  type BankModuleBody,
+  type CreateBankLessonBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { ModulesService } from './modules.service';
 import { ContentBankService } from './content-bank.service';
+import { CategoryContentBankService } from './category-content-bank.service';
 
 @ApiTags('modules')
 @Controller({ path: 'modules', version: '1' })
 export class ModulesController {
   constructor(
     private readonly service: ModulesService,
-    private readonly bank: ContentBankService
+    private readonly bank: ContentBankService,
+    private readonly categoryBank: CategoryContentBankService
   ) {}
+
+  // ── Kho nội dung soạn thẳng trong danh mục khoá học ───────────
+  // Khai TRƯỚC mọi route dạng ':id' để "bank-categories" không bị bắt làm id.
+
+  @Get('bank-categories/:categoryId')
+  @ApiOperation({ summary: 'Toàn bộ kho nội dung của một danh mục' })
+  getBankCategory(@CurrentUser() user: AuthUser, @Param('categoryId') categoryId: string) {
+    return this.categoryBank.get(user, categoryId);
+  }
+
+  @Post('bank-categories/:categoryId/modules')
+  @ApiOperation({ summary: 'Thêm chương vào kho của danh mục' })
+  createBankModule(
+    @CurrentUser() user: AuthUser,
+    @Param('categoryId') categoryId: string,
+    @Body(zodBody(BankModuleBodySchema)) body: BankModuleBody
+  ) {
+    return this.categoryBank.createModule(user, categoryId, body);
+  }
+
+  @Patch('bank-modules/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Đổi tên chương trong kho của danh mục' })
+  renameBankModule(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(BankModuleBodySchema)) body: BankModuleBody
+  ) {
+    return this.categoryBank.renameModule(user, id, body);
+  }
+
+  @Delete('bank-modules/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá chương trong kho, kèm hoạt động bên trong' })
+  deleteBankModule(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.categoryBank.deleteModule(user, id);
+  }
+
+  @Post('bank-modules/:id/lessons')
+  @ApiOperation({ summary: 'Thêm bài giảng vào một chương của kho' })
+  createBankLesson(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(CreateBankLessonBodySchema)) body: CreateBankLessonBody
+  ) {
+    return this.categoryBank.createLesson(user, id, body);
+  }
+
+  @Delete('bank-items/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá một hoạt động khỏi kho của danh mục' })
+  deleteBankItem(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.categoryBank.deleteItem(user, id);
+  }
 
   // ── Ngân hàng nội dung theo danh mục khoá học ─────────────────
   // Khai TRƯỚC @Get(':id')-kiểu route để "bank" không bị bắt làm id.

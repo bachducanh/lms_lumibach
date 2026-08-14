@@ -34,7 +34,11 @@ export default async function NewLessonPage({
 
   return (
     <div className="max-w-5xl">
-      <LessonEditor mode="create" courseSlug={slug} courseId={course.id} moduleId={moduleId} />
+      <LessonEditor
+        mode="create"
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
+        moduleId={moduleId}
+      />
     </div>
   );
 }

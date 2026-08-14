@@ -21,7 +21,8 @@ type Activity = {
   sebEnabled: boolean;
   sebConfigUrl: string | null;
   sebConfigName: string | null;
-  course: { slug: string };
+  /** null khi hoạt động là bản mẫu trong ngân hàng nội dung của danh mục. */
+  course: { slug: string } | null;
 };
 
 async function findActivity(kind: SebActivityKind, id: string): Promise<Activity | null> {
@@ -66,9 +67,12 @@ export async function GET(
   const id = rawId.replace(/\.seb$/i, '');
 
   const activity = await findActivity(kind, id);
-  if (!activity || !activity.sebEnabled || !activity.sebConfigUrl) {
+  // `course` null = bản mẫu trong ngân hàng nội dung của danh mục: không có lớp
+  // nên không dựng được đường dẫn để SEB mở, và cũng không ai làm bài ở đó.
+  if (!activity || !activity.sebEnabled || !activity.sebConfigUrl || !activity.course) {
     return NextResponse.json({ error: 'Không tìm thấy cấu hình SEB' }, { status: 404 });
   }
+  const course = activity.course;
 
   const origin = requestOrigin(req.headers);
   if (!origin) return NextResponse.json({ error: 'Không xác định được origin' }, { status: 400 });
@@ -77,8 +81,8 @@ export async function GET(
   // sinh luôn phải đăng nhập lại, và đăng nhập xong là vào thẳng hoạt động.
   const activityPath =
     kind === 'quiz'
-      ? `/courses/${activity.course.slug}/quizzes/${id}`
-      : `/courses/${activity.course.slug}/practice-tests/${id}`;
+      ? `/courses/${course.slug}/quizzes/${id}`
+      : `/courses/${course.slug}/practice-tests/${id}`;
   const startUrl = `${origin}/login?next=${encodeURIComponent(activityPath)}`;
 
   const storage = parseStorageUrl(activity.sebConfigUrl);

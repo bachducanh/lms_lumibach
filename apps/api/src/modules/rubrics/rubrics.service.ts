@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse, resolveCourseAccess } from '../../common/auth/course-access';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -26,6 +27,9 @@ export class RubricsService {
       select: { courseId: true },
     });
     if (!a) return false;
+    // Bài tập mẫu trong ngân hàng danh mục không thuộc lớp nào — không ai chấm
+    // hay gắn rubric cho nó qua đường khoá học.
+    if (!a.courseId) return false;
     return canManageCourse(this.prisma, { id: userId, role }, a.courseId);
   }
 
@@ -35,6 +39,7 @@ export class RubricsService {
       select: { courseId: true },
     });
     if (!ex) return false;
+    if (!ex.courseId) return false;
     return canManageCourse(this.prisma, { id: userId, role }, ex.courseId);
   }
 
@@ -157,7 +162,11 @@ export class RubricsService {
     });
     if (!sub) throw new NotFoundException('Không tìm thấy bài nộp.');
 
-    const access = await resolveCourseAccess(this.prisma, user, sub.assignment.courseId);
+    const access = await resolveCourseAccess(
+      this.prisma,
+      user,
+      assertCourseScoped(sub.assignment.courseId, 'Bài tập này')
+    );
     if (!access.canGrade) throw new ForbiddenException('Không có quyền.');
 
     const levels = await this.prisma.rubricLevel.findMany({
@@ -215,7 +224,11 @@ export class RubricsService {
       },
     });
     if (!sub) throw new NotFoundException('Không tìm thấy bài nộp.');
-    const access = await resolveCourseAccess(this.prisma, user, sub.codeExercise.courseId);
+    const access = await resolveCourseAccess(
+      this.prisma,
+      user,
+      assertCourseScoped(sub.codeExercise.courseId, 'Bài code này')
+    );
     if (!access.canGrade) throw new ForbiddenException('Không có quyền.');
 
     const levels = await this.prisma.rubricLevel.findMany({

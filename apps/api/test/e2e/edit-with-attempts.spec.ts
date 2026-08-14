@@ -4,6 +4,9 @@ import { testPrisma } from '../db';
 import { createTestCourse, createTestUser } from '../factories';
 import { PracticeTestsService } from '@/modules/practice-tests/practice-tests.service';
 import { QuestionsService } from '@/modules/questions/questions.service';
+import { CategoryQuestionBankService } from '@/modules/questions/category-question-bank.service';
+import { CategoriesService } from '@/modules/categories/categories.service';
+import { CategoryBankAccessService } from '@/modules/categories/category-bank-access.service';
 import { AttemptsService } from '@/modules/attempts/attempts.service';
 import type { Judge0Service } from '@/common/judge0/judge0.service';
 import type { AuthUser } from '@/common/auth/auth.types';
@@ -26,6 +29,21 @@ const noopJudge0 = {
     throw new Error('Judge0 không được gọi trong test này.');
   },
 } as unknown as Judge0Service;
+
+/**
+ * QuestionsService cần CategoryQuestionBankService để kiểm quyền câu hỏi của
+ * ngân hàng danh mục. Các test dưới đây chỉ đụng câu hỏi thuộc khoá học nên
+ * nhánh đó không bao giờ chạy — dựng bản thật với phụ thuộc rỗng là đủ.
+ */
+function makeCategoryBank() {
+  const categories = new CategoriesService(testPrisma, noopCache, {
+    log: async () => undefined,
+  } as never);
+  return new CategoryQuestionBankService(
+    testPrisma,
+    new CategoryBankAccessService(testPrisma, categories)
+  );
+}
 
 async function setupCourse() {
   const teacher = await createTestUser({ role: 'ADMIN' });
@@ -148,7 +166,7 @@ describe('Sửa câu hỏi quiz khi đã có bài làm', () => {
   let attempts: AttemptsService;
 
   beforeEach(() => {
-    questions = new QuestionsService(testPrisma, noopJudge0);
+    questions = new QuestionsService(testPrisma, noopJudge0, makeCategoryBank());
     attempts = new AttemptsService(testPrisma, noopJudge0);
   });
 
@@ -156,15 +174,19 @@ describe('Sửa câu hỏi quiz khi đã có bài làm', () => {
     const { course, teacherUser, studentUser } = await setupCourse();
 
     // Đáp án đúng bị đánh nhầm sang "Sai" (option thứ 2).
-    const { questionId } = await questions.create(teacherUser, course.id, {
-      type: 'MULTIPLE_CHOICE_SINGLE',
-      content: '2 + 2 = 4?',
-      points: 2,
-      options: [
-        { content: 'Đúng', isCorrect: false },
-        { content: 'Sai', isCorrect: true },
-      ],
-    });
+    const { questionId } = await questions.create(
+      teacherUser,
+      { courseId: course.id },
+      {
+        type: 'MULTIPLE_CHOICE_SINGLE',
+        content: '2 + 2 = 4?',
+        points: 2,
+        options: [
+          { content: 'Đúng', isCorrect: false },
+          { content: 'Sai', isCorrect: true },
+        ],
+      }
+    );
 
     const quiz = await testPrisma.quiz.create({
       data: {
@@ -227,15 +249,19 @@ describe('Sửa câu hỏi quiz khi đã có bài làm', () => {
   it('sửa nội dung đề bài không làm mất bài làm đã nộp', async () => {
     const { course, teacherUser, studentUser } = await setupCourse();
 
-    const { questionId } = await questions.create(teacherUser, course.id, {
-      type: 'MULTIPLE_CHOICE_SINGLE',
-      content: 'Thủ đô của Việt Nam là?',
-      points: 1,
-      options: [
-        { content: 'Hà Nộii', isCorrect: true },
-        { content: 'Huế', isCorrect: false },
-      ],
-    });
+    const { questionId } = await questions.create(
+      teacherUser,
+      { courseId: course.id },
+      {
+        type: 'MULTIPLE_CHOICE_SINGLE',
+        content: 'Thủ đô của Việt Nam là?',
+        points: 1,
+        options: [
+          { content: 'Hà Nộii', isCorrect: true },
+          { content: 'Huế', isCorrect: false },
+        ],
+      }
+    );
 
     const quiz = await testPrisma.quiz.create({
       data: {

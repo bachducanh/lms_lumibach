@@ -13,6 +13,7 @@ import {
   Terminal,
   GraduationCap,
   LayoutDashboard,
+  Library,
   ScrollText,
   Settings,
   Users,
@@ -37,6 +38,12 @@ const mainNavItems: NavItem[] = [
   { label: 'Khóa học', href: '/courses', icon: BookOpen },
   { label: 'Sandbox', href: '/sandbox', icon: Terminal },
   { label: 'Học sinh', href: '/students', icon: GraduationCap, roles: ['ADMIN', 'TEACHER', 'TA'] },
+  {
+    label: 'Ngân hàng chung',
+    href: '/question-banks',
+    icon: Library,
+    roles: ['ADMIN', 'TEACHER'],
+  },
   {
     label: 'Phòng chức năng',
     href: '/rooms',

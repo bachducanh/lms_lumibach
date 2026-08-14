@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 import { canManageCourse } from '../../common/auth/course-access';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
@@ -36,7 +37,9 @@ export class AssignmentsService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache
   ) {}
 
-  private async invalidateModuleCache(courseId: string): Promise<void> {
+  private async invalidateModuleCache(courseId: string | null): Promise<void> {
+    // Bản mẫu trong ngân hàng danh mục không nằm trong cache chương của lớp nào.
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
@@ -45,7 +48,11 @@ export class AssignmentsService {
     ]);
   }
 
-  private async canManage(userId: string, role: string, courseId: string) {
+  private async canManage(userId: string, role: string, courseId: string | null) {
+    // courseId null = bản mẫu của ngân hàng danh mục: không thuộc lớp nào nên
+    // không ai "quản lý được nó qua khoá học". Chặn trước khi canManageCourse
+    // kịp trả true cho ADMIN mà chưa nhìn tới courseId.
+    if (!courseId) return false;
     return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
 
@@ -267,11 +274,12 @@ export class AssignmentsService {
     if (!existing) throw new NotFoundException('Không tìm thấy.');
     if (!(await this.canManage(user.id, user.role, existing.courseId)))
       throw new ForbiddenException('Không có quyền.');
+    const courseId = assertCourseScoped(existing.courseId, 'Bài tập này');
 
     // Validate grouping thuộc đúng khoá học nếu được đặt.
     if (body.groupingId) {
       const grouping = await this.prisma.grouping.findFirst({
-        where: { id: body.groupingId, courseId: existing.courseId },
+        where: { id: body.groupingId, courseId },
         select: { id: true },
       });
       if (!grouping) throw new ForbiddenException('Phân nhóm không thuộc khoá học.');
@@ -392,6 +400,9 @@ export class AssignmentsService {
     });
     if (!assignment) throw new NotFoundException('Bài tập không tồn tại.');
     if (assignment.status !== 'PUBLISHED') throw new ForbiddenException('Bài tập chưa được đăng.');
+    // Bản mẫu trong ngân hàng không bao giờ ở trạng thái PUBLISHED nên nhánh này
+    // không tới được, nhưng giữ chốt để nộp bài không bao giờ chạy với lớp null.
+    const courseId = assertCourseScoped(assignment.courseId, 'Bài tập này');
 
     const files = this.sanitizeSubmissionFiles(body.files, assignment.maxFiles);
 
@@ -420,7 +431,7 @@ export class AssignmentsService {
     if (assignment.groupSubmission && assignment.groupingId) {
       const group = await this.prisma.group.findFirst({
         where: {
-          courseId: assignment.courseId,
+          courseId,
           members: { some: { userId: user.id } },
           groupingLinks: { some: { groupingId: assignment.groupingId } },
         },
@@ -502,7 +513,7 @@ export class AssignmentsService {
     if (!asDraft) {
       logActivity(this.prisma, {
         userId: user.id,
-        courseId: assignment.courseId,
+        courseId,
         action: 'SUBMIT_ASSIGNMENT',
         resourceType: 'assignment',
         resourceId: assignmentId,

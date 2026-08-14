@@ -178,14 +178,60 @@ export type ContentBankItem = {
   type: string;
   title: string;
   updatedAt: string;
-  sourceCourseId: string;
-  sourceCourseName: string;
+  /**
+   * Nội dung vào ngân hàng bằng hai đường:
+   * - `BANK`   — soạn thẳng trong ngân hàng của danh mục, không thuộc lớp nào.
+   * - `COURSE` — của một lớp cụ thể, được giáo viên lớp đó bật chia sẻ.
+   */
+  sourceKind: 'BANK' | 'COURSE';
+  /** Chỉ có khi sourceKind = 'COURSE'. */
+  sourceCourseId: string | null;
+  sourceCourseName: string | null;
+  /** Tên chương ở nơi nguồn (chương của lớp, hoặc thư mục trong ngân hàng). */
   sourceModuleName: string;
-  /** Đường dẫn danh mục của khoá nguồn, ví dụ "2026-2027 / 12A1". */
+  /** Đường dẫn danh mục, ví dụ "2026-2027 / 12A1". */
   sourceCategoryPath: string;
   /** Mô tả ngắn theo loại: số câu hỏi, số test case, thời lượng… */
   detail: string;
 };
+
+// ── Ngân hàng nội dung soạn thẳng trong danh mục khoá học ──────
+
+export type CategoryBankItem = {
+  id: string;
+  type: string;
+  title: string;
+  lessonId: string | null;
+  updatedAt: string;
+  /** Mô tả ngắn theo loại, ví dụ "20 phút". */
+  detail: string;
+};
+
+export type CategoryBankModule = {
+  id: string;
+  name: string;
+  position: number;
+  items: CategoryBankItem[];
+};
+
+export type CategoryContentBankData = {
+  categoryId: string;
+  categoryName: string;
+  categoryPath: string;
+  modules: CategoryBankModule[];
+};
+
+export const BankModuleBodySchema = z.object({
+  name: z.string().trim().min(1, 'Tên chương không được để trống').max(200),
+});
+export type BankModuleBody = z.infer<typeof BankModuleBodySchema>;
+
+export const CreateBankLessonBodySchema = z.object({
+  title: z.string().trim().min(1, 'Tiêu đề không được để trống').max(200),
+  content: z.string().optional(),
+  estimatedMinutes: z.number().int().positive().max(600).nullable().optional(),
+});
+export type CreateBankLessonBody = z.infer<typeof CreateBankLessonBodySchema>;
 
 export type ContentBankResult = {
   items: ContentBankItem[];

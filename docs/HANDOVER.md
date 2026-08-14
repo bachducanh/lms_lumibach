@@ -79,32 +79,77 @@ docker compose -f docker-compose.judge0.yml up -d
 
 ```bash
 git pull
+pnpm env:prod          # BẮT BUỘC: NEXT_PUBLIC_* và MINIO_INTERNAL_* bị nhúng
+                       # vào image lúc build. Build khi .env đang ở hồ sơ dev sẽ
+                       # ra image trỏ về localhost — trang trắng trên máy chủ.
 docker compose -f docker-compose.prod.yml build
+
+# Image migrate dựng RIÊNG — compose không dựng được nó, xem cảnh báo bên dưới.
+docker build -f packages/db/Dockerfile.migrate -t lumibach/migrate:latest .
+
 R=192.168.53.100:5000
-for n in api worker; do
+for n in api worker migrate; do
   docker tag lumibach/$n:latest $R/lumibach/$n:latest && docker push $R/lumibach/$n:latest
 done
+pnpm env:dev           # trả .env về hồ sơ dev, tránh `pnpm dev` ghi vào DB thật
 ```
 
-**Trên máy chủ**:
+> **Có HAI thứ tên `migrate`, đừng lẫn.**
+>
+> - `packages/db/Dockerfile.migrate` → image **thật** máy chủ kéo về. Nhỏ (~420MB),
+>   chỉ có Prisma CLI + `prisma/`, và tự chạy nhờ `CMD`. Dựng bằng `docker build`
+>   như trên.
+> - Service `migrate` trong `docker-compose.prod.yml` → chỉ là lối chạy migration
+>   tiện tay lúc dev. Nó mượn stage `build` của API và dựa hoàn toàn vào
+>   `command:` trong compose; image sinh ra KHÔNG có `CMD`.
+>
+> Dựng nhầm cái thứ hai rồi push đè lên tag của cái thứ nhất thì `docker compose
+run --rm migrate` trên máy chủ **rơi vào REPL của Node** và không migrate gì cả.
+>
+> **`migrate` phải nằm trong vòng push.** Quên push thì máy chủ chạy migrate bằng
+> image cũ: lệnh vẫn báo thành công, mà migration mới không được áp — dữ liệu và
+> mã nguồn lệch nhau, biểu hiện ra là màn hình trống hoặc số liệu sai. Đây đúng
+> là sự cố Kho năng lực ngày 13/8.
+
+> **Image `web` không đẩy qua registry được.** Proxy nội bộ của Docker Desktop
+> timeout với image lớn. Chuyển tay từ máy phát triển:
+>
+> ```bash
+> docker save lumibach/web:latest -o web.tar        # ~390MB
+> scp web.tar root@192.168.53.103:/opt/lumibach/
+> ```
+>
+> Nếu sửa được cấu hình bỏ qua proxy cho dải `192.168.53.0/24` thì khỏi bước này.
+
+**Trên máy chủ** — thứ tự dưới đây quan trọng, đừng đảo:
 
 ```bash
 cd /opt/lumibach
-docker compose -f docker-compose.deploy.yml pull
+
+# 1. Sao lưu DB TRƯỚC — chạy trên MÁY PHÁT TRIỂN, xem mục "Sao lưu" bên dưới.
+#    Máy .103 KHÔNG có pg_dump (chỉ chạy container, không có Internet để cài).
+#    Migration chỉ đi một chiều, không có đường lùi.
+
+# 2. Kéo 3 image đi qua registry. CHỈ NÊU ĐÍCH DANH — xem cảnh báo bên dưới.
+docker compose -f docker-compose.deploy.yml pull api worker
+docker compose -f docker-compose.deploy.yml --profile tools pull migrate
+
+# 3. Nạp image web (làm SAU bước 2)
+docker load -i web.tar
+docker tag lumibach/web:latest 192.168.53.100:5000/lumibach/web:latest
+
+# 4. Áp migration, rồi mới lên bản mới
 docker compose -f docker-compose.deploy.yml --profile tools run --rm migrate
 docker compose -f docker-compose.deploy.yml up -d
 ```
 
-> **Image `web` không đẩy qua registry được.** Proxy nội bộ của Docker Desktop
-> timeout với image lớn. Phải chuyển tay:
+> **Đừng chạy `docker compose pull` trống.** Không nêu tên service thì nó kéo cả
+> `web` từ registry — mà bản `web` trên đó luôn cũ, vì `web` chuyển tay qua
+> `web.tar` chứ không push. Chạy sau bước `docker load` là đè mất đúng bản vừa
+> nạp, và triệu chứng là "đã deploy rồi mà giao diện vẫn như cũ".
 >
-> ```bash
-> docker save lumibach/web:latest -o web.tar        # ~436MB
-> scp web.tar root@192.168.53.103:/opt/lumibach/
-> ssh root@192.168.53.103 'cd /opt/lumibach && docker load -i web.tar && docker tag lumibach/web:latest 192.168.53.100:5000/lumibach/web:latest'
-> ```
->
-> Nếu sửa được cấu hình bỏ qua proxy cho dải `192.168.53.0/24` thì khỏi bước này.
+> **Migration chạy TRƯỚC `up -d`.** Ngược lại thì có một khoảng mã mới đọc lược
+> đồ cũ: trang lỗi hoặc hiện rỗng, đúng như sự cố Kho năng lực ngày 13/8.
 
 ### Bảy giá trị bí mật cần điền vào `.env`
 
@@ -242,9 +287,31 @@ git pull && docker compose -f docker-compose.prod.yml up -d --build   # cập nh
 
 **Sao lưu** — dữ liệu không nằm trong container:
 
+Chạy trên **máy phát triển**, không phải `.103` — máy đó chỉ có Docker, không có
+`pg_dump` và cũng không có Internet để cài. Dùng luôn container cho khỏi cài gì:
+
 ```bash
-pg_dump -h 192.168.53.101 -U lumibach -d lumibach_lms -Fc -f lumibach-$(date +%F).dump
+mkdir -p /e/lumibach-backups
+DB=$(grep -m1 '^DATABASE_URL=' .env.prod | cut -d= -f2- | tr -d '"' | sed 's/?.*//')
+docker run --rm -e DBURL="$DB" postgres:17-alpine sh -c 'pg_dump "$DBURL" -Fc' \
+  > /e/lumibach-backups/lumibach-$(date +%F-%H%M).dump
 ```
+
+Ba điểm dễ sai:
+
+- **Phải cắt `?schema=public`** khỏi `DATABASE_URL`. Đó là tham số riêng của
+  Prisma, `libpq` gặp là báo `invalid URI query parameter` rồi thoát.
+- **Bản `pg_dump` phải bằng hoặc mới hơn máy chủ.** Production đang chạy
+  PostgreSQL **17**; dùng `postgres:16-alpine` là bị từ chối thẳng.
+- **Kiểm lại file, đừng tin exit code.** Thư mục lưu ngoài repo có chủ đích: dump
+  chứa dữ liệu cá nhân học sinh, để trong repo là có ngày lỡ tay commit.
+
+```bash
+docker run --rm -i postgres:17-alpine pg_restore -l < <file>.dump | grep -c "TABLE DATA"
+```
+
+Ra khoảng 60+ bảng là dump lành. Ra 0 hoặc lệnh báo lỗi thì file hỏng — đừng
+chạy migration cho tới khi có bản sao lưu đọc được.
 
 Ảnh và file nằm ở MinIO `192.168.53.105`, 2 bucket `lumibach-avatars` và
 `lumibach-files`.

@@ -38,7 +38,8 @@ export class QuizzesService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache
   ) {}
 
-  private async invalidateModuleCache(courseId: string): Promise<void> {
+  private async invalidateModuleCache(courseId: string | null): Promise<void> {
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
@@ -47,7 +48,15 @@ export class QuizzesService {
     ]);
   }
 
-  private async canManage(userId: string, role: string, courseId: string) {
+  /**
+   * `courseId` nhận null vì `Quiz.courseId` nullable từ khi có ngân hàng nội
+   * dung của danh mục. Chặn null tại đây: quiz mẫu trong ngân hàng không đi qua
+   * các endpoint quiz của khoá học (đăng bài, chấm, xem lượt làm) — nó được
+   * quản lý ở CategoryContentBankService. Nếu để lọt, `canManageCourse` sẽ trả
+   * true ngay cho ADMIN mà chưa từng nhìn tới courseId.
+   */
+  private async canManage(userId: string, role: string, courseId: string | null) {
+    if (!courseId) return false;
     return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
 

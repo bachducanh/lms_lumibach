@@ -161,8 +161,8 @@ export function SharedBankBrowser({
       ) : (
         <>
           <p className="text-muted-foreground text-xs">
-            {data.questions.length} câu hỏi từ {data.sourceCourseCount} khoá học cùng nhánh danh
-            mục.
+            {data.questions.length} câu hỏi — từ kho của danh mục và từ {data.sourceCourseCount}{' '}
+            khoá học cùng nhánh.
           </p>
           <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
             {data.questions.map((item) => {
@@ -180,13 +180,21 @@ export function SharedBankBrowser({
                           · {item.optionCount} lựa chọn
                         </span>
                       )}
+                      {item.sourceKind === 'BANK' && (
+                        <Badge
+                          variant="outline"
+                          className="border-primary/40 text-primary text-[10px]"
+                        >
+                          Kho của danh mục
+                        </Badge>
+                      )}
                     </div>
                     <RichTextView
                       html={item.content}
                       className="line-clamp-3 text-sm [&_img]:max-h-24"
                     />
                     <p className="text-muted-foreground mt-1 text-xs">
-                      Nguồn: {item.sourceCourseName}
+                      Nguồn: {item.sourceCourseName ?? 'ngân hàng chung'}
                       {item.sourceCategoryName ? ` · ${item.sourceCategoryName}` : ''} ·{' '}
                       {item.sourceCategoryPath}
                     </p>

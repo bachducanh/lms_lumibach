@@ -79,6 +79,10 @@ uploads/
 # Scratch files
 /scratch/
 
+# Ảnh Docker xuất ra để bê sang máy chủ nội bộ (`docker save`, hàng trăm MB).
+# Dựng lại được từ mã nguồn nên không đưa vào git — GitHub cũng chặn file >100MB.
+*.tar
+
 # Self-hosted scratch-gui — CHỈ loại mã nguồn đã clone (vài GB).
 #
 # Bản build ở apps/web/public/scratch-gui/ thì CÓ trong git, cố ý: script

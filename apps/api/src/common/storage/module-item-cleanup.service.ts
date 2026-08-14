@@ -187,4 +187,34 @@ export class ModuleItemCleanupService {
 
     return candidates.filter((url) => !survivors.some((s) => s.content.includes(url)));
   }
+  /**
+   * Các thao tác DB dọn nội dung của một kế hoạch purge — dùng chung cho xoá
+   * một hoạt động, xoá cả chương của lớp, và xoá chương trong ngân hàng nội
+   * dung của danh mục. Trả về mảng để bên gọi ghép vào transaction của mình
+   * cùng lệnh xoá ModuleItem/Module.
+   */
+  purgeOperations(plan: ModuleItemPurgePlan) {
+    const now = new Date();
+    const softDelete = { deletedAt: now };
+    return [
+      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
+      this.prisma.forum.deleteMany({ where: { id: { in: plan.forumIds } } }),
+      this.prisma.assignment.updateMany({
+        where: { id: { in: plan.assignmentIds }, deletedAt: null },
+        data: softDelete,
+      }),
+      this.prisma.quiz.updateMany({
+        where: { id: { in: plan.quizIds }, deletedAt: null },
+        data: softDelete,
+      }),
+      this.prisma.codeExercise.updateMany({
+        where: { id: { in: plan.codeExerciseIds }, deletedAt: null },
+        data: softDelete,
+      }),
+      this.prisma.practiceTest.updateMany({
+        where: { id: { in: plan.practiceTestIds }, deletedAt: null },
+        data: softDelete,
+      }),
+    ];
+  }
 }

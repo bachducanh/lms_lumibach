@@ -138,8 +138,15 @@ function defaultOptions(type: QType): Option[] {
 }
 
 type Props = {
-  courseId: string;
-  courseSlug: string;
+  /**
+   * Câu hỏi mới thuộc về ĐÚNG MỘT nơi: kho riêng của một khoá học (`courseId`)
+   * hoặc ngân hàng của một danh mục khoá học (`bankCategoryId`). Khi sửa câu hỏi
+   * đã có thì cả hai đều không cần — chủ sở hữu không đổi được.
+   */
+  courseId?: string;
+  bankCategoryId?: string;
+  /** Chỉ dùng để dựng đường quay lại mặc định cho luồng khoá học. */
+  courseSlug?: string;
   question?: QuestionItem;
   returnTo?: string;
   defaultCategoryId?: string;
@@ -154,6 +161,7 @@ const NGON_NGU_CODE_OPTIONS = [
 
 export function QuestionForm({
   courseId,
+  bankCategoryId,
   courseSlug,
   question,
   returnTo,
@@ -451,7 +459,7 @@ export function QuestionForm({
         );
         toast.success(data?.message || 'Đã lưu thay đổi.');
       } else {
-        await apiClient.post('/questions', { courseId, ...values });
+        await apiClient.post('/questions', { courseId, bankCategoryId, ...values });
         toast.success('Đã tạo câu hỏi.');
       }
       router.push(returnTo ?? `/courses/${courseSlug}/questions`);

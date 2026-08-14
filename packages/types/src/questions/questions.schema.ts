@@ -102,11 +102,19 @@ export type BankQuestionItem = {
   points: number;
   optionCount: number;
   createdAt: string;
-  sourceCourseId: string;
-  sourceCourseName: string;
-  /** Đường dẫn danh mục của khoá nguồn, ví dụ "Tin học / Khối 10 / 10E2". */
+  /**
+   * Câu hỏi vào ngân hàng bằng hai đường khác nhau, và giáo viên cần phân biệt:
+   * - `BANK`   — soạn thẳng trong ngân hàng của danh mục, là nội dung dùng chung
+   *              có chủ đích, không thuộc lớp nào.
+   * - `COURSE` — của một lớp cụ thể, được giáo viên lớp đó bật chia sẻ.
+   */
+  sourceKind: 'BANK' | 'COURSE';
+  /** Chỉ có khi sourceKind = 'COURSE'. */
+  sourceCourseId: string | null;
+  sourceCourseName: string | null;
+  /** Đường dẫn danh mục, ví dụ "Tin học / Khối 10 / 10E2". */
   sourceCategoryPath: string;
-  /** Tên kho câu hỏi trong khoá nguồn (nếu có). */
+  /** Tên thư mục chứa câu hỏi ở nơi nguồn (nếu có). */
   sourceCategoryName: string | null;
 };
 
@@ -115,3 +123,33 @@ export type QuestionBankResult = {
   /** Số khoá học đang góp câu hỏi vào ngân hàng mà khoá này nhìn thấy. */
   sourceCourseCount: number;
 };
+
+// ── Kho câu hỏi soạn thẳng trong danh mục khoá học ─────────────
+//
+// Khác với phần trên: đây là nội dung KHÔNG thuộc khoá nào, sống trong danh mục.
+// Các khoá cùng nhánh nhìn thấy qua đúng trang "Ngân hàng chung" và chép về.
+
+/** Một danh mục mà người dùng hiện tại được phép soạn kho. */
+export type ManageableBankCategory = {
+  id: string;
+  name: string;
+  /** Đường dẫn đầy đủ, ví dụ "Tin học / Khối 10". */
+  path: string;
+  questionCount: number;
+  /** Số chương (thư mục) trong ngân hàng nội dung của danh mục. */
+  moduleCount: number;
+};
+
+export type CategoryQuestionBankData = {
+  categoryId: string;
+  categoryName: string;
+  categoryPath: string;
+  /** Thư mục trong kho; câu hỏi không xếp thư mục nằm ở `uncategorized`. */
+  folders: CategoryWithQuestions[];
+  uncategorized: QuestionItem[];
+};
+
+export const BankFolderBodySchema = z.object({
+  name: z.string().trim().min(1, 'Tên thư mục không được để trống').max(120),
+});
+export type BankFolderBody = z.infer<typeof BankFolderBodySchema>;

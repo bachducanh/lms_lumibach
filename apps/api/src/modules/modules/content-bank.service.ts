@@ -10,6 +10,7 @@ import type {
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 import { CategoriesService } from '../categories/categories.service';
 import { StorageService } from '../../common/storage/storage.service';
 
@@ -71,16 +72,22 @@ export class ContentBankService {
   ): Promise<{ message: string }> {
     const item = await this.prisma.moduleItem.findUnique({
       where: { id: moduleItemId },
-      select: { module: { select: { courseId: true } } },
+      select: { module: { select: { courseId: true, bankCategoryId: true } } },
     });
     if (!item) throw new NotFoundException('Không tìm thấy hoạt động');
-    await this.assertCanManage(user, item.module.courseId);
+    // Hoạt động soạn thẳng trong ngân hàng đã là của chung — bật/tắt cờ chia sẻ
+    // ở đây vô nghĩa, và courseId null sẽ lọt qua kiểm quyền theo khoá học.
+    if (item.module.bankCategoryId) {
+      throw new ForbiddenException('Hoạt động này vốn đã nằm trong ngân hàng của danh mục.');
+    }
+    const courseId = assertCourseScoped(item.module.courseId, 'Hoạt động này');
+    await this.assertCanManage(user, courseId);
 
     await this.prisma.moduleItem.update({
       where: { id: moduleItemId },
       data: { sharedToCategory: shared },
     });
-    await this.invalidateModules(item.module.courseId);
+    await this.invalidateModules(courseId);
 
     return {
       message: shared
@@ -103,12 +110,20 @@ export class ContentBankService {
 
     const rows = await this.prisma.moduleItem.findMany({
       where: {
-        sharedToCategory: true,
-        // Hoạt động của chính khoá này đã có sẵn, không kể lại.
-        module: {
-          courseId: { not: query.courseId },
-          course: { deletedAt: null, categoryId: { in: categoryIds } },
-        },
+        OR: [
+          // Soạn thẳng trong ngân hàng của một danh mục nhìn thấy được. Không
+          // xét `sharedToCategory`: nằm trong ngân hàng ĐÃ LÀ chia sẻ rồi.
+          { module: { bankCategoryId: { in: categoryIds } } },
+          // Của một lớp khác và được lớp đó bật chia sẻ. Hoạt động của chính
+          // khoá này đã có sẵn nên không kể lại.
+          {
+            sharedToCategory: true,
+            module: {
+              courseId: { not: query.courseId },
+              course: { deletedAt: null, categoryId: { in: categoryIds } },
+            },
+          },
+        ],
         ...(query.type ? { type: query.type as never } : {}),
         ...(query.q ? { title: { contains: query.q, mode: 'insensitive' as const } } : {}),
       },
@@ -126,6 +141,7 @@ export class ContentBankService {
         module: {
           select: {
             name: true,
+            bankCategoryId: true,
             course: { select: { id: true, name: true, categoryId: true } },
           },
         },
@@ -133,26 +149,37 @@ export class ContentBankService {
     });
 
     const pathCache = new Map<string, string>();
-    for (const categoryId of new Set(rows.map((r) => r.module.course.categoryId))) {
+    const needed = new Set<string>();
+    for (const r of rows) {
+      const categoryId = r.module.bankCategoryId ?? r.module.course?.categoryId;
+      if (categoryId) needed.add(categoryId);
+    }
+    for (const categoryId of needed) {
       const breadcrumb = await this.categories.buildBreadcrumb(categoryId);
       pathCache.set(categoryId, breadcrumb.map((c) => c.name).join(' / '));
     }
 
-    const items: ContentBankItem[] = rows.map((r) => ({
-      moduleItemId: r.id,
-      type: r.type as string,
-      title: r.title,
-      updatedAt: r.updatedAt.toISOString(),
-      sourceCourseId: r.module.course.id,
-      sourceCourseName: r.module.course.name,
-      sourceModuleName: r.module.name,
-      sourceCategoryPath: pathCache.get(r.module.course.categoryId) ?? '',
-      detail: this.describe(r),
-    }));
+    const items: ContentBankItem[] = rows.map((r) => {
+      const categoryId = r.module.bankCategoryId ?? r.module.course?.categoryId;
+      return {
+        moduleItemId: r.id,
+        type: r.type as string,
+        title: r.title,
+        updatedAt: r.updatedAt.toISOString(),
+        sourceKind: r.module.bankCategoryId ? ('BANK' as const) : ('COURSE' as const),
+        sourceCourseId: r.module.bankCategoryId ? null : (r.module.course?.id ?? null),
+        sourceCourseName: r.module.bankCategoryId ? null : (r.module.course?.name ?? null),
+        sourceModuleName: r.module.name,
+        sourceCategoryPath: categoryId ? (pathCache.get(categoryId) ?? '') : '',
+        detail: this.describe(r),
+      };
+    });
 
     return {
       items,
-      sourceCourseCount: new Set(items.map((i) => i.sourceCourseId)).size,
+      sourceCourseCount: new Set(
+        items.map((i) => i.sourceCourseId).filter((id): id is string => id !== null)
+      ).size,
     };
   }
 
@@ -195,7 +222,10 @@ export class ContentBankService {
       select: { id: true, courseId: true },
     });
     if (!targetModule) throw new NotFoundException('Chương không tồn tại');
-    await this.assertCanManage(user, targetModule.courseId);
+    // Đích phải là chương của một khoá học thật. Chép vào ngân hàng thì soạn
+    // thẳng ở đó, không đi qua đường này.
+    const courseId = assertCourseScoped(targetModule.courseId, 'Chương đích');
+    await this.assertCanManage(user, courseId);
 
     const source = await this.prisma.moduleItem.findUnique({
       where: { id: moduleItemId },
@@ -206,19 +236,39 @@ export class ContentBankService {
         codeExercise: { include: { testCases: { orderBy: { position: 'asc' } } } },
         practiceTest: { include: { questions: { orderBy: { position: 'asc' } } } },
         forum: true,
-        module: { select: { courseId: true, course: { select: { categoryId: true } } } },
+        module: {
+          select: {
+            courseId: true,
+            bankCategoryId: true,
+            course: { select: { categoryId: true } },
+          },
+        },
       },
     });
     if (!source) throw new NotFoundException('Không tìm thấy hoạt động');
 
-    // Được chép khi: đang chia sẻ và thuộc nhánh danh mục nhìn thấy được, HOẶC
-    // người dùng vốn quản lý luôn khoá nguồn (tự nhân bản bài của mình sang lớp khác).
-    if (!(await canManageCourse(this.prisma, user, source.module.courseId))) {
-      const target = await this.prisma.course.findUnique({
-        where: { id: targetModule.courseId },
-        select: { categoryId: true },
-      });
-      const allowed = await this.visibleCategoryIds(target!.categoryId);
+    const target = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      select: { categoryId: true },
+    });
+    if (!target) throw new NotFoundException('Khoá học không tồn tại');
+
+    if (source.module.bankCategoryId) {
+      // Nguồn là ngân hàng của danh mục: chỉ cần danh mục ấy nằm trong nhánh mà
+      // khoá nhận nhìn thấy. Không có "khoá nguồn" để xét quyền.
+      const allowed = await this.visibleCategoryIds(target.categoryId);
+      if (!allowed.includes(source.module.bankCategoryId)) {
+        throw new ForbiddenException(
+          'Hoạt động này không nằm trong ngân hàng của khoá học bạn chọn'
+        );
+      }
+    } else if (!source.module.courseId || !source.module.course) {
+      throw new NotFoundException('Không tìm thấy hoạt động');
+    } else if (!(await canManageCourse(this.prisma, user, source.module.courseId))) {
+      // Nguồn là một lớp: được chép khi đang chia sẻ và thuộc nhánh danh mục
+      // nhìn thấy được. Người vốn quản lý khoá nguồn thì khỏi xét — đó là tự
+      // nhân bản bài của mình sang lớp khác.
+      const allowed = await this.visibleCategoryIds(target.categoryId);
       if (!source.sharedToCategory || !allowed.includes(source.module.course.categoryId)) {
         throw new ForbiddenException(
           'Hoạt động này không nằm trong ngân hàng của khoá học bạn chọn'
@@ -232,7 +282,6 @@ export class ContentBankService {
       select: { position: true },
     });
     const position = (last?.position ?? -1) + 1;
-    const courseId = targetModule.courseId;
 
     const link = await this.cloneContent(user, source, courseId);
 

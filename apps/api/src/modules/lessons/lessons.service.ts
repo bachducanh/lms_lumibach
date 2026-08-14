@@ -9,6 +9,7 @@ import type {
   UpdateLessonBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -24,7 +25,9 @@ export class LessonsService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache
   ) {}
 
-  private async invalidateModuleCache(courseId: string): Promise<void> {
+  private async invalidateModuleCache(courseId: string | null): Promise<void> {
+    // Bản mẫu trong ngân hàng danh mục không nằm trong cache chương của lớp nào.
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
@@ -143,7 +146,9 @@ export class LessonsService {
     });
     if (!item) throw new NotFoundException('Bài học không tồn tại');
 
-    const courseId = item.module.courseId;
+    // Hoàn thành bài học là dữ liệu tiến độ của học sinh trong MỘT lớp; bản mẫu
+    // trong ngân hàng danh mục không có lớp nào để ghi tiến độ vào.
+    const courseId = assertCourseScoped(item.module.courseId, 'Bài học này');
 
     await this.prisma.moduleItemCompletion.upsert({
       where: { userId_moduleItemId: { userId: actor.id, moduleItemId: body.moduleItemId } },
@@ -161,7 +166,9 @@ export class LessonsService {
     });
     if (!item) throw new NotFoundException('Bài học không tồn tại');
 
-    const courseId = item.module.courseId;
+    // Hoàn thành bài học là dữ liệu tiến độ của học sinh trong MỘT lớp; bản mẫu
+    // trong ngân hàng danh mục không có lớp nào để ghi tiến độ vào.
+    const courseId = assertCourseScoped(item.module.courseId, 'Bài học này');
     await this.prisma.moduleItemCompletion.deleteMany({
       where: { userId: actor.id, moduleItemId },
     });

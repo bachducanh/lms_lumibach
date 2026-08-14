@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 import { canManageCourse, resolveCourseAccess } from '../../common/auth/course-access';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
@@ -18,7 +19,9 @@ export class ScratchService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache
   ) {}
 
-  private async invalidateModuleCache(courseId: string): Promise<void> {
+  private async invalidateModuleCache(courseId: string | null): Promise<void> {
+    // Bản mẫu trong ngân hàng danh mục không nằm trong cache chương của lớp nào.
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
@@ -98,7 +101,7 @@ export class ScratchService {
       select: { id: true, courseId: true },
     });
     if (!ex) throw new NotFoundException('Bài tập không tồn tại.');
-    if (!(await canManageCourse(this.prisma, user, ex.courseId)))
+    if (!(await canManageCourse(this.prisma, user, assertCourseScoped(ex.courseId, 'Bài tập này'))))
       throw new ForbiddenException('Bạn không quản lý bài tập này.');
 
     const data: Record<string, unknown> = {};
@@ -214,7 +217,11 @@ export class ScratchService {
       },
     });
     if (!sub) throw new NotFoundException('Submission không tồn tại.');
-    const access = await resolveCourseAccess(this.prisma, user, sub.codeExercise.courseId);
+    const access = await resolveCourseAccess(
+      this.prisma,
+      user,
+      assertCourseScoped(sub.codeExercise.courseId, 'Bài code này')
+    );
     if (!access.canGrade) throw new ForbiddenException('Bạn không quản lý khoá học này.');
 
     await this.prisma.codeSubmission.update({

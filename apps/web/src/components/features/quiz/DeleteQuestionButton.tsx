@@ -8,14 +8,22 @@ import { Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
-export function DeleteQuestionButton({ questionId }: { questionId: string }) {
+export function DeleteQuestionButton({
+  questionId,
+  confirmMessage,
+}: {
+  questionId: string;
+  /** Câu hỏi trong ngân hàng của danh mục không gắn vào quiz nào — lời cảnh báo
+   *  mặc định sẽ sai chỗ, nên nơi gọi tự đặt lại. */
+  confirmMessage?: string;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [confirmDialog, openConfirm] = useConfirmDialog();
 
   async function handleDelete() {
     const ok = await openConfirm(
-      'Xoá câu hỏi này? Câu hỏi sẽ bị xoá khỏi tất cả quiz đang sử dụng nó.'
+      confirmMessage ?? 'Xoá câu hỏi này? Câu hỏi sẽ bị xoá khỏi tất cả quiz đang sử dụng nó.'
     );
     if (!ok) return;
     setPending(true);

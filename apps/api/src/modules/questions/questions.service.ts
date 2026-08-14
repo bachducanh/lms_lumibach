@@ -4,6 +4,7 @@ import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
 import { regradeQuizzesForQuestion } from '../../common/grading/quiz-grading';
+import { CategoryQuestionBankService } from './category-question-bank.service';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -15,16 +16,64 @@ function hasMinRole(r: string, min: Role) {
 export class QuestionsService {
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly judge0: Judge0Service
+    private readonly judge0: Judge0Service,
+    private readonly bank: CategoryQuestionBankService
   ) {}
 
   private async canManage(userId: string, role: string, courseId: string) {
     return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
 
+  /**
+   * Chốt quyền chung cho câu hỏi, dù nó thuộc khoá học hay thuộc kho của danh mục.
+   *
+   * Từ khi có kho gắn vào danh mục, `courseId` có thể null — mà `canManageCourse`
+   * lại trả `true` ngay cho ADMIN trước khi nhìn tới courseId, nên nếu cứ gọi
+   * thẳng như cũ thì câu hỏi của kho lọt qua mọi kiểm tra dành cho khoá học.
+   */
+  private async assertCanEditQuestion(
+    user: AuthUser,
+    q: { courseId: string | null; bankCategoryId: string | null; createdBy: string | null }
+  ) {
+    if (q.bankCategoryId) {
+      await this.bank.assertCanManageBank(user, q.bankCategoryId);
+      this.bank.assertCanEditBankQuestion(user, q.createdBy);
+      return;
+    }
+    if (!q.courseId || !(await this.canManage(user.id, user.role, q.courseId))) {
+      throw new ForbiddenException('Không có quyền.');
+    }
+  }
+
+  /**
+   * Chặn các endpoint "kho câu hỏi của khoá học" đụng vào thư mục của ngân hàng
+   * danh mục. Không có chốt này thì ADMIN sửa/xoá được nó qua đường khoá học —
+   * `canManageCourse` cho ADMIN đi thẳng, không nhìn tới courseId đang là null.
+   */
+  private assertCourseScopedFolder(courseId: string | null): asserts courseId is string {
+    if (!courseId) {
+      throw new ForbiddenException(
+        'Thư mục này thuộc ngân hàng của danh mục — quản lý ở trang ngân hàng chung.'
+      );
+    }
+  }
+
+  /**
+   * `courseId` bắt buộc có giá trị thật trước khi đưa vào `where`.
+   *
+   * Prisma BỎ QUA điều kiện có giá trị `undefined`, nên thiếu query param thì
+   * `where: { courseId }` thành "không lọc gì" và trả về kho của mọi khoá. Từ
+   * khi courseId nullable, nó còn kéo theo cả thư mục và câu hỏi của ngân hàng
+   * danh mục — tức là một request thiếu tham số cũng đọc được sạch dữ liệu.
+   */
+  private assertCourseId(courseId: string | undefined | null): asserts courseId is string {
+    if (!courseId) throw new ForbiddenException('Thiếu mã khoá học.');
+  }
+
   // ── Categories ────────────────────────────────────────────────
 
   async listCategories(user: AuthUser, courseId: string) {
+    this.assertCourseId(courseId);
     if (!hasMinRole(user.role, 'TA')) throw new ForbiddenException('Không có quyền.');
     return (this.prisma as any).questionCategory.findMany({
       where: { courseId },
@@ -34,6 +83,7 @@ export class QuestionsService {
   }
 
   async createCategory(user: AuthUser, courseId: string, name: string) {
+    this.assertCourseId(courseId);
     if (!(await this.canManage(user.id, user.role, courseId)))
       throw new ForbiddenException('Không có quyền.');
 
@@ -60,6 +110,7 @@ export class QuestionsService {
       select: { courseId: true },
     });
     if (!cat) throw new NotFoundException('Không tìm thấy danh mục.');
+    this.assertCourseScopedFolder(cat.courseId);
     if (!(await this.canManage(user.id, user.role, cat.courseId)))
       throw new ForbiddenException('Không có quyền.');
     await (this.prisma as any).questionCategory.update({
@@ -75,6 +126,7 @@ export class QuestionsService {
       select: { courseId: true },
     });
     if (!cat) throw new NotFoundException('Không tìm thấy danh mục.');
+    this.assertCourseScopedFolder(cat.courseId);
     if (!(await this.canManage(user.id, user.role, cat.courseId)))
       throw new ForbiddenException('Không có quyền.');
 
@@ -89,6 +141,7 @@ export class QuestionsService {
   // ── Questions ─────────────────────────────────────────────────
 
   async listByCategory(user: AuthUser, courseId: string) {
+    this.assertCourseId(courseId);
     if (!hasMinRole(user.role, 'TA')) throw new ForbiddenException('Không có quyền.');
 
     const [cats, uncategorized] = await Promise.all([
@@ -134,9 +187,14 @@ export class QuestionsService {
     return q;
   }
 
+  /**
+   * Tạo câu hỏi cho ĐÚNG MỘT chủ sở hữu: kho riêng của một khoá học, hoặc ngân
+   * hàng của một danh mục. CSDL có CHECK chặn trường hợp cả hai / không cái nào,
+   * nhưng chặn sớm ở đây thì báo lỗi mới đọc được.
+   */
   async create(
     user: AuthUser,
-    courseId: string,
+    owner: { courseId?: string | null; bankCategoryId?: string | null },
     data: {
       type: string;
       content: string;
@@ -157,12 +215,24 @@ export class QuestionsService {
       memoryLimit?: number | null;
     }
   ) {
-    if (!(await this.canManage(user.id, user.role, courseId)))
+    const courseId = owner.courseId ?? null;
+    const bankCategoryId = owner.bankCategoryId ?? null;
+    if (!courseId === !bankCategoryId) {
+      throw new ForbiddenException(
+        'Câu hỏi phải thuộc đúng một nơi: một khoá học hoặc ngân hàng của một danh mục.'
+      );
+    }
+
+    if (bankCategoryId) {
+      await this.bank.assertCanManageBank(user, bankCategoryId);
+    } else if (!(await this.canManage(user.id, user.role, courseId as string))) {
       throw new ForbiddenException('Không có quyền.');
+    }
 
     const question = await (this.prisma.question as any).create({
       data: {
         courseId,
+        bankCategoryId,
         categoryId: data.categoryId ?? null,
         type: data.type,
         content: data.content,
@@ -220,11 +290,10 @@ export class QuestionsService {
   ) {
     const existing = await this.prisma.question.findUnique({
       where: { id: questionId, deletedAt: null } as any,
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true, createdBy: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
-      throw new ForbiddenException('Không có quyền.');
+    await this.assertCanEditQuestion(user, existing);
 
     // Bài làm của học sinh (Answer.selectedOptionIds / textAnswer) tham chiếu tới
     // QuestionOption.id. Nếu xoá hết option rồi tạo lại thì id đổi hết và mọi bài
@@ -314,11 +383,10 @@ export class QuestionsService {
   async delete(user: AuthUser, questionId: string) {
     const existing = await this.prisma.question.findUnique({
       where: { id: questionId, deletedAt: null } as any,
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true, createdBy: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
-      throw new ForbiddenException('Không có quyền.');
+    await this.assertCanEditQuestion(user, existing);
 
     await this.prisma.question.update({
       where: { id: questionId },

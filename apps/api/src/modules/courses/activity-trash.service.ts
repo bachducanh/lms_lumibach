@@ -47,7 +47,12 @@ export class ActivityTrashService {
     where: { deletedAt: { not: null } | { not: null; lt: Date } } & CourseScope
   ): Promise<TrashRow[]> {
     const args = {
-      where,
+      // `courseId: { not: null }` là bắt buộc, không phải thừa: bản mẫu trong
+      // ngân hàng nội dung của danh mục cũng có cột deletedAt, mà thùng rác này
+      // luôn hiển thị kèm tên lớp và cho khôi phục về lớp. Thiếu điều kiện đó
+      // thì khi gọi không kèm CourseScope (view của ADMIN, job dọn rác), bản mẫu
+      // lọt vào danh sách với course = null.
+      where: { ...where, courseId: { not: null } },
       orderBy: { deletedAt: 'desc' as const },
       select: {
         id: true,
@@ -59,13 +64,13 @@ export class ActivityTrashService {
     };
     switch (kind) {
       case 'assignment':
-        return this.prisma.assignment.findMany(args);
+        return this.prisma.assignment.findMany(args) as Promise<TrashRow[]>;
       case 'quiz':
-        return this.prisma.quiz.findMany(args);
+        return this.prisma.quiz.findMany(args) as Promise<TrashRow[]>;
       case 'code-exercise':
-        return this.prisma.codeExercise.findMany(args);
+        return this.prisma.codeExercise.findMany(args) as Promise<TrashRow[]>;
       case 'practice-test':
-        return this.prisma.practiceTest.findMany(args);
+        return this.prisma.practiceTest.findMany(args) as Promise<TrashRow[]>;
     }
   }
 

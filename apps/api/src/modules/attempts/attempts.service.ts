@@ -20,7 +20,7 @@ function logActivity(
   prisma: PrismaClient,
   params: {
     userId: string;
-    courseId?: string;
+    courseId?: string | null;
     action: string;
     resourceType?: string;
     resourceId?: string;
@@ -37,7 +37,11 @@ export class AttemptsService {
     private readonly judge0: Judge0Service
   ) {}
 
-  private async canManageCourse(userId: string, role: string, courseId: string) {
+  private async canManageCourse(userId: string, role: string, courseId: string | null) {
+    // Quiz mẫu của ngân hàng danh mục không thuộc lớp nào — không có lượt làm bài
+    // nên nhánh này không tới được, nhưng chặn null vẫn cần: canManageCourse cho
+    // ADMIN đi thẳng mà chưa nhìn tới courseId.
+    if (!courseId) return false;
     return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
 
@@ -533,7 +537,9 @@ export class AttemptsService {
             type: 'QUIZ_GRADED',
             title: `Quiz "${answerRow.attempt.quiz.title}" đã được chấm`,
             body: `Điểm của bạn: ${totalScore.toFixed(1)} điểm.`,
-            link: `/courses/${answerRow.attempt.quiz.course.slug}/quizzes/${answerRow.attempt.quizId}`,
+            link: answerRow.attempt.quiz.course
+              ? `/courses/${answerRow.attempt.quiz.course.slug}/quizzes/${answerRow.attempt.quizId}`
+              : null,
           },
         })
         .catch(() => {});

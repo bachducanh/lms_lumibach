@@ -460,10 +460,14 @@ export class ForumService {
       },
     });
     if (!forum) throw new NotFoundException('Diễn đàn không tồn tại');
-    await this.assertEnrolled(forum.course.id, user.id, user.role);
+    // Diễn đàn mẫu của ngân hàng danh mục không có lớp để ghi danh vào; xem nó
+    // ở trang ngân hàng, không phải ở đường diễn đàn của khoá học.
+    if (!forum.course) throw new NotFoundException('Diễn đàn không tồn tại');
+    const course = forum.course;
+    await this.assertEnrolled(course.id, user.id, user.role);
 
     const item = forum.moduleItems[0];
-    if (!item?.isPublished && !(await this.canManageForums(user, forum.course.id))) {
+    if (!item?.isPublished && !(await this.canManageForums(user, course.id))) {
       throw new ForbiddenException('Diễn đàn chưa được mở');
     }
 
@@ -481,8 +485,8 @@ export class ForumService {
       topicCount: forum.topics.length,
       postCount: forum.topics.reduce((n, t) => n + t._count.posts, 0),
       lastActivityAt: lastActivity?.toISOString() ?? null,
-      courseId: forum.course.id,
-      courseSlug: forum.course.slug,
+      courseId: course.id,
+      courseSlug: course.slug,
       moduleName: item?.module.name ?? null,
     };
   }
@@ -557,12 +561,14 @@ export class ForumService {
 
   // ── Internals ──────────────────────────────────────────────────
 
-  private async canManageForums(user: AuthUser, courseId: string): Promise<boolean> {
+  private async canManageForums(user: AuthUser, courseId: string | null): Promise<boolean> {
+    // Diễn đàn mẫu trong ngân hàng danh mục không thuộc lớp nào.
+    if (!courseId) return false;
     if (!hasMinRole(user.role, 'TEACHER')) return false;
     return canManageCourse(this.prisma, user, courseId);
   }
 
-  private async assertCanManageForums(user: AuthUser, courseId: string): Promise<void> {
+  private async assertCanManageForums(user: AuthUser, courseId: string | null): Promise<void> {
     if (!(await this.canManageForums(user, courseId)))
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
   }
@@ -576,7 +582,8 @@ export class ForumService {
   }
 
   /** Diễn đàn hiện trong cây chương nên cache modules cũng phải bỏ. */
-  private async invalidateCourseCaches(courseId: string): Promise<void> {
+  private async invalidateCourseCaches(courseId: string | null): Promise<void> {
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`forum:topics:${courseId}`),
       this.cache.del(`modules:${courseId}`),

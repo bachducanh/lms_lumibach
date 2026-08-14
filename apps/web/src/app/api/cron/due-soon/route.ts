@@ -21,6 +21,10 @@ export async function GET(req: NextRequest) {
       dueDate: { gte: now, lte: in24h },
       status: 'PUBLISHED',
       deletedAt: null,
+      // Bản mẫu trong ngân hàng nội dung của danh mục không có lớp nào để nhắc.
+      // Nó không bao giờ ở trạng thái PUBLISHED, nhưng nhắc hạn là việc gửi mail
+      // hàng loạt — thà thừa một điều kiện còn hơn gửi nhầm cho cả trường.
+      courseId: { not: null },
     },
     select: {
       id: true,
@@ -33,6 +37,7 @@ export async function GET(req: NextRequest) {
   let created = 0;
 
   for (const assignment of assignments) {
+    if (!assignment.course) continue;
     for (const enrollment of assignment.course.enrollments) {
       // Kiểm tra đã gửi thông báo chưa (trong 1h trước)
       const existing = await prisma.notification.findFirst({

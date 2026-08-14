@@ -9,6 +9,10 @@
 FROM node:20-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
+# Corepack hỏi xác nhận trước khi tải bản pnpm khai trong packageManager. BuildKit
+# không cấp stdin nên câu hỏi đó không bao giờ được trả lời: build sạch (chưa có
+# layer cache) đứng im vô hạn ở bước `pnpm install`, không báo lỗi gì.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 # openssl là phụ thuộc thời gian chạy của Prisma engine.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \

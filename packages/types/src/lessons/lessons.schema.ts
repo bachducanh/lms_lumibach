@@ -38,7 +38,8 @@ export type LessonDetail = {
   moduleItems: {
     id: string;
     isPublished: boolean;
-    module: { id: string; name: string; courseId: string };
+    /** `courseId` null khi bài giảng nằm trong ngân hàng nội dung của danh mục. */
+    module: { id: string; name: string; courseId: string | null };
   }[];
   attachments: {
     id: string;

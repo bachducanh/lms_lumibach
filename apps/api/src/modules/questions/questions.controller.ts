@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import {
+  BankFolderBodySchema,
   CopyQuestionBodySchema,
   QuestionBankQuerySchema,
   ShareQuestionBodySchema,
+  type BankFolderBody,
   type CopyQuestionBody,
   type QuestionBankQuery,
   type ShareQuestionBody,
@@ -13,14 +15,59 @@ import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { QuestionsService } from './questions.service';
 import { QuestionBankService } from './question-bank.service';
+import { CategoryQuestionBankService } from './category-question-bank.service';
 
 @ApiTags('questions')
 @Controller({ path: 'questions', version: '1' })
 export class QuestionsController {
   constructor(
     private readonly service: QuestionsService,
-    private readonly bank: QuestionBankService
+    private readonly bank: QuestionBankService,
+    private readonly categoryBank: CategoryQuestionBankService
   ) {}
+
+  // ── Kho câu hỏi soạn thẳng trong danh mục khoá học ─────────────
+  // Khai TRƯỚC @Get(':id'), nếu không "bank-categories" bị bắt làm id câu hỏi.
+
+  @Get('bank-categories')
+  @ApiOperation({ summary: 'Danh mục mà người dùng được soạn kho câu hỏi' })
+  listBankCategories(@CurrentUser() user: AuthUser) {
+    return this.categoryBank.listManageable(user);
+  }
+
+  @Get('bank-categories/:categoryId')
+  @ApiOperation({ summary: 'Toàn bộ kho câu hỏi của một danh mục' })
+  getBankCategory(@CurrentUser() user: AuthUser, @Param('categoryId') categoryId: string) {
+    return this.categoryBank.get(user, categoryId);
+  }
+
+  @Post('bank-categories/:categoryId/folders')
+  @ApiOperation({ summary: 'Thêm thư mục vào kho của danh mục' })
+  createBankFolder(
+    @CurrentUser() user: AuthUser,
+    @Param('categoryId') categoryId: string,
+    @Body(zodBody(BankFolderBodySchema)) body: BankFolderBody
+  ) {
+    return this.categoryBank.createFolder(user, categoryId, body);
+  }
+
+  @Patch('bank-folders/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Đổi tên thư mục trong kho của danh mục' })
+  renameBankFolder(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(BankFolderBodySchema)) body: BankFolderBody
+  ) {
+    return this.categoryBank.renameFolder(user, id, body);
+  }
+
+  @Delete('bank-folders/:id')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá thư mục trong kho (giữ nguyên câu hỏi bên trong)' })
+  deleteBankFolder(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.categoryBank.deleteFolder(user, id);
+  }
 
   // ── Ngân hàng dùng chung theo danh mục khoá học ────────────────
   // Khai TRƯỚC @Get(':id') để "bank" không bị bắt làm id câu hỏi.
@@ -102,13 +149,17 @@ export class QuestionsController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Tạo câu hỏi' })
+  @ApiOperation({ summary: 'Tạo câu hỏi cho một khoá học HOẶC cho kho của một danh mục' })
   create(
     @CurrentUser() user: AuthUser,
-    @Body() body: { courseId: string } & Record<string, unknown>
+    @Body() body: { courseId?: string; bankCategoryId?: string } & Record<string, unknown>
   ) {
-    const { courseId, ...data } = body;
-    return this.service.create(user, courseId, data as Parameters<QuestionsService['create']>[2]);
+    const { courseId, bankCategoryId, ...data } = body;
+    return this.service.create(
+      user,
+      { courseId, bankCategoryId },
+      data as Parameters<QuestionsService['create']>[2]
+    );
   }
 
   @Patch(':id')

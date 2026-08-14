@@ -39,6 +39,7 @@ import type {
   UpsertCompetencyLevelTargetBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 
 type ActivityFk =
   | { assignmentId: string }
@@ -143,7 +144,9 @@ export class CompetenciesService {
     } as const;
     const row = await map[type]();
     if (!row) throw new NotFoundException('Hoạt động học tập không tồn tại.');
-    return row;
+    // Năng lực chấm cho học sinh của MỘT lớp. Bản mẫu trong ngân hàng nội dung
+    // của danh mục không có lớp, nên không gán chỉ báo hay chấm ở đó được.
+    return { courseId: assertCourseScoped(row.courseId, 'Hoạt động này'), title: row.title };
   }
 
   // ── Catalog (danh mục + chỉ báo) ─────────────────────────────

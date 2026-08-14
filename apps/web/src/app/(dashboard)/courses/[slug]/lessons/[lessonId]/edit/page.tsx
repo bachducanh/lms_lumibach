@@ -41,8 +41,7 @@ export default async function EditLessonPage({
     <div className="max-w-5xl">
       <LessonEditor
         mode="edit"
-        courseSlug={slug}
-        courseId={course.id}
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
         moduleId={moduleId}
         lesson={{
           id: lesson.id,

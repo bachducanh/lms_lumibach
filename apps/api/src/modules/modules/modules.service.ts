@@ -14,6 +14,7 @@ import type {
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 import { StorageService } from '../../common/storage/storage.service';
 import type { ModuleItemPurgePlan } from '../../common/storage/module-item-cleanup.service';
 import { ModuleItemCleanupService } from '../../common/storage/module-item-cleanup.service';
@@ -40,37 +41,24 @@ export class ModulesService {
    * của mình cùng lệnh xoá ModuleItem/Module.
    */
   private purgeOperations(plan: ModuleItemPurgePlan) {
-    const now = new Date();
-    const softDelete = { deletedAt: now };
-    return [
-      this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
-      this.prisma.forum.deleteMany({ where: { id: { in: plan.forumIds } } }),
-      this.prisma.assignment.updateMany({
-        where: { id: { in: plan.assignmentIds }, deletedAt: null },
-        data: softDelete,
-      }),
-      this.prisma.quiz.updateMany({
-        where: { id: { in: plan.quizIds }, deletedAt: null },
-        data: softDelete,
-      }),
-      this.prisma.codeExercise.updateMany({
-        where: { id: { in: plan.codeExerciseIds }, deletedAt: null },
-        data: softDelete,
-      }),
-      this.prisma.practiceTest.updateMany({
-        where: { id: { in: plan.practiceTestIds }, deletedAt: null },
-        data: softDelete,
-      }),
-    ];
+    return this.cleanup.purgeOperations(plan);
   }
 
-  private async assertCanManage(courseId: string, actor: AuthUser): Promise<void> {
+  /**
+   * Nhận `string | null` vì `Module.courseId` giờ nullable (chương của ngân
+   * hàng danh mục). Chặn null NGAY ĐÂY là chốt chặn của cả file: mọi endpoint
+   * chương của khoá học đều đi qua hàm này, nên chương ngân hàng không thể bị
+   * sửa/xoá/đăng nhầm qua đường khoá học — quản lý nó ở CategoryContentBankService.
+   */
+  private async assertCanManage(courseId: string | null, actor: AuthUser): Promise<void> {
     if (!hasMinRole(actor.role, 'TEACHER')) throw new ForbiddenException('Không có quyền');
-    if (!(await canManageCourse(this.prisma, actor, courseId)))
+    const scoped = assertCourseScoped(courseId, 'Chương này');
+    if (!(await canManageCourse(this.prisma, actor, scoped)))
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
   }
 
-  private async invalidate(courseId: string): Promise<void> {
+  private async invalidate(courseId: string | null): Promise<void> {
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
@@ -297,11 +285,14 @@ export class ModulesService {
     });
     if (!item) throw new NotFoundException('Không tìm thấy mục');
     await this.assertCanManage(item.module.courseId, actor);
+    // assertCanManage đã loại null; giữ lại giá trị đã thu hẹp để các truy vấn
+    // dưới không lọc bằng null (Prisma sẽ hiểu thành "courseId IS NULL").
+    const courseId = assertCourseScoped(item.module.courseId, 'Chương này');
 
     // Validate cross-references thuộc cùng khoá học.
     if (body.groupMode === 'SEPARATE_GROUPS' && body.groupingId) {
       const grouping = await this.prisma.grouping.findFirst({
-        where: { id: body.groupingId, courseId: item.module.courseId },
+        where: { id: body.groupingId, courseId },
         select: { id: true },
       });
       if (!grouping) throw new ForbiddenException('Phân nhóm không thuộc khoá học.');
@@ -310,7 +301,7 @@ export class ModulesService {
     let validGroupIds: string[] = [];
     if (body.groupMode === 'VISIBLE_GROUPS' && body.groupIds && body.groupIds.length > 0) {
       const groups = await this.prisma.group.findMany({
-        where: { id: { in: body.groupIds }, courseId: item.module.courseId },
+        where: { id: { in: body.groupIds }, courseId },
         select: { id: true },
       });
       validGroupIds = groups.map((g) => g.id);
@@ -358,11 +349,12 @@ export class ModulesService {
     });
     if (!mod) throw new NotFoundException('Không tìm thấy chương.');
     await this.assertCanManage(mod.courseId, actor);
+    const courseId = assertCourseScoped(mod.courseId, 'Chương này');
 
     // Validate cross-references thuộc cùng khoá học (1 lần, không mỗi item).
     if (body.groupMode === 'SEPARATE_GROUPS' && body.groupingId) {
       const grouping = await this.prisma.grouping.findFirst({
-        where: { id: body.groupingId, courseId: mod.courseId },
+        where: { id: body.groupingId, courseId },
         select: { id: true },
       });
       if (!grouping) throw new ForbiddenException('Phân nhóm không thuộc khoá học.');
@@ -371,7 +363,7 @@ export class ModulesService {
     let validGroupIds: string[] = [];
     if (body.groupMode === 'VISIBLE_GROUPS' && body.groupIds && body.groupIds.length > 0) {
       const groups = await this.prisma.group.findMany({
-        where: { id: { in: body.groupIds }, courseId: mod.courseId },
+        where: { id: { in: body.groupIds }, courseId },
         select: { id: true },
       });
       validGroupIds = groups.map((g) => g.id);

@@ -62,9 +62,14 @@ export class QuestionBankService {
   ): Promise<{ message: string }> {
     const question = await this.prisma.question.findFirst({
       where: { id: questionId, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!question) throw new NotFoundException('Không tìm thấy câu hỏi');
+    // Câu hỏi soạn thẳng trong ngân hàng thì đã là của chung — bật/tắt cờ chia
+    // sẻ ở đây không có nghĩa gì, và courseId null sẽ lọt qua kiểm quyền khoá học.
+    if (question.bankCategoryId || !question.courseId) {
+      throw new ForbiddenException('Câu hỏi này vốn đã nằm trong ngân hàng của danh mục.');
+    }
     await this.assertCanManage(user, question.courseId);
 
     await this.prisma.question.update({
@@ -93,10 +98,18 @@ export class QuestionBankService {
     const rows = await this.prisma.question.findMany({
       where: {
         deletedAt: null,
-        sharedToCategory: true,
-        // Đề của chính khoá này đã nằm sẵn trong kho riêng, không kể lại.
-        courseId: { not: query.courseId },
-        course: { deletedAt: null, categoryId: { in: categoryIds } },
+        OR: [
+          // Soạn thẳng trong ngân hàng của một danh mục nhìn thấy được. Không
+          // xét `sharedToCategory`: nằm trong ngân hàng ĐÃ LÀ chia sẻ rồi.
+          { bankCategoryId: { in: categoryIds } },
+          // Của một lớp khác và được lớp đó bật chia sẻ. Đề của chính khoá này
+          // đã nằm sẵn trong kho riêng nên không kể lại.
+          {
+            sharedToCategory: true,
+            courseId: { not: query.courseId },
+            course: { deletedAt: null, categoryId: { in: categoryIds } },
+          },
+        ],
         ...(query.type ? { type: query.type as never } : {}),
         ...(query.q ? { content: { contains: query.q, mode: 'insensitive' as const } } : {}),
       },
@@ -108,6 +121,7 @@ export class QuestionBankService {
         content: true,
         points: true,
         createdAt: true,
+        bankCategoryId: true,
         course: { select: { id: true, name: true, categoryId: true } },
         category: { select: { name: true } },
         _count: { select: { options: true } },
@@ -116,27 +130,38 @@ export class QuestionBankService {
 
     // Đường dẫn danh mục hay lặp lại giữa các câu — dựng một lần cho mỗi danh mục.
     const pathCache = new Map<string, string>();
-    for (const categoryId of new Set(rows.map((r) => r.course.categoryId))) {
+    const needed = new Set<string>();
+    for (const r of rows) {
+      const categoryId = r.bankCategoryId ?? r.course?.categoryId;
+      if (categoryId) needed.add(categoryId);
+    }
+    for (const categoryId of needed) {
       const breadcrumb = await this.categories.buildBreadcrumb(categoryId);
       pathCache.set(categoryId, breadcrumb.map((c) => c.name).join(' / '));
     }
 
-    const questions: BankQuestionItem[] = rows.map((r) => ({
-      id: r.id,
-      type: r.type as string,
-      content: r.content,
-      points: r.points,
-      optionCount: r._count.options,
-      createdAt: r.createdAt.toISOString(),
-      sourceCourseId: r.course.id,
-      sourceCourseName: r.course.name,
-      sourceCategoryPath: pathCache.get(r.course.categoryId) ?? '',
-      sourceCategoryName: r.category?.name ?? null,
-    }));
+    const questions: BankQuestionItem[] = rows.map((r) => {
+      const categoryId = r.bankCategoryId ?? r.course?.categoryId;
+      return {
+        id: r.id,
+        type: r.type as string,
+        content: r.content,
+        points: r.points,
+        optionCount: r._count.options,
+        createdAt: r.createdAt.toISOString(),
+        sourceKind: r.bankCategoryId ? ('BANK' as const) : ('COURSE' as const),
+        sourceCourseId: r.bankCategoryId ? null : (r.course?.id ?? null),
+        sourceCourseName: r.bankCategoryId ? null : (r.course?.name ?? null),
+        sourceCategoryPath: categoryId ? (pathCache.get(categoryId) ?? '') : '',
+        sourceCategoryName: r.category?.name ?? null,
+      };
+    });
 
     return {
       questions,
-      sourceCourseCount: new Set(questions.map((q) => q.sourceCourseId)).size,
+      sourceCourseCount: new Set(
+        questions.map((q) => q.sourceCourseId).filter((id): id is string => id !== null)
+      ).size,
     };
   }
 
@@ -161,16 +186,27 @@ export class QuestionBankService {
         course: { select: { id: true, categoryId: true, deletedAt: true } },
       },
     });
-    if (!source || source.course.deletedAt) throw new NotFoundException('Không tìm thấy câu hỏi');
+    if (!source || source.course?.deletedAt) throw new NotFoundException('Không tìm thấy câu hỏi');
 
-    // Được copy khi: câu hỏi đang chia sẻ và thuộc nhánh danh mục nhìn thấy được,
-    // HOẶC người dùng vốn đã quản lý luôn khoá nguồn (tự copy đề của mình sang lớp khác).
-    if (!(await canManageCourse(this.prisma, user, source.course.id))) {
-      const target = await this.prisma.course.findUnique({
-        where: { id: body.courseId },
-        select: { categoryId: true },
-      });
-      if (!target) throw new NotFoundException('Khoá học không tồn tại');
+    const target = await this.prisma.course.findUnique({
+      where: { id: body.courseId },
+      select: { categoryId: true },
+    });
+    if (!target) throw new NotFoundException('Khoá học không tồn tại');
+
+    if (source.bankCategoryId) {
+      // Câu hỏi của ngân hàng danh mục: chỉ cần danh mục ấy nằm trong nhánh mà
+      // khoá nhận nhìn thấy. Không có "khoá nguồn" để xét quyền.
+      const allowed = await this.visibleCategoryIds(target.categoryId);
+      if (!allowed.includes(source.bankCategoryId)) {
+        throw new ForbiddenException('Câu hỏi này không nằm trong ngân hàng của khoá học bạn chọn');
+      }
+    } else if (!source.course) {
+      throw new NotFoundException('Không tìm thấy câu hỏi');
+    } else if (!(await canManageCourse(this.prisma, user, source.course.id))) {
+      // Câu hỏi của một lớp: được copy khi nó đang chia sẻ và thuộc nhánh danh
+      // mục nhìn thấy được. Người vốn đã quản lý khoá nguồn thì khỏi xét — đó là
+      // tự copy đề của mình sang lớp khác.
       const allowed = await this.visibleCategoryIds(target.categoryId);
       if (!source.sharedToCategory || !allowed.includes(source.course.categoryId)) {
         throw new ForbiddenException('Câu hỏi này không nằm trong ngân hàng của khoá học bạn chọn');

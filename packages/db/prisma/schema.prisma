@@ -374,6 +374,17 @@ model CourseCategory {
 
   courses Course[]
 
+  // Ngân hàng chung gắn thẳng vào danh mục: nội dung soạn ở đây không thuộc khoá
+  // nào, các khoá cùng nhánh danh mục chép về kho riêng của mình.
+  bankQuestionCategories QuestionCategory[] @relation("CategoryQuestionBank")
+  bankQuestions          Question[]         @relation("CategoryQuestionBank")
+  bankModules            Module[]           @relation("CategoryContentBank")
+  bankAssignments        Assignment[]       @relation("CategoryContentBank")
+  bankQuizzes            Quiz[]             @relation("CategoryContentBank")
+  bankCodeExercises      CodeExercise[]     @relation("CategoryContentBank")
+  bankPracticeTests      PracticeTest[]     @relation("CategoryContentBank")
+  bankForums             Forum[]            @relation("CategoryContentBank")
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -496,23 +507,32 @@ model CourseCoTeacher {
 // CONTENT MODULE
 // ============================================================
 
+/// Chương. Thuộc về ĐÚNG MỘT trong hai nơi (CHECK ở CSDL, xem migration
+/// add_category_content_bank):
+///   - `courseId`       → chương của một khoá học
+///   - `bankCategoryId` → thư mục trong ngân hàng nội dung của một danh mục
 model Module {
-  id          String    @id @default(cuid())
-  courseId    String
-  name        String
-  description String?   @db.Text
-  position    Int
-  isPublished Boolean   @default(false)
-  unlockAt    DateTime?
+  id             String    @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  name           String
+  description    String?   @db.Text
+  position       Int
+  isPublished    Boolean   @default(false)
+  unlockAt       DateTime?
+  /// Chỉ ghi cho chương của ngân hàng — giáo viên chỉ sửa/xoá được thứ mình tạo.
+  createdBy      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  course Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  items  ModuleItem[]
+  course       Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory CourseCategory? @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  items        ModuleItem[]
 
   @@index([courseId])
   @@index([courseId, position])
+  @@index([bankCategoryId])
 }
 
 model ModuleItem {
@@ -628,10 +648,14 @@ model ModuleItemCompletion {
 // ASSIGNMENT MODULE
 // ============================================================
 
+/// Thuộc về ĐÚNG MỘT: khoá học (`courseId`) hoặc ngân hàng nội dung của một
+/// danh mục (`bankCategoryId`). Bản trong ngân hàng là BẢN MẪU — không đăng,
+/// không có bài nộp, không vào bảng điểm; các khoá cùng nhánh chép về bản riêng.
 model Assignment {
-  id           String           @id @default(cuid())
-  courseId     String
-  title        String
+  id             String           @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  title          String
   instructions String           @db.Text
   type         AssignmentType   @default(TEXT)
   status       AssignmentStatus @default(DRAFT)
@@ -662,7 +686,8 @@ model Assignment {
   publishedAt DateTime?
   deletedAt   DateTime?
 
-  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course                Course?                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory          CourseCategory?        @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
   grouping              Grouping?              @relation(fields: [groupingId], references: [id], onDelete: SetNull)
   moduleItems           ModuleItem[]
   submissions           Submission[]
@@ -671,6 +696,7 @@ model Assignment {
   competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
   @@index([status])
   @@index([dueDate])
   @@index([deletedAt])
@@ -791,12 +817,15 @@ model SubmissionFile {
 
 // ── Quiz Engine ──────────────────────────────────────────────
 
+/// Thuộc về ĐÚNG MỘT: khoá học hoặc ngân hàng nội dung của một danh mục.
+/// Bản trong ngân hàng là BẢN MẪU — không đăng, không có lượt làm bài.
 model Quiz {
-  id          String     @id @default(cuid())
-  courseId    String
-  title       String
-  description String?    @db.Text
-  status      QuizStatus @default(DRAFT)
+  id             String     @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  title          String
+  description    String?    @db.Text
+  status         QuizStatus @default(DRAFT)
 
   timeLimit        Int? // phút, null = không giới hạn
   maxAttempts      Int? // null = không giới hạn
@@ -820,7 +849,8 @@ model Quiz {
   publishedAt DateTime?
   deletedAt   DateTime?
 
-  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course                Course?                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory          CourseCategory?        @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
   questions             QuizQuestion[]
   attempts              QuizAttempt[]
   moduleItems           ModuleItem[]
@@ -828,28 +858,51 @@ model Quiz {
   competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
   @@index([status])
   @@index([deletedAt])
 }
 
+/// Thư mục chứa câu hỏi. Thuộc về ĐÚNG MỘT trong hai nơi:
+///   - `courseId`       → kho riêng của một khoá học (như trước nay)
+///   - `bankCategoryId` → ngân hàng chung gắn thẳng vào một danh mục khoá học
+///
+/// Ràng buộc "đúng một" được cài bằng CHECK ở tầng CSDL (Prisma không diễn đạt
+/// được), xem migration add_category_question_bank.
 model QuestionCategory {
-  id        String   @id @default(cuid())
-  courseId  String
-  name      String
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  name           String
+  position       Int      @default(0)
+  /// Chỉ ghi cho thư mục của ngân hàng danh mục, để giáo viên chỉ sửa/xoá được
+  /// thư mục do chính mình tạo. Thư mục của khoá học để null: ở đó ai quản lý
+  /// khoá cũng sắp xếp được, và đó là hành vi có từ trước.
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  questions Question[]
+  course       Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory CourseCategory? @relation("CategoryQuestionBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  questions    Question[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
 }
 
+/// Câu hỏi thuộc về ĐÚNG MỘT trong hai nơi, giống QuestionCategory:
+///   - `courseId`       → kho riêng của một khoá học
+///   - `bankCategoryId` → ngân hàng chung của một danh mục khoá học
+///
+/// Câu hỏi trong ngân hàng chung là BẢN MẪU: nó không bao giờ được gắn vào quiz
+/// hay đề luyện tập, chỉ để các khoá cùng nhánh chép về kho riêng. Nhờ vậy mọi
+/// truy vấn cũ lọc theo `courseId` vẫn đúng — chúng đơn giản là không khớp câu
+/// hỏi nào của ngân hàng.
 model Question {
-  id          String       @id @default(cuid())
-  courseId    String
-  categoryId  String?
+  id             String       @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  categoryId     String?
   type        QuestionType
   content     String       @db.Text
   explanation String?      @db.Text
@@ -872,14 +925,16 @@ model Question {
   timeLimit    Int? // seconds per test case
   memoryLimit  Int? // KB
 
-  course    Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  category  QuestionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  options   QuestionOption[]
-  quizzes   QuizQuestion[]
-  answers   Answer[]
-  testCases QuestionTestCase[]
+  course       Course?            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory CourseCategory?    @relation("CategoryQuestionBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  category     QuestionCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  options      QuestionOption[]
+  quizzes      QuizQuestion[]
+  answers      Answer[]
+  testCases    QuestionTestCase[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
   @@index([categoryId])
   @@index([type])
   @@index([deletedAt])
@@ -947,13 +1002,16 @@ model QuizAttempt {
 
 // ── Code Exercise Module ─────────────────────────────────────
 
+/// Thuộc về ĐÚNG MỘT: khoá học hoặc ngân hàng nội dung của một danh mục.
+/// Bản trong ngân hàng là BẢN MẪU — không đăng, không có bài nộp.
 model CodeExercise {
-  id          String         @id @default(cuid())
-  courseId    String
-  title       String
-  description String?        @db.Text
-  language    CodeLanguage
-  status      ExerciseStatus @default(DRAFT)
+  id             String         @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  title          String
+  description    String?        @db.Text
+  language       CodeLanguage
+  status         ExerciseStatus @default(DRAFT)
 
   // For PYTHON3 / JAVASCRIPT / CPP17
   starterCode  String? @db.Text
@@ -974,7 +1032,8 @@ model CodeExercise {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course                Course?                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory          CourseCategory?        @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
   moduleItems           ModuleItem[]
   testCases             TestCase[]
   submissions           CodeSubmission[]
@@ -983,6 +1042,7 @@ model CodeExercise {
   competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
   @@index([status])
   @@index([deletedAt])
 }
@@ -1070,12 +1130,15 @@ model Answer {
 // PRACTICE TEST MODULE
 // ============================================================
 
+/// Thuộc về ĐÚNG MỘT: khoá học hoặc ngân hàng nội dung của một danh mục.
+/// Bản trong ngân hàng là BẢN MẪU — không đăng, không có lượt làm bài.
 model PracticeTest {
-  id          String             @id @default(cuid())
-  courseId    String
-  title       String
-  description String?            @db.Text
-  status      PracticeTestStatus @default(DRAFT)
+  id             String             @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  title          String
+  description    String?            @db.Text
+  status         PracticeTestStatus @default(DRAFT)
 
   pdfUrl      String
   pdfName     String
@@ -1100,7 +1163,8 @@ model PracticeTest {
   publishedAt DateTime?
   deletedAt   DateTime?
 
-  course                Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course                Course?                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory          CourseCategory?        @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
   moduleItems           ModuleItem[]
   questions             PracticeTestQuestion[]
   attempts              PracticeTestAttempt[]
@@ -1108,6 +1172,7 @@ model PracticeTest {
   competencyAssessments CompetencyAssessment[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
   @@index([status])
   @@index([deletedAt])
 }
@@ -1240,20 +1305,26 @@ model ActivityLog {
 // Diễn đàn — một hoạt động học tập, gắn vào chương qua ModuleItem giống
 // assignment/quiz. Chủ đề (ForumTopic) nằm trong một diễn đàn; forumId để
 // null nghĩa là chủ đề cũ ở cấp khoá học, tạo trước khi có model này.
+/// Thuộc về ĐÚNG MỘT: khoá học hoặc ngân hàng nội dung của một danh mục.
+/// Bản trong ngân hàng là BẢN MẪU — chỉ có tiêu đề và mô tả, không có chủ đề
+/// thảo luận nào (ForumTopic vẫn buộc thuộc một khoá học).
 model Forum {
-  id          String  @id @default(cuid())
-  courseId    String
-  title       String
-  description String? @db.Text
+  id             String  @id @default(cuid())
+  courseId       String?
+  bankCategoryId String?
+  title          String
+  description    String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  topics      ForumTopic[]
-  moduleItems ModuleItem[]
+  course       Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory CourseCategory? @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  topics       ForumTopic[]
+  moduleItems  ModuleItem[]
 
   @@index([courseId])
+  @@index([bankCategoryId])
 }
 
 model ForumTopic {

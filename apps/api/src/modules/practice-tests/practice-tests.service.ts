@@ -4,6 +4,7 @@ import type { Cache } from 'cache-manager';
 import { PrismaClient, type Prisma } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { assertCourseScoped } from '../../common/bank/course-scoped';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
 
@@ -160,7 +161,9 @@ export class PracticeTestsService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache
   ) {}
 
-  private async invalidateModuleCache(courseId: string): Promise<void> {
+  private async invalidateModuleCache(courseId: string | null): Promise<void> {
+    // Bản mẫu trong ngân hàng danh mục không nằm trong cache chương của lớp nào.
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
@@ -169,7 +172,11 @@ export class PracticeTestsService {
     ]);
   }
 
-  private async canManage(userId: string, role: string, courseId: string) {
+  private async canManage(userId: string, role: string, courseId: string | null) {
+    // courseId null = bản mẫu của ngân hàng danh mục: không thuộc lớp nào nên
+    // không ai "quản lý được nó qua khoá học". Chặn trước khi canManageCourse
+    // kịp trả true cho ADMIN mà chưa nhìn tới courseId.
+    if (!courseId) return false;
     if (role === 'SUPERADMIN') return true;
     return canManageCourse(this.prisma, { id: userId, role }, courseId);
   }
@@ -848,7 +855,7 @@ export class PracticeTestsService {
 
     logActivity(this.prisma, {
       userId: user.id,
-      courseId: test.courseId,
+      courseId: assertCourseScoped(test.courseId, 'Đề luyện tập này'),
       action: 'SUBMIT_PRACTICE_TEST',
       resourceType: 'practice-test',
       resourceId: practiceTestId,

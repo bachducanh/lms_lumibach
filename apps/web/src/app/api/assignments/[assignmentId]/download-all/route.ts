@@ -104,7 +104,10 @@ export async function GET(
   });
   if (!assignment) return NextResponse.json({ error: 'Bài tập không tồn tại' }, { status: 404 });
 
+  // Bài tập mẫu trong ngân hàng nội dung của danh mục không thuộc lớp nào, nên
+  // cũng không có bài nộp nào để tải về.
   const c = assignment.course;
+  if (!c) return NextResponse.json({ error: 'Bài tập không tồn tại' }, { status: 404 });
   const canAccess =
     hasMinRole(role, 'ADMIN') ||
     c.ownerId === userId ||

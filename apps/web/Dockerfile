@@ -13,8 +13,17 @@
 FROM node:20-slim AS base
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
+# Corepack hỏi xác nhận trước khi tải bản pnpm khai trong packageManager. BuildKit
+# không cấp stdin nên câu hỏi đó không bao giờ được trả lời: build sạch (chưa có
+# layer cache) đứng im vô hạn ở bước `pnpm install`, không báo lỗi gì.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# fontconfig + một font thật: watermark ảnh bàn giao vẽ chữ bằng SVG rồi để
+# librsvg (trong sharp) dựng. Image slim không có font nào, librsvg vẫn chạy
+# nhưng phần <text> ra trống — ảnh lưu được mà không có dòng giờ/phòng/người
+# mượn, đúng thứ khiến ảnh có giá trị đối chiếu.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends \
+    openssl ca-certificates fontconfig fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /repo
@@ -66,8 +75,29 @@ RUN pnpm --filter @lumibach/web build
 #
 # pnpm deploy dựng node_modules thật (không symlink), đã loại devDependencies,
 # và mang đủ @lumibach/db kèm generated client.
+# Hai bước sau bước deploy, cả hai đều bắt buộc — thiếu bước nào thì mọi route
+# dùng gói native đều trả 500 NGAY LÚC NẠP MODULE (trước cả khi kiểm đăng nhập):
+#
+# 1. `rm -rf /out/.next`. pnpm deploy đã chép sẵn một bản `.next` nhưng BỎ QUA
+#    mọi thư mục `node_modules` bên trong. `cp -r … /out/.next` gặp thư mục đã
+#    tồn tại nên lồng bản build thật vào `/out/.next/.next` — Next.js không đọc
+#    chỗ đó, và image mang hai bản build.
+#
+# 2. Trỏ lại các symlink trong `.next/node_modules/`. Turbopack không để
+#    `require('sharp')` nguyên văn: nó sinh `.next/node_modules/sharp-<hash>`
+#    trỏ vào kho `.pnpm` của REPO rồi require qua đó (mọi gói native đều vậy,
+#    kể cả gói đã khai trong serverExternalPackages). Đường dẫn ấy chỉ đúng ở
+#    cây `/repo/apps/web`; trong image gốc package là `/app` nên nó trỏ trượt.
+#    `../../node_modules/<tên gói>` tính từ `/app/.next/node_modules/` ra đúng
+#    `/app/node_modules/<tên gói>` — nơi pnpm deploy đã đặt gói thật.
 RUN pnpm deploy --filter=@lumibach/web --prod /out \
-  && cp -r /repo/apps/web/.next /out/.next
+  && rm -rf /out/.next \
+  && cp -r /repo/apps/web/.next /out/.next \
+  && for d in /out/.next/node_modules/*; do \
+       [ -L "$d" ] || continue; \
+       n=$(basename "$d"); rm -f "$d"; ln -s "../../node_modules/${n%-*}" "$d"; \
+       [ -e "$d" ] || { echo "Symlink hong: $d -> ${n%-*}"; exit 1; }; \
+     done
 
 
 # ── Image chạy thật ──────────────────────────────────────────────────────────

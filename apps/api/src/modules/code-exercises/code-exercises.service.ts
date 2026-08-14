@@ -36,7 +36,9 @@ export class CodeExercisesService {
     @Optional() private readonly notifications: NotificationsService | null = null
   ) {}
 
-  private async invalidateModuleCache(courseId: string): Promise<void> {
+  private async invalidateModuleCache(courseId: string | null): Promise<void> {
+    // Bản mẫu trong ngân hàng danh mục không nằm trong cache chương của lớp nào.
+    if (!courseId) return;
     await Promise.allSettled([
       this.cache.del(`modules:${courseId}`),
       this.cache.del(`modules:pub:${courseId}`),
