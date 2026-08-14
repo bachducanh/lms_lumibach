@@ -88,15 +88,27 @@ RUN pnpm --filter @lumibach/web build
 #    trỏ vào kho `.pnpm` của REPO rồi require qua đó (mọi gói native đều vậy,
 #    kể cả gói đã khai trong serverExternalPackages). Đường dẫn ấy chỉ đúng ở
 #    cây `/repo/apps/web`; trong image gốc package là `/app` nên nó trỏ trượt.
-#    `../../node_modules/<tên gói>` tính từ `/app/.next/node_modules/` ra đúng
-#    `/app/node_modules/<tên gói>` — nơi pnpm deploy đã đặt gói thật.
+#
+#    Giữ NGUYÊN phần đuôi `.pnpm/<gói>@<phiên bản>/node_modules/<gói>` của đích
+#    cũ, chỉ thay phần gốc thành `../../node_modules/` — tính từ
+#    `/app/.next/node_modules/` ra đúng `/app/node_modules/.pnpm/…`, nơi
+#    `pnpm deploy` dựng lại kho với TÊN THƯ MỤC Y HỆT kho của repo.
+#
+#    Đừng quay lại lối cắt `-<hash>` khỏi tên rồi trỏ vào `node_modules/<gói>`
+#    tầng đầu. Hai chỗ hỏng:
+#      • Phụ thuộc GIÁN TIẾP không có ở tầng đầu. `exceljs` kéo theo
+#        unzipper → fstream → rimraf@2.7.1, và Turbopack sinh symlink cho nó.
+#      • Hai phiên bản của cùng một gói (đang có archiver@5.3.2 và archiver@8.0.0)
+#        cắt hash xong ra cùng một tên, nên cả hai trỏ về một chỗ và một phiên
+#        bản bị nuốt mất trong im lặng.
 RUN pnpm deploy --filter=@lumibach/web --prod /out \
   && rm -rf /out/.next \
   && cp -r /repo/apps/web/.next /out/.next \
   && for d in /out/.next/node_modules/*; do \
        [ -L "$d" ] || continue; \
-       n=$(basename "$d"); rm -f "$d"; ln -s "../../node_modules/${n%-*}" "$d"; \
-       [ -e "$d" ] || { echo "Symlink hong: $d -> ${n%-*}"; exit 1; }; \
+       t=$(readlink "$d"); duoi=${t#*node_modules/}; \
+       rm -f "$d"; ln -s "../../node_modules/$duoi" "$d"; \
+       [ -e "$d" ] || { echo "Symlink hong: $d -> $duoi"; exit 1; }; \
      done
 
 
