@@ -86,7 +86,10 @@ export function CompetencyLevelGrid({
       const data = await apiClient.get<CompetencyExportData>(
         `/courses/${courseId}/competencies/periods/${grid.period.id}/categories/${exportCategoryId}/export`
       );
-      exportCompetencyResultsToExcel(data);
+      // Phải await: hàm này nạp động ExcelJS rồi mới dựng file, không chờ thì
+      // lỗi nạp/dựng rơi ra ngoài try và người dùng chỉ thấy nút hết quay chứ
+      // không thấy báo lỗi nào.
+      await exportCompetencyResultsToExcel(data);
     } catch (err) {
       toast.error(fmtError(err, 'Lỗi xuất Excel'));
     } finally {
