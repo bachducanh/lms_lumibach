@@ -465,9 +465,20 @@ export function AdminRoomsManager({ rooms }: { rooms: RoomListItem[] }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* `content` chỉ được TipTap đọc ĐÚNG MỘT LẦN lúc dựng editor;
+                    đổi prop sau đó không nạp lại nội dung. Nên phải truyền thẳng
+                    giá trị của máy chủ, KHÔNG truyền `ruleHtml` — state đó do
+                    useEffect điền SAU khi editor đã dựng xong, nên editor luôn
+                    nhận giá trị của lượt trước: rỗng khi mới vào trang, và nội
+                    quy của phòng vừa xem khi bấm sang phòng khác. Người dùng sửa
+                    trên nội dung nhìn thấy rồi lưu là ghi nhầm sang phòng đang mở.
+
+                    `key` gồm cả updatedAt để editor dựng lại đúng lúc bản nội quy
+                    đổi (chuyển phòng, hoặc vừa lưu xong), chứ không dựng lại theo
+                    từng phím gõ. */}
                 <RichTextEditor
-                  key={detail.id}
-                  content={ruleHtml}
+                  key={`${detail.id}:${detail.currentRule?.updatedAt ?? 'chua-co'}`}
+                  content={detail.currentRule?.content ?? ''}
                   onChange={setRuleHtml}
                   compact
                   allowImages={false}
