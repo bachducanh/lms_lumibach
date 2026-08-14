@@ -81,16 +81,19 @@ export const UpdateRoomBodySchema = z.object({
 });
 export type UpdateRoomBody = z.infer<typeof UpdateRoomBodySchema>;
 
-export const CreateRoomRuleBodySchema = z.object({
+/** Ghi đè nội quy của phòng. Chưa có thì tạo, có rồi thì thay nội dung. */
+export const UpsertRoomRuleBodySchema = z.object({
   content: z.string().trim().min(10, 'Nội quy cần tối thiểu 10 ký tự').max(20000),
 });
-export type CreateRoomRuleBody = z.infer<typeof CreateRoomRuleBodySchema>;
+export type UpsertRoomRuleBody = z.infer<typeof UpsertRoomRuleBodySchema>;
 
 export const UpdateRoomBookingSettingBodySchema = z
   .object({
     openTime: HHmmSchema.optional(),
     closeTime: HHmmSchema.optional(),
-    slotStepMinutes: z.coerce.number().int().min(5).max(120).optional(),
+    // 0 = TẮT hẳn việc bắt giờ rơi vào mốc: người mượn gõ giờ lẻ tuỳ ý
+    // (11:15–11:40). Lịch tuần vẫn vẽ lưới 30 phút, xem `displayStepMinutes`.
+    slotStepMinutes: z.coerce.number().int().min(0).max(120).optional(),
     minDurationMinutes: z.coerce.number().int().min(5).max(480).optional(),
     maxDurationMinutes: z.coerce.number().int().min(5).max(720).optional(),
     maxAdvanceDays: z.coerce.number().int().min(0).max(365).optional(),
@@ -365,8 +368,8 @@ export type RoomListItem = {
 };
 
 export type RoomDetail = RoomListItem & {
-  /** Bản nội quy hiện hành; null khi admin chưa soạn nội quy cho phòng. */
-  currentRule: { version: number; content: string; createdAt: string } | null;
+  /** Nội quy của phòng; null khi admin chưa soạn. Mỗi phòng đúng một bản. */
+  currentRule: RoomRuleDto | null;
   equipment: RoomEquipmentItem[];
   setting: RoomBookingSettingDto;
 };
@@ -421,8 +424,7 @@ export type RoomBookingListItem = {
 };
 
 export type RoomBookingDetail = RoomBookingListItem & {
-  ruleVersionAccepted: number | null;
-  /** Nội dung ĐÚNG phiên bản nội quy đã chốt khi duyệt, không phải bản mới nhất. */
+  /** Nội quy HIỆN HÀNH của phòng. Admin sửa thì đơn cũ cũng hiện theo bản mới. */
   ruleContent: string | null;
   approvedByName: string | null;
   approvedAt: string | null;
@@ -435,9 +437,9 @@ export type RoomBookingDetail = RoomBookingListItem & {
 };
 
 export type RoomRuleDto = {
-  version: number;
   content: string;
-  createdAt: string;
+  /** Lần sửa gần nhất — thay cho số bản, để admin biết nội quy có mới không. */
+  updatedAt: string;
 };
 
 export type EquipmentBookingItemDto = {
@@ -474,7 +476,6 @@ export type EquipmentAvailabilityIssue = {
 };
 
 export type EquipmentBookingDetail = EquipmentBookingListItem & {
-  ruleVersionAccepted: number | null;
   ruleContent: string | null;
   approvedByName: string | null;
   approvedAt: string | null;
@@ -654,3 +655,33 @@ export const DEFAULT_ROOM_BOOKING_SETTING: Omit<RoomBookingSettingDto, 'isDefaul
   maxPhotosPerHandover: 5,
   photoRetentionMonths: 12,
 };
+
+/** Lưới thời gian dùng để VẼ lịch tuần — luôn dương. */
+const DISPLAY_STEP_FALLBACK_MINUTES = 30;
+
+/**
+ * Bước lưới để vẽ lịch, tách khỏi bước đặt chỗ.
+ *
+ * `slotStepMinutes = 0` nghĩa là không ép giờ vào mốc nào cả, nhưng lịch thì
+ * vẫn phải có lưới để vẽ — lấy 0 mà chia là ra vô số dòng. Trường hợp đó dùng
+ * lưới 30 phút, đủ thưa để nhìn được cả ngày làm việc trong một màn hình.
+ */
+export function displayStepMinutes(
+  setting: Pick<RoomBookingSettingDto, 'slotStepMinutes'>
+): number {
+  return setting.slotStepMinutes > 0 ? setting.slotStepMinutes : DISPLAY_STEP_FALLBACK_MINUTES;
+}
+
+/**
+ * Giá trị cho thuộc tính `step` của `<input type="time">`, tính bằng GIÂY.
+ *
+ * Bước 0 phải đổi thành 60 chứ không truyền thẳng: `step={0}` là giá trị không
+ * hợp lệ theo chuẩn HTML, trình duyệt lặng lẽ quay về mặc định — không lỗi,
+ * nhưng phụ thuộc vào từng trình duyệt. Nêu đích danh 60 (một phút) để mọi nơi
+ * cho gõ giờ lẻ như nhau.
+ */
+export function timeInputStepSeconds(
+  setting: Pick<RoomBookingSettingDto, 'slotStepMinutes'>
+): number {
+  return setting.slotStepMinutes > 0 ? setting.slotStepMinutes * 60 : 60;
+}

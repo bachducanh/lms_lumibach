@@ -11,7 +11,7 @@ import {
   parseHHmm,
   type CreateEquipmentBody,
   type CreateRoomBody,
-  type CreateRoomRuleBody,
+  type UpsertRoomRuleBody,
   type RoomEquipmentItem,
   type RoomBookingSettingDto,
   type RoomDetail,
@@ -128,11 +128,11 @@ export class RoomsService {
           orderBy: { name: 'asc' },
           select: EQUIPMENT_SELECT,
         },
-        // Bản nội quy mới nhất — lấy 1 dòng version cao nhất.
+        // Mỗi phòng chỉ có một bản nội quy (roomId là khoá duy nhất), nhưng
+        // quan hệ vẫn là mảng nên `take: 1` để Prisma khỏi kéo thừa.
         rules: {
-          orderBy: { version: 'desc' },
           take: 1,
-          select: { version: true, content: true, createdAt: true },
+          select: { content: true, updatedAt: true },
         },
         setting: { select: SETTING_SELECT },
         _count: {
@@ -164,9 +164,8 @@ export class RoomsService {
       pendingBookingCount: isAdmin ? room._count.bookings : null,
       currentRule: currentRule
         ? {
-            version: currentRule.version,
             content: currentRule.content,
-            createdAt: currentRule.createdAt.toISOString(),
+            updatedAt: currentRule.updatedAt.toISOString(),
           }
         : null,
       equipment: room.equipment,
@@ -281,38 +280,40 @@ export class RoomsService {
     return { deleted: false, deactivated: true };
   }
 
-  async createRule(user: AuthUser, roomId: string, body: CreateRoomRuleBody): Promise<RoomRuleDto> {
+  /**
+   * Ghi đè nội quy của phòng — mỗi phòng đúng một bản, không đánh số.
+   *
+   * Nội dung cũ mất hẳn sau khi ghi đè, nên vẫn ghi lại vào nhật ký kiểm toán:
+   * đó là chỗ duy nhất còn dấu vết ai sửa nội quy vào lúc nào.
+   */
+  async upsertRule(user: AuthUser, roomId: string, body: UpsertRoomRuleBody): Promise<RoomRuleDto> {
     await this.requireRoomById(roomId);
 
-    const latest = await this.prisma.roomRule.findFirst({
+    const truoc = await this.prisma.roomRule.findUnique({
       where: { roomId },
-      orderBy: { version: 'desc' },
-      select: { version: true },
+      select: { content: true },
     });
 
-    const created = await this.prisma.roomRule.create({
-      data: {
-        roomId,
-        content: body.content,
-        version: (latest?.version ?? 0) + 1,
-        updatedById: user.id,
-      },
-      select: { version: true, content: true, createdAt: true },
+    const saved = await this.prisma.roomRule.upsert({
+      where: { roomId },
+      create: { roomId, content: body.content, updatedById: user.id },
+      update: { content: body.content, updatedById: user.id },
+      select: { content: true, updatedAt: true },
     });
 
     this.audit.log({
       userId: user.id,
       userRole: user.role,
-      action: 'ROOM_RULE_CREATE',
+      action: truoc ? 'ROOM_RULE_UPDATE' : 'ROOM_RULE_CREATE',
       resource: 'RoomRule',
-      resourceId: `${roomId}:${created.version}`,
-      metadata: { roomId, version: created.version },
+      resourceId: roomId,
+      changes: { truoc: truoc?.content ?? null, sau: saved.content },
+      metadata: { roomId },
     });
 
     return {
-      version: created.version,
-      content: created.content,
-      createdAt: created.createdAt.toISOString(),
+      content: saved.content,
+      updatedAt: saved.updatedAt.toISOString(),
     };
   }
 

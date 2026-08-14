@@ -68,7 +68,7 @@ Luồng duyệt → bàn giao (chụp ảnh lúc nhận và lúc trả, ghi tìn
 ### 2.1. Mô hình dữ liệu (đề xuất — bạn điều chỉnh cho khớp quy ước dự án)
 
 - `function_rooms` — id, name, code, location, capacity, description, is_active, sort_order, timestamps.
-- `room_rules` — room_id, content (rich text), version, updated_by, updated_at. **Lưu lịch sử phiên bản**; mỗi booking ghi nhận `rule_version_accepted` để về sau biết giáo viên đã đồng ý bản nội quy nào.
+- `room_rules` — room_id (duy nhất), content (rich text), updated_by, updated_at. **Mỗi phòng đúng một bản, sửa là ghi đè.** ~~Lưu lịch sử phiên bản~~ — bản đầu có đánh số `version` và mỗi booking ghi `rule_version_accepted`, đã bỏ ngày 14/08/2026 theo yêu cầu vận hành: nội quy phải sửa phát ăn ngay. Đổi lại, không tra ngược được nội dung giáo viên đã đọc lúc nhận phòng; việc họ CÓ tích xác nhận hay không vẫn còn ở `handovers.rule_accepted`.
 - `handover_fields` — room_id (null = áp dụng toàn hệ thống), label, key, data_type (`number` | `text` | `select` | `boolean`), options (json), is_required, applies_to (`checkin` | `checkout` | `both`), sort_order, is_active.
 - `room_bookings` — id, room_id, user_id, full_name, staff_code, department, reason, start_at, end_at, status, approved_by, approved_at, reject_reason, key_returned_at, key_returned_confirmed_by, timestamps.
 - `equipment` — room_id, name, code, unit, total_quantity, description, is_active.
@@ -120,7 +120,7 @@ Tham chiếu bố cục lịch tuần của Microsoft Teams (ảnh minh hoạ t�
 
 ### 2.5. Trang quản trị
 
-Admin CRUD được: phòng chức năng, nội quy từng phòng (soạn thảo rich text + xem lịch sử phiên bản), trường bàn giao động, danh mục thiết bị & số lượng, và các tham số đặt phòng ở mục 2.2.
+Admin CRUD được: phòng chức năng, nội quy từng phòng (soạn thảo rich text, lưu là ghi đè bản cũ), trường bàn giao động, danh mục thiết bị & số lượng, và các tham số đặt phòng ở mục 2.2.
 
 Thêm màn hình **Hàng chờ duyệt** (duyệt/từ chối hàng loạt, kèm cảnh báo xung đột) và **Báo cáo**: tần suất sử dụng theo phòng/tổ chuyên môn/tháng, danh sách đơn no-show, danh sách bàn giao có số liệu lệch, xuất Excel/CSV.
 
@@ -160,7 +160,7 @@ Thêm màn hình **Hàng chờ duyệt** (duyệt/từ chối hàng loạt, kèm
 
 **Phase 5 — Mượn thiết bị.** Danh mục thiết bị, form mượn nhiều thiết bị, tính số lượng khả dụng theo khung giờ giao nhau, dùng lại luồng duyệt + bàn giao của Phase 3–4.
 
-**Phase 6 — Quản trị & báo cáo.** CRUD nội quy có phiên bản, cấu hình tham số đặt phòng, báo cáo + xuất file, job `no_show`, job dọn ảnh cũ.
+**Phase 6 — Quản trị & báo cáo.** CRUD nội quy, cấu hình tham số đặt phòng, báo cáo + xuất file, job `no_show`, job dọn ảnh cũ.
 
 **Phase 7 — Hoàn thiện.** Kiểm tra khả năng tiếp cận, trạng thái rỗng/lỗi/đang tải, tài liệu hướng dẫn cho giáo viên và cho admin (tiếng Việt), ghi chú triển khai (HTTPS, dung lượng lưu ảnh, cron job).
 

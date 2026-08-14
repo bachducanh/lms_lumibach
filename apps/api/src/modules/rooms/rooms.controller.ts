@@ -1,22 +1,33 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateEquipmentBodySchema,
   CreateRoomBodySchema,
-  CreateRoomRuleBodySchema,
   RoomsQuerySchema,
+  UpsertRoomRuleBodySchema,
   UpdateEquipmentBodySchema,
   UpdateRoomBodySchema,
   UpdateRoomBookingSettingBodySchema,
   UpdateStaffProfileBodySchema,
   type CreateEquipmentBody,
   type CreateRoomBody,
-  type CreateRoomRuleBody,
   type RoomsQuery,
   type UpdateEquipmentBody,
   type UpdateRoomBody,
   type UpdateRoomBookingSettingBody,
   type UpdateStaffProfileBody,
+  type UpsertRoomRuleBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { Roles } from '../../common/auth/decorators/roles.decorator';
@@ -73,14 +84,14 @@ export class RoomsController {
   }
 
   @Roles('ADMIN')
-  @Post('rooms/:id/rules')
-  @ApiOperation({ summary: 'Tạo phiên bản nội quy mới cho phòng (ADMIN)' })
-  createRule(
+  @Put('rooms/:id/rule')
+  @ApiOperation({ summary: 'Ghi đè nội quy của phòng (ADMIN)' })
+  upsertRule(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body(zodBody(CreateRoomRuleBodySchema)) body: CreateRoomRuleBody
+    @Body(zodBody(UpsertRoomRuleBodySchema)) body: UpsertRoomRuleBody
   ) {
-    return this.service.createRule(user, id, body);
+    return this.service.upsertRule(user, id, body);
   }
 
   @Roles('ADMIN')

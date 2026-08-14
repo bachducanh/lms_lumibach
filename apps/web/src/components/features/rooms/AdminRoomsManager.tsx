@@ -16,6 +16,7 @@ import {
 import {
   HANDOVER_FIELD_APPLIES,
   HANDOVER_FIELD_TYPES,
+  vnDateTimeLabel,
   type HandoverFieldDto,
   type RoomBookingSettingDto,
   type RoomDetail,
@@ -204,8 +205,8 @@ export function AdminRoomsManager({ rooms }: { rooms: RoomListItem[] }) {
     if (!detail) return;
     startTransition(async () => {
       try {
-        await apiClient.post(`/rooms/${detail.id}/rules`, { content: ruleHtml });
-        toast.success('Đã tạo phiên bản nội quy mới');
+        await apiClient.put(`/rooms/${detail.id}/rule`, { content: ruleHtml });
+        toast.success('Đã cập nhật nội quy');
         await loadRoom(detail.code);
         router.refresh();
       } catch (err) {
@@ -457,7 +458,9 @@ export function AdminRoomsManager({ rooms }: { rooms: RoomListItem[] }) {
                   <ScrollText className="h-4 w-4" />
                   Nội quy phòng
                   {detail.currentRule && (
-                    <Badge variant="outline">Bản {detail.currentRule.version}</Badge>
+                    <Badge variant="outline">
+                      Cập nhật {vnDateTimeLabel(new Date(detail.currentRule.updatedAt))}
+                    </Badge>
                   )}
                 </CardTitle>
               </CardHeader>
@@ -470,10 +473,15 @@ export function AdminRoomsManager({ rooms }: { rooms: RoomListItem[] }) {
                   allowImages={false}
                   placeholder="Soạn nội quy phòng..."
                 />
+                {/* Ghi đè tại chỗ: bản cũ mất hẳn, và đơn đã duyệt từ trước
+                    cũng hiện theo nội dung mới. */}
                 <Button onClick={saveRule} disabled={pending || ruleHtml.trim().length < 10}>
                   <Save className="mr-2 h-4 w-4" />
-                  Tạo phiên bản nội quy mới
+                  Lưu nội quy
                 </Button>
+                <p className="text-muted-foreground text-xs">
+                  Nội quy có hiệu lực ngay sau khi lưu, kể cả với đơn đã duyệt trước đó.
+                </p>
               </CardContent>
             </Card>
 
@@ -501,6 +509,7 @@ export function AdminRoomsManager({ rooms }: { rooms: RoomListItem[] }) {
                     <SettingInput
                       label="Bước slot phút"
                       type="number"
+                      hint="0 = cho đặt giờ lẻ tuỳ ý. Lịch vẫn vẽ lưới 30 phút."
                       value={settingForm.slotStepMinutes}
                       onChange={(slotStepMinutes) =>
                         setSettingForm(
@@ -920,16 +929,19 @@ function SettingInput({
   value,
   onChange,
   type = 'time',
+  hint,
 }: {
   label: string;
   value: string | number;
   onChange: (value: string) => void;
   type?: string;
+  hint?: string;
 }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
       <Input type={type} value={String(value)} onChange={(e) => onChange(e.target.value)} />
+      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
     </div>
   );
 }

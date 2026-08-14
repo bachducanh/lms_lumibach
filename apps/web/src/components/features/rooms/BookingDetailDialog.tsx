@@ -171,18 +171,13 @@ export function BookingDetailDialog({
           </dl>
         )}
 
-        {/* Nội quy hiện đúng phiên bản đã chốt lúc duyệt, kể cả khi admin đã
-            sửa nội quy sau đó. */}
+        {/* Nội quy hiện hành của phòng. Admin sửa thì đơn này cũng hiện theo
+            bản mới — mỗi phòng chỉ giữ một bản. */}
         {booking?.ruleContent && (
           <details className="border-border rounded-lg border px-3 py-2 text-sm">
             <summary className="cursor-pointer font-medium">
               <ScrollText className="mr-1.5 inline h-4 w-4" />
               Nội quy phòng
-              {booking.ruleVersionAccepted !== null && (
-                <span className="text-muted-foreground ml-1.5 text-xs">
-                  (bản {booking.ruleVersionAccepted})
-                </span>
-              )}
             </summary>
             <div className="mt-2">
               <RichTextView html={booking.ruleContent} />

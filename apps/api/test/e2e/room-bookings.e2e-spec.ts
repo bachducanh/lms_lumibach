@@ -479,7 +479,6 @@ describe('PATCH /api/v1/room-bookings/:id — sửa đơn', () => {
         status: 'APPROVED',
         approvedById: admin.user.id,
         approvedAt: new Date(),
-        ruleVersionAccepted: 1,
       },
     });
 
@@ -493,7 +492,6 @@ describe('PATCH /api/v1/room-bookings/:id — sửa đơn', () => {
       status: 'PENDING',
       approvedByName: null,
       approvedAt: null,
-      ruleVersionAccepted: null,
     });
   });
 

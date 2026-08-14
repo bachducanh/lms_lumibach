@@ -93,8 +93,7 @@ export class RoomBookingsService {
 
     return {
       ...this.toListItem(booking, user),
-      ruleVersionAccepted: booking.ruleVersionAccepted,
-      ruleContent: await this.layNoiQuyDaChot(booking.roomId, booking.ruleVersionAccepted),
+      ruleContent: await this.layNoiQuyHienHanh(booking.roomId),
       approvedByName: booking.approvedBy?.fullName ?? booking.approvedBy?.email ?? null,
       approvedAt: booking.approvedAt?.toISOString() ?? null,
       rejectReason: booking.rejectReason,
@@ -149,12 +148,11 @@ export class RoomBookingsService {
     const booking = await this.requireBooking(id);
     const status = assertTransition(booking.status, 'approve');
 
-    // Chốt phiên bản nội quy TẠI THỜI ĐIỂM DUYỆT. Admin sửa nội quy sau đó
-    // không làm thay đổi bản mà người mượn phải tuân theo cho đơn này.
-    const noiQuy = await this.prisma.roomRule.findFirst({
+    // Nội quy gửi kèm thư báo duyệt là bản hiện hành lúc này. Không chốt lại
+    // nữa — mỗi phòng chỉ có một bản, admin sửa thì đơn cũ cũng theo bản mới.
+    const noiQuy = await this.prisma.roomRule.findUnique({
       where: { roomId: booking.roomId },
-      orderBy: { version: 'desc' },
-      select: { version: true, content: true },
+      select: { content: true },
     });
 
     await this.prisma.roomBooking.update({
@@ -164,7 +162,6 @@ export class RoomBookingsService {
         approvedById: user.id,
         approvedAt: new Date(),
         rejectReason: null,
-        ruleVersionAccepted: noiQuy?.version ?? null,
       },
     });
 
@@ -175,7 +172,6 @@ export class RoomBookingsService {
       resource: 'RoomBooking',
       resourceId: id,
       changes: { truoc: booking.status, sau: status },
-      metadata: { ruleVersionAccepted: noiQuy?.version ?? null },
     });
 
     await this.notifier.donDuocDuyet(this.bookingInfo(booking), noiQuy?.content ?? null);
@@ -362,7 +358,7 @@ export class RoomBookingsService {
             // Đơn quay về hàng chờ thì xoá dấu vết duyệt cũ, tránh hiển thị
             // "đã duyệt bởi X" trên một đơn đang chờ duyệt lại.
             ...(doiLich && booking.status === 'APPROVED'
-              ? { approvedById: null, approvedAt: null, ruleVersionAccepted: null }
+              ? { approvedById: null, approvedAt: null }
               : {}),
           },
           include: LIST_INCLUDE,
@@ -469,11 +465,15 @@ export class RoomBookingsService {
     };
   }
 
-  /** Nội dung nội quy đúng phiên bản đơn đã chấp nhận, null nếu chưa duyệt. */
-  private async layNoiQuyDaChot(roomId: string, version: number | null): Promise<string | null> {
-    if (version === null) return null;
+  /**
+   * Nội quy hiện hành của phòng, null nếu phòng chưa soạn nội quy.
+   *
+   * Trả bản MỚI NHẤT chứ không phải bản lúc duyệt — nội quy nay mỗi phòng một
+   * bản, sửa là ghi đè. Đơn duyệt từ trước vì thế cũng hiện theo bản mới.
+   */
+  private async layNoiQuyHienHanh(roomId: string): Promise<string | null> {
     const rule = await this.prisma.roomRule.findUnique({
-      where: { roomId_version: { roomId, version } },
+      where: { roomId },
       select: { content: true },
     });
     return rule?.content ?? null;

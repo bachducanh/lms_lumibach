@@ -217,7 +217,7 @@ export class EquipmentBookingsService {
           ...(body.department !== undefined ? { department: body.department } : {}),
           ...(body.reason !== undefined ? { reason: body.reason } : {}),
           ...(changedWindow && booking.status === 'APPROVED'
-            ? { approvedById: null, approvedAt: null, ruleVersionAccepted: null }
+            ? { approvedById: null, approvedAt: null }
             : {}),
           ...(body.items !== undefined || roomId !== booking.roomId
             ? {
@@ -267,12 +267,6 @@ export class EquipmentBookingsService {
       id
     );
 
-    const rule = await this.prisma.roomRule.findFirst({
-      where: { roomId: booking.roomId },
-      orderBy: { version: 'desc' },
-      select: { version: true },
-    });
-
     await this.prisma.equipmentBooking.update({
       where: { id },
       data: {
@@ -280,7 +274,6 @@ export class EquipmentBookingsService {
         approvedById: user.id,
         approvedAt: new Date(),
         rejectReason: null,
-        ruleVersionAccepted: rule?.version ?? null,
       },
     });
 
@@ -291,7 +284,6 @@ export class EquipmentBookingsService {
       resource: 'EquipmentBooking',
       resourceId: id,
       changes: { before: booking.status, after: status },
-      metadata: { ruleVersionAccepted: rule?.version ?? null },
     });
 
     return this.getById(user, id);
@@ -569,8 +561,7 @@ export class EquipmentBookingsService {
   ): Promise<EquipmentBookingDetail> {
     return {
       ...this.toListItem(booking, user),
-      ruleVersionAccepted: booking.ruleVersionAccepted,
-      ruleContent: await this.ruleContent(booking.roomId, booking.ruleVersionAccepted),
+      ruleContent: await this.ruleContent(booking.roomId),
       approvedByName: booking.approvedBy?.fullName ?? booking.approvedBy?.email ?? null,
       approvedAt: booking.approvedAt?.toISOString() ?? null,
       rejectReason: booking.rejectReason,
@@ -614,10 +605,10 @@ export class EquipmentBookingsService {
     };
   }
 
-  private async ruleContent(roomId: string, version: number | null): Promise<string | null> {
-    if (version === null) return null;
+  /** Nội quy hiện hành của phòng — mỗi phòng một bản, không còn chốt theo đơn. */
+  private async ruleContent(roomId: string): Promise<string | null> {
     const rule = await this.prisma.roomRule.findUnique({
-      where: { roomId_version: { roomId, version } },
+      where: { roomId },
       select: { content: true },
     });
     return rule?.content ?? null;

@@ -1692,23 +1692,26 @@ model FunctionRoom {
   @@index([deletedAt])
 }
 
-// Nội quy phòng — bảng CHỈ GHI THÊM (append-only). Sửa nội quy = tạo bản ghi
-// version mới, không UPDATE bản cũ; nhờ vậy đơn đã duyệt vẫn tra ngược được
-// đúng bản nội quy người mượn đã chấp nhận. Vì thế model này không có updatedAt.
+// Nội quy phòng — MỖI PHÒNG ĐÚNG MỘT BẢN, sửa là ghi đè tại chỗ.
+//
+// Trước đây bảng này chỉ ghi thêm, mỗi lần sửa sinh một `version` mới, và đơn
+// đã duyệt trỏ về đúng bản người mượn đã đọc. Bỏ cách đó theo yêu cầu vận hành:
+// nội quy phải sửa phát ăn ngay, không sinh ra danh sách bản để phải chọn.
+//
+// Đánh đổi đã biết và chấp nhận: đơn duyệt từ trước sẽ hiện nội quy MỚI NHẤT,
+// không còn tra ngược được chữ mà người mượn đã tích "đã đọc" lúc nhận phòng.
+// Riêng việc HỌ CÓ TÍCH hay không thì vẫn còn, ở `Handover.ruleAccepted`.
 model RoomRule {
   id          String @id @default(cuid())
-  roomId      String
+  roomId      String @unique
   content     String @db.Text // HTML từ TipTap
-  version     Int
   updatedById String
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   room      FunctionRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   updatedBy User         @relation("RoomRuleEditor", fields: [updatedById], references: [id], onDelete: Restrict)
-
-  @@unique([roomId, version])
-  @@index([roomId, createdAt])
 }
 
 // Trường bàn giao động do admin cấu hình. roomId = null → áp dụng cho mọi phòng.
@@ -1779,10 +1782,6 @@ model RoomBooking {
 
   status RoomBookingStatus @default(PENDING)
 
-  // Phiên bản nội quy chốt tại thời điểm DUYỆT đơn. Admin sửa nội quy sau đó
-  // không ảnh hưởng tới đơn này.
-  ruleVersionAccepted Int?
-
   approvedById String?
   approvedAt   DateTime? @db.Timestamptz(3)
   rejectReason String?   @db.Text
@@ -1847,8 +1846,6 @@ model EquipmentBooking {
   endAt   DateTime @db.Timestamptz(3)
 
   status RoomBookingStatus @default(PENDING)
-
-  ruleVersionAccepted Int?
 
   approvedById String?
   approvedAt   DateTime? @db.Timestamptz(3)

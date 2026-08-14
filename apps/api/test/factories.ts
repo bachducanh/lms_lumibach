@@ -148,17 +148,15 @@ export async function createTestRoomBooking(input: CreateRoomBookingInput) {
 export type CreateRoomRuleInput = {
   roomId: string;
   updatedById: string;
-  version: number;
   content?: string;
 };
 
+/** Mỗi phòng đúng một nội quy — gọi lại lần nữa là ghi đè, không tạo bản mới. */
 export async function createTestRoomRule(input: CreateRoomRuleInput) {
-  return testPrisma.roomRule.create({
-    data: {
-      roomId: input.roomId,
-      updatedById: input.updatedById,
-      version: input.version,
-      content: input.content ?? `<p>Nội quy bản ${input.version}</p>`,
-    },
+  const content = input.content ?? '<p>Nội quy phòng</p>';
+  return testPrisma.roomRule.upsert({
+    where: { roomId: input.roomId },
+    create: { roomId: input.roomId, updatedById: input.updatedById, content },
+    update: { updatedById: input.updatedById, content },
   });
 }

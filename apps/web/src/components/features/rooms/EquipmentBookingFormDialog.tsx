@@ -9,6 +9,8 @@ import {
   vnDateKey,
   vnDateTimeToUtc,
   vnMinutesOfDay,
+  displayStepMinutes,
+  timeInputStepSeconds,
   type EquipmentBookingDetail,
   type RoomDetail,
   type StaffProfileDto,
@@ -142,7 +144,7 @@ export function EquipmentBookingFormDialog({
             <Field label="Giờ bắt đầu">
               <Input
                 type="time"
-                step={room.setting.slotStepMinutes * 60}
+                step={timeInputStepSeconds(room.setting)}
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
               />
@@ -150,7 +152,7 @@ export function EquipmentBookingFormDialog({
             <Field label="Giờ kết thúc">
               <Input
                 type="time"
-                step={room.setting.slotStepMinutes * 60}
+                step={timeInputStepSeconds(room.setting)}
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
               />
@@ -232,7 +234,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function defaultWindow(room: RoomDetail) {
-  const step = room.setting.slotStepMinutes;
+  // Bước hiển thị, không phải bước đặt chỗ: giờ gợi ý sẵn nên rơi vào mốc tròn
+  // cho dễ nhìn, kể cả khi cấu hình cho phép giờ lẻ (bước 0 — chia là ra NaN).
+  const step = displayStepMinutes(room.setting);
   const open = parseHHmm(room.setting.openTime) ?? 7 * 60;
   const close = parseHHmm(room.setting.closeTime) ?? 17 * 60 + 30;
   const now = new Date();

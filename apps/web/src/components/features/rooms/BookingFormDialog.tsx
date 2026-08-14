@@ -12,6 +12,7 @@ import {
   vnDateKey,
   vnDateTimeToUtc,
   vnTimeLabel,
+  timeInputStepSeconds,
   type RoomBookingDetail,
   type RoomDetail,
   type StaffProfileDto,
@@ -226,7 +227,7 @@ export function BookingFormDialog({
                   <FormItem>
                     <FormLabel>Giờ bắt đầu</FormLabel>
                     <FormControl>
-                      <Input type="time" step={room.setting.slotStepMinutes * 60} {...field} />
+                      <Input type="time" step={timeInputStepSeconds(room.setting)} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -239,7 +240,7 @@ export function BookingFormDialog({
                   <FormItem>
                     <FormLabel>Giờ kết thúc</FormLabel>
                     <FormControl>
-                      <Input type="time" step={room.setting.slotStepMinutes * 60} {...field} />
+                      <Input type="time" step={timeInputStepSeconds(room.setting)} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

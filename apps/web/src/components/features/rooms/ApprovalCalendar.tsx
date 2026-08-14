@@ -10,6 +10,7 @@ import {
   vnStartOfDay,
   vnStartOfWeek,
   DEFAULT_ROOM_BOOKING_SETTING,
+  displayStepMinutes,
   type RoomBookingListItem,
   type RoomDetail,
   type RoomListItem,
@@ -250,6 +251,6 @@ function layKhungGio(room: RoomDetail | null) {
   return {
     openMinutes: hopLe ? mo : 7 * 60,
     closeMinutes: hopLe ? dong : 17 * 60 + 30,
-    stepMinutes: setting.slotStepMinutes > 0 ? setting.slotStepMinutes : 30,
+    stepMinutes: displayStepMinutes(setting),
   };
 }

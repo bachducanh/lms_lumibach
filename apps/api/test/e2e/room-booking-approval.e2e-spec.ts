@@ -114,16 +114,14 @@ describe('Duyệt và từ chối đơn mượn phòng', () => {
     expect(res.body.data.approvedAt).not.toBeNull();
   });
 
-  it('duyệt xong thì CHỐT phiên bản nội quy hiện hành', async () => {
+  it('duyệt xong thì đính kèm nội quy hiện hành của phòng', async () => {
     const admin = await loginAs('ADMIN');
     const gv = await loginAs('TEACHER');
     const room = await createTestRoom();
-    await createTestRoomRule({ roomId: room.id, updatedById: admin.user.id, version: 1 });
     await createTestRoomRule({
       roomId: room.id,
       updatedById: admin.user.id,
-      version: 2,
-      content: '<p>Bản đang có hiệu lực lúc duyệt</p>',
+      content: '<p>Nội quy đang có hiệu lực</p>',
     });
 
     const don = await taoDon(gv.cookie, room.id);
@@ -131,18 +129,19 @@ describe('Duyệt và từ chối đơn mượn phòng', () => {
       .post(`/api/v1/room-bookings/${don.id}/approve`)
       .set('Cookie', admin.cookie);
 
-    expect(res.body.data.ruleVersionAccepted).toBe(2);
-    expect(res.body.data.ruleContent).toBe('<p>Bản đang có hiệu lực lúc duyệt</p>');
+    expect(res.body.data.ruleContent).toBe('<p>Nội quy đang có hiệu lực</p>');
   });
 
-  it('ADMIN SỬA NỘI QUY SAU KHI DUYỆT — đơn cũ vẫn giữ đúng bản đã chấp nhận', async () => {
+  // Đây là ĐÁNH ĐỔI CỐ Ý khi bỏ đánh số bản nội quy: không còn tra ngược được
+  // chữ mà người mượn đã đọc lúc nhận phòng. Test khoá hành vi này lại để lần
+  // sau ai sửa cũng biết là đang đổi một quyết định, không phải sửa lỗi.
+  it('admin sửa nội quy sau khi duyệt — đơn cũ hiện theo bản MỚI', async () => {
     const admin = await loginAs('ADMIN');
     const gv = await loginAs('TEACHER');
     const room = await createTestRoom();
     await createTestRoomRule({
       roomId: room.id,
       updatedById: admin.user.id,
-      version: 1,
       content: '<p>Nội quy lúc giáo viên được duyệt</p>',
     });
 
@@ -151,34 +150,28 @@ describe('Duyệt và từ chối đơn mượn phòng', () => {
       .post(`/api/v1/room-bookings/${don.id}/approve`)
       .set('Cookie', admin.cookie);
 
-    // Admin ra bản nội quy mới SAU khi đơn đã được duyệt.
     await createTestRoomRule({
       roomId: room.id,
       updatedById: admin.user.id,
-      version: 2,
-      content: '<p>Nội quy mới, đơn cũ KHÔNG được dùng bản này</p>',
+      content: '<p>Nội quy vừa sửa</p>',
     });
 
     const res = await request(app.getHttpServer())
       .get(`/api/v1/room-bookings/${don.id}`)
       .set('Cookie', gv.cookie);
 
-    expect(res.body.data.ruleVersionAccepted).toBe(1);
-    expect(res.body.data.ruleContent).toBe('<p>Nội quy lúc giáo viên được duyệt</p>');
+    expect(res.body.data.ruleContent).toBe('<p>Nội quy vừa sửa</p>');
   });
 
-  it('đơn chưa duyệt thì chưa có nội quy đính kèm', async () => {
-    const admin = await loginAs('ADMIN');
+  it('phòng chưa soạn nội quy thì đơn không có nội quy đính kèm', async () => {
     const gv = await loginAs('TEACHER');
     const room = await createTestRoom();
-    await createTestRoomRule({ roomId: room.id, updatedById: admin.user.id, version: 1 });
     const don = await taoDon(gv.cookie, room.id);
 
     const res = await request(app.getHttpServer())
       .get(`/api/v1/room-bookings/${don.id}`)
       .set('Cookie', gv.cookie);
 
-    expect(res.body.data.ruleVersionAccepted).toBeNull();
     expect(res.body.data.ruleContent).toBeNull();
   });
 

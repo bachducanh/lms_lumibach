@@ -123,6 +123,16 @@ describe('Bước slot', () => {
     const setting = { ...SETTING, slotStepMinutes: 15 };
     expect(codes(gio(9, 15), gio(10, 45), { setting })).toEqual([]);
   });
+
+  it('bước 0 tắt hẳn ràng buộc mốc — giờ lẻ hai đầu đều qua', () => {
+    const setting = { ...SETTING, slotStepMinutes: 0, minDurationMinutes: 5 };
+    expect(codes(gio(11, 15), gio(11, 40), { setting })).toEqual([]);
+  });
+
+  it('bước 0 KHÔNG bỏ qua thời lượng tối thiểu', () => {
+    const setting = { ...SETTING, slotStepMinutes: 0 };
+    expect(codes(gio(11, 15), gio(11, 40), { setting })).toEqual(['TOO_SHORT']);
+  });
 });
 
 describe('Cuối tuần', () => {

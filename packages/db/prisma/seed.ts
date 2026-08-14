@@ -134,12 +134,11 @@ async function seedFunctionRooms(adminId: string): Promise<string[]> {
       }
     }
 
-    const hasRule = await prisma.roomRule.findFirst({ where: { roomId: room.id } });
+    const hasRule = await prisma.roomRule.findUnique({ where: { roomId: room.id } });
     if (!hasRule) {
       await prisma.roomRule.create({
         data: {
           roomId: room.id,
-          version: 1,
           updatedById: adminId,
           content: SAMPLE_RULE_HTML(room.name),
         },

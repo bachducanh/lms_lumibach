@@ -144,14 +144,7 @@ export function EquipmentBookingDetailDialog({
 
             {booking.ruleContent && (
               <details className="border-border rounded-lg border px-3 py-2 text-sm">
-                <summary className="cursor-pointer font-medium">
-                  Nội quy phòng
-                  {booking.ruleVersionAccepted !== null && (
-                    <span className="text-muted-foreground ml-1.5 text-xs">
-                      (bản {booking.ruleVersionAccepted})
-                    </span>
-                  )}
-                </summary>
+                <summary className="cursor-pointer font-medium">Nội quy phòng</summary>
                 <div className="mt-2">
                   <RichTextView html={booking.ruleContent} />
                 </div>

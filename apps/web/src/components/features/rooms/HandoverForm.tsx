@@ -248,14 +248,7 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
       {/* Nội quy chỉ hiện ở lượt nhận phòng — đó là lúc phải đọc và cam kết. */}
       {laNhanPhong && booking.ruleContent && (
         <section className="border-border rounded-xl border p-4">
-          <h2 className="mb-2 text-base font-semibold">
-            Nội quy phòng
-            {booking.ruleVersionAccepted !== null && (
-              <span className="text-muted-foreground ml-1.5 text-xs font-normal">
-                (bản {booking.ruleVersionAccepted})
-              </span>
-            )}
-          </h2>
+          <h2 className="mb-2 text-base font-semibold">Nội quy phòng</h2>
           <div className="max-h-64 overflow-y-auto">
             <RichTextView html={booking.ruleContent} />
           </div>

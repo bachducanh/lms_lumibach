@@ -186,15 +186,14 @@ describe('GET /api/v1/rooms/:code — chi tiết phòng', () => {
     expect(resAdmin.status).toBe(200);
   });
 
-  it('trả về bản nội quy mới nhất, không phải bản đầu tiên', async () => {
+  it('sửa nội quy là ghi đè, phòng vẫn chỉ có một bản', async () => {
     const admin = await loginAs('ADMIN');
     const room = await createTestRoom({ code: 'phong-noi-quy' });
-    await createTestRoomRule({ roomId: room.id, updatedById: admin.user.id, version: 1 });
+    await createTestRoomRule({ roomId: room.id, updatedById: admin.user.id });
     await createTestRoomRule({
       roomId: room.id,
       updatedById: admin.user.id,
-      version: 2,
-      content: '<p>Bản mới nhất</p>',
+      content: '<p>Bản vừa sửa</p>',
     });
 
     const res = await request(app.getHttpServer())
@@ -202,10 +201,8 @@ describe('GET /api/v1/rooms/:code — chi tiết phòng', () => {
       .set('Cookie', admin.cookie);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.currentRule).toMatchObject({
-      version: 2,
-      content: '<p>Bản mới nhất</p>',
-    });
+    expect(res.body.data.currentRule).toMatchObject({ content: '<p>Bản vừa sửa</p>' });
+    expect(await testPrisma.roomRule.count({ where: { roomId: room.id } })).toBe(1);
   });
 
   it('currentRule là null khi admin chưa soạn nội quy', async () => {

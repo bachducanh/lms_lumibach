@@ -11,6 +11,7 @@ import {
   vnStartOfDay,
   vnStartOfWeek,
   ROOM_BOOKING_STATUS_LABEL,
+  displayStepMinutes,
   type RoomBookingListItem,
   type RoomBookingSettingDto,
   type RoomBookingStatusValue,
@@ -340,6 +341,6 @@ function layKhungGio(setting: RoomBookingSettingDto) {
   return {
     openMinutes: hopLe ? openMinutes : 7 * 60,
     closeMinutes: hopLe ? closeMinutes : 17 * 60 + 30,
-    stepMinutes: setting.slotStepMinutes > 0 ? setting.slotStepMinutes : 30,
+    stepMinutes: displayStepMinutes(setting),
   };
 }

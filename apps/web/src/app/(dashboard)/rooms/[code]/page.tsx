@@ -12,6 +12,7 @@ import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { RoomCalendar } from '@/components/features/rooms/RoomCalendar';
 import { EquipmentBookingPanel } from '@/components/features/rooms/EquipmentBookingPanel';
 import type { UserRole } from '@lumibach/db';
+import { vnDateTimeLabel } from '@lumibach/types';
 import type { RoomDetail, StaffProfileDto } from '@lumibach/types';
 
 export const dynamic = 'force-dynamic';
@@ -101,7 +102,11 @@ export default async function RoomDetailPage({ params }: { params: Promise<{ cod
           <CardTitle className="flex items-center gap-2 text-base">
             <ScrollText className="h-4 w-4" />
             Nội quy phòng
-            {room.currentRule && <Badge variant="outline">Bản {room.currentRule.version}</Badge>}
+            {room.currentRule && (
+              <Badge variant="outline">
+                Cập nhật {vnDateTimeLabel(new Date(room.currentRule.updatedAt))}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
