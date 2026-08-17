@@ -16,10 +16,11 @@ test('login page renders with email + password fields', async ({ page }) => {
   // Tiêu đề
   await expect(page.getByRole('heading', { name: 'Đăng nhập' })).toBeVisible();
 
-  // Email input — placeholder gợi ý "ten@truong.edu.vn"
-  const email = page.locator('input[type="email"]');
+  // Ô định danh: type="text" chứ KHÔNG phải "email" — nó nhận cả tên đăng nhập
+  // (xem ghi chú trong LoginForm). Tìm theo placeholder để bài kiểm không đỏ trở
+  // lại nếu kiểu input đổi lần nữa.
+  const email = page.getByPlaceholder(/truong\.edu\.vn/i);
   await expect(email).toBeVisible();
-  await expect(email).toHaveAttribute('placeholder', /truong\.edu\.vn/i);
 
   // Password input
   const password = page.locator('input[type="password"]');

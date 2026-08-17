@@ -37,28 +37,27 @@ export class StorageService {
   /**
    * Tách URL đã lưu trong DB thành { bucket, objectName }.
    *
-   * Dạng chuẩn hiện tại là URL tương đối `/storage/<bucket>/<object>` (xem
-   * getPublicUrl ở web). Cũng chấp nhận URL tuyệt đối có chứa `/storage/` cho
-   * dữ liệu cũ. Trả null nếu không nhận dạng được hoặc bucket lạ — thà bỏ sót
-   * file rác còn hơn xoá nhầm object không thuộc hệ thống.
+   * Chuẩn hoá qua `toStoragePath` chứ KHÔNG tự dò chuỗi `/storage/`. Từ khi bật
+   * miền media, `getPublicUrl` sinh ra `<media>/<bucket>/<object>` — không còn
+   * đoạn `/storage/` nào để dò. Bản cũ tự dò nên trả null cho mọi file tải lên
+   * sau khi bật miền, và vì null ở đây nghĩa là "không phải file của mình" nên
+   * hỏng trong im lặng: chép file bỏ qua đính kèm, chép PDF đề luyện tập ném
+   * lỗi, và dọn rác không xoá gì nên file nằm lại MinIO mãi mãi.
+   *
+   * `toStoragePath` cũng vá một lỗ của bản cũ: `new URL(url).pathname` nhận
+   * `https://evil.com/storage/<bucket>/<object>` thành object của CHÍNH MÌNH,
+   * nên ai chèn được URL vào nội dung là khiến `removeByUrls` xoá file thật.
+   *
+   * Trả null nếu không nhận dạng được hoặc bucket lạ — thà bỏ sót file rác còn
+   * hơn xoá nhầm object của dự án khác trên cùng máy MinIO.
    */
   parseUrl(url: string | null | undefined): ParsedObject | null {
     if (!url) return null;
 
-    let path = url;
-    if (/^https?:\/\//i.test(url)) {
-      try {
-        path = new URL(url).pathname;
-      } catch {
-        return null;
-      }
-    }
+    const path = toStoragePath(url);
+    if (!path) return null;
 
-    const marker = '/storage/';
-    const at = path.indexOf(marker);
-    if (at === -1) return null;
-
-    const rest = path.slice(at + marker.length);
+    const rest = path.slice('/storage/'.length);
     const slash = rest.indexOf('/');
     if (slash <= 0) return null;
 

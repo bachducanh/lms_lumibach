@@ -196,18 +196,33 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
     });
   }
 
+  /**
+   * Thêm ngẫu nhiên — phải tự cập nhật `items` bằng danh sách API trả về.
+   *
+   * `items` khởi tạo bằng `useState(() => …)` nên chỉ đọc `initialItems` đúng
+   * một lần; `router.refresh()` nạp lại dữ liệu phía server nhưng KHÔNG nạp lại
+   * state cục bộ. Chỉ gọi refresh thì câu hỏi vào CSDL thật, còn màn hình vẫn
+   * hiện số cũ, trong khi ngân hàng bên dưới đã lọc câu đó đi — nhìn ra ngoài
+   * đúng như "bấm thêm mà chẳng có gì xảy ra, câu hỏi thì biến mất".
+   */
   async function handleAddRandom() {
     const n = parseInt(randomCount, 10);
     if (!n || n < 1) return;
     if (pending) return;
     startTransition(async () => {
       try {
-        await apiClient.post(`/quizzes/${quizId}/questions`, {
-          random: true,
-          count: n,
-          fromCategoryId: selectedBankId ?? undefined,
-        });
-        toast.success(`Đã thêm ngẫu nhiên.`);
+        const res = await apiClient.post<{ message?: string; added?: QuizQItem[] }>(
+          `/quizzes/${quizId}/questions`,
+          { random: true, count: n, fromCategoryId: selectedBankId ?? undefined }
+        );
+        const added = res?.added ?? [];
+        if (added.length > 0) {
+          setItems((prev) => [
+            ...prev,
+            ...added.map((q, i) => ({ ...q, id: '', position: prev.length + i })),
+          ]);
+        }
+        toast.success(res?.message || 'Đã thêm ngẫu nhiên.');
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
