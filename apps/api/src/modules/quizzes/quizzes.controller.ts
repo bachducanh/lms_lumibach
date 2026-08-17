@@ -16,9 +16,13 @@ export class QuizzesController {
   }
 
   @Get('banks')
-  @ApiOperation({ summary: 'Ngân hàng câu hỏi cho quiz builder' })
-  listBanks(@CurrentUser() user: AuthUser, @Query('courseId') courseId: string) {
-    return this.service.listBanks(user, courseId);
+  @ApiOperation({ summary: 'Ngân hàng câu hỏi cho quiz builder (theo lớp hoặc theo danh mục)' })
+  listBanks(
+    @CurrentUser() user: AuthUser,
+    @Query('courseId') courseId?: string,
+    @Query('bankCategoryId') bankCategoryId?: string
+  ) {
+    return this.service.listBanks(user, { courseId, bankCategoryId });
   }
 
   @Get('quiz-questions/:qqId')

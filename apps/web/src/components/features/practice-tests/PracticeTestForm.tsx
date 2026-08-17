@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
 import { apiClient } from '@/lib/api-client';
 import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
+import { bankContentHref, type ActivityOwner } from '@/lib/activity-owner';
 import type { PracticeQuestionInput, PracticeTestDetail, PracticeTestFile } from '@lumibach/types';
 
 type Props = {
   mode: 'create' | 'edit';
-  courseId: string;
-  courseSlug: string;
+  owner: ActivityOwner;
   moduleId?: string;
   practiceTest?: PracticeTestDetail;
 };
@@ -133,7 +133,10 @@ function formatBytes(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practiceTest }: Props) {
+export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props) {
+  // Bản mẫu trong kho: không có lớp để mở/đóng đề, không có học sinh để đăng
+  // cho, và Safe Exam Browser gắn với một buổi kiểm tra thật của lớp.
+  const isBank = owner.kind === 'bank';
   const router = useRouter();
   const initialQuestions = practiceTest?.questions.map(answerKeyToQuestion) ?? [
     makeMcq(),
@@ -211,7 +214,8 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
     try {
       const form = new FormData();
       form.append('file', file);
-      form.append('courseId', courseId);
+      if (owner.kind === 'bank') form.append('bankCategoryId', owner.categoryId);
+      else form.append('courseId', owner.courseId);
       const res = await fetch('/api/upload/practice-test-pdf', { method: 'POST', body: form });
       const data = (await res.json()) as { file?: PracticeTestFile; error?: string };
       if (!res.ok || !data.file) throw new Error(data.error ?? 'Upload thất bại.');
@@ -226,7 +230,8 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
 
   function buildPayload(publish: boolean) {
     return {
-      courseId,
+      courseId: owner.kind === 'course' ? owner.courseId : undefined,
+      bankCategoryId: owner.kind === 'bank' ? owner.categoryId : undefined,
       title: title.trim(),
       description: description.trim() || null,
       pdfUrl: pdfFile?.url,
@@ -280,15 +285,23 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
           '/practice-tests',
           buildPayload(publish)
         );
-        toast.success('Đã tạo đề luyện tập.');
-        router.push(`/courses/${courseSlug}/practice-tests/${data.practiceTestId}`);
+        toast.success(isBank ? 'Đã thêm đề luyện tập vào kho.' : 'Đã tạo đề luyện tập.');
+        router.push(
+          owner.kind === 'bank'
+            ? bankContentHref(owner.categoryId)
+            : `/courses/${owner.courseSlug}/practice-tests/${data.practiceTestId}`
+        );
       } else {
         const data = await apiClient.patch<{ message?: string }>(
           `/practice-tests/${practiceTest!.id}`,
           buildPayload(publish)
         );
         toast.success(data?.message || 'Đã cập nhật đề luyện tập.');
-        router.push(`/courses/${courseSlug}/practice-tests/${practiceTest!.id}`);
+        router.push(
+          owner.kind === 'bank'
+            ? bankContentHref(owner.categoryId)
+            : `/courses/${owner.courseSlug}/practice-tests/${practiceTest!.id}`
+        );
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra.');
@@ -298,9 +311,11 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
   }
 
   const backHref =
-    mode === 'edit' && practiceTest
-      ? `/courses/${courseSlug}/practice-tests/${practiceTest.id}`
-      : `/courses/${courseSlug}/modules`;
+    owner.kind === 'bank'
+      ? bankContentHref(owner.categoryId)
+      : mode === 'edit' && practiceTest
+        ? `/courses/${owner.courseSlug}/practice-tests/${practiceTest.id}`
+        : `/courses/${owner.courseSlug}/modules`;
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -324,21 +339,23 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button
-            variant="outline"
-            onClick={() => handleSave(false)}
-            disabled={pending || uploading}
-          >
-            <Save className="mr-1.5 h-4 w-4" />
-            Lưu nháp
-          </Button>
+          {!isBank && (
+            <Button
+              variant="outline"
+              onClick={() => handleSave(false)}
+              disabled={pending || uploading}
+            >
+              <Save className="mr-1.5 h-4 w-4" />
+              Lưu nháp
+            </Button>
+          )}
           <Button onClick={() => handleSave(true)} disabled={pending || uploading}>
             {pending ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
             ) : (
               <Check className="mr-1.5 h-4 w-4" />
             )}
-            Đăng hoạt động
+            {isBank ? 'Lưu vào kho' : 'Đăng hoạt động'}
           </Button>
         </div>
       </div>
@@ -386,22 +403,28 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
                 className={FIELD_INPUT}
               />
             </Field>
-            <Field label="Mở từ">
-              <input
-                type="datetime-local"
-                value={availableFrom}
-                onChange={(e) => setAvailableFrom(e.target.value)}
-                className={FIELD_INPUT}
-              />
-            </Field>
-            <Field label="Hạn làm">
-              <input
-                type="datetime-local"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className={FIELD_INPUT}
-              />
-            </Field>
+            {/* Lịch của mỗi lớp mỗi khác nên bản mẫu trong kho không giữ, và
+                thao tác chép về lớp cũng không mang theo. */}
+            {!isBank && (
+              <>
+                <Field label="Mở từ">
+                  <input
+                    type="datetime-local"
+                    value={availableFrom}
+                    onChange={(e) => setAvailableFrom(e.target.value)}
+                    className={FIELD_INPUT}
+                  />
+                </Field>
+                <Field label="Hạn làm">
+                  <input
+                    type="datetime-local"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className={FIELD_INPUT}
+                  />
+                </Field>
+              </>
+            )}
           </div>
 
           <button
@@ -424,13 +447,17 @@ export function PracticeTestForm({ mode, courseId, courseSlug, moduleId, practic
             </span>
           </button>
 
-          <SebSettings
-            courseId={courseId}
-            enabled={sebEnabled}
-            onEnabledChange={setSebEnabled}
-            config={sebConfig}
-            onConfigChange={setSebConfig}
-          />
+          {/* File .seb tải lên theo khoá học, và chế độ này chỉ có nghĩa trong
+              một buổi kiểm tra thật — bản mẫu trong kho không có. */}
+          {owner.kind === 'course' && (
+            <SebSettings
+              courseId={owner.courseId}
+              enabled={sebEnabled}
+              onEnabledChange={setSebEnabled}
+              config={sebConfig}
+              onConfigChange={setSebConfig}
+            />
+          )}
         </div>
 
         <div className="border-border bg-card space-y-4 rounded-lg border p-4">

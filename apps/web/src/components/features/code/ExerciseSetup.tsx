@@ -12,6 +12,7 @@ import { WebEditor, DEFAULT_WEB, type WebCode } from './WebEditor';
 import { TestCaseBuilder } from './TestCaseBuilder';
 import { apiClient } from '@/lib/api-client';
 import { richTextIsEmpty } from '@/lib/utils';
+import { bankContentHref, type ActivityOwner } from '@/lib/activity-owner';
 import type { CodeLanguage, ExerciseStatus } from '@lumibach/db';
 
 const RichTextEditor = dynamic(
@@ -51,7 +52,7 @@ type ExistingExercise = {
 
 type Props = {
   exercise: ExistingExercise;
-  courseSlug: string;
+  owner: ActivityOwner;
 };
 
 const STATUS_LABEL: Record<ExerciseStatus, string> = {
@@ -60,9 +61,16 @@ const STATUS_LABEL: Record<ExerciseStatus, string> = {
   CLOSED: 'Đã đóng',
 };
 
-export function ExerciseSetup({ exercise, courseSlug }: Props) {
+export function ExerciseSetup({ exercise, owner }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  // Bản mẫu trong kho không có trang bài tập cho học sinh, và trạng thái đăng
+  // bài của nó không có ai để đăng cho — lưu xong quay về trang kho.
+  const isBank = owner.kind === 'bank';
+  const afterSaveHref =
+    owner.kind === 'bank'
+      ? bankContentHref(owner.categoryId)
+      : `/courses/${owner.courseSlug}/exercises/${exercise.id}`;
 
   const [title, setTitle] = useState(exercise.title);
   const [description, setDescription] = useState(exercise.description ?? '');
@@ -102,8 +110,8 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
           await apiClient.put(`/code-exercises/${exercise.id}/test-cases`, { testCases });
         }
 
-        toast.success('Đã lưu cấu hình bài tập!');
-        router.push(`/courses/${courseSlug}/exercises/${exercise.id}`);
+        toast.success(isBank ? 'Đã lưu bản mẫu trong kho.' : 'Đã lưu cấu hình bài tập!');
+        router.push(afterSaveHref);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
       }
@@ -143,21 +151,25 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Trạng thái
-            </label>
-            <SimpleSelect
-              size="sm"
-              aria-label="Trạng thái"
-              value={status}
-              onValueChange={(v) => setStatus(v as ExerciseStatus)}
-              options={(Object.keys(STATUS_LABEL) as ExerciseStatus[]).map((s) => ({
-                value: s,
-                label: STATUS_LABEL[s],
-              }))}
-            />
-          </div>
+          {/* Trạng thái chỉ có nghĩa với học sinh của một lớp; bản mẫu trong kho
+              luôn là nháp và chỉ hiện với người soạn kho. */}
+          {!isBank && (
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                Trạng thái
+              </label>
+              <SimpleSelect
+                size="sm"
+                aria-label="Trạng thái"
+                value={status}
+                onValueChange={(v) => setStatus(v as ExerciseStatus)}
+                options={(Object.keys(STATUS_LABEL) as ExerciseStatus[]).map((s) => ({
+                  value: s,
+                  label: STATUS_LABEL[s],
+                }))}
+              />
+            </div>
+          )}
 
           {exercise.language !== 'WEB' && (
             <div className="space-y-1.5">
@@ -275,11 +287,8 @@ export function ExerciseSetup({ exercise, courseSlug }: Props) {
 
       {/* ── Save ───────────────────────────────────────────── */}
       <div className="border-border flex items-center justify-between border-t pt-4">
-        <Button
-          variant="ghost"
-          onClick={() => router.push(`/courses/${courseSlug}/exercises/${exercise.id}`)}
-        >
-          Xem trang bài tập
+        <Button variant="ghost" onClick={() => router.push(afterSaveHref)}>
+          {isBank ? 'Về kho nội dung' : 'Xem trang bài tập'}
         </Button>
         <Button onClick={handleSave} disabled={pending} className="gap-2">
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

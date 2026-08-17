@@ -1,8 +1,8 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
-import { canManageCourse, resolveCourseAccess } from '../../common/auth/course-access';
-import { assertCourseScoped } from '../../common/bank/course-scoped';
+import { resolveCourseAccess } from '../../common/auth/course-access';
+import { assertCourseScoped, canManageActivity } from '../../common/bank/course-scoped';
 
 const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
@@ -21,26 +21,28 @@ type CriterionInput = {
 export class RubricsService {
   constructor(private readonly prisma: PrismaClient) {}
 
+  /**
+   * Rubric là một phần của ĐỀ BÀI (chấm theo tiêu chí nào, mức nào mấy điểm)
+   * nên bản mẫu trong ngân hàng cũng soạn được — và thao tác chép về lớp mang
+   * rubric theo. Điểm đã chấm (RubricGrade) mới là của lớp, và nó đi qua
+   * đường khác, nơi vẫn chốt bằng assertCourseScoped.
+   */
   private async canManageAssignment(userId: string, role: string, assignmentId: string) {
     const a = await this.prisma.assignment.findUnique({
       where: { id: assignmentId },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!a) return false;
-    // Bài tập mẫu trong ngân hàng danh mục không thuộc lớp nào — không ai chấm
-    // hay gắn rubric cho nó qua đường khoá học.
-    if (!a.courseId) return false;
-    return canManageCourse(this.prisma, { id: userId, role }, a.courseId);
+    return canManageActivity(this.prisma, { id: userId, role }, a);
   }
 
   private async canManageCodeExercise(userId: string, role: string, codeExerciseId: string) {
     const ex = await this.prisma.codeExercise.findUnique({
       where: { id: codeExerciseId },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!ex) return false;
-    if (!ex.courseId) return false;
-    return canManageCourse(this.prisma, { id: userId, role }, ex.courseId);
+    return canManageActivity(this.prisma, { id: userId, role }, ex);
   }
 
   // ── Assignment rubric ─────────────────────────────────────────

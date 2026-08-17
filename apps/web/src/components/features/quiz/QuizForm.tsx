@@ -8,6 +8,7 @@ import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettin
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
+import { bankContentHref, type ActivityOwner } from '@/lib/activity-owner';
 
 type QuizFormValues = {
   title: string;
@@ -45,15 +46,17 @@ type ExistingQuiz = {
 };
 
 type Props = {
-  courseId: string;
-  courseSlug: string;
+  owner: ActivityOwner;
   quiz?: ExistingQuiz;
   moduleId?: string;
 };
 
-export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
+export function QuizForm({ owner, quiz, moduleId }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  // Bản mẫu trong kho: không có lớp để mở/đóng bài, không có học sinh để đăng
+  // cho, và Safe Exam Browser gắn với một buổi kiểm tra thật của lớp.
+  const isBank = owner.kind === 'bank';
 
   const [title, setTitle] = useState(quiz?.title ?? '');
   const [description, setDescription] = useState(quiz?.description ?? '');
@@ -101,18 +104,25 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
     setPending(true);
     try {
       if (quiz) {
-        await apiClient.patch(`/quizzes/${quiz.id}`, { ...buildValues(), publish });
-        toast.success('Đã cập nhật quiz.');
-        router.push(`/courses/${courseSlug}/quizzes/${quiz.id}`);
-      } else {
+        await apiClient.patch(`/quizzes/${quiz.id}`, {
+          ...buildValues(),
+          publish: isBank ? undefined : publish,
+        });
+        toast.success(isBank ? 'Đã lưu bản mẫu trong kho.' : 'Đã cập nhật quiz.');
+        router.push(
+          owner.kind === 'bank'
+            ? bankContentHref(owner.categoryId)
+            : `/courses/${owner.courseSlug}/quizzes/${quiz.id}`
+        );
+      } else if (owner.kind === 'course') {
         const data = await apiClient.post<{ quizId: string }>('/quizzes', {
-          courseId,
+          courseId: owner.courseId,
           ...buildValues(),
           publish: publish ?? false,
           moduleId,
         });
         toast.success('Đã tạo quiz.');
-        router.push(`/courses/${courseSlug}/quizzes/${data.quizId}`);
+        router.push(`/courses/${owner.courseSlug}/quizzes/${data.quizId}`);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Có lỗi không mong muốn. Vui lòng thử lại.');
@@ -197,8 +207,9 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
         </div>
       </div>
 
-      {/* Dates */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/* Dates — lịch của mỗi lớp mỗi khác nên bản mẫu trong kho không giữ,
+          và thao tác chép về lớp cũng không mang theo. */}
+      <div className={isBank ? 'hidden' : 'grid grid-cols-1 gap-4 sm:grid-cols-2'}>
         <div className="space-y-1.5">
           <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Mở từ
@@ -240,28 +251,33 @@ export function QuizForm({ courseId, courseSlug, quiz, moduleId }: Props) {
         ))}
       </div>
 
-      {/* Safe Exam Browser */}
-      <SebSettings
-        courseId={courseId}
-        enabled={sebEnabled}
-        onEnabledChange={setSebEnabled}
-        config={sebConfig}
-        onConfigChange={setSebConfig}
-      />
+      {/* Safe Exam Browser — file .seb tải lên theo khoá học, và chế độ này chỉ
+          có nghĩa trong một buổi kiểm tra thật. */}
+      {owner.kind === 'course' && (
+        <SebSettings
+          courseId={owner.courseId}
+          enabled={sebEnabled}
+          onEnabledChange={setSebEnabled}
+          config={sebConfig}
+          onConfigChange={setSebConfig}
+        />
+      )}
 
       {/* Actions */}
       <div className="border-border flex items-center justify-end gap-2 border-t pt-4">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>
           Huỷ
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => handleSave(false)}
-          disabled={pending}
-        >
-          {pending ? 'Đang lưu...' : 'Lưu nháp'}
-        </Button>
+        {!isBank && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSave(false)}
+            disabled={pending}
+          >
+            {pending ? 'Đang lưu...' : 'Lưu nháp'}
+          </Button>
+        )}
         <Button
           type="button"
           onClick={() => handleSave(isPublished ? undefined : true)}

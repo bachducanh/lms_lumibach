@@ -45,6 +45,13 @@ export class ForumController {
     return this.service.listForums(user, courseId);
   }
 
+  // Khai TRƯỚC 'forums/:id' để "bank-forums" không bị bắt làm id.
+  @Get('bank-forums/:id')
+  @ApiOperation({ summary: 'Diễn đàn mẫu trong ngân hàng nội dung của danh mục' })
+  getBankForum(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.service.getBankForum(user, id);
+  }
+
   @Get('forums/:id')
   @ApiOperation({ summary: 'Chi tiết một diễn đàn' })
   getForum(@CurrentUser() user: AuthUser, @Param('id') id: string) {

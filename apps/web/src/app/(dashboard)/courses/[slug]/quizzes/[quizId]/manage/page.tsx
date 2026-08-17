@@ -77,7 +77,7 @@ export default async function ManageQuizPage({
 
       <QuizBuilder
         quizId={quizId}
-        courseSlug={slug}
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
         initialItems={initialItems}
         banks={filteredBanks}
       />

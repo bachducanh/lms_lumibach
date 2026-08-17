@@ -55,6 +55,24 @@ export function formatDateTime(d: string | Date | null | undefined): string | nu
   }).format(dt);
 }
 
+/**
+ * Giờ trong ngày (0-23) theo giờ Việt Nam.
+ *
+ * Không dùng `new Date().getHours()`: hàm đó đọc TZ của tiến trình, mà các trang
+ * này render trên server. Container web chạy UTC (biến TZ trong compose không ăn
+ * khi image nền thiếu gói tzdata), nên 14 giờ chiều Việt Nam thành 7 giờ sáng —
+ * đúng lý do trang Tổng quan chào "buổi sáng" vào buổi chiều.
+ */
+export function vnHour(d: Date = new Date()): number {
+  const hour = new Intl.DateTimeFormat('en-GB', {
+    timeZone: VN_TIME_ZONE,
+    hour: '2-digit',
+    hour12: false,
+  }).format(d);
+  // hour12: false vẫn có thể trả "24" cho nửa đêm ở một số runtime.
+  return Number(hour) % 24;
+}
+
 /** "YYYY-MM-DDTHH:MM" (giờ Việt Nam) -> ISO instant để gửi lên API. */
 export function localInputToIso(v: string | null | undefined): string | null {
   if (!v) return null;

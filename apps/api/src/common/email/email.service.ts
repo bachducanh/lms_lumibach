@@ -7,6 +7,25 @@ import { EmailQueue } from './email.queue';
 
 const LOG_FILE = path.join(process.cwd(), 'logs', 'dev-emails.log');
 
+/**
+ * Cách xử lý khi gửi hỏng.
+ *
+ * Mặc định hàng đợi thử lại 3 lần. Với email xác thực / đặt lại mật khẩu thì
+ * đúng: người dùng đang chờ đúng cái link đó, thà thử lại còn hơn không có.
+ *
+ * Với email THÔNG BÁO (phòng chức năng) thì sai, và sai theo kiểu khó thấy:
+ * nodemailer ném lỗi cả khi SMTP đã nhận thư rồi mới đứt kết nối lúc đọc phản
+ * hồi (socketTimeout 20 giây với Gmail là chạm được). Job hỏng → thử lại → người
+ * nhận có 2-3 bản y hệt, mà log thì báo "failed". Thông báo trễ hoặc thiếu chỉ
+ * gây khó chịu; thông báo nhân ba thì giáo viên tưởng có ba đơn.
+ */
+export type EmailOptions = {
+  /** Gửi đúng một lần, hỏng thì thôi. */
+  once?: boolean;
+  /** Khoá chống trùng, để hai lần bấm liên tiếp không thành hai email. */
+  dedupeKey?: string;
+};
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -51,7 +70,7 @@ export class EmailService {
         : null;
   }
 
-  private async send(to: string, subject: string, html: string) {
+  private async send(to: string, subject: string, html: string, opts: EmailOptions = {}) {
     if (!this.transporter) {
       const links = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
       process.stdout.write('\n┌─────────────────────────────────────────────────────┐\n');
@@ -73,7 +92,7 @@ export class EmailService {
     // Đường chính: xếp hàng rồi trả về ngay. Worker (chạy trên máy có Internet)
     // sẽ gửi, kèm 3 lần thử lại. TUYỆT ĐỐI không await sendMail ở đây — máy chủ
     // ứng dụng không ra được Internet nên lời gọi đó treo nguyên request.
-    if (await this.queue.enqueue(to, subject, html)) return;
+    if (await this.queue.enqueue(to, subject, html, opts)) return;
 
     // Dự phòng khi không có Redis (chạy lẻ, hoặc Redis chết): gửi thẳng. Trên
     // máy có Internet thì vẫn tới nơi; trên máy chủ thì hỏng sau 10 giây chứ
@@ -131,8 +150,13 @@ export class EmailService {
    * Đi qua cùng đường `send()` như email xác thực: xếp hàng đợi rồi trả về
    * ngay, vì máy chủ ứng dụng không có đường ra Internet.
    *
+   * Khác một điểm: gửi ĐÚNG MỘT LẦN, không thử lại (xem `EmailOptions`). Thông
+   * báo phòng luôn có bản in-app song song nên hỏng email không làm mất tin,
+   * còn thử lại thì sinh bản trùng.
+   *
    * @param extraHtml Khối HTML phụ chèn dưới nội dung chính — dùng để đính kèm
    * nội quy phòng khi đơn được duyệt.
+   * @param dedupeKey Khoá chống trùng, thường là "<mã đơn>-<sự kiện>-<người nhận>".
    */
   async sendRoomBookingEmail(params: {
     to: string;
@@ -143,8 +167,9 @@ export class EmailService {
     ctaLabel?: string;
     ctaPath?: string;
     extraHtml?: string;
+    dedupeKey?: string;
   }) {
-    const { to, subject, heading, intro, lines, ctaLabel, ctaPath, extraHtml } = params;
+    const { to, subject, heading, intro, lines, ctaLabel, ctaPath, extraHtml, dedupeKey } = params;
     const url = ctaPath ? `${this.appUrl}${ctaPath}` : null;
 
     const bangThongTin = lines
@@ -173,7 +198,8 @@ export class EmailService {
         <p style="color:#888;font-size:12px;margin-top:24px">
           Email tự động từ hệ thống LumiBach. Vui lòng không trả lời email này.
         </p>
-      </div>`
+      </div>`,
+      { once: true, dedupeKey: dedupeKey ? `room-${dedupeKey}` : undefined }
     );
   }
 

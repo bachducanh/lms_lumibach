@@ -24,6 +24,10 @@ export default async function NewPracticeTestPage({
   if (!canManage) redirect(`/courses/${slug}/modules`);
 
   return (
-    <PracticeTestForm mode="create" courseId={course.id} courseSlug={slug} moduleId={moduleId} />
+    <PracticeTestForm
+      mode="create"
+      owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
+      moduleId={moduleId}
+    />
   );
 }

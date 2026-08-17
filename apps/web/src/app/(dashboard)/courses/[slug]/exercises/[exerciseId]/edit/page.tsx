@@ -85,7 +85,7 @@ export default async function EditExercisePage({
             position: tc.position,
           })),
         }}
-        courseSlug={slug}
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
       />
 
       <div className="border-border mt-10 border-t pt-8">

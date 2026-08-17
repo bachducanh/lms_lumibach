@@ -3,7 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
-import { canManageCourse } from '../../common/auth/course-access';
+import { assertCourseScoped, canManageActivity } from '../../common/bank/course-scoped';
 import { regradeQuizAttempts } from '../../common/grading/quiz-grading';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
@@ -49,15 +49,19 @@ export class QuizzesService {
   }
 
   /**
-   * `courseId` nhận null vì `Quiz.courseId` nullable từ khi có ngân hàng nội
-   * dung của danh mục. Chặn null tại đây: quiz mẫu trong ngân hàng không đi qua
-   * các endpoint quiz của khoá học (đăng bài, chấm, xem lượt làm) — nó được
-   * quản lý ở CategoryContentBankService. Nếu để lọt, `canManageCourse` sẽ trả
-   * true ngay cho ADMIN mà chưa từng nhìn tới courseId.
+   * `bankCategoryId` chỉ được truyền ở các nghiệp vụ SOẠN THẢO (sửa cấu hình,
+   * thêm/bớt/sắp xếp câu hỏi, xoá). Bỏ trống thì quiz mẫu trong ngân hàng bị từ
+   * chối như trước — cố ý, vì các nghiệp vụ của lớp (đăng bài, làm bài, chấm,
+   * xem lượt làm) đều vô nghĩa với bản mẫu, và `canManageCourse` trả true ngay
+   * cho ADMIN trước khi nhìn tới courseId.
    */
-  private async canManage(userId: string, role: string, courseId: string | null) {
-    if (!courseId) return false;
-    return canManageCourse(this.prisma, { id: userId, role }, courseId);
+  private async canManage(
+    userId: string,
+    role: string,
+    courseId: string | null,
+    bankCategoryId: string | null = null
+  ) {
+    return canManageActivity(this.prisma, { id: userId, role }, { courseId, bankCategoryId });
   }
 
   // ── List ──────────────────────────────────────────────────────
@@ -121,9 +125,21 @@ export class QuizzesService {
     return { groups, standalone };
   }
 
-  async listBanks(user: AuthUser, courseId: string) {
+  /**
+   * Ngân hàng câu hỏi cho quiz builder.
+   *
+   * Một trong hai nguồn, tuỳ quiz đang soạn thuộc về đâu:
+   *   - `courseId`       → kho câu hỏi riêng của lớp (như trước nay).
+   *   - `bankCategoryId` → ngân hàng câu hỏi chung của danh mục, dùng khi soạn
+   *                        quiz mẫu thẳng trong kho nội dung.
+   */
+  async listBanks(user: AuthUser, owner: { courseId?: string; bankCategoryId?: string }) {
+    const scope = owner.bankCategoryId
+      ? { bankCategoryId: owner.bankCategoryId }
+      : { courseId: owner.courseId };
+
     const cats = await (this.prisma as any).questionCategory.findMany({
-      where: { courseId },
+      where: scope,
       orderBy: { position: 'asc' },
       select: {
         id: true,
@@ -136,7 +152,7 @@ export class QuizzesService {
     });
 
     const uncategorized = await this.prisma.question.findMany({
-      where: { courseId, deletedAt: null, categoryId: null } as any,
+      where: { ...scope, deletedAt: null, categoryId: null } as any,
       select: { id: true, type: true, content: true, points: true },
     });
 
@@ -305,15 +321,18 @@ export class QuizzesService {
   ) {
     const existing = await this.prisma.quiz.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true, status: true },
+      select: { courseId: true, bankCategoryId: true, status: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     let newStatus = existing.status;
     if (body.publish === true) newStatus = 'PUBLISHED';
     if (body.publish === false) newStatus = 'DRAFT';
+    // Bản mẫu trong ngân hàng không có học sinh nên "đăng" không có nghĩa gì;
+    // giữ DRAFT để nó không lọt vào truy vấn nào lọc theo status = PUBLISHED.
+    if (!existing.courseId) newStatus = 'DRAFT';
 
     const seb = normalizeSeb(body);
 
@@ -347,11 +366,13 @@ export class QuizzesService {
   async setStatus(user: AuthUser, id: string, publish: boolean) {
     const existing = await this.prisma.quiz.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true, status: true },
+      select: { courseId: true, bankCategoryId: true, status: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
+    // Bản mẫu không thuộc lớp nào nên không có ai để đăng cho.
+    assertCourseScoped(existing.courseId, 'Quiz này');
 
     await this.prisma.quiz.update({
       where: { id },
@@ -367,15 +388,20 @@ export class QuizzesService {
   async delete(user: AuthUser, id: string) {
     const existing = await this.prisma.quiz.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.$transaction([
       this.prisma.moduleItem.deleteMany({ where: { quizId: id } }),
-      this.prisma.quiz.update({ where: { id }, data: { deletedAt: new Date() } }),
+      // Bản mẫu của ngân hàng xoá hẳn: thùng rác chỉ nhận hoạt động của lớp
+      // (xem ModuleItemCleanupService), soft-delete ở đây chỉ để lại rác không
+      // màn hình nào thấy. Bản mẫu không có lượt làm nên không vướng RESTRICT.
+      existing.courseId
+        ? this.prisma.quiz.update({ where: { id }, data: { deletedAt: new Date() } })
+        : this.prisma.quiz.delete({ where: { id } }),
     ]);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xoá quiz.' };
@@ -383,14 +409,34 @@ export class QuizzesService {
 
   // ── Question management ───────────────────────────────────────
 
+  /**
+   * Câu hỏi thêm vào quiz mẫu phải nằm trong ngân hàng câu hỏi của ĐÚNG danh
+   * mục ấy. Quiz của lớp không cần chốt này (QuizBuilder chỉ chào câu của chính
+   * lớp đó), nhưng kho là tài sản dùng chung nên nhặt nhầm sang danh mục khác
+   * sẽ theo bản sao đi vào mọi lớp chép về mà không ai thấy.
+   */
+  private async assertQuestionsInBank(bankCategoryId: string, questionIds: string[]) {
+    if (questionIds.length === 0) return;
+    const count = await this.prisma.question.count({
+      where: { id: { in: questionIds }, bankCategoryId, deletedAt: null } as never,
+    });
+    if (count !== new Set(questionIds).size) {
+      throw new ForbiddenException(
+        'Câu hỏi không nằm trong ngân hàng câu hỏi của danh mục này. Thêm nó vào kho câu hỏi trước.'
+      );
+    }
+  }
+
   async addQuestion(user: AuthUser, quizId: string, questionId: string) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!quiz) throw new NotFoundException('Không tìm thấy quiz.');
-    if (!(await this.canManage(user.id, user.role, quiz.courseId)))
+    if (!(await this.canManage(user.id, user.role, quiz.courseId, quiz.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
+
+    if (quiz.bankCategoryId) await this.assertQuestionsInBank(quiz.bankCategoryId, [questionId]);
 
     const existing = await this.prisma.quizQuestion.findUnique({
       where: { quizId_questionId: { quizId, questionId } },
@@ -413,11 +459,13 @@ export class QuizzesService {
   async addMultipleQuestions(user: AuthUser, quizId: string, questionIds: string[]) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!quiz) throw new NotFoundException('Không tìm thấy quiz.');
-    if (!(await this.canManage(user.id, user.role, quiz.courseId)))
+    if (!(await this.canManage(user.id, user.role, quiz.courseId, quiz.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
+
+    if (quiz.bankCategoryId) await this.assertQuestionsInBank(quiz.bankCategoryId, questionIds);
 
     const existing = await this.prisma.quizQuestion.findMany({
       where: { quizId },
@@ -439,10 +487,10 @@ export class QuizzesService {
   async addRandomQuestions(user: AuthUser, quizId: string, count: number, fromCategoryId?: string) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!quiz) throw new NotFoundException('Không tìm thấy quiz.');
-    if (!(await this.canManage(user.id, user.role, quiz.courseId)))
+    if (!(await this.canManage(user.id, user.role, quiz.courseId, quiz.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     const existing = await this.prisma.quizQuestion.findMany({
@@ -455,8 +503,15 @@ export class QuizzesService {
     if (fromCategoryId === '__none') categoryFilter = { categoryId: null };
     else if (fromCategoryId) categoryFilter = { categoryId: fromCategoryId };
 
+    // Quiz mẫu bốc câu từ ngân hàng câu hỏi của ĐÚNG danh mục nó thuộc về.
+    // Viết `courseId: quiz.courseId` cho cả hai trường hợp thì với bản mẫu điều
+    // kiện thành `courseId: null` — khớp mọi câu hỏi ngân hàng của MỌI danh mục.
+    const ownerFilter = quiz.courseId
+      ? { courseId: quiz.courseId }
+      : { bankCategoryId: quiz.bankCategoryId };
+
     const all = await this.prisma.question.findMany({
-      where: { courseId: quiz.courseId, deletedAt: null, ...categoryFilter } as any,
+      where: { ...ownerFilter, deletedAt: null, ...categoryFilter } as any,
       select: { id: true, type: true, content: true, points: true },
     });
     const pool = all.filter((q) => !existingIds.has(q.id));
@@ -488,10 +543,10 @@ export class QuizzesService {
   async removeQuestion(user: AuthUser, quizId: string, questionId: string) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!quiz) throw new NotFoundException('Không tìm thấy quiz.');
-    if (!(await this.canManage(user.id, user.role, quiz.courseId)))
+    if (!(await this.canManage(user.id, user.role, quiz.courseId, quiz.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.quizQuestion.deleteMany({ where: { quizId, questionId } });
@@ -503,10 +558,10 @@ export class QuizzesService {
   async reorderQuestions(user: AuthUser, quizId: string, orderedIds: string[]) {
     const quiz = await this.prisma.quiz.findUnique({
       where: { id: quizId, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!quiz) throw new NotFoundException('Không tìm thấy quiz.');
-    if (!(await this.canManage(user.id, user.role, quiz.courseId)))
+    if (!(await this.canManage(user.id, user.role, quiz.courseId, quiz.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.$transaction(
@@ -522,10 +577,10 @@ export class QuizzesService {
 
     const qq = await this.prisma.quizQuestion.findUnique({
       where: { id: qqId },
-      select: { quizId: true, quiz: { select: { courseId: true } } },
+      select: { quizId: true, quiz: { select: { courseId: true, bankCategoryId: true } } },
     });
     if (!qq) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, qq.quiz.courseId)))
+    if (!(await this.canManage(user.id, user.role, qq.quiz.courseId, qq.quiz.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.quizQuestion.update({ where: { id: qqId }, data: { points } });

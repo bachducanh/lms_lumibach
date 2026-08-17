@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { auth } from '@/auth';
+import { vnHour } from '@/lib/datetime';
 import {
   BookOpen,
   FlaskConical,
@@ -55,8 +56,11 @@ export default async function DashboardPage() {
   const user = session?.user;
   const role = user?.role ?? '';
 
+  // Giờ Việt Nam, không phải giờ tiến trình: trang này render trên server và
+  // container chạy UTC, nên `new Date().getHours()` chào "buổi sáng" suốt cả
+  // buổi chiều.
   const greeting = (() => {
-    const h = new Date().getHours();
+    const h = vnHour();
     if (h < 12) return 'Chào buổi sáng';
     if (h < 18) return 'Chào buổi chiều';
     return 'Chào buổi tối';

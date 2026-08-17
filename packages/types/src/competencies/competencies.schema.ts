@@ -354,7 +354,19 @@ export type UpdateCompetencyPeriodBody = z.infer<typeof UpdateCompetencyPeriodBo
 
 // ── Zod: Cấp độ năng lực xuất phát/đích (upsert) ────────────────
 
-const CompetencyLevelValueSchema = z.number().int().min(1).max(12);
+/**
+ * Cấp độ trên thang 1-12, nhận số thập phân và làm tròn tới 2 chữ số.
+ *
+ * Không dùng `.int()`: cấp độ xuất phát của một học sinh thường nằm giữa hai
+ * mức (vd 6.5). Làm tròn ngay tại biên giúp CSDL không chứa 6.499999999 do lỗi
+ * dấu phẩy động của trình duyệt, và mọi chỗ hiển thị `toFixed(2)` khớp đúng số
+ * giáo viên đã nhập.
+ */
+const CompetencyLevelValueSchema = z
+  .number()
+  .min(1)
+  .max(12)
+  .transform((v) => Math.round(v * 100) / 100);
 
 export const UpsertCompetencyLevelTargetBodySchema = z.object({
   periodId: z.string().min(1),

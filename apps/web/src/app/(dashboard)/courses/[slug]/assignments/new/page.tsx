@@ -34,8 +34,7 @@ export default async function NewAssignmentPage({
     <div className="max-w-5xl">
       <AssignmentForm
         mode="create"
-        courseSlug={slug}
-        courseId={course.id}
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
         modules={modules}
         defaultModuleId={defaultModuleId}
       />

@@ -51,11 +51,31 @@ export class EmailQueue implements OnModuleDestroy {
     });
   }
 
-  /** Trả về true nếu đã xếp hàng thành công; false thì bên gọi tự gửi lấy. */
-  async enqueue(to: string, subject: string, html: string): Promise<boolean> {
+  /**
+   * Trả về true nếu đã xếp hàng thành công; false thì bên gọi tự gửi lấy.
+   *
+   * @param opts.once Chỉ gửi ĐÚNG một lần: hỏng là thôi, không thử lại. Dùng cho
+   * email thông báo (xem ghi chú `EmailOptions` ở EmailService).
+   * @param opts.dedupeKey Khoá chống trùng. BullMQ bỏ qua lời gọi `add` trùng
+   * jobId với một job còn trong hàng, nên hai lần bấm duyệt liên tiếp chỉ sinh
+   * một email.
+   */
+  async enqueue(
+    to: string,
+    subject: string,
+    html: string,
+    opts: { once?: boolean; dedupeKey?: string } = {}
+  ): Promise<boolean> {
     if (!this.queue) return false;
     try {
-      await this.queue.add('send-raw', { kind: 'raw', to, subject, html });
+      await this.queue.add(
+        'send-raw',
+        { kind: 'raw', to, subject, html },
+        {
+          ...(opts.once ? { attempts: 1 } : {}),
+          ...(opts.dedupeKey ? { jobId: opts.dedupeKey } : {}),
+        }
+      );
       return true;
     } catch (err) {
       this.logger.error(`Không đẩy được email vào hàng đợi: ${(err as Error).message}`);

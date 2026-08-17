@@ -201,9 +201,18 @@ export type CategoryBankItem = {
   id: string;
   type: string;
   title: string;
+  /**
+   * Khoá ngoại tới bản ghi nội dung — đúng một trong sáu có giá trị, khớp với
+   * `type`. Giao diện cần nó để dựng đường dẫn tới đúng trình soạn.
+   */
   lessonId: string | null;
+  assignmentId: string | null;
+  quizId: string | null;
+  codeExerciseId: string | null;
+  practiceTestId: string | null;
+  forumId: string | null;
   updatedAt: string;
-  /** Mô tả ngắn theo loại, ví dụ "20 phút". */
+  /** Mô tả ngắn theo loại, ví dụ "20 phút", "12 câu hỏi". */
   detail: string;
 };
 
@@ -232,6 +241,61 @@ export const CreateBankLessonBodySchema = z.object({
   estimatedMinutes: z.number().int().positive().max(600).nullable().optional(),
 });
 export type CreateBankLessonBody = z.infer<typeof CreateBankLessonBodySchema>;
+
+/**
+ * Loại hoạt động soạn thẳng được trong kho của danh mục.
+ *
+ * Thiếu FILE / EXTERNAL_URL: hai loại đó không có bản ghi nội dung riêng, chúng
+ * chỉ là một đường dẫn gắn trên ModuleItem của một lớp cụ thể.
+ * LESSON đi đường riêng (`CreateBankLessonBodySchema`) vì tạo xong là mở thẳng
+ * trình soạn nội dung, không qua bước đặt tên.
+ */
+export const BANK_ACTIVITY_TYPES = [
+  'ASSIGNMENT',
+  'QUIZ',
+  'CODE_EXERCISE',
+  'PRACTICE_TEST',
+  'FORUM',
+] as const;
+export type BankActivityType = (typeof BANK_ACTIVITY_TYPES)[number];
+
+/**
+ * Tạo khung một hoạt động trong kho: chỉ cần loại và tiêu đề, phần còn lại soạn
+ * ở trình soạn riêng của từng loại. Cùng cách làm với "tạo nháp rồi sửa" ở lớp,
+ * nên không phải dựng lại toàn bộ biểu mẫu cho ngữ cảnh kho.
+ *
+ * Riêng đề luyện tập bắt buộc có PDF ngay từ đầu (`PracticeTest.pdfUrl` là cột
+ * NOT NULL) nên biểu mẫu của nó gọi thẳng `POST /practice-tests`.
+ */
+export const CreateBankActivityBodySchema = z.object({
+  type: z.enum(BANK_ACTIVITY_TYPES),
+  title: z.string().trim().min(1, 'Tiêu đề không được để trống').max(200),
+  /** Chỉ dùng cho CODE_EXERCISE. */
+  language: z.enum(['PYTHON3', 'JAVASCRIPT', 'CPP17', 'WEB', 'SCRATCH']).optional(),
+});
+export type CreateBankActivityBody = z.infer<typeof CreateBankActivityBodySchema>;
+
+/** Chép một hoạt động của lớp thành bản mẫu riêng trong kho. */
+export const ImportToBankBodySchema = z.object({
+  moduleItemId: z.string().min(1),
+});
+export type ImportToBankBody = z.infer<typeof ImportToBankBodySchema>;
+
+/** Một hoạt động của lớp mà giáo viên chọn để chép vào kho. */
+export type CourseActivityPick = {
+  moduleItemId: string;
+  type: string;
+  title: string;
+  moduleName: string;
+  detail: string;
+};
+
+export type CourseActivityPickGroup = {
+  courseId: string;
+  courseName: string;
+  courseSlug: string;
+  items: CourseActivityPick[];
+};
 
 export type ContentBankResult = {
   items: ContentBankItem[];

@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { manageableBankCategoryIds } from '../../common/bank/bank-access';
 import { CategoriesService } from './categories.service';
 
 /**
@@ -28,25 +29,15 @@ export class CategoryBankAccessService {
     private readonly categories: CategoriesService
   ) {}
 
-  /** Tập danh mục người dùng được soạn kho. `null` nghĩa là toàn quyền (ADMIN). */
+  /**
+   * Tập danh mục người dùng được soạn kho. `null` nghĩa là toàn quyền (ADMIN).
+   *
+   * Luật nằm ở `common/bank/bank-access.ts` vì các service hoạt động (bài tập,
+   * quiz, bài code…) cũng phải hỏi cùng câu hỏi này mà không kéo theo cả
+   * CategoriesModule. Ở đây chỉ là cửa vào cho tầng ngân hàng.
+   */
   async manageableIds(user: AuthUser): Promise<Set<string> | null> {
-    if (user.role === 'ADMIN') return null;
-    if (user.role !== 'TEACHER') return new Set();
-
-    const courses = await this.prisma.course.findMany({
-      where: {
-        deletedAt: null,
-        OR: [{ ownerId: user.id }, { coTeachers: { some: { userId: user.id } } }],
-      },
-      select: { categoryId: true },
-    });
-
-    const ids = new Set<string>();
-    for (const categoryId of new Set(courses.map((c) => c.categoryId))) {
-      const breadcrumb = await this.categories.buildBreadcrumb(categoryId);
-      for (const node of breadcrumb) ids.add(node.id);
-    }
-    return ids;
+    return manageableBankCategoryIds(this.prisma, user);
   }
 
   async assertCanManage(user: AuthUser, categoryId: string): Promise<void> {

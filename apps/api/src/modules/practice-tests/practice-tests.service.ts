@@ -3,8 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient, type Prisma } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
-import { canManageCourse } from '../../common/auth/course-access';
-import { assertCourseScoped } from '../../common/bank/course-scoped';
+import { assertCourseScoped, canManageActivity } from '../../common/bank/course-scoped';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
 
@@ -112,7 +111,9 @@ type QuestionInput = {
 };
 
 type PracticeTestInput = {
-  courseId: string;
+  /** Đúng một trong hai: đề của lớp, hoặc bản mẫu trong ngân hàng của danh mục. */
+  courseId?: string | null;
+  bankCategoryId?: string | null;
   title: string;
   description?: string | null;
   pdfUrl: string;
@@ -172,13 +173,20 @@ export class PracticeTestsService {
     ]);
   }
 
-  private async canManage(userId: string, role: string, courseId: string | null) {
-    // courseId null = bản mẫu của ngân hàng danh mục: không thuộc lớp nào nên
-    // không ai "quản lý được nó qua khoá học". Chặn trước khi canManageCourse
-    // kịp trả true cho ADMIN mà chưa nhìn tới courseId.
-    if (!courseId) return false;
+  /**
+   * `bankCategoryId` chỉ được truyền ở các nghiệp vụ SOẠN THẢO (sửa đề, xoá).
+   * Bỏ trống thì bản mẫu của ngân hàng bị từ chối như trước — cố ý, vì các
+   * nghiệp vụ của lớp (đăng đề, làm bài, chấm) đều vô nghĩa với bản mẫu, và
+   * `canManageCourse` trả true ngay cho ADMIN trước khi nhìn tới courseId.
+   */
+  private async canManage(
+    userId: string,
+    role: string,
+    courseId: string | null,
+    bankCategoryId: string | null = null
+  ) {
     if (role === 'SUPERADMIN') return true;
-    return canManageCourse(this.prisma, { id: userId, role }, courseId);
+    return canManageActivity(this.prisma, { id: userId, role }, { courseId, bankCategoryId });
   }
 
   private normalizeQuestions(
@@ -369,7 +377,14 @@ export class PracticeTestsService {
   }
 
   async create(user: AuthUser, body: PracticeTestInput) {
-    if (!(await this.canManage(user.id, user.role, body.courseId))) {
+    // CHECK ở CSDL bắt buộc đúng một chủ sở hữu; chặn sớm ở đây để lỗi đọc được
+    // thay vì một P2010 từ Postgres.
+    const courseId = body.courseId ?? null;
+    const bankCategoryId = body.bankCategoryId ?? null;
+    if (!courseId === !bankCategoryId) {
+      throw new ForbiddenException('Đề luyện tập phải thuộc đúng một khoá học hoặc một ngân hàng.');
+    }
+    if (!(await this.canManage(user.id, user.role, courseId, bankCategoryId))) {
       throw new ForbiddenException('Không có quyền.');
     }
 
@@ -382,10 +397,12 @@ export class PracticeTestsService {
     const practiceTest = await this.prisma.$transaction(async (tx) => {
       const test = await tx.practiceTest.create({
         data: {
-          courseId: body.courseId,
+          courseId,
+          bankCategoryId,
+          // Bản mẫu không có học sinh nên không bao giờ ở trạng thái đã đăng.
+          status: courseId && body.publish ? 'PUBLISHED' : 'DRAFT',
           title: body.title.trim(),
           description: body.description?.trim() || null,
-          status: body.publish ? 'PUBLISHED' : 'DRAFT',
           pdfUrl: body.pdfUrl,
           pdfName: body.pdfName || 'de-bai.pdf',
           pdfMimeType: body.pdfMimeType || 'application/pdf',
@@ -399,7 +416,7 @@ export class PracticeTestsService {
           availableFrom: toDate(body.availableFrom),
           dueDate: toDate(body.dueDate),
           createdBy: user.id,
-          publishedAt: body.publish ? new Date() : null,
+          publishedAt: courseId && body.publish ? new Date() : null,
           questions: { createMany: { data: questions } },
         },
       });
@@ -417,6 +434,9 @@ export class PracticeTestsService {
             position: (last?.position ?? -1) + 1,
             title: test.title,
             practiceTestId: test.id,
+            // Trong kho luôn hiện với người soạn: `isPublished` chỉ có nghĩa
+            // với học sinh của một lớp, mà kho thì không có học sinh.
+            isPublished: !courseId,
           },
         });
       }
@@ -424,17 +444,17 @@ export class PracticeTestsService {
       return test;
     });
 
-    if (body.moduleId) await this.invalidateModuleCache(body.courseId);
+    if (body.moduleId) await this.invalidateModuleCache(courseId);
     return { practiceTestId: practiceTest.id };
   }
 
   async update(user: AuthUser, id: string, body: Partial<PracticeTestInput>) {
     const existing = await this.prisma.practiceTest.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true, status: true },
+      select: { courseId: true, bankCategoryId: true, status: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId))) {
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId))) {
       throw new ForbiddenException('Không có quyền.');
     }
 
@@ -447,6 +467,9 @@ export class PracticeTestsService {
     let nextStatus = existing.status;
     if (body.publish === true) nextStatus = 'PUBLISHED';
     if (body.publish === false) nextStatus = 'DRAFT';
+    // Bản mẫu trong ngân hàng không có học sinh nên "đăng" không có nghĩa gì;
+    // giữ DRAFT để nó không lọt vào truy vấn nào lọc theo status = PUBLISHED.
+    if (!existing.courseId) nextStatus = 'DRAFT';
 
     const questions =
       body.questions !== undefined ? this.normalizeQuestions(body.questions) : undefined;
@@ -535,12 +558,14 @@ export class PracticeTestsService {
   async setStatus(user: AuthUser, id: string, publish: boolean) {
     const existing = await this.prisma.practiceTest.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true, status: true },
+      select: { courseId: true, bankCategoryId: true, status: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId))) {
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId))) {
       throw new ForbiddenException('Không có quyền.');
     }
+    // Bản mẫu không thuộc lớp nào nên không có ai để đăng cho.
+    assertCourseScoped(existing.courseId, 'Đề luyện tập này');
 
     await this.prisma.practiceTest.update({
       where: { id },
@@ -556,16 +581,21 @@ export class PracticeTestsService {
   async delete(user: AuthUser, id: string) {
     const existing = await this.prisma.practiceTest.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId))) {
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId))) {
       throw new ForbiddenException('Không có quyền.');
     }
 
     await this.prisma.$transaction([
       this.prisma.moduleItem.deleteMany({ where: { practiceTestId: id } }),
-      this.prisma.practiceTest.update({ where: { id }, data: { deletedAt: new Date() } }),
+      // Bản mẫu của ngân hàng xoá hẳn: thùng rác chỉ nhận hoạt động của lớp
+      // (xem ModuleItemCleanupService), soft-delete ở đây chỉ để lại rác không
+      // màn hình nào thấy. Bản mẫu không có lượt làm nên không vướng RESTRICT.
+      existing.courseId
+        ? this.prisma.practiceTest.update({ where: { id }, data: { deletedAt: new Date() } })
+        : this.prisma.practiceTest.delete({ where: { id } }),
     ]);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xoá đề luyện tập.' };

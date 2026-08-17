@@ -26,8 +26,7 @@ export default async function EditPracticeTestPage({
   return (
     <PracticeTestForm
       mode="edit"
-      courseId={course.id}
-      courseSlug={slug}
+      owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
       practiceTest={practiceTest}
       moduleId={practiceTest.moduleItems?.[0]?.moduleId}
     />

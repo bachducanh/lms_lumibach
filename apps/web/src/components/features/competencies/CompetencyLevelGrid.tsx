@@ -307,13 +307,17 @@ function ComponentRow({
   );
   const [saving, setSaving] = useState(false);
 
-  const startNum = Number(startLevel);
-  const targetNum = Number(targetLevel);
+  // Thang 1-12 nhận số thập phân (vd 6.5): cấp độ xuất phát của học sinh hay
+  // nằm giữa hai mức, mà ép về số nguyên là đổi luôn điểm năng lực vì
+  // điểm = xuất phát + 2 × tỉ lệ hoàn thành. Làm tròn 2 chữ số cho khớp API.
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+  const startNum = round2(Number(startLevel));
+  const targetNum = round2(Number(targetLevel));
   const valid =
-    startLevel !== '' &&
-    targetLevel !== '' &&
-    Number.isInteger(startNum) &&
-    Number.isInteger(targetNum) &&
+    startLevel.trim() !== '' &&
+    targetLevel.trim() !== '' &&
+    Number.isFinite(startNum) &&
+    Number.isFinite(targetNum) &&
     startNum >= 1 &&
     startNum <= 12 &&
     targetNum >= 1 &&
@@ -355,9 +359,11 @@ function ComponentRow({
             type="number"
             min={1}
             max={12}
+            step={0.1}
+            inputMode="decimal"
             value={startLevel}
             onChange={(event) => setStartLevel(event.target.value)}
-            className="h-8 w-16 text-right"
+            className="h-8 w-20 text-right"
           />
         ) : (
           (row.startLevel ?? '—')
@@ -369,9 +375,11 @@ function ComponentRow({
             type="number"
             min={1}
             max={12}
+            step={0.1}
+            inputMode="decimal"
             value={targetLevel}
             onChange={(event) => setTargetLevel(event.target.value)}
-            className="h-8 w-16 text-right"
+            className="h-8 w-20 text-right"
           />
         ) : (
           (row.targetLevel ?? '—')

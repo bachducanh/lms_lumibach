@@ -14,6 +14,8 @@ import {
   ShareContentBodySchema,
   BankModuleBodySchema,
   CreateBankLessonBodySchema,
+  CreateBankActivityBodySchema,
+  ImportToBankBodySchema,
   type CreateModuleBody,
   type UpdateModuleBody,
   type ReorderModulesBody,
@@ -27,6 +29,8 @@ import {
   type ShareContentBody,
   type BankModuleBody,
   type CreateBankLessonBody,
+  type CreateBankActivityBody,
+  type ImportToBankBody,
 } from '@lumibach/types';
 import { CurrentUser } from '../../common/auth/decorators/current-user.decorator';
 import { zodBody, zodQuery } from '../../common/pipes/zod-query.pipe';
@@ -89,6 +93,32 @@ export class ModulesController {
     @Body(zodBody(CreateBankLessonBodySchema)) body: CreateBankLessonBody
   ) {
     return this.categoryBank.createLesson(user, id, body);
+  }
+
+  @Post('bank-modules/:id/activities')
+  @ApiOperation({ summary: 'Thêm khung một hoạt động vào chương của kho' })
+  createBankActivity(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(CreateBankActivityBodySchema)) body: CreateBankActivityBody
+  ) {
+    return this.categoryBank.createActivity(user, id, body);
+  }
+
+  @Get('bank-importable')
+  @ApiOperation({ summary: 'Hoạt động của các lớp mình quản lý, để chép vào kho' })
+  listImportable(@CurrentUser() user: AuthUser) {
+    return this.categoryBank.listImportable(user);
+  }
+
+  @Post('bank-modules/:id/import')
+  @ApiOperation({ summary: 'Chép một hoạt động của lớp vào chương của kho' })
+  importIntoBank(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(ImportToBankBodySchema)) body: ImportToBankBody
+  ) {
+    return this.categoryBank.importFromCourse(user, id, body.moduleItemId);
   }
 
   @Delete('bank-items/:id')

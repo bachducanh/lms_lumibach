@@ -18,10 +18,10 @@ export default async function NewBankQuestionPage({
   searchParams,
 }: {
   params: Promise<{ categoryId: string }>;
-  searchParams: Promise<{ folder?: string }>;
+  searchParams: Promise<{ folder?: string; quiz?: string }>;
 }) {
   const { categoryId } = await params;
-  const { folder } = await searchParams;
+  const { folder, quiz } = await searchParams;
 
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
@@ -35,7 +35,12 @@ export default async function NewBankQuestionPage({
     .catch(() => null);
   if (!data) notFound();
 
-  const backHref = `/question-banks/${categoryId}`;
+  // Đến từ trình dựng đề của một quiz mẫu thì quay lại đúng chỗ đó, để giáo viên
+  // gắn câu vừa tạo vào quiz mà không phải dò lại. Nhận `quiz` (một id) chứ
+  // không nhận thẳng đường dẫn quay lại — id thì không chuyển hướng đi đâu được.
+  const backHref = quiz
+    ? `/question-banks/${categoryId}/content/quizzes/${encodeURIComponent(quiz)}/manage`
+    : `/question-banks/${categoryId}`;
 
   return (
     <div className="max-w-3xl">

@@ -7,6 +7,7 @@ import type {
   ContentBankQuery,
   ContentBankResult,
   CopyContentBody,
+  CourseActivityPickGroup,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
@@ -283,7 +284,7 @@ export class ContentBankService {
     });
     const position = (last?.position ?? -1) + 1;
 
-    const link = await this.cloneContent(user, source, courseId);
+    const link = await this.cloneContent(user, source, { courseId, bankCategoryId: null });
 
     const created = await this.prisma.moduleItem.create({
       data: {
@@ -306,12 +307,22 @@ export class ContentBankService {
     return { moduleItemId: created.id };
   }
 
-  /** Tạo bản sao của phần nội dung, trả về khoá ngoại để gắn vào ModuleItem mới. */
+  /**
+   * Tạo bản sao của phần nội dung, trả về khoá ngoại để gắn vào ModuleItem mới.
+   *
+   * `owner` là chỗ bản sao thuộc về — một khoá học (chép từ ngân hàng về lớp)
+   * hoặc ngân hàng của một danh mục (chép từ lớp vào kho). CHECK ở tầng CSDL
+   * bắt buộc đúng một trong hai có giá trị.
+   */
   private async cloneContent(
     user: AuthUser,
     source: NonNullable<Awaited<ReturnType<ContentBankService['findSourceForClone']>>>,
-    courseId: string
+    owner: { courseId: string | null; bankCategoryId: string | null }
   ): Promise<Record<string, string>> {
+    // Mọi bản sao đều ra đời ở trạng thái DRAFT (thấy `status: 'DRAFT'` bên
+    // dưới), nên chép vào kho không cần xử lý riêng phần trạng thái.
+    const { courseId, bankCategoryId } = owner;
+
     if (source.lesson) {
       const lesson = await this.prisma.lesson.create({
         data: {
@@ -346,6 +357,7 @@ export class ContentBankService {
       const created = await this.prisma.assignment.create({
         data: {
           courseId,
+          bankCategoryId,
           title: a.title,
           instructions: a.instructions,
           type: a.type,
@@ -363,6 +375,7 @@ export class ContentBankService {
         },
         select: { id: true },
       });
+      await this.cloneRubric({ assignmentId: a.id }, { assignmentId: created.id });
       return { assignmentId: created.id };
     }
 
@@ -371,6 +384,7 @@ export class ContentBankService {
       const created = await this.prisma.quiz.create({
         data: {
           courseId,
+          bankCategoryId,
           title: q.title,
           description: q.description,
           status: 'DRAFT',
@@ -388,7 +402,7 @@ export class ContentBankService {
       // Câu hỏi thuộc khoá nguồn — phải nhân bản sang khoá đích rồi mới nối vào
       // quiz, nếu không sửa câu hỏi ở lớp này sẽ đổi đề lớp kia.
       for (const link of q.questions) {
-        const copiedId = await this.cloneQuestion(user, link.questionId, courseId);
+        const copiedId = await this.cloneQuestion(user, link.questionId, owner);
         if (!copiedId) continue;
         await this.prisma.quizQuestion.create({
           data: {
@@ -410,6 +424,7 @@ export class ContentBankService {
       const created = await this.prisma.codeExercise.create({
         data: {
           courseId,
+          bankCategoryId,
           title: e.title,
           description: e.description,
           language: e.language,
@@ -436,6 +451,7 @@ export class ContentBankService {
         },
         select: { id: true },
       });
+      await this.cloneRubric({ codeExerciseId: e.id }, { codeExerciseId: created.id });
       return { codeExerciseId: created.id };
     }
 
@@ -450,6 +466,7 @@ export class ContentBankService {
       const created = await this.prisma.practiceTest.create({
         data: {
           courseId,
+          bankCategoryId,
           title: p.title,
           description: p.description,
           status: 'DRAFT',
@@ -483,6 +500,7 @@ export class ContentBankService {
       const created = await this.prisma.forum.create({
         data: {
           courseId,
+          bankCategoryId,
           title: source.forum.title,
           description: source.forum.description,
         },
@@ -496,11 +514,192 @@ export class ContentBankService {
     return {};
   }
 
-  /** Nhân bản một câu hỏi sang khoá học khác; trả null nếu câu hỏi đã bị xoá. */
+  /**
+   * Nhân bản một hoạt động của lớp thành BẢN MẪU RIÊNG trong kho của danh mục.
+   *
+   * Khác nút "Chia sẻ" ở trang Chương: chia sẻ chỉ bật một cờ trên hoạt động của
+   * lớp, nên xoá lớp hay sửa đề bên đó là kho đổi theo. Ở đây kho giữ bản của
+   * chính nó, độc lập hoàn toàn — đúng triết lý "nhân bản chứ không dùng chung"
+   * của cả hai ngân hàng.
+   *
+   * Quyền được bên gọi (CategoryContentBankService) kiểm trước cho phía kho;
+   * phía lớp nguồn kiểm ở đây.
+   */
+  async cloneIntoBank(
+    user: AuthUser,
+    moduleItemId: string,
+    target: { moduleId: string; bankCategoryId: string }
+  ): Promise<{ moduleItemId: string }> {
+    const source = await this.prisma.moduleItem.findUnique({
+      where: { id: moduleItemId },
+      include: {
+        lesson: { include: { attachments: true } },
+        assignment: true,
+        quiz: { include: { questions: { orderBy: { position: 'asc' } } } },
+        codeExercise: { include: { testCases: { orderBy: { position: 'asc' } } } },
+        practiceTest: { include: { questions: { orderBy: { position: 'asc' } } } },
+        forum: true,
+        module: {
+          select: {
+            courseId: true,
+            bankCategoryId: true,
+            course: { select: { categoryId: true } },
+          },
+        },
+      },
+    });
+    if (!source) throw new NotFoundException('Không tìm thấy hoạt động');
+
+    // Nguồn phải là hoạt động của một LỚP mà người này quản lý. Chép từ kho sang
+    // kho không đi đường này (và cũng không có ý nghĩa gì).
+    const sourceCourseId = assertCourseScoped(source.module.courseId, 'Hoạt động nguồn');
+    await this.assertCanManage(user, sourceCourseId);
+
+    const last = await this.prisma.moduleItem.findFirst({
+      where: { moduleId: target.moduleId },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+
+    const link = await this.cloneContent(user, source, {
+      courseId: null,
+      bankCategoryId: target.bankCategoryId,
+    });
+
+    const created = await this.prisma.moduleItem.create({
+      data: {
+        moduleId: target.moduleId,
+        type: source.type,
+        position: (last?.position ?? -1) + 1,
+        title: source.title,
+        externalUrl: source.externalUrl,
+        requireCompletion: source.requireCompletion,
+        completionType: source.completionType,
+        // Trong kho, `sharedToCategory` không có nghĩa — nằm trong kho ĐÃ LÀ
+        // chia sẻ rồi (xem điều kiện OR ở `list`).
+        sharedToCategory: false,
+        // Nội dung trong kho luôn hiện với người soạn kho.
+        isPublished: true,
+        ...link,
+      },
+      select: { id: true },
+    });
+
+    return { moduleItemId: created.id };
+  }
+
+  /**
+   * Hoạt động của các lớp người này quản lý — nguồn để chọn khi chép vào kho.
+   *
+   * Không lọc theo nhánh danh mục của kho: giáo viên hay soạn bài ở một lớp cụ
+   * thể rồi mới đẩy lên kho của khối hoặc của môn, tức là đi NGƯỢC lên cây.
+   * Chặn theo nhánh sẽ chặn đúng cách dùng phổ biến nhất.
+   */
+  async listImportable(user: AuthUser): Promise<CourseActivityPickGroup[]> {
+    const courses = await this.prisma.course.findMany({
+      where: {
+        deletedAt: null,
+        ...(user.role === 'ADMIN'
+          ? {}
+          : { OR: [{ ownerId: user.id }, { coTeachers: { some: { userId: user.id } } }] }),
+      },
+      orderBy: { name: 'asc' },
+      take: 100,
+      select: { id: true, name: true, slug: true },
+    });
+    if (courses.length === 0) return [];
+
+    const rows = await this.prisma.moduleItem.findMany({
+      where: {
+        module: { courseId: { in: courses.map((c) => c.id) } },
+        // FILE / EXTERNAL_URL chỉ là một đường dẫn gắn trên ModuleItem của lớp,
+        // không có bản ghi nội dung để nhân bản thành bản mẫu.
+        type: { notIn: ['FILE', 'EXTERNAL_URL'] },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 1000,
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        lesson: { select: { estimatedMinutes: true, _count: { select: { attachments: true } } } },
+        quiz: { select: { _count: { select: { questions: true } } } },
+        codeExercise: { select: { language: true, _count: { select: { testCases: true } } } },
+        practiceTest: { select: { _count: { select: { questions: true } } } },
+        module: { select: { name: true, courseId: true } },
+      },
+    });
+
+    const byCourse = new Map<string, CourseActivityPickGroup>();
+    for (const c of courses) {
+      byCourse.set(c.id, { courseId: c.id, courseName: c.name, courseSlug: c.slug, items: [] });
+    }
+    for (const r of rows) {
+      const group = r.module.courseId ? byCourse.get(r.module.courseId) : undefined;
+      if (!group) continue;
+      group.items.push({
+        moduleItemId: r.id,
+        type: r.type as string,
+        title: r.title,
+        moduleName: r.module.name,
+        detail: this.describe(r),
+      });
+    }
+
+    return [...byCourse.values()].filter((g) => g.items.length > 0);
+  }
+
+  /**
+   * Nhân bản thang chấm (rubric) sang bản sao.
+   *
+   * Rubric là một phần của ĐỀ BÀI chứ không phải của lớp: nó mô tả chấm theo
+   * tiêu chí nào, mức nào bao nhiêu điểm. Không chép thì giáo viên soạn rubric
+   * công phu trong kho, chép về lớp lại thấy trống trơn mà không hiểu vì sao.
+   * `RubricGrade` (điểm đã chấm của học sinh) thì KHÔNG chép — đó mới là của lớp.
+   */
+  private async cloneRubric(
+    from: { assignmentId?: string; codeExerciseId?: string },
+    to: { assignmentId?: string; codeExerciseId?: string }
+  ): Promise<void> {
+    const source = await this.prisma.rubric.findFirst({
+      where: from.assignmentId
+        ? { assignmentId: from.assignmentId }
+        : { codeExerciseId: from.codeExerciseId },
+      include: { criteria: { orderBy: { position: 'asc' }, include: { levels: true } } },
+    });
+    if (!source || source.criteria.length === 0) return;
+
+    await this.prisma.rubric.create({
+      data: {
+        assignmentId: to.assignmentId ?? null,
+        codeExerciseId: to.codeExerciseId ?? null,
+        criteria: {
+          create: source.criteria.map((c) => ({
+            name: c.name,
+            description: c.description,
+            position: c.position,
+            levels: {
+              create: c.levels
+                .slice()
+                .sort((a, b) => a.position - b.position)
+                .map((l) => ({
+                  label: l.label,
+                  points: l.points,
+                  description: l.description,
+                  position: l.position,
+                })),
+            },
+          })),
+        },
+      },
+    });
+  }
+
+  /** Nhân bản một câu hỏi sang chủ mới; trả null nếu câu hỏi đã bị xoá. */
   private async cloneQuestion(
     user: AuthUser,
     questionId: string,
-    courseId: string
+    owner: { courseId: string | null; bankCategoryId: string | null }
   ): Promise<string | null> {
     const q = await this.prisma.question.findFirst({
       where: { id: questionId, deletedAt: null },
@@ -513,7 +712,8 @@ export class ContentBankService {
 
     const created = await this.prisma.question.create({
       data: {
-        courseId,
+        courseId: owner.courseId,
+        bankCategoryId: owner.bankCategoryId,
         type: q.type,
         content: q.content,
         explanation: q.explanation,

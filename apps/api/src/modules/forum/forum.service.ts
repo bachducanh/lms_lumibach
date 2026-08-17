@@ -17,7 +17,7 @@ import type {
   UpdateTopicBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
-import { canManageCourse } from '../../common/auth/course-access';
+import { canManageActivity } from '../../common/bank/course-scoped';
 
 const TOPIC_LIST_TTL_MS = 30_000;
 const TOPIC_DETAIL_TTL_MS = 30_000;
@@ -492,6 +492,26 @@ export class ForumService {
   }
 
   /** Tạo diễn đàn kèm ModuleItem — như mọi hoạt động khác trong chương. */
+  /**
+   * Diễn đàn MẪU trong ngân hàng nội dung — đường đọc riêng.
+   *
+   * `getForum` không dùng được: nó kiểm ghi danh vào lớp và trả kèm slug khoá
+   * học, mà bản mẫu không thuộc lớp nào. Ở đây chỉ có tên và mô tả, đúng những
+   * gì chép về lớp sẽ mang theo (chủ đề thảo luận là của riêng từng lớp).
+   */
+  async getBankForum(
+    user: AuthUser,
+    forumId: string
+  ): Promise<{ id: string; bankCategoryId: string; title: string; description: string | null }> {
+    const forum = await this.prisma.forum.findUnique({
+      where: { id: forumId },
+      select: { id: true, bankCategoryId: true, title: true, description: true },
+    });
+    if (!forum?.bankCategoryId) throw new NotFoundException('Diễn đàn không tồn tại');
+    await this.assertCanManageForums(user, null, forum.bankCategoryId);
+    return { ...forum, bankCategoryId: forum.bankCategoryId };
+  }
+
   async createForum(user: AuthUser, body: CreateForumBody): Promise<{ id: string }> {
     await this.assertCanManageForums(user, body.courseId);
 
@@ -534,10 +554,10 @@ export class ForumService {
   async updateForum(user: AuthUser, forumId: string, body: UpdateForumBody): Promise<void> {
     const forum = await this.prisma.forum.findUnique({
       where: { id: forumId },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!forum) throw new NotFoundException('Diễn đàn không tồn tại');
-    await this.assertCanManageForums(user, forum.courseId);
+    await this.assertCanManageForums(user, forum.courseId, forum.bankCategoryId);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.forum.update({
@@ -561,15 +581,26 @@ export class ForumService {
 
   // ── Internals ──────────────────────────────────────────────────
 
-  private async canManageForums(user: AuthUser, courseId: string | null): Promise<boolean> {
-    // Diễn đàn mẫu trong ngân hàng danh mục không thuộc lớp nào.
-    if (!courseId) return false;
+  /**
+   * `bankCategoryId` chỉ được truyền khi SOẠN diễn đàn mẫu trong ngân hàng nội
+   * dung. Bỏ trống thì bản mẫu bị từ chối — mọi nghiệp vụ thảo luận (đăng chủ
+   * đề, trả lời, ghi danh) đều gắn với một lớp thật.
+   */
+  private async canManageForums(
+    user: AuthUser,
+    courseId: string | null,
+    bankCategoryId: string | null = null
+  ): Promise<boolean> {
     if (!hasMinRole(user.role, 'TEACHER')) return false;
-    return canManageCourse(this.prisma, user, courseId);
+    return canManageActivity(this.prisma, user, { courseId, bankCategoryId });
   }
 
-  private async assertCanManageForums(user: AuthUser, courseId: string | null): Promise<void> {
-    if (!(await this.canManageForums(user, courseId)))
+  private async assertCanManageForums(
+    user: AuthUser,
+    courseId: string | null,
+    bankCategoryId: string | null = null
+  ): Promise<void> {
+    if (!(await this.canManageForums(user, courseId, bankCategoryId)))
       throw new ForbiddenException('Bạn không có quyền quản lý khoá học này');
   }
 

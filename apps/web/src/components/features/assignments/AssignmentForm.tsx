@@ -38,22 +38,21 @@ type AssignmentFormValues = {
 import { ChevronLeft, CalendarDays, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
+import { bankContentHref, type ActivityOwner } from '@/lib/activity-owner';
 
 type Module = { id: string; name: string };
 
 type Props =
   | {
       mode: 'create';
-      courseSlug: string;
-      courseId: string;
+      owner: ActivityOwner;
       modules: Module[];
       defaultModuleId?: string;
       assignment?: undefined;
     }
   | {
       mode: 'edit';
-      courseSlug: string;
-      courseId: string;
+      owner: ActivityOwner;
       modules: Module[];
       defaultModuleId?: string;
       assignment: {
@@ -76,16 +75,13 @@ type Props =
       };
     };
 
-export function AssignmentForm({
-  mode,
-  courseSlug,
-  courseId,
-  modules,
-  defaultModuleId,
-  assignment,
-}: Props) {
+export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignment }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Bản mẫu trong kho không có lớp nào để mở/đóng bài, không có học sinh để
+  // đăng cho, và không nằm trong chương của lớp nào — ba khối đó ẩn đi thay vì
+  // hiện ra rồi bị API bỏ qua trong im lặng.
+  const isBank = owner.kind === 'bank';
 
   const [title, setTitle] = useState(assignment?.title ?? '');
   const [instructions, setInstructions] = useState(assignment?.instructions ?? '');
@@ -127,21 +123,21 @@ export function AssignmentForm({
     startTransition(async () => {
       const values = buildValues();
       try {
-        if (mode === 'create') {
+        if (mode === 'create' && owner.kind === 'course') {
           const data = await apiClient.post<{ assignmentId: string }>('/assignments', {
-            courseId,
+            courseId: owner.courseId,
             ...values,
             publish,
           });
           toast.success('Đã tạo bài tập.');
-          router.push(`/courses/${courseSlug}/assignments/${data.assignmentId}`);
+          router.push(`/courses/${owner.courseSlug}/assignments/${data.assignmentId}`);
         } else {
           await apiClient.patch(`/assignments/${assignment!.id}`, {
             ...values,
-            publish: publish ? true : undefined,
+            publish: publish && !isBank ? true : undefined,
           });
-          toast.success('Đã cập nhật bài tập.');
-          router.push(`/courses/${courseSlug}/assignments`);
+          toast.success(isBank ? 'Đã lưu bản mẫu trong kho.' : 'Đã cập nhật bài tập.');
+          router.push(afterSaveHref);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra.');
@@ -150,9 +146,16 @@ export function AssignmentForm({
   }
 
   const cancelHref =
-    mode === 'edit'
-      ? `/courses/${courseSlug}/assignments/${assignment!.id}`
-      : `/courses/${courseSlug}/assignments`;
+    owner.kind === 'bank'
+      ? bankContentHref(owner.categoryId)
+      : mode === 'edit'
+        ? `/courses/${owner.courseSlug}/assignments/${assignment!.id}`
+        : `/courses/${owner.courseSlug}/assignments`;
+
+  const afterSaveHref =
+    owner.kind === 'bank'
+      ? bankContentHref(owner.categoryId)
+      : `/courses/${owner.courseSlug}/assignments`;
 
   return (
     <div>
@@ -163,7 +166,7 @@ export function AssignmentForm({
           className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-sm transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
-          {mode === 'create' ? 'Bài tập' : 'Chi tiết'}
+          {isBank ? 'Kho nội dung' : mode === 'create' ? 'Bài tập' : 'Chi tiết'}
         </Link>
         <span className="bg-border mx-2 h-4 w-px" />
         <p className="text-muted-foreground flex-1 truncate text-sm font-medium">
@@ -179,7 +182,7 @@ export function AssignmentForm({
           >
             Huỷ
           </Button>
-          {mode === 'create' && (
+          {mode === 'create' && !isBank && (
             <Button
               type="button"
               variant="outline"
@@ -191,7 +194,11 @@ export function AssignmentForm({
             </Button>
           )}
           <Button type="button" size="sm" onClick={() => handleSubmit(true)} disabled={pending}>
-            {pending ? 'Đang lưu...' : mode === 'create' ? 'Đăng bài tập' : 'Lưu thay đổi'}
+            {pending
+              ? 'Đang lưu...'
+              : mode === 'create' && !isBank
+                ? 'Đăng bài tập'
+                : 'Lưu thay đổi'}
           </Button>
         </div>
       </div>
@@ -279,8 +286,9 @@ export function AssignmentForm({
           </div>
         </div>
 
-        {/* Dates */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Dates — lịch của mỗi lớp mỗi khác nên bản mẫu trong kho không giữ,
+            và thao tác chép về lớp cũng không mang theo. */}
+        <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-3', isBank && 'hidden')}>
           <div className="space-y-1.5">
             <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
               <CalendarDays className="h-3.5 w-3.5" /> Mở từ
@@ -414,7 +422,7 @@ export function AssignmentForm({
         </div>
 
         {/* Module assignment (create only) */}
-        {mode === 'create' && modules.length > 0 && (
+        {mode === 'create' && !isBank && modules.length > 0 && (
           <div className="space-y-1.5">
             <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Thêm vào chương
@@ -447,7 +455,7 @@ export function AssignmentForm({
           >
             Huỷ
           </Button>
-          {mode === 'create' && (
+          {mode === 'create' && !isBank && (
             <Button
               type="button"
               variant="outline"
@@ -458,7 +466,11 @@ export function AssignmentForm({
             </Button>
           )}
           <Button type="button" onClick={() => handleSubmit(true)} disabled={pending}>
-            {pending ? 'Đang lưu...' : mode === 'create' ? 'Đăng bài tập' : 'Lưu thay đổi'}
+            {pending
+              ? 'Đang lưu...'
+              : mode === 'create' && !isBank
+                ? 'Đăng bài tập'
+                : 'Lưu thay đổi'}
           </Button>
         </div>
       </div>

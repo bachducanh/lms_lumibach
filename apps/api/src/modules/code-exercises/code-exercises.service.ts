@@ -11,6 +11,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
+import { canManageBankCategory } from '../../common/bank/bank-access';
 import { Judge0Service } from '../../common/judge0/judge0.service';
 import { syncModuleItemTitle } from '../../common/module-item-title';
 import { CodeExecutionGateway } from './code-execution.gateway';
@@ -45,6 +46,26 @@ export class CodeExercisesService {
       this.cache.del(`modules:nav:${courseId}`),
       this.cache.del(`modules:nav:pub:${courseId}`),
     ]);
+  }
+
+  /**
+   * Bản mẫu trong ngân hàng của danh mục thì phải là người soạn được KHO ĐÓ.
+   *
+   * Chốt này chỉ áp cho bản mẫu, cố ý: bài code của lớp vẫn giữ nguyên luật cũ
+   * (TA+ sửa được) để không đổi cách làm việc đang chạy. Nhưng kho là tài sản
+   * dùng chung của cả một nhánh danh mục — mọi lớp bên dưới chép về từ đó, nên
+   * "bất kỳ TA nào cũng sửa được" là quá rộng.
+   */
+  private async assertCanEditBankTemplate(user: AuthUser, exerciseId: string): Promise<void> {
+    const ex = await this.prisma.codeExercise.findUnique({
+      where: { id: exerciseId },
+      select: { courseId: true, bankCategoryId: true },
+    });
+    if (!ex) throw new NotFoundException('Bài tập không tồn tại.');
+    if (!ex.bankCategoryId) return;
+    if (!(await canManageBankCategory(this.prisma, user, ex.bankCategoryId))) {
+      throw new ForbiddenException('Bạn không soạn được kho của danh mục này.');
+    }
   }
 
   // ── CRUD ──────────────────────────────────────────────────────
@@ -98,6 +119,7 @@ export class CodeExercisesService {
 
   async update(user: AuthUser, exerciseId: string, body: Record<string, unknown>) {
     if (!hasMinRole(user.role, 'TA')) throw new ForbiddenException('Không có quyền.');
+    await this.assertCanEditBankTemplate(user, exerciseId);
     const updated = await this.prisma.codeExercise.update({
       where: { id: exerciseId },
       data: body as any,
@@ -125,6 +147,7 @@ export class CodeExercisesService {
     }[]
   ) {
     if (!hasMinRole(user.role, 'TA')) throw new ForbiddenException('Không có quyền.');
+    await this.assertCanEditBankTemplate(user, exerciseId);
     await this.prisma.$transaction(async (tx) => {
       await tx.testCase.deleteMany({ where: { codeExerciseId: exerciseId } });
       if (testCases.length > 0) {

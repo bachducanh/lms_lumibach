@@ -1,14 +1,17 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type {
   BankModuleBody,
   CategoryContentBankData,
+  CourseActivityPickGroup,
+  CreateBankActivityBody,
   CreateBankLessonBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { CategoryBankAccessService } from '../categories/category-bank-access.service';
 import { StorageService } from '../../common/storage/storage.service';
 import { ModuleItemCleanupService } from '../../common/storage/module-item-cleanup.service';
+import { ContentBankService } from './content-bank.service';
 
 /**
  * Ngân hàng NỘI DUNG soạn THẲNG trong danh mục khoá học.
@@ -26,7 +29,8 @@ export class CategoryContentBankService {
     private readonly prisma: PrismaClient,
     private readonly access: CategoryBankAccessService,
     private readonly storage: StorageService,
-    private readonly cleanup: ModuleItemCleanupService
+    private readonly cleanup: ModuleItemCleanupService,
+    private readonly bank: ContentBankService
   ) {}
 
   async get(user: AuthUser, categoryId: string): Promise<CategoryContentBankData> {
@@ -55,7 +59,18 @@ export class CategoryContentBankService {
               title: true,
               updatedAt: true,
               lessonId: true,
-              lesson: { select: { estimatedMinutes: true } },
+              assignmentId: true,
+              quizId: true,
+              codeExerciseId: true,
+              practiceTestId: true,
+              forumId: true,
+              lesson: {
+                select: { estimatedMinutes: true, _count: { select: { attachments: true } } },
+              },
+              assignment: { select: { maxScore: true } },
+              quiz: { select: { _count: { select: { questions: true } } } },
+              codeExercise: { select: { language: true, _count: { select: { testCases: true } } } },
+              practiceTest: { select: { _count: { select: { questions: true } } } },
             },
           },
         },
@@ -75,11 +90,39 @@ export class CategoryContentBankService {
           type: i.type as string,
           title: i.title,
           lessonId: i.lessonId,
+          assignmentId: i.assignmentId,
+          quizId: i.quizId,
+          codeExerciseId: i.codeExerciseId,
+          practiceTestId: i.practiceTestId,
+          forumId: i.forumId,
           updatedAt: i.updatedAt.toISOString(),
-          detail: i.lesson?.estimatedMinutes ? `${i.lesson.estimatedMinutes} phút` : '',
+          detail: this.moTa(i),
         })),
       })),
     };
+  }
+
+  /** Một dòng mô tả ngắn theo loại — đủ để nhận ra hoạt động mà không mở ra. */
+  private moTa(item: {
+    lesson: { estimatedMinutes: number | null; _count: { attachments: number } } | null;
+    assignment: { maxScore: number } | null;
+    quiz: { _count: { questions: number } } | null;
+    codeExercise: { language: string; _count: { testCases: number } } | null;
+    practiceTest: { _count: { questions: number } } | null;
+  }): string {
+    if (item.lesson) {
+      const parts: string[] = [];
+      if (item.lesson.estimatedMinutes) parts.push(`${item.lesson.estimatedMinutes} phút`);
+      if (item.lesson._count.attachments) parts.push(`${item.lesson._count.attachments} đính kèm`);
+      return parts.join(' · ');
+    }
+    if (item.assignment) return `Thang điểm ${item.assignment.maxScore}`;
+    if (item.quiz) return `${item.quiz._count.questions} câu hỏi`;
+    if (item.codeExercise) {
+      return `${item.codeExercise.language} · ${item.codeExercise._count.testCases} test case`;
+    }
+    if (item.practiceTest) return `${item.practiceTest._count.questions} câu`;
+    return '';
   }
 
   // ── Chương trong kho ────────────────────────────────────────
@@ -163,20 +206,8 @@ export class CategoryContentBankService {
 
   // ── Hoạt động trong kho ─────────────────────────────────────
 
-  /**
-   * Thêm bài giảng vào một chương của kho.
-   *
-   * Bài giảng là loại duy nhất soạn thẳng được ở đây mà không phải sửa gì ở
-   * tầng dữ liệu: `Lesson` vốn không có `courseId`, nó chỉ treo vào ModuleItem.
-   * Các loại còn lại (bài tập, quiz, bài code, đề luyện tập, diễn đàn) vào kho
-   * qua nút "Chia sẻ" ở lớp — cột `bankCategoryId` của chúng đã sẵn sàng cho
-   * việc soạn thẳng, phần giao diện soạn là việc còn lại.
-   */
-  async createLesson(
-    user: AuthUser,
-    moduleId: string,
-    body: CreateBankLessonBody
-  ): Promise<{ lessonId: string; itemId: string }> {
+  /** Chương của kho + kiểm quyền soạn, dùng chung cho mọi đường tạo hoạt động. */
+  private async loadModuleForCreate(user: AuthUser, moduleId: string): Promise<string> {
     const mod = await this.prisma.module.findUnique({
       where: { id: moduleId },
       select: { id: true, bankCategoryId: true },
@@ -185,6 +216,141 @@ export class CategoryContentBankService {
       throw new NotFoundException('Không tìm thấy chương trong kho của danh mục.');
     }
     await this.access.assertCanManage(user, mod.bankCategoryId);
+    return mod.bankCategoryId;
+  }
+
+  /** Vị trí kế tiếp trong một chương của kho. */
+  private async nextPosition(moduleId: string): Promise<number> {
+    const last = await this.prisma.moduleItem.findFirst({
+      where: { moduleId },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+    return (last?.position ?? -1) + 1;
+  }
+
+  /**
+   * Tạo KHUNG một hoạt động trong kho: chỉ tiêu đề (và ngôn ngữ với bài code),
+   * phần còn lại soạn ở trình soạn riêng của từng loại.
+   *
+   * Vì sao chỉ tạo khung: mỗi loại đã có một trình soạn đầy đủ dùng cho lớp, và
+   * chúng nhận bản mẫu của kho từ khi `canManage` của các service biết tới
+   * `bankCategoryId`. Dựng lại biểu mẫu riêng cho kho sẽ sinh ra bản thứ hai của
+   * cùng một màn hình, và hai bản đó chắc chắn lệch nhau theo thời gian.
+   *
+   * Đề luyện tập KHÔNG đi đường này: `PracticeTest.pdfUrl` là cột NOT NULL nên
+   * không có "khung rỗng" nào hợp lệ — biểu mẫu của nó gọi thẳng
+   * `POST /practice-tests` với `bankCategoryId`.
+   */
+  async createActivity(
+    user: AuthUser,
+    moduleId: string,
+    body: CreateBankActivityBody
+  ): Promise<{ itemId: string; contentId: string }> {
+    const bankCategoryId = await this.loadModuleForCreate(user, moduleId);
+    const title = body.title.trim();
+
+    const link = await this.createContent(user, bankCategoryId, body, title);
+
+    const item = await this.prisma.moduleItem.create({
+      data: {
+        moduleId,
+        type: body.type,
+        position: await this.nextPosition(moduleId),
+        title,
+        // Nội dung trong kho luôn hiện với người soạn kho; `isPublished` chỉ có
+        // nghĩa với học sinh của một lớp, mà kho thì không có học sinh.
+        isPublished: true,
+        ...link.field,
+      },
+      select: { id: true },
+    });
+
+    return { itemId: item.id, contentId: link.id };
+  }
+
+  /** Bản ghi nội dung rỗng cho từng loại + tên cột khoá ngoại của nó. */
+  private async createContent(
+    user: AuthUser,
+    bankCategoryId: string,
+    body: CreateBankActivityBody,
+    title: string
+  ): Promise<{ id: string; field: Record<string, string> }> {
+    switch (body.type) {
+      case 'ASSIGNMENT': {
+        const row = await this.prisma.assignment.create({
+          data: { bankCategoryId, title, instructions: '', createdBy: user.id },
+          select: { id: true },
+        });
+        return { id: row.id, field: { assignmentId: row.id } };
+      }
+      case 'QUIZ': {
+        const row = await this.prisma.quiz.create({
+          data: { bankCategoryId, title, createdBy: user.id },
+          select: { id: true },
+        });
+        return { id: row.id, field: { quizId: row.id } };
+      }
+      case 'CODE_EXERCISE': {
+        const row = await this.prisma.codeExercise.create({
+          data: {
+            bankCategoryId,
+            title,
+            language: (body.language ?? 'PYTHON3') as never,
+            createdBy: user.id,
+          },
+          select: { id: true },
+        });
+        return { id: row.id, field: { codeExerciseId: row.id } };
+      }
+      case 'FORUM': {
+        const row = await this.prisma.forum.create({
+          data: { bankCategoryId, title },
+          select: { id: true },
+        });
+        return { id: row.id, field: { forumId: row.id } };
+      }
+      case 'PRACTICE_TEST':
+        throw new BadRequestException(
+          'Đề luyện tập phải có file PDF ngay khi tạo — dùng biểu mẫu tạo đề luyện tập.'
+        );
+    }
+  }
+
+  /**
+   * Chép một hoạt động đang có trong lớp vào một chương của kho.
+   *
+   * Bổ khuyết cho `createActivity`: những gì soạn ở lớp rồi thì không phải soạn
+   * lại. Kho nhận BẢN RIÊNG chứ không trỏ về lớp nguồn — xoá lớp không mất bản
+   * trong kho, sửa đề ở lớp không đổi bản mẫu.
+   */
+  async importFromCourse(
+    user: AuthUser,
+    moduleId: string,
+    moduleItemId: string
+  ): Promise<{ itemId: string }> {
+    const bankCategoryId = await this.loadModuleForCreate(user, moduleId);
+    const created = await this.bank.cloneIntoBank(user, moduleItemId, { moduleId, bankCategoryId });
+    return { itemId: created.moduleItemId };
+  }
+
+  /** Hoạt động của các lớp người này quản lý — nguồn để chọn khi chép vào kho. */
+  async listImportable(user: AuthUser): Promise<CourseActivityPickGroup[]> {
+    return this.bank.listImportable(user);
+  }
+
+  /**
+   * Thêm bài giảng vào một chương của kho.
+   *
+   * Đường riêng vì bài giảng không qua bước "đặt tên rồi mở trình soạn": trình
+   * soạn bài giảng vốn tạo và lưu nội dung trong một lần.
+   */
+  async createLesson(
+    user: AuthUser,
+    moduleId: string,
+    body: CreateBankLessonBody
+  ): Promise<{ lessonId: string; itemId: string }> {
+    await this.loadModuleForCreate(user, moduleId);
 
     const lesson = await this.prisma.lesson.create({
       data: {
@@ -196,17 +362,11 @@ export class CategoryContentBankService {
       select: { id: true },
     });
 
-    const last = await this.prisma.moduleItem.findFirst({
-      where: { moduleId },
-      orderBy: { position: 'desc' },
-      select: { position: true },
-    });
-
     const item = await this.prisma.moduleItem.create({
       data: {
         moduleId,
         type: 'LESSON',
-        position: (last?.position ?? -1) + 1,
+        position: await this.nextPosition(moduleId),
         title: body.title,
         lessonId: lesson.id,
         // Nội dung trong kho luôn hiện với người soạn kho; `isPublished` chỉ có
@@ -234,8 +394,15 @@ export class CategoryContentBankService {
     await this.access.assertCanManage(user, item.module.bankCategoryId);
     this.access.assertOwnsRecord(user, item.module.createdBy);
 
+    // `purgeOperations` chỉ dọn phần NỘI DUNG. Thiếu lệnh xoá ModuleItem ở đây
+    // thì bài giảng bị xoá thật nhưng dòng hoạt động vẫn nằm nguyên trong kho
+    // (quan hệ khai onDelete SetNull nên nó chỉ mất lessonId) — đúng hiện tượng
+    // "bấm thùng rác mà nội dung không biến mất".
     const plan = await this.cleanup.planPurge([itemId]);
-    await this.prisma.$transaction(this.cleanup.purgeOperations(plan));
+    await this.prisma.$transaction([
+      ...this.cleanup.purgeOperations(plan),
+      this.prisma.moduleItem.delete({ where: { id: itemId } }),
+    ]);
     await this.storage.removeByUrls(plan.fileUrls);
 
     return { message: 'Đã xoá hoạt động khỏi kho.' };

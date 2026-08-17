@@ -3,8 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
-import { assertCourseScoped } from '../../common/bank/course-scoped';
-import { canManageCourse } from '../../common/auth/course-access';
+import { assertCourseScoped, canManageActivity } from '../../common/bank/course-scoped';
 import { toStoragePath } from '../../common/storage/storage-url';
 import { toDate } from '../../common/datetime';
 import { syncModuleItemTitle } from '../../common/module-item-title';
@@ -48,12 +47,19 @@ export class AssignmentsService {
     ]);
   }
 
-  private async canManage(userId: string, role: string, courseId: string | null) {
-    // courseId null = bản mẫu của ngân hàng danh mục: không thuộc lớp nào nên
-    // không ai "quản lý được nó qua khoá học". Chặn trước khi canManageCourse
-    // kịp trả true cho ADMIN mà chưa nhìn tới courseId.
-    if (!courseId) return false;
-    return canManageCourse(this.prisma, { id: userId, role }, courseId);
+  /**
+   * `bankCategoryId` chỉ được truyền ở các nghiệp vụ SOẠN THẢO (sửa đề, xoá).
+   * Bỏ trống thì bản mẫu của ngân hàng bị từ chối như trước — cố ý, vì mọi
+   * nghiệp vụ của lớp (nộp bài, chấm điểm, bảng điểm) đều vô nghĩa với bản mẫu,
+   * và `canManageCourse` trả true ngay cho ADMIN trước khi nhìn tới courseId.
+   */
+  private async canManage(
+    userId: string,
+    role: string,
+    courseId: string | null,
+    bankCategoryId: string | null = null
+  ) {
+    return canManageActivity(this.prisma, { id: userId, role }, { courseId, bankCategoryId });
   }
 
   // Validate the file list a student submits. Files are uploaded separately via the
@@ -269,15 +275,16 @@ export class AssignmentsService {
   ) {
     const existing = await this.prisma.assignment.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true, status: true },
+      select: { courseId: true, bankCategoryId: true, status: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
-    const courseId = assertCourseScoped(existing.courseId, 'Bài tập này');
 
-    // Validate grouping thuộc đúng khoá học nếu được đặt.
+    // Phân nhóm là chuyện của lớp — chốt courseId ngay tại đây thay vì ở đầu
+    // hàm, để bản mẫu của ngân hàng vẫn sửa được phần đề bài và cấu hình chấm.
     if (body.groupingId) {
+      const courseId = assertCourseScoped(existing.courseId, 'Bài tập này');
       const grouping = await this.prisma.grouping.findFirst({
         where: { id: body.groupingId, courseId },
         select: { id: true },
@@ -288,6 +295,9 @@ export class AssignmentsService {
     let newStatus = existing.status;
     if (body.publish === true) newStatus = 'PUBLISHED';
     if (body.publish === false) newStatus = 'DRAFT';
+    // Bản mẫu không có học sinh nên "đăng" không có nghĩa gì; giữ nguyên DRAFT
+    // để nó không bao giờ lọt vào các truy vấn lọc theo status = PUBLISHED.
+    if (!existing.courseId) newStatus = 'DRAFT';
 
     await this.prisma.assignment.update({
       where: { id },
@@ -326,15 +336,20 @@ export class AssignmentsService {
   async delete(user: AuthUser, id: string) {
     const existing = await this.prisma.assignment.findUnique({
       where: { id, deletedAt: null },
-      select: { courseId: true },
+      select: { courseId: true, bankCategoryId: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
-    if (!(await this.canManage(user.id, user.role, existing.courseId)))
+    if (!(await this.canManage(user.id, user.role, existing.courseId, existing.bankCategoryId)))
       throw new ForbiddenException('Không có quyền.');
 
     await this.prisma.$transaction([
       this.prisma.moduleItem.deleteMany({ where: { assignmentId: id } }),
-      this.prisma.assignment.update({ where: { id }, data: { deletedAt: new Date() } }),
+      // Bản mẫu của ngân hàng xoá hẳn: thùng rác chỉ nhận hoạt động của lớp
+      // (xem ModuleItemCleanupService), soft-delete ở đây là để lại rác không
+      // màn hình nào thấy và job dọn cũng bỏ qua.
+      existing.courseId
+        ? this.prisma.assignment.update({ where: { id }, data: { deletedAt: new Date() } })
+        : this.prisma.assignment.delete({ where: { id } }),
     ]);
     await this.invalidateModuleCache(existing.courseId);
     return { message: 'Đã xóa bài tập.' };

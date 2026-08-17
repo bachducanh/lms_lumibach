@@ -35,8 +35,7 @@ export default async function EditAssignmentPage({
     <div className="max-w-5xl">
       <AssignmentForm
         mode="edit"
-        courseSlug={slug}
-        courseId={course.id}
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
         modules={modules}
         assignment={{
           id: assignment.id,

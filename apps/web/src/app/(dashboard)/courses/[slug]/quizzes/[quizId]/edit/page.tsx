@@ -41,7 +41,7 @@ export default async function EditQuizPage({
         </div>
       </div>
 
-      <QuizForm courseId={course.id} courseSlug={slug} quiz={quiz} />
+      <QuizForm owner={{ kind: 'course', courseSlug: slug, courseId: course.id }} quiz={quiz} />
     </div>
   );
 }

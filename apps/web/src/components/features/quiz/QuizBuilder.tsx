@@ -36,16 +36,30 @@ type QuizQItem = {
   };
 };
 
+import type { ActivityOwner } from '@/lib/activity-owner';
+
 type Props = {
   quizId: string;
-  courseSlug: string;
+  owner: ActivityOwner;
   initialItems: QuizQItem[];
   banks: QuizBankGroup[];
 };
 
-export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) {
+export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+
+  // Câu hỏi của quiz mẫu lấy từ NGÂN HÀNG CÂU HỎI CỦA DANH MỤC, không phải kho
+  // câu hỏi của một lớp — nên hai đường dẫn "tạo câu hỏi" / "xem ngân hàng"
+  // bên dưới cũng phải trỏ về đúng kho tương ứng.
+  const questionBankHref =
+    owner.kind === 'bank'
+      ? `/question-banks/${owner.categoryId}`
+      : `/courses/${owner.courseSlug}/questions`;
+  const newQuestionHref =
+    owner.kind === 'bank'
+      ? `/question-banks/${owner.categoryId}/questions/new?quiz=${quizId}`
+      : `/courses/${owner.courseSlug}/questions/new?quizId=${quizId}`;
 
   const [items, setItems] = useState<QuizQItem[]>(() =>
     [...initialItems].sort((a, b) => a.position - b.position)
@@ -299,7 +313,7 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Danh mục câu hỏi</h2>
           <Link
-            href={`/courses/${courseSlug}/questions/new?quizId=${quizId}`}
+            href={newQuestionHref}
             className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -311,10 +325,7 @@ export function QuizBuilder({ quizId, courseSlug, initialItems, banks }: Props) 
         {banks.length === 0 ? (
           <p className="text-muted-foreground py-2 text-sm">
             Chưa có danh mục câu hỏi nào.{' '}
-            <Link
-              href={`/courses/${courseSlug}/questions`}
-              className="text-primary hover:underline"
-            >
+            <Link href={questionBankHref} className="text-primary hover:underline">
               Tạo danh mục trong ngân hàng →
             </Link>
           </p>

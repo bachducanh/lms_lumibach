@@ -2,16 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import { StorageService } from './storage.service';
 
+/** Id hoạt động, tách theo chủ sở hữu vì hai bên dọn bằng hai cách khác nhau. */
+export type OwnerSplitIds = {
+  /** Của một lớp → chuyển vào thùng rác (soft-delete), khôi phục được. */
+  course: string[];
+  /** Bản mẫu của ngân hàng danh mục → xoá hẳn (xem ghi chú bên dưới). */
+  bank: string[];
+};
+
 export type ModuleItemPurgePlan = {
   /** Lesson xoá hẳn — không có nơi nào khác trỏ tới (xem ghi chú bên dưới). */
   lessonIds: string[];
   /** Forum xoá hẳn — diễn đàn chỉ tồn tại như một hoạt động trong chương. */
   forumIds: string[];
-  /** Các hoạt động chuyển vào thùng rác (soft-delete) cùng lúc với ModuleItem. */
-  assignmentIds: string[];
-  quizIds: string[];
-  codeExerciseIds: string[];
-  practiceTestIds: string[];
+  /** Các hoạt động, tách theo chủ sở hữu (lớp → thùng rác, kho → xoá hẳn). */
+  assignmentIds: OwnerSplitIds;
+  quizIds: OwnerSplitIds;
+  codeExerciseIds: OwnerSplitIds;
+  practiceTestIds: OwnerSplitIds;
   /** File trên MinIO thuộc các lesson bị xoá (đính kèm + ảnh chèn trong nội dung). */
   fileUrls: string[];
 };
@@ -25,13 +33,15 @@ type LinkField =
   | 'codeExerciseId'
   | 'practiceTestId';
 
+const NO_IDS: OwnerSplitIds = { course: [], bank: [] };
+
 const EMPTY_PLAN: ModuleItemPurgePlan = {
   lessonIds: [],
   forumIds: [],
-  assignmentIds: [],
-  quizIds: [],
-  codeExerciseIds: [],
-  practiceTestIds: [],
+  assignmentIds: NO_IDS,
+  quizIds: NO_IDS,
+  codeExerciseIds: NO_IDS,
+  practiceTestIds: NO_IDS,
   fileUrls: [],
 };
 
@@ -48,6 +58,11 @@ const EMPTY_PLAN: ModuleItemPurgePlan = {
  *    Đây chính là hiện tượng xoá trong Chương mà tab Bài tập vẫn còn. Chúng
  *    được soft-delete (deletedAt) giống hệt khi giáo viên xoá thẳng từ tab —
  *    bài nộp và điểm vẫn khôi phục được qua thùng rác.
+ *  - Bốn loại trên NHƯNG là bản mẫu của ngân hàng danh mục (courseId null) thì
+ *    xoá hẳn: thùng rác luôn hiển thị kèm tên lớp và khôi phục về lớp nên không
+ *    nhận chúng, mà soft-delete xong thì không màn hình nào thấy lại và job dọn
+ *    rác cũng bỏ qua — dữ liệu nằm lại vĩnh viễn. Bản mẫu không có bài nộp hay
+ *    điểm nên xoá hẳn không mất gì của học sinh.
  *  - Forum chỉ sinh ra cùng hoạt động nên xoá hẳn (topic/post cascade theo).
  *
  * Bên gọi tự chạy phần xoá DB trong transaction của mình, rồi mới gỡ file —
@@ -95,14 +110,41 @@ export class ModuleItemCleanupService {
         this.unsharedIds(moduleItemIds, pick('practiceTestId'), 'practiceTestId'),
       ]);
 
+    const [assignments, quizzes, codeExercises, practiceTests] = await Promise.all([
+      this.splitByOwner(assignmentIds, (where) => this.prisma.assignment.findMany(where)),
+      this.splitByOwner(quizIds, (where) => this.prisma.quiz.findMany(where)),
+      this.splitByOwner(codeExerciseIds, (where) => this.prisma.codeExercise.findMany(where)),
+      this.splitByOwner(practiceTestIds, (where) => this.prisma.practiceTest.findMany(where)),
+    ]);
+
     return {
       lessonIds,
       forumIds,
-      assignmentIds,
-      quizIds,
-      codeExerciseIds,
-      practiceTestIds,
+      assignmentIds: assignments,
+      quizIds: quizzes,
+      codeExerciseIds: codeExercises,
+      practiceTestIds: practiceTests,
       fileUrls: await this.lessonFileUrls(lessonIds),
+    };
+  }
+
+  /**
+   * Tách id theo chủ sở hữu: có `courseId` là của lớp, không có là bản mẫu của
+   * ngân hàng. Nhận hàm truy vấn thay vì tên bảng vì union của các Prisma
+   * delegate không gọi động được (TS2349) — cùng lý do đã ghi ở ActivityTrashService.
+   */
+  private async splitByOwner(
+    ids: string[],
+    query: (args: {
+      where: { id: { in: string[] } };
+      select: { id: true; courseId: true };
+    }) => Promise<{ id: string; courseId: string | null }[]>
+  ): Promise<OwnerSplitIds> {
+    if (ids.length === 0) return { course: [], bank: [] };
+    const rows = await query({ where: { id: { in: ids } }, select: { id: true, courseId: true } });
+    return {
+      course: rows.filter((r) => r.courseId !== null).map((r) => r.id),
+      bank: rows.filter((r) => r.courseId === null).map((r) => r.id),
     };
   }
 
@@ -199,22 +241,32 @@ export class ModuleItemCleanupService {
     return [
       this.prisma.lesson.deleteMany({ where: { id: { in: plan.lessonIds } } }),
       this.prisma.forum.deleteMany({ where: { id: { in: plan.forumIds } } }),
+
+      // Của lớp → thùng rác.
       this.prisma.assignment.updateMany({
-        where: { id: { in: plan.assignmentIds }, deletedAt: null },
+        where: { id: { in: plan.assignmentIds.course }, deletedAt: null },
         data: softDelete,
       }),
       this.prisma.quiz.updateMany({
-        where: { id: { in: plan.quizIds }, deletedAt: null },
+        where: { id: { in: plan.quizIds.course }, deletedAt: null },
         data: softDelete,
       }),
       this.prisma.codeExercise.updateMany({
-        where: { id: { in: plan.codeExerciseIds }, deletedAt: null },
+        where: { id: { in: plan.codeExerciseIds.course }, deletedAt: null },
         data: softDelete,
       }),
       this.prisma.practiceTest.updateMany({
-        where: { id: { in: plan.practiceTestIds }, deletedAt: null },
+        where: { id: { in: plan.practiceTestIds.course }, deletedAt: null },
         data: softDelete,
       }),
+
+      // Bản mẫu của ngân hàng → xoá hẳn. Không cần dọn tay bảng bài làm như
+      // ActivityTrashService.purgeOne: bản mẫu không thuộc lớp nào nên không
+      // bao giờ có attempt/submission để nhánh RESTRICT chặn lại.
+      this.prisma.assignment.deleteMany({ where: { id: { in: plan.assignmentIds.bank } } }),
+      this.prisma.quiz.deleteMany({ where: { id: { in: plan.quizIds.bank } } }),
+      this.prisma.codeExercise.deleteMany({ where: { id: { in: plan.codeExerciseIds.bank } } }),
+      this.prisma.practiceTest.deleteMany({ where: { id: { in: plan.practiceTestIds.bank } } }),
     ];
   }
 }

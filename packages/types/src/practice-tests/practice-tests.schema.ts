@@ -63,7 +63,9 @@ export type PracticeTestQuestion = {
 
 export type PracticeTestDetail = {
   id: string;
-  courseId: string;
+  /** null với bản mẫu trong ngân hàng nội dung của danh mục. */
+  courseId: string | null;
+  bankCategoryId: string | null;
   title: string;
   description: string | null;
   status: PracticeTestStatus;

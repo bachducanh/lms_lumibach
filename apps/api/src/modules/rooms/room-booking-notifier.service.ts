@@ -11,6 +11,11 @@ import { NotificationsService } from '../notifications/notifications.service';
  * Nguyên tắc: MỌI lỗi ở đây đều bị nuốt và ghi log. Thông báo hỏng không được
  * phép làm hỏng một thao tác duyệt/từ chối đã thành công ở phía CSDL — cùng
  * tinh thần với AuditService.
+ *
+ * Email đi kèm luôn có `dedupeKey` và gửi đúng một lần, không thử lại. Bản
+ * in-app ở trên đã giữ được tin nên email hỏng không mất gì; ngược lại, thử lại
+ * một job mà SMTP thật ra đã nhận thư thì người nhận có 2-3 bản y hệt. Xem ghi
+ * chú `EmailOptions` trong EmailService.
  */
 @Injectable()
 export class RoomBookingNotifier {
@@ -52,6 +57,7 @@ export class RoomBookingNotifier {
               lines: this.dongThongTin(booking),
               ctaLabel: 'Vào hàng chờ duyệt',
               ctaPath: '/admin/rooms/bookings',
+              dedupeKey: `${booking.id}-submitted-${admin.id}`,
             });
           }
         })
@@ -91,6 +97,7 @@ export class RoomBookingNotifier {
           lines: this.dongThongTin(booking),
           ctaLabel: 'Xác nhận nội quy & nhận phòng',
           ctaPath: checkinPath,
+          dedupeKey: `${booking.id}-approved-${nguoiMuon.id}`,
           extraHtml: ruleContent
             ? `<div style="margin-top:24px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fafafa">
                  <h3 style="margin:0 0 8px;color:#050E3C;font-size:15px">Nội quy phòng</h3>
@@ -124,6 +131,7 @@ export class RoomBookingNotifier {
           lines: [...this.dongThongTin(booking), { label: 'Lý do từ chối', value: lyDo }],
           ctaLabel: 'Xem đơn của tôi',
           ctaPath: '/rooms/bookings',
+          dedupeKey: `${booking.id}-rejected-${nguoiMuon.id}`,
         });
       }
     });

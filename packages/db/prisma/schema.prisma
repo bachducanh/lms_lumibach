@@ -1534,8 +1534,11 @@ model CompetencyLevelTarget {
   componentId String
   categoryId  String
   studentId   String
-  startLevel  Int // thang 1-12
-  targetLevel Int // thang 1-12
+  // Thang 1-12, cho số thập phân: cấp độ xuất phát của một học sinh thường rơi
+  // vào giữa hai mức (vd 6.5) và làm tròn về số nguyên là đổi luôn điểm năng
+  // lực, vì điểm = xuất phát + 2 × tỉ lệ hoàn thành.
+  startLevel  Float
+  targetLevel Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

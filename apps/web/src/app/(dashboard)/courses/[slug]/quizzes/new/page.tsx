@@ -40,7 +40,10 @@ export default async function NewQuizPage({
         </div>
       </div>
 
-      <QuizForm courseId={course.id} courseSlug={slug} moduleId={moduleId} />
+      <QuizForm
+        owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}
+        moduleId={moduleId}
+      />
     </div>
   );
 }
