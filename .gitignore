@@ -91,3 +91,7 @@ uploads/
 # + Docker là chạy được, đúng như DEPLOYMENT.md hứa.
 external/scratch-gui/
 apps/web/external/scratch-gui/
+
+# Playwright
+apps/web/test-results/
+apps/web/playwright-report/

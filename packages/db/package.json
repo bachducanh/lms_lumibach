@@ -23,7 +23,8 @@
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:cleanup-orphans": "dotenv -e ../../.env -- tsx scripts/cleanup-orphans.ts",
     "db:shift-legacy-dates": "dotenv -e ../../.env -- tsx scripts/shift-legacy-dates.ts",
-    "db:format": "prisma format"
+    "db:format": "prisma format",
+    "db:seed-bank-probe": "dotenv -e ../../.env -- tsx scripts/seed-bank-probe.ts"
   },
   "prisma": {
     "schema": "prisma/schema.prisma",

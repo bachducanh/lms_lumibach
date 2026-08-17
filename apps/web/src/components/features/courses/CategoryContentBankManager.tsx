@@ -33,6 +33,7 @@ import { buttonVariants } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -361,38 +362,45 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
               <ChevronDown className="ml-1 h-3.5 w-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuLabel>Soạn mới trong kho</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`${bankContentHref(categoryId)}/lessons/new?module=${mod.id}`)
-                }
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Bài giảng
-              </DropdownMenuItem>
-              {QUICK_TYPES.map((t) => {
-                const Icon = ITEM_ICON[t.type] ?? BookOpen;
-                return (
-                  <DropdownMenuItem
-                    key={t.type}
-                    onClick={() => {
-                      setAddingType(t.type);
-                      setNewTitle('');
-                    }}
-                  >
-                    <Icon className="mr-2 h-4 w-4" />
-                    {t.label}
-                  </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuItem
-                onClick={() =>
-                  router.push(`${bankContentHref(categoryId)}/practice-tests/new?module=${mod.id}`)
-                }
-              >
-                <FileQuestion className="mr-2 h-4 w-4" />
-                Đề luyện tập
-              </DropdownMenuItem>
+              {/* DropdownMenuLabel BẮT BUỘC nằm trong DropdownMenuGroup: đây là
+                  Base UI, không phải Radix, và Menu.GroupLabel ném lỗi khi thiếu
+                  context của Menu.Group — đủ để hạ cả trang xuống màn hình lỗi. */}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Soạn mới trong kho</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push(`${bankContentHref(categoryId)}/lessons/new?module=${mod.id}`)
+                  }
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Bài giảng
+                </DropdownMenuItem>
+                {QUICK_TYPES.map((t) => {
+                  const Icon = ITEM_ICON[t.type] ?? BookOpen;
+                  return (
+                    <DropdownMenuItem
+                      key={t.type}
+                      onClick={() => {
+                        setAddingType(t.type);
+                        setNewTitle('');
+                      }}
+                    >
+                      <Icon className="mr-2 h-4 w-4" />
+                      {t.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push(
+                      `${bankContentHref(categoryId)}/practice-tests/new?module=${mod.id}`
+                    )
+                  }
+                >
+                  <FileQuestion className="mr-2 h-4 w-4" />
+                  Đề luyện tập
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setImporting(true)}>
                 <Copy className="mr-2 h-4 w-4" />
