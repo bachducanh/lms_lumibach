@@ -149,9 +149,10 @@ function ItemRow({
   );
 
   return (
-    <li className="group/row hover:bg-muted/40 flex items-center gap-3 px-3 py-2.5 transition-colors">
-      {/* Cả hàng là đường vào trình soạn — nhắm chuột vào cây bút 14px là việc
-          không cần thiết khi hàng nào cũng chỉ có đúng một hành động chính. */}
+    <li className="hover:bg-muted/40 flex items-center gap-3 px-3 py-2.5 transition-colors">
+      {/* Bấm cả hàng cũng vào được trình soạn, nhưng nút bút chì vẫn phải có
+          mặt: một affordance chỉ tồn tại khi rê chuột trúng là affordance mà
+          người dùng không biết là có. */}
       {editHref ? (
         <Link href={editHref} className="flex min-w-0 flex-1 items-center gap-3">
           {row}
@@ -159,20 +160,27 @@ function ItemRow({
       ) : (
         <span className="flex min-w-0 flex-1 items-center gap-3">{row}</span>
       )}
-      <button
-        type="button"
-        onClick={() => onDelete(item.id, item.title)}
-        disabled={disabled}
-        className={cn(
-          'text-muted-foreground/40 hover:text-destructive shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-50',
-          // Hiện khi rê chuột hoặc khi bàn phím đi tới — không giấu khỏi người
-          // dùng bàn phím, vốn là cái bẫy quen thuộc của kiểu "hiện khi hover".
-          'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100'
+
+      <div className="flex shrink-0 items-center gap-0.5">
+        {editHref && (
+          <Link
+            href={editHref}
+            aria-label={`Sửa ${item.title}`}
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md p-1.5 transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Link>
         )}
-        aria-label={`Xoá ${item.title}`}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+        <button
+          type="button"
+          onClick={() => onDelete(item.id, item.title)}
+          disabled={disabled}
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md p-1.5 transition-colors disabled:opacity-50"
+          aria-label={`Xoá ${item.title}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </li>
   );
 }
@@ -274,7 +282,7 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
   }
 
   return (
-    <section className="group/mod space-y-2">
+    <section className="space-y-2">
       {confirmDialog}
       {importing && (
         <BankImportDialog
@@ -323,7 +331,7 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="text-muted-foreground/40 hover:text-foreground opacity-0 transition-opacity group-hover/mod:opacity-100 focus-visible:opacity-100"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md p-1 transition-colors"
               aria-label="Đổi tên chương"
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -332,7 +340,7 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
               type="button"
               onClick={xoaChuong}
               disabled={pending}
-              className="text-muted-foreground/40 hover:text-destructive opacity-0 transition-opacity group-hover/mod:opacity-100 focus-visible:opacity-100 disabled:opacity-50"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md p-1 transition-colors disabled:opacity-50"
               aria-label="Xoá chương"
             >
               <Trash2 className="h-3.5 w-3.5" />
