@@ -1,14 +1,13 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
 import { hasMinRole } from '@/lib/permissions';
+import { BankCategoryList } from '@/components/features/courses/BankCategoryList';
 import type { ManageableBankCategory } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
-import { ChevronRight, Library } from 'lucide-react';
 
-export const metadata = { title: 'Ngân hàng câu hỏi chung' };
+export const metadata = { title: 'Ngân hàng chung' };
 export const dynamic = 'force-dynamic';
 
 export default async function QuestionBanksPage() {
@@ -22,45 +21,37 @@ export default async function QuestionBanksPage() {
     .get<ManageableBankCategory[]>('/questions/bank-categories')
     .catch(() => [] as ManageableBankCategory[]);
 
+  const tongCauHoi = categories.reduce((s, c) => s + c.questionCount, 0);
+  const tongChuong = categories.reduce((s, c) => s + c.moduleCount, 0);
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-          <Library className="text-primary h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Ngân hàng câu hỏi chung</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            Soạn câu hỏi và nội dung thẳng vào danh mục khoá học. Những gì ở đây không thuộc lớp nào
-            — mọi lớp trong nhánh danh mục đều chép về được, và kho vẫn còn khi lớp kết thúc.
+    <div className="max-w-3xl space-y-8">
+      <header className="space-y-3">
+        <p className="text-muted-foreground/70 font-mono text-[11px] tracking-[0.18em] uppercase">
+          Ngân hàng chung
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight">Soạn một lần, mọi lớp dùng lại</h1>
+        <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
+          Nội dung ở đây không thuộc lớp nào. Nó gắn vào một tầng của cây danh mục và mọi lớp bên
+          dưới tầng đó đều chép về được — kể cả những lớp mở ở năm học sau.
+        </p>
+        {categories.length > 0 && (
+          <p className="text-muted-foreground/70 font-mono text-[11px]">
+            {categories.length} danh mục · {tongCauHoi} câu hỏi · {tongChuong} chương
           </p>
-        </div>
-      </div>
+        )}
+      </header>
 
       {categories.length === 0 ? (
-        <div className="border-border text-muted-foreground rounded-xl border border-dashed py-14 text-center text-sm">
-          Chưa có danh mục nào bạn được soạn kho. Kho mở theo đường dẫn danh mục của khoá bạn đang
-          quản lý — nhờ Quản trị viên xếp khoá vào đúng danh mục trước.
+        <div className="border-border rounded-xl border border-dashed px-6 py-14 text-center">
+          <p className="text-sm font-medium">Chưa có danh mục nào bạn soạn được kho</p>
+          <p className="text-muted-foreground mx-auto mt-1.5 max-w-sm text-sm leading-relaxed">
+            Kho mở theo đường dẫn danh mục của khoá bạn đang quản lý. Nhờ Quản trị viên xếp khoá vào
+            đúng danh mục, kho sẽ hiện ở đây.
+          </p>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {categories.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/question-banks/${c.id}`}
-                className="border-border bg-card hover:bg-accent/30 flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{c.path}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {c.questionCount} câu hỏi · {c.moduleCount} chương nội dung
-                  </p>
-                </div>
-                <ChevronRight className="text-muted-foreground/40 h-4 w-4 shrink-0" />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <BankCategoryList categories={categories} />
       )}
     </div>
   );

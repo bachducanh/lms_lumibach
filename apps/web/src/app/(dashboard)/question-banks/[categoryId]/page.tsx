@@ -7,7 +7,7 @@ import { hasMinRole } from '@/lib/permissions';
 import { CategoryBankManager } from '@/components/features/quiz/CategoryBankManager';
 import type { CategoryQuestionBankData } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
-import { ArrowLeft, FolderKanban, Library } from 'lucide-react';
+import { ArrowLeft, FolderKanban } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 
 export const metadata = { title: 'Kho câu hỏi của danh mục' };
@@ -36,18 +36,18 @@ export default async function CategoryBankPage({
         className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Ngân hàng câu hỏi chung
+        Ngân hàng chung
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-            <Library className="text-primary h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-bold">Kho câu hỏi</h1>
-            <p className="text-muted-foreground mt-0.5 truncate text-sm">{data.categoryPath}</p>
-          </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-muted-foreground/70 font-mono text-[11px] tracking-[0.18em] uppercase">
+            Kho câu hỏi
+          </p>
+          <h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{data.categoryName}</h1>
+          <p className="text-muted-foreground/70 mt-1 truncate font-mono text-[11px] tracking-tight">
+            {data.categoryPath}
+          </p>
         </div>
         <Link
           href={`/question-banks/${categoryId}/content`}

@@ -8,6 +8,7 @@ import {
   BookOpen,
   Brain,
   Check,
+  ChevronDown,
   ClipboardList,
   Code2,
   Copy,
@@ -29,6 +30,14 @@ import type {
 } from '@lumibach/types';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { ACTIVITY_TYPE_LABEL, bankContentHref, bankEditorHref } from '@/lib/activity-owner';
 import { BankImportDialog } from './BankImportDialog';
@@ -47,6 +56,25 @@ const ITEM_ICON: Record<string, typeof BookOpen> = {
   FORUM: MessagesSquare,
   FILE: Paperclip,
   EXTERNAL_URL: Link2,
+};
+
+/**
+ * Nhãn hai chữ cái cho từng loại, đặt bằng font mono.
+ *
+ * Biểu tượng một mình không phân biệt nổi sáu loại khi chúng xếp chồng thành
+ * danh sách dài — bài tập, quiz, đề luyện tập đều là "một tờ giấy có chữ". Cặp
+ * chữ cái đọc được ngay cả khi lướt nhanh, và ăn nhịp với đường dẫn danh mục
+ * cũng đang đặt bằng mono ở trang trước.
+ */
+const ITEM_TAG: Record<string, string> = {
+  LESSON: 'BG',
+  ASSIGNMENT: 'BT',
+  QUIZ: 'TN',
+  CODE_EXERCISE: 'CODE',
+  PRACTICE_TEST: 'ĐỀ',
+  FORUM: 'DĐ',
+  FILE: 'TỆP',
+  EXTERNAL_URL: 'LINK',
 };
 
 /**
@@ -104,33 +132,43 @@ function ItemRow({
   const Icon = ITEM_ICON[item.type] ?? BookOpen;
   const editHref = bankEditorHref(categoryId, item, moduleId);
 
-  return (
-    <li className="flex items-center gap-3 px-4 py-3">
-      <Icon className="text-muted-foreground/50 h-4 w-4 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{item.title}</p>
-        <p className="text-muted-foreground text-xs">
+  const row = (
+    <>
+      <span className="border-border text-muted-foreground/70 flex h-7 w-11 shrink-0 items-center justify-center gap-1 rounded-md border font-mono text-[10px] tracking-wide">
+        <Icon className="h-3 w-3" />
+        {ITEM_TAG[item.type] ?? '?'}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{item.title}</span>
+        <span className="text-muted-foreground block truncate text-xs">
           {ACTIVITY_TYPE_LABEL[item.type] ?? item.type}
           {item.detail ? ` · ${item.detail}` : ''}
-        </p>
-      </div>
-      {editHref && (
-        <Link
-          href={editHref}
-          aria-label={`Sửa ${item.title}`}
-          className={cn(
-            buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-            'text-muted-foreground/40 hover:text-foreground'
-          )}
-        >
-          <Pencil className="h-3.5 w-3.5" />
+        </span>
+      </span>
+    </>
+  );
+
+  return (
+    <li className="group/row hover:bg-muted/40 flex items-center gap-3 px-3 py-2.5 transition-colors">
+      {/* Cả hàng là đường vào trình soạn — nhắm chuột vào cây bút 14px là việc
+          không cần thiết khi hàng nào cũng chỉ có đúng một hành động chính. */}
+      {editHref ? (
+        <Link href={editHref} className="flex min-w-0 flex-1 items-center gap-3">
+          {row}
         </Link>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-3">{row}</span>
       )}
       <button
         type="button"
         onClick={() => onDelete(item.id, item.title)}
         disabled={disabled}
-        className="text-muted-foreground/40 hover:text-destructive p-1.5 disabled:opacity-50"
+        className={cn(
+          'text-muted-foreground/40 hover:text-destructive shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-50',
+          // Hiện khi rê chuột hoặc khi bàn phím đi tới — không giấu khỏi người
+          // dùng bàn phím, vốn là cái bẫy quen thuộc của kiểu "hiện khi hover".
+          'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100'
+        )}
         aria-label={`Xoá ${item.title}`}
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -170,12 +208,21 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
     });
   }
 
-  function xoaChuong() {
+  /**
+   * Hỏi xác nhận NGOÀI `startTransition`, rồi mới mở transition cho lời gọi API.
+   *
+   * Gói `openConfirm` vào trong transition là khoá chết: React 19 coi cả hàm
+   * async là một action và chưa vẽ cập nhật bên trong cho tới khi action kết
+   * thúc — mà action lại đang chờ đúng cú bấm trong hộp thoại chưa được vẽ.
+   * Nút không phản hồi, không có lỗi nào để lần ra. Trang Chương của khoá học
+   * (ModuleList) vẫn luôn làm theo thứ tự này, đó là lý do nút xoá bên đó chạy.
+   */
+  async function xoaChuong() {
+    const ok = await openConfirm(
+      `Xoá chương “${mod.name}”? ${mod.items.length} hoạt động bên trong sẽ bị xoá theo — khác với thư mục câu hỏi, hoạt động không có chỗ nào khác để giữ lại. Các bản đã chép về khoá học vẫn còn nguyên.`
+    );
+    if (!ok) return;
     startTransition(async () => {
-      const ok = await openConfirm(
-        `Xoá chương “${mod.name}”? ${mod.items.length} hoạt động bên trong sẽ bị xoá theo — khác với thư mục câu hỏi, hoạt động không có chỗ nào khác để giữ lại. Các bản đã chép về khoá học vẫn còn nguyên.`
-      );
-      if (!ok) return;
       try {
         const res = await apiClient.delete<{ message?: string }>(`/modules/bank-modules/${mod.id}`);
         toast.success(res?.message || 'Đã xoá chương.');
@@ -186,15 +233,15 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
     });
   }
 
-  function xoaHoatDong(itemId: string, title: string) {
+  async function xoaHoatDong(itemId: string, title: string) {
+    // Bản mẫu trong kho xoá là mất hẳn: thùng rác chỉ nhận hoạt động của lớp
+    // (nó hiển thị kèm tên lớp và khôi phục về lớp). Nói rõ thay vì để giáo
+    // viên tưởng còn khôi phục lại được.
+    const ok = await openConfirm(
+      `Xoá “${title}” khỏi kho? Bản mẫu trong kho không đi qua thùng rác — xoá là mất hẳn. Các bản đã chép về khoá học vẫn còn nguyên.`
+    );
+    if (!ok) return;
     startTransition(async () => {
-      // Bản mẫu trong kho xoá là mất hẳn: thùng rác chỉ nhận hoạt động của lớp
-      // (nó hiển thị kèm tên lớp và khôi phục về lớp). Nói rõ thay vì để giáo
-      // viên tưởng còn khôi phục lại được.
-      const ok = await openConfirm(
-        `Xoá “${title}” khỏi kho? Bản mẫu trong kho không đi qua thùng rác — xoá là mất hẳn. Các bản đã chép về khoá học vẫn còn nguyên.`
-      );
-      if (!ok) return;
       try {
         await apiClient.delete(`/modules/bank-items/${itemId}`);
         toast.success('Đã xoá hoạt động khỏi kho.');
@@ -227,7 +274,7 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
   }
 
   return (
-    <section className="space-y-2">
+    <section className="group/mod space-y-2">
       {confirmDialog}
       {importing && (
         <BankImportDialog
@@ -270,11 +317,13 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
         ) : (
           <>
             <h2 className="text-sm font-semibold">{mod.name}</h2>
-            <span className="text-muted-foreground text-xs">{mod.items.length} hoạt động</span>
+            <span className="text-muted-foreground/70 font-mono text-[11px]">
+              {mod.items.length} hoạt động
+            </span>
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="text-muted-foreground/40 hover:text-foreground"
+              className="text-muted-foreground/40 hover:text-foreground opacity-0 transition-opacity group-hover/mod:opacity-100 focus-visible:opacity-100"
               aria-label="Đổi tên chương"
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -283,7 +332,7 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
               type="button"
               onClick={xoaChuong}
               disabled={pending}
-              className="text-muted-foreground/40 hover:text-destructive disabled:opacity-50"
+              className="text-muted-foreground/40 hover:text-destructive opacity-0 transition-opacity group-hover/mod:opacity-100 focus-visible:opacity-100 disabled:opacity-50"
               aria-label="Xoá chương"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -291,47 +340,58 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
           </>
         )}
 
-        <div className="ml-auto flex flex-wrap items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setImporting(true)}
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}
-          >
-            <Copy className="mr-1 h-3.5 w-3.5" />
-            Chép từ lớp
-          </button>
-          <Link
-            href={`${bankContentHref(categoryId)}/lessons/new?module=${mod.id}`}
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Bài giảng
-          </Link>
-          {QUICK_TYPES.map((t) => (
-            <button
-              key={t.type}
-              type="button"
-              onClick={() => {
-                setAddingType(addingType === t.type ? null : t.type);
-                setNewTitle('');
-              }}
-              className={cn(
-                buttonVariants({ variant: 'ghost', size: 'sm' }),
-                'text-xs',
-                addingType === t.type && 'bg-muted'
-              )}
+        {/* Sáu nút "Thêm ..." xếp thành một hàng làm tiêu đề chương đọc như thanh
+            công cụ chứ không như một tiêu đề. Gom vào một menu: hành động chính
+            còn đúng một cái, và danh sách loại có chỗ để ghi rõ từng loại là gì. */}
+        <div className="ml-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'text-xs')}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
-              {t.label}
-            </button>
-          ))}
-          <Link
-            href={`${bankContentHref(categoryId)}/practice-tests/new?module=${mod.id}`}
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Đề luyện tập
-          </Link>
+              Thêm hoạt động
+              <ChevronDown className="ml-1 h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel>Soạn mới trong kho</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() =>
+                  router.push(`${bankContentHref(categoryId)}/lessons/new?module=${mod.id}`)
+                }
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                Bài giảng
+              </DropdownMenuItem>
+              {QUICK_TYPES.map((t) => {
+                const Icon = ITEM_ICON[t.type] ?? BookOpen;
+                return (
+                  <DropdownMenuItem
+                    key={t.type}
+                    onClick={() => {
+                      setAddingType(t.type);
+                      setNewTitle('');
+                    }}
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    {t.label}
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuItem
+                onClick={() =>
+                  router.push(`${bankContentHref(categoryId)}/practice-tests/new?module=${mod.id}`)
+                }
+              >
+                <FileQuestion className="mr-2 h-4 w-4" />
+                Đề luyện tập
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setImporting(true)}>
+                <Copy className="mr-2 h-4 w-4" />
+                Chép từ lớp có sẵn
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -383,8 +443,8 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
       )}
 
       {mod.items.length === 0 ? (
-        <p className="border-border text-muted-foreground rounded-lg border border-dashed px-4 py-4 text-xs">
-          Chương trống.
+        <p className="border-border text-muted-foreground rounded-xl border border-dashed px-4 py-5 text-xs">
+          Chương trống. Dùng “Thêm hoạt động” để soạn mục đầu tiên.
         </p>
       ) : (
         <ul className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
@@ -430,12 +490,21 @@ export function CategoryContentBankManager({ data }: { data: CategoryContentBank
 
   return (
     <div className="space-y-8">
-      <div className="border-border bg-muted/20 flex flex-wrap items-center gap-3 rounded-xl border p-4">
-        <p className="text-muted-foreground min-w-0 flex-1 text-sm">
-          {data.modules.length} chương · {tongHoatDong} hoạt động. Mọi khoá học thuộc nhánh{' '}
-          <span className="text-foreground font-medium">{data.categoryPath}</span> đều thấy kho này
-          ở trang “Ngân hàng nội dung” và chép về được.
-        </p>
+      {/* Thanh phạm vi: nhắc kho này phủ tới đâu. Đặt đường dẫn bằng mono và cho
+          nó một thanh dọc như ở trang danh sách, để hai màn hình nói cùng một
+          thứ tiếng về "nội dung nằm ở tầng nào". */}
+      <div className="border-border bg-muted/20 relative flex flex-wrap items-center gap-3 rounded-xl border p-4">
+        <span
+          aria-hidden
+          className="bg-primary/60 absolute top-4 bottom-4 left-0 w-0.5 rounded-full"
+        />
+        <div className="min-w-0 flex-1 pl-1">
+          <p className="truncate font-mono text-[11px] tracking-tight">{data.categoryPath}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {data.modules.length} chương · {tongHoatDong} hoạt động — mọi lớp trong nhánh này đều
+            chép về được.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setAdding((v) => !v)}

@@ -143,12 +143,18 @@ function FolderBlock({
     });
   }
 
-  function xoa() {
+  /**
+   * Hỏi xác nhận NGOÀI `startTransition` — gói vào trong là khoá chết: React 19
+   * chưa vẽ cập nhật bên trong một action async cho tới khi action kết thúc, mà
+   * action lại đang chờ cú bấm trong hộp thoại chưa được vẽ. Nút im lặng không
+   * phản hồi, không có lỗi nào để lần ra.
+   */
+  async function xoa() {
+    const ok = await openConfirm(
+      `Xoá thư mục “${folder.name}”? ${folder.questions.length} câu hỏi bên trong sẽ chuyển về nhóm chưa xếp thư mục, không bị xoá.`
+    );
+    if (!ok) return;
     startTransition(async () => {
-      const ok = await openConfirm(
-        `Xoá thư mục “${folder.name}”? ${folder.questions.length} câu hỏi bên trong sẽ chuyển về nhóm chưa xếp thư mục, không bị xoá.`
-      );
-      if (!ok) return;
       try {
         const res = await apiClient.delete<{ message?: string }>(
           `/questions/bank-folders/${folder.id}`
