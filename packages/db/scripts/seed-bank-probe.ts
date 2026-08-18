@@ -256,6 +256,76 @@ async function main() {
     });
   }
 
+  // Quiz của lớp: học sinh đầu đã nộp, học sinh sau CHƯA làm — để kiểm màn hình
+  // bài làm có nêu được nhóm chưa làm hay không.
+  const quiz = await prisma.quiz.upsert({
+    where: { id: 'probe-course-quiz' },
+    update: {},
+    create: {
+      id: 'probe-course-quiz',
+      courseId: course.id,
+      title: 'Quiz chấm thử',
+      status: 'PUBLISHED',
+      createdBy: admin.id,
+    },
+  });
+
+  const cauHoi = await prisma.question.upsert({
+    where: { id: 'probe-course-q1' },
+    update: {},
+    create: {
+      id: 'probe-course-q1',
+      courseId: course.id,
+      type: 'MULTIPLE_CHOICE_SINGLE',
+      content: 'Câu 1?',
+      points: 10,
+      createdBy: admin.id,
+      options: {
+        create: [
+          { content: 'A', isCorrect: true, position: 0 },
+          { content: 'B', isCorrect: false, position: 1 },
+        ],
+      },
+    },
+  });
+
+  await prisma.quizQuestion.upsert({
+    where: { quizId_questionId: { quizId: quiz.id, questionId: cauHoi.id } },
+    update: {},
+    create: { quizId: quiz.id, questionId: cauHoi.id, position: 0, points: 10 },
+  });
+
+  await prisma.moduleItem.upsert({
+    where: { id: 'probe-course-item-quiz' },
+    update: {},
+    create: {
+      id: 'probe-course-item-quiz',
+      moduleId: COURSE_MODULE_ID,
+      type: 'QUIZ',
+      position: 1,
+      title: quiz.title,
+      quizId: quiz.id,
+      isPublished: true,
+    },
+  });
+
+  if (hocSinh[0]) {
+    await prisma.quizAttempt.upsert({
+      where: { id: 'probe-attempt-1' },
+      update: {},
+      create: {
+        id: 'probe-attempt-1',
+        quizId: quiz.id,
+        studentId: hocSinh[0].id,
+        status: 'GRADED',
+        startedAt: new Date(Date.now() - 600_000),
+        submittedAt: new Date(),
+        score: 8,
+        maxScore: 10,
+      },
+    });
+  }
+
   console.log(`✅ Kho thử sẵn sàng: /question-banks/${CATEGORY_ID}/content`);
   console.log('✅ Cây kiểm phạm vi sẵn sàng: /courses/tin-10e1/modules/bank');
   console.log(`✅ Lớp thử sẵn sàng: /courses/lop-thu-10e1  (${hocSinh.length} học sinh đã nộp)`);

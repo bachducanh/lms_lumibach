@@ -8,6 +8,7 @@ import type {
   QuizDetail,
   AttemptDetailRow,
   QuizQuestionBrief,
+  CourseMembersResponse,
 } from '@lumibach/types';
 import { hasMinRole } from '@/lib/permissions';
 import { AttemptsTable } from '@/components/features/quiz/AttemptsTable';
@@ -33,10 +34,27 @@ export default async function AttemptsPage({
   const quiz = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
   if (!quiz) notFound();
 
-  const { attempts, questions } = await api.get<{
-    attempts: AttemptDetailRow[];
-    questions: QuizQuestionBrief[];
-  }>('/attempts/detailed', { query: { quizId } });
+  const [{ attempts, questions }, membersData] = await Promise.all([
+    api.get<{ attempts: AttemptDetailRow[]; questions: QuizQuestionBrief[] }>(
+      '/attempts/detailed',
+      {
+        query: { quizId },
+      }
+    ),
+    // Cả lớp, để còn biết ai CHƯA làm — thứ mà bảng lượt làm không bao giờ nói
+    // ra được, vì học sinh chưa làm thì không có dòng nào.
+    api
+      .get<CourseMembersResponse>(`/courses/${course.id}/members`)
+      .catch(() => ({ enrollments: [], tas: [], coTeachers: [] }) as CourseMembersResponse),
+  ]);
+
+  const hocSinh = membersData.enrollments
+    .filter((e) => e.status === 'ACTIVE')
+    .map((e) => e.user)
+    .sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? '', 'vi'));
+
+  const daCoLuot = new Set(attempts.map((a) => a.student?.id).filter(Boolean) as string[]);
+  const chuaLam = hocSinh.filter((u) => !daCoLuot.has(u.id));
 
   const submitted = attempts.filter((a) => a.status !== 'IN_PROGRESS');
   const graded = attempts.filter((a) => a.status === 'GRADED');
@@ -71,6 +89,14 @@ export default async function AttemptsPage({
             <span>{attempts.length} lượt làm</span>
             <span>·</span>
             <span>{submitted.length} đã nộp</span>
+            {hocSinh.length > 0 && (
+              <>
+                <span>·</span>
+                <span className={chuaLam.length > 0 ? 'text-amber-600 dark:text-amber-400' : ''}>
+                  {chuaLam.length} chưa làm
+                </span>
+              </>
+            )}
             {avgScore != null && maxScore != null && (
               <>
                 <span>·</span>
@@ -89,6 +115,7 @@ export default async function AttemptsPage({
       {/* Table */}
       <AttemptsTable
         attempts={attempts}
+        chuaLam={chuaLam}
         questions={questions}
         quizId={quizId}
         quizTitle={quiz.title}

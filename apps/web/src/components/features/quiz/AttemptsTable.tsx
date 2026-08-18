@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Trash2,
   Download,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -116,8 +117,27 @@ async function exportExcel(
 type SortKey = 'startedAt' | 'submittedAt' | 'duration' | 'score';
 type SortDir = 'asc' | 'desc';
 
+/** Học sinh của lớp chưa có lượt làm nào. */
+export type HocSinhChuaLam = {
+  id: string;
+  fullName: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+function tenHocSinh(u: { fullName: string | null; firstName: string; lastName: string }): string {
+  return (u.fullName ?? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()) || 'Học sinh';
+}
+
+function tenCua(a: AttemptDetailRow): string {
+  return a.student ? tenHocSinh(a.student) : 'Học sinh';
+}
+
 type Props = {
   attempts: AttemptDetailRow[];
+  /** Cả lớp trừ những em đã có lượt làm — nguồn của các dòng "Chưa làm". */
+  chuaLam: HocSinhChuaLam[];
   questions: QuizQuestionBrief[];
   quizId: string;
   quizTitle: string;
@@ -126,12 +146,21 @@ type Props = {
 
 // ── Component ─────────────────────────────────────────────────
 
-export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSlug }: Props) {
+export function AttemptsTable({
+  attempts,
+  chuaLam,
+  questions,
+  quizId,
+  quizTitle,
+  courseSlug,
+}: Props) {
   const router = useRouter();
   const [deletePending, startDelete] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [loc, setLoc] = useState<'tat-ca' | 'da-nop' | 'dang-lam' | 'chua-lam'>('tat-ca');
+  const [tuKhoa, setTuKhoa] = useState('');
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -162,8 +191,29 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
     });
   }, [attempts, sortKey, sortDir]);
 
+  const khop = (ten: string, email: string) => {
+    const t = tuKhoa.trim().toLowerCase();
+    return !t || ten.toLowerCase().includes(t) || email.toLowerCase().includes(t);
+  };
+
+  /** Lượt làm sau khi lọc. Bộ lọc "chưa làm" thì không còn lượt nào để hiện. */
+  const hienThi = useMemo(() => {
+    if (loc === 'chua-lam') return [];
+    return sorted.filter((a) => {
+      if (loc === 'da-nop' && a.status === 'IN_PROGRESS') return false;
+      if (loc === 'dang-lam' && a.status !== 'IN_PROGRESS') return false;
+      return khop(tenCua(a), a.student?.email ?? '');
+    });
+  }, [sorted, loc, tuKhoa]);
+
+  /** Học sinh chưa làm, sau khi lọc. Ẩn khi đang xem riêng nhóm đã nộp/đang làm. */
+  const chuaLamHienThi = useMemo(() => {
+    if (loc === 'da-nop' || loc === 'dang-lam') return [];
+    return chuaLam.filter((u) => khop(tenHocSinh(u), u.email));
+  }, [chuaLam, loc, tuKhoa]);
+
   function toggleSelectAll() {
-    setSelected(selected.size === sorted.length ? new Set() : new Set(sorted.map((a) => a.id)));
+    setSelected(selected.size === hienThi.length ? new Set() : new Set(hienThi.map((a) => a.id)));
   }
 
   function toggleSelect(id: string) {
@@ -216,7 +266,7 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
     );
   }
 
-  const allSelected = sorted.length > 0 && selected.size === sorted.length;
+  const allSelected = hienThi.length > 0 && selected.size === hienThi.length;
   const selectedCount = selected.size;
 
   return (
@@ -241,11 +291,53 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
           )}
         </div>
 
+        {/* Bộ lọc — trạng thái + tìm theo tên/email */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="border-border bg-card flex items-center rounded-lg border p-0.5">
+            {(
+              [
+                ['tat-ca', `Tất cả (${attempts.length + chuaLam.length})`],
+                ['da-nop', 'Đã nộp'],
+                ['dang-lam', 'Đang làm'],
+                ['chua-lam', `Chưa làm (${chuaLam.length})`],
+              ] as const
+            ).map(([gt, nhan]) => (
+              <button
+                key={gt}
+                type="button"
+                onClick={() => {
+                  setLoc(gt);
+                  setSelected(new Set());
+                }}
+                className={cn(
+                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                  loc === gt
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {nhan}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <Search className="text-muted-foreground/50 absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
+            <input
+              value={tuKhoa}
+              onChange={(e) => setTuKhoa(e.target.value)}
+              placeholder="Tìm tên hoặc email…"
+              aria-label="Tìm học sinh"
+              className="border-border bg-card h-8 w-52 rounded-lg border pl-8 text-xs"
+            />
+          </div>
+        </div>
+
         {/* Right: export */}
         <button
           type="button"
           onClick={() => {
-            void exportExcel(sorted, questions, quizTitle).catch((error) => {
+            void exportExcel(hienThi, questions, quizTitle).catch((error) => {
               toast.error(error instanceof Error ? error.message : 'Không thể xuất Excel.');
             });
           }}
@@ -297,7 +389,7 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
           </thead>
 
           <tbody className="divide-border divide-y">
-            {sorted.map((a) => {
+            {hienThi.map((a) => {
               const name =
                 (a.student?.fullName ??
                   `${a.student?.firstName ?? ''} ${a.student?.lastName ?? ''}`.trim()) ||
@@ -384,12 +476,38 @@ export function AttemptsTable({ attempts, questions, quizId, quizTitle, courseSl
                 </tr>
               );
             })}
+
+            {/*
+             * Học sinh chưa có lượt làm nào. Bảng lượt làm không thể tự nói ra
+             * nhóm này — chưa làm thì không có dòng nào — mà đó lại đúng là nhóm
+             * giáo viên cần nhắc. Không có ô chọn: không có bài nào để xoá.
+             */}
+            {chuaLamHienThi.map((u) => (
+              <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+                <td className="px-3 py-3" />
+                <td className="px-3 py-3">
+                  <p className="text-muted-foreground leading-snug font-medium">{tenHocSinh(u)}</p>
+                </td>
+                <td className="text-muted-foreground px-3 py-3 text-xs">{u.email}</td>
+                <td className="px-3 py-3">
+                  <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    Chưa làm
+                  </span>
+                </td>
+                <td
+                  colSpan={4 + questions.length}
+                  className="text-muted-foreground/40 px-3 py-3 text-xs"
+                >
+                  —
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
 
-        {sorted.length === 0 && (
+        {hienThi.length === 0 && chuaLamHienThi.length === 0 && (
           <div className="text-muted-foreground py-16 text-center text-sm">
-            Chưa có bài làm nào.
+            {tuKhoa.trim() ? 'Không có học sinh nào khớp từ khoá.' : 'Chưa có bài làm nào.'}
           </div>
         )}
       </div>
