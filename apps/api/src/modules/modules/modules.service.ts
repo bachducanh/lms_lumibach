@@ -190,6 +190,21 @@ export class ModulesService {
     return { id: item.id };
   }
 
+  /**
+   * Bật/tắt hiển thị một hoạt động với học sinh.
+   *
+   * Bật thì phải mở KHÓA CẢ HAI TẦNG. Trước đây hàm này chỉ lật cờ trên
+   * ModuleItem, trong khi mọi trang chi tiết còn chặn thêm theo `status` của
+   * chính nội dung — nên một hoạt động đang DRAFT mà được bật hiện sẽ nằm trong
+   * danh sách của học sinh nhưng bấm vào thì 404. Hay gặp nhất với bản chép từ
+   * ngân hàng: `ContentBankService.copy` cố ý tạo bản sao ở trạng thái nháp.
+   *
+   * Chỉ nâng DRAFT lên PUBLISHED, không đụng CLOSED: đóng bài là quyết định
+   * riêng của giáo viên, bật hiện lại không có nghĩa là mở cho nộp tiếp.
+   *
+   * Tắt thì KHÔNG hạ `status` xuống: ẩn khỏi chương đã đủ giấu, còn hạ trạng
+   * thái sẽ ảnh hưởng cả tab riêng của hoạt động và các mốc thời gian đã đăng.
+   */
   async toggleModuleItemPublish(actor: AuthUser, itemId: string): Promise<void> {
     const item = await this.prisma.moduleItem.findUnique({
       where: { id: itemId },
@@ -198,11 +213,69 @@ export class ModulesService {
     if (!item) throw new NotFoundException('Không tìm thấy');
     await this.assertCanManage(item.module.courseId, actor);
 
-    await this.prisma.moduleItem.update({
-      where: { id: itemId },
-      data: { isPublished: !item.isPublished },
-    });
+    const publishing = !item.isPublished;
+    const now = new Date();
+
+    await this.prisma.$transaction([
+      this.prisma.moduleItem.update({
+        where: { id: itemId },
+        data: { isPublished: publishing },
+      }),
+      ...(publishing ? this.publishLinkedContent(item, now) : []),
+    ]);
     await this.invalidate(item.module.courseId);
+  }
+
+  /**
+   * Đưa nội dung gắn với một ModuleItem từ DRAFT lên PUBLISHED.
+   *
+   * Bài giảng và diễn đàn không có cột `status` — chúng chỉ hiện/ẩn theo
+   * ModuleItem, nên không có gì để làm.
+   */
+  private publishLinkedContent(
+    item: {
+      assignmentId: string | null;
+      quizId: string | null;
+      codeExerciseId: string | null;
+      practiceTestId: string | null;
+    },
+    now: Date
+  ) {
+    const ops = [];
+    if (item.assignmentId) {
+      ops.push(
+        this.prisma.assignment.updateMany({
+          where: { id: item.assignmentId, status: 'DRAFT' },
+          data: { status: 'PUBLISHED', publishedAt: now },
+        })
+      );
+    }
+    if (item.quizId) {
+      ops.push(
+        this.prisma.quiz.updateMany({
+          where: { id: item.quizId, status: 'DRAFT' },
+          data: { status: 'PUBLISHED', publishedAt: now },
+        })
+      );
+    }
+    if (item.practiceTestId) {
+      ops.push(
+        this.prisma.practiceTest.updateMany({
+          where: { id: item.practiceTestId, status: 'DRAFT' },
+          data: { status: 'PUBLISHED', publishedAt: now },
+        })
+      );
+    }
+    if (item.codeExerciseId) {
+      // CodeExercise không có cột publishedAt.
+      ops.push(
+        this.prisma.codeExercise.updateMany({
+          where: { id: item.codeExerciseId, status: 'DRAFT' },
+          data: { status: 'PUBLISHED' },
+        })
+      );
+    }
+    return ops;
   }
 
   async deleteModuleItem(actor: AuthUser, itemId: string): Promise<void> {

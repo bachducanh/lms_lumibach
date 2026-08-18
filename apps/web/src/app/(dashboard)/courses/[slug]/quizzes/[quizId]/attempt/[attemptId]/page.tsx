@@ -407,6 +407,7 @@ export default async function AttemptPage({
                     )}
                     {canManage && ans && (
                       <EssayGrader
+                        key={ans.id}
                         answerId={ans.id}
                         maxPoints={q.points}
                         initialScore={ans.score}
@@ -489,6 +490,7 @@ export default async function AttemptPage({
                     )}
                     {canManage && ans && (
                       <EssayGrader
+                        key={ans.id}
                         answerId={ans.id}
                         maxPoints={q.points}
                         initialScore={ans.score}

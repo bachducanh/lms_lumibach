@@ -426,7 +426,10 @@ function SubmissionDialog({
             )}
 
             {/* Free-form grade — always shown so teachers can override or write feedback */}
+            {/* key theo bài nộp: GradeForm khởi tạo state từ prop đúng một lần,
+                không có key thì đổi sang bài khác vẫn thấy điểm của bài trước. */}
             <GradeForm
+              key={detail.id}
               submissionId={detail.id}
               initial={{
                 score: detail.score?.toString() ?? '',

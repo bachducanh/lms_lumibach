@@ -519,6 +519,24 @@ export function RichTextEditor({
     },
   });
 
+  /**
+   * Chế độ CHỈ ĐỌC phải bám theo prop `content`.
+   *
+   * `useEditor` chỉ nạp `content` lúc dựng. Ở những màn hình mà nội dung đổi
+   * mà component KHÔNG bị tháo ra dựng lại — điển hình là trang chấm bài, bấm
+   * từ bài bạn này sang bạn khác chỉ đổi query param — editor giữ nguyên bài
+   * của người trước. Tên thì đổi vì đó là text server render, còn phần bài làm
+   * thì không, nên nhìn như "hiện nhầm bài".
+   *
+   * Chỉ đồng bộ khi `!editable`: với trình soạn thật, ghi đè nội dung theo prop
+   * sẽ giẫm lên đúng thứ người dùng đang gõ dở.
+   */
+  useEffect(() => {
+    if (!editor || editable) return;
+    if (editor.getHTML() === content) return;
+    editor.commands.setContent(content, { emitUpdate: false });
+  }, [editor, editable, content]);
+
   if (!editor) return null;
 
   // Capture narrowed editor for use inside function declaration bodies

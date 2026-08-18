@@ -178,7 +178,16 @@ export default async function SubmissionsPage({
             <p>Học sinh chưa nộp bài</p>
           </div>
         ) : (
-          <div className="max-w-3xl space-y-6">
+          /*
+           * `key` theo id bài nộp là bắt buộc, không phải để tối ưu.
+           *
+           * Đổi học sinh chỉ đổi query param nên React giữ nguyên các instance
+           * bên dưới, mà GradeForm và RubricGrader đều khởi tạo state từ prop
+           * đúng một lần. Không có key thì mở bài bạn B vẫn thấy điểm và nhận
+           * xét của bạn A đang nằm sẵn trong ô — bấm Lưu là ghi nhầm điểm sang
+           * người khác. Có key, React tháo cả khung ra dựng lại theo đúng bài.
+           */
+          <div key={selectedSub.id} className="max-w-3xl space-y-6">
             {/* Submission meta */}
             <div className="flex items-center justify-between">
               <div className="space-y-1.5">
