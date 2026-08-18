@@ -40,11 +40,20 @@ async function laTrang404(page: Page) {
 }
 
 test('hoạt động chép từ kho, sau khi bật hiện, học sinh mở được', async ({ page, browser }) => {
+  test.slow();
   await dangNhap(page, TEACHER);
 
   // Chép một hoạt động của kho về chương của lớp.
   await page.goto(`/courses/${COURSE}/modules/bank`);
   // Chương đích mặc định đã là 'Chương 1', không cần đổi.
+  // Ngân hàng gom hoạt động theo chương và đóng sẵn — phải mở ra mới thấy nút chép.
+  // Lọc theo nội dung, KHÔNG dùng .first() trên mọi nút đóng: overlay dev-tools
+  // của Next cũng là một nút aria-expanded=false và nằm trước trong cây.
+  await page
+    .getByRole('button', { expanded: false })
+    .filter({ hasText: 'Kho chung' })
+    .first()
+    .click();
   const nutChep = page.getByRole('button', { name: /Chép về chương/ }).first();
   await expect(nutChep, 'kho phải có ít nhất một hoạt động để chép').toBeVisible({
     timeout: 15_000,

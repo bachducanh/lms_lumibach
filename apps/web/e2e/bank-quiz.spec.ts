@@ -34,6 +34,9 @@ async function moQuizMoi(page: Page): Promise<string> {
 }
 
 test('tạo quiz trong kho rồi thêm câu hỏi cho nó', async ({ page }) => {
+  // Bài này đi qua ba route chưa được biên dịch; trần 30 giây mặc định của
+  // Playwright là quá chặt với dev server.
+  test.slow();
   const loi: string[] = [];
   page.on('pageerror', (e) => loi.push(e.message));
 

@@ -11,6 +11,7 @@ import type {
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
+import { visibleBankCategoryIds } from '../../common/bank/visible-categories';
 import { assertCourseScoped } from '../../common/bank/course-scoped';
 import { CategoriesService } from '../categories/categories.service';
 import { StorageService } from '../../common/storage/storage.service';
@@ -40,14 +41,9 @@ export class ContentBankService {
 
   /** Danh mục khoá học mà một khoá được phép lấy nội dung từ đó. */
   private async visibleCategoryIds(courseCategoryId: string): Promise<string[]> {
-    const [breadcrumb, descendants] = await Promise.all([
-      this.categories.buildBreadcrumb(courseCategoryId),
-      this.categories.getDescendantIds(courseCategoryId),
-    ]);
-    const ancestorSubtrees = await Promise.all(
-      breadcrumb.map((node) => this.categories.getDescendantIds(node.id))
+    return visibleBankCategoryIds(this.prisma, courseCategoryId, (id) =>
+      this.categories.getDescendantIds(id)
     );
-    return [...new Set([...descendants, ...ancestorSubtrees.flat()])];
   }
 
   private async assertCanManage(user: AuthUser, courseId: string): Promise<void> {

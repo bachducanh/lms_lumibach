@@ -19,6 +19,9 @@ import {
   Loader2,
   MessagesSquare,
   Search,
+  ChevronDown,
+  ChevronRight,
+  FolderOpen,
 } from 'lucide-react';
 import type { ContentBankResult, ModuleWithItems } from '@lumibach/types';
 
@@ -31,6 +34,35 @@ const TYPE_META: Record<string, { label: string; icon: typeof BookOpen; color: s
   FORUM: { label: 'Diễn đàn', icon: MessagesSquare, color: 'text-sky-500' },
   EXTERNAL_URL: { label: 'Link ngoài', icon: Link2, color: 'text-amber-500' },
 };
+
+type NhomChuong = {
+  key: string;
+  tenChuong: string;
+  /** Kho của danh mục, hoặc tên lớp đang chia sẻ — để biết bài đến từ đâu. */
+  nguon: string;
+  items: ContentBankResult['items'];
+};
+
+/**
+ * Gom hoạt động theo (nguồn, chương), giữ nguyên thứ tự API trả về.
+ *
+ * Khoá nhóm phải gồm cả nguồn: hai lớp khác nhau đều có chương tên "Chủ đề A",
+ * gom theo mỗi tên chương sẽ trộn bài của hai lớp vào một chỗ.
+ */
+function nhomTheoChuong(items: ContentBankResult['items']): NhomChuong[] {
+  const map = new Map<string, NhomChuong>();
+  for (const item of items) {
+    const nguon =
+      item.sourceKind === 'BANK'
+        ? `Kho chung · ${item.sourceCategoryPath}`
+        : `${item.sourceCourseName ?? 'Khoá học'} · ${item.sourceCategoryPath}`;
+    const key = `${nguon}||${item.sourceModuleName}`;
+    const nhom = map.get(key) ?? { key, tenChuong: item.sourceModuleName, nguon, items: [] };
+    nhom.items.push(item);
+    map.set(key, nhom);
+  }
+  return [...map.values()];
+}
 
 /**
  * Duyệt ngân hàng nội dung của danh mục và nhân bản hoạt động về một chương.
@@ -53,6 +85,9 @@ export function ContentBankBrowser({
   const [search, setSearch] = useState('');
   const [targetModuleId, setTargetModuleId] = useState(modules[0]?.id ?? '');
   const [copiedIds, setCopiedIds] = useState<Set<string>>(new Set());
+  // Chương nào đang đổ xuống. Mặc định đóng hết: kho của cả một nhánh danh mục
+  // dài hàng trăm dòng, đổ sẵn thì giáo viên phải cuộn mãi mới thấy chương cần.
+  const [moChuong, setMoChuong] = useState<Set<string>>(new Set());
   const [copyingId, setCopyingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -177,49 +212,98 @@ export function ContentBankBrowser({
           <p className="text-muted-foreground text-xs">
             {data.items.length} hoạt động từ {data.sourceCourseCount} khoá học cùng nhánh danh mục.
           </p>
-          <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
-            {data.items.map((item) => {
-              const meta = TYPE_META[item.type] ?? {
-                label: item.type,
-                icon: Library,
-                color: 'text-muted-foreground',
-              };
-              const Icon = meta.icon;
-              const copied = copiedIds.has(item.moduleItemId);
+
+          {/*
+           * Gom theo NGUỒN rồi tới CHƯƠNG. Danh sách phẳng khiến giáo viên phải
+           * đọc từng dòng phụ đề mới biết bài nào thuộc chương nào; gom lại thì
+           * cấu trúc bài giảng của nguồn hiện ra ngay, và mở đúng chương cần.
+           */}
+          <div className="space-y-2">
+            {nhomTheoChuong(data.items).map((nhom) => {
+              const dangMo = moChuong.has(nhom.key);
               return (
                 <div
-                  key={item.moduleItemId}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3"
+                  key={nhom.key}
+                  className="border-border bg-card overflow-hidden rounded-xl border"
                 >
-                  <div className="bg-muted/50 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
-                    <Icon className={`h-4 w-4 ${meta.color}`} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-semibold">{item.title}</p>
-                      <Badge variant="secondary" className="shrink-0 text-xs">
-                        {meta.label}
-                      </Badge>
-                      {item.detail && (
-                        <span className="text-muted-foreground text-xs">{item.detail}</span>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground mt-0.5 text-xs">
-                      {item.sourceCourseName} · {item.sourceModuleName} · {item.sourceCategoryPath}
-                    </p>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    variant={copied ? 'ghost' : 'outline'}
-                    disabled={pending && copyingId === item.moduleItemId}
-                    onClick={() => handleCopy(item.moduleItemId)}
-                    className="shrink-0"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMoChuong((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(nhom.key)) next.delete(nhom.key);
+                        else next.add(nhom.key);
+                        return next;
+                      })
+                    }
+                    aria-expanded={dangMo}
+                    className="hover:bg-muted/40 flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
                   >
-                    <Copy className="mr-1.5 h-3.5 w-3.5" />
-                    {copied ? 'Chép lần nữa' : 'Chép về chương'}
-                  </Button>
+                    {dangMo ? (
+                      <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+                    )}
+                    <FolderOpen className="text-muted-foreground/60 h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{nhom.tenChuong}</span>
+                      <span className="text-muted-foreground block truncate font-mono text-[11px]">
+                        {nhom.nguon}
+                      </span>
+                    </span>
+                    <Badge variant="secondary" className="shrink-0 text-xs">
+                      {nhom.items.length}
+                    </Badge>
+                  </button>
+
+                  {dangMo && (
+                    <div className="divide-border border-border divide-y border-t">
+                      {nhom.items.map((item) => {
+                        const meta = TYPE_META[item.type] ?? {
+                          label: item.type,
+                          icon: Library,
+                          color: 'text-muted-foreground',
+                        };
+                        const Icon = meta.icon;
+                        const copied = copiedIds.has(item.moduleItemId);
+                        return (
+                          <div
+                            key={item.moduleItemId}
+                            className="flex flex-wrap items-center gap-3 py-3 pr-4 pl-11"
+                          >
+                            <div className="bg-muted/50 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+                              <Icon className={`h-4 w-4 ${meta.color}`} />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-semibold">{item.title}</p>
+                                <Badge variant="secondary" className="shrink-0 text-xs">
+                                  {meta.label}
+                                </Badge>
+                                {item.detail && (
+                                  <span className="text-muted-foreground text-xs">
+                                    {item.detail}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              variant={copied ? 'ghost' : 'outline'}
+                              disabled={pending && copyingId === item.moduleItemId}
+                              onClick={() => handleCopy(item.moduleItemId)}
+                              className="shrink-0"
+                            >
+                              <Copy className="mr-1.5 h-3.5 w-3.5" />
+                              {copied ? 'Chép lần nữa' : 'Chép về chương'}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}

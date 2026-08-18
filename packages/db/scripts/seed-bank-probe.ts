@@ -177,7 +177,87 @@ async function main() {
     });
   }
 
+  // ── Cây danh mục để kiểm PHẠM VI của ngân hàng ────────────────
+  //   Trường
+  //     ├─ Khối 10 ── 10E1   (lớp đang xét)
+  //     └─ Khối 12 ── 12A5   (nhánh anh em — không được lọt vào tầm nhìn)
+  // Mỗi tầng có một kho riêng, tên kho trùng tên chương để nhận ra ngay trên
+  // giao diện là nội dung đến từ tầng nào.
+  const cay: [string, string, string | null][] = [
+    ['sc-truong', 'Trường', null],
+    ['sc-k10', 'Khối 10', 'sc-truong'],
+    ['sc-k12', 'Khối 12', 'sc-truong'],
+    ['sc-10e1', '10E1', 'sc-k10'],
+    ['sc-12a5', '12A5', 'sc-k12'],
+  ];
+  for (const [id, name, parentId] of cay) {
+    await prisma.courseCategory.upsert({
+      where: { id },
+      update: { parentId },
+      create: { id, name, slug: id, parentId },
+    });
+  }
+
+  const lopScope = await prisma.course.upsert({
+    where: { id: 'sc-course-10e1' },
+    update: { categoryId: 'sc-10e1' },
+    create: {
+      id: 'sc-course-10e1',
+      name: 'Tin 10E1',
+      slug: 'tin-10e1',
+      status: 'PUBLISHED',
+      categoryId: 'sc-10e1',
+      ownerId: admin.id,
+    },
+  });
+
+  // Phải có ít nhất một chương, nếu không trang ngân hàng chỉ hiện lời nhắc
+  // "chưa có chương nào để nhận nội dung" và không kiểm được gì.
+  await prisma.module.upsert({
+    where: { id: 'sc-course-mod' },
+    update: {},
+    create: {
+      id: 'sc-course-mod',
+      courseId: lopScope.id,
+      name: 'Chương 1',
+      position: 0,
+      isPublished: true,
+    },
+  });
+
+  for (const [id, bankCategoryId, ten] of [
+    ['sc-mod-truong', 'sc-truong', 'KHO-TRUONG'],
+    ['sc-mod-k10', 'sc-k10', 'KHO-KHOI-10'],
+    ['sc-mod-k12', 'sc-k12', 'KHO-KHOI-12'],
+    ['sc-mod-12a5', 'sc-12a5', 'KHO-12A5'],
+  ] as const) {
+    await prisma.module.upsert({
+      where: { id },
+      update: {},
+      create: { id, bankCategoryId, name: ten, position: 0, createdBy: admin.id },
+    });
+    const bai = await prisma.lesson.upsert({
+      where: { id: `${id}-lesson` },
+      update: {},
+      create: { id: `${id}-lesson`, title: ten, content: '<p>x</p>', createdBy: admin.id },
+    });
+    await prisma.moduleItem.upsert({
+      where: { id: `${id}-item` },
+      update: {},
+      create: {
+        id: `${id}-item`,
+        moduleId: id,
+        type: 'LESSON',
+        position: 0,
+        title: ten,
+        lessonId: bai.id,
+        isPublished: true,
+      },
+    });
+  }
+
   console.log(`✅ Kho thử sẵn sàng: /question-banks/${CATEGORY_ID}/content`);
+  console.log('✅ Cây kiểm phạm vi sẵn sàng: /courses/tin-10e1/modules/bank');
   console.log(`✅ Lớp thử sẵn sàng: /courses/lop-thu-10e1  (${hocSinh.length} học sinh đã nộp)`);
 }
 
