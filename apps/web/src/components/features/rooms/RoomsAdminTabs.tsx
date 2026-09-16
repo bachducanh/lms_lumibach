@@ -2,14 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, CalendarPlus, ClipboardCheck, DoorOpen, PackageCheck } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarPlus,
+  ClipboardCheck,
+  DoorOpen,
+  PackageCheck,
+  PackageSearch,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const tabs = [
   { href: '/admin/rooms', label: 'Quản lý phòng', icon: DoorOpen },
   { href: '/admin/rooms/bookings', label: 'Duyệt mượn phòng', icon: ClipboardCheck },
   { href: '/admin/rooms/equipment-bookings', label: 'Duyệt mượn thiết bị', icon: PackageCheck },
-  { href: '/admin/rooms/reports', label: 'Báo cáo', icon: BarChart3 },
+  { href: '/admin/rooms/reports', label: 'Báo cáo phòng', icon: BarChart3 },
+  { href: '/admin/rooms/reports/equipment', label: 'Báo cáo thiết bị', icon: PackageSearch },
 ] as const;
 
 export function RoomsAdminTabs() {

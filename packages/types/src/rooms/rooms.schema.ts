@@ -616,6 +616,109 @@ export type DiscrepancyReportRow = {
   }[];
 };
 
+// ── Báo cáo mượn thiết bị ──────────────────────────────────────
+// Tách khỏi báo cáo phòng vì đơn vị đếm khác nhau: một đơn mượn thiết bị chứa
+// NHIỀU dòng thiết bị, nên ngoài "số đơn" còn phải cộng cả "số lượng thiết bị".
+
+export const EquipmentReportGroupBySchema = z.enum(['equipment', 'room', 'department', 'month']);
+export type EquipmentReportGroupBy = z.infer<typeof EquipmentReportGroupBySchema>;
+
+export const EQUIPMENT_REPORT_GROUP_BY_LABEL: Record<EquipmentReportGroupBy, string> = {
+  equipment: 'Theo thiết bị',
+  room: 'Theo phòng quản lý',
+  department: 'Theo tổ chuyên môn',
+  month: 'Theo tháng',
+};
+
+export const EquipmentReportQuerySchema = z.object({
+  from: IsoDateTime,
+  to: IsoDateTime,
+  roomId: z.string().min(1).optional(),
+  groupBy: EquipmentReportGroupBySchema.optional().default('equipment'),
+});
+export type EquipmentReportQuery = z.infer<typeof EquipmentReportQuerySchema>;
+
+/** Báo cáo "đang mượn" là ảnh chụp TẠI THỜI ĐIỂM XEM nên không nhận from/to:
+ *  máy mượn từ nửa năm trước chưa trả mới là thứ cần thấy nhất. */
+export const OutstandingEquipmentQuerySchema = z.object({
+  roomId: z.string().min(1).optional(),
+});
+export type OutstandingEquipmentQuery = z.infer<typeof OutstandingEquipmentQuerySchema>;
+
+export type EquipmentUsageReportRow = {
+  key: string;
+  label: string;
+  /** Số ĐƠN thuộc nhóm này. */
+  bookingCount: number;
+  /** Tổng SỐ LƯỢNG thiết bị đã đăng ký mượn, cộng theo từng dòng thiết bị. */
+  itemQuantity: number;
+  /** Tổng số giờ đã đăng ký, làm tròn 2 chữ số thập phân. */
+  totalHours: number;
+  completedCount: number;
+  noShowCount: number;
+  cancelledCount: number;
+  rejectedCount: number;
+};
+
+export type EquipmentUsageReport = {
+  groupBy: EquipmentReportGroupBy;
+  from: string;
+  to: string;
+  rows: EquipmentUsageReportRow[];
+  /**
+   * Tổng của toàn khoảng. KHÔNG bằng tổng các dòng khi gom theo thiết bị: một
+   * đơn mượn hai loại thiết bị góp mặt ở hai dòng nhưng chỉ là MỘT đơn.
+   */
+  total: { bookingCount: number; itemQuantity: number; totalHours: number };
+};
+
+export type EquipmentNoShowReportRow = {
+  id: string;
+  roomName: string;
+  fullName: string;
+  staffCode: string | null;
+  department: string | null;
+  reason: string;
+  startAt: string;
+  endAt: string;
+  items: EquipmentBookingItemDto[];
+};
+
+/** Một đơn còn đang giữ thiết bị hoặc đã trả nhưng chưa được xác nhận. */
+export type OutstandingEquipmentRow = {
+  bookingId: string;
+  roomName: string;
+  fullName: string;
+  staffCode: string | null;
+  department: string | null;
+  startAt: string;
+  endAt: string;
+  status: RoomBookingStatusValue;
+  /** Số giờ đã quá hạn trả, 0 nếu vẫn còn trong khung giờ đăng ký. */
+  overdueHours: number;
+  items: EquipmentBookingItemDto[];
+};
+
+/** Tồn kho tại thời điểm xem: mỗi thiết bị đang có bao nhiêu cái ngoài kho. */
+export type EquipmentOnLoanRow = {
+  equipmentId: string;
+  equipmentName: string;
+  equipmentCode: string | null;
+  unit: string;
+  roomName: string;
+  totalQuantity: number;
+  /** Số lượng đang nằm trong các đơn chưa trả xong. */
+  onLoanQuantity: number;
+  /** Số lượng thuộc các đơn đã quá giờ trả. */
+  overdueQuantity: number;
+};
+
+export type OutstandingEquipmentReport = {
+  generatedAt: string;
+  bookings: OutstandingEquipmentRow[];
+  byEquipment: EquipmentOnLoanRow[];
+};
+
 export type BulkApproveResult = {
   approved: string[];
   failed: { id: string; reason: string }[];

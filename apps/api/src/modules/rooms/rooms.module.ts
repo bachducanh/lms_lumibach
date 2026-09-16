@@ -5,6 +5,8 @@ import { StorageModule } from '../../common/storage/storage.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EquipmentBookingsController } from './equipment-bookings.controller';
 import { EquipmentBookingsService } from './equipment-bookings.service';
+import { EquipmentReportsController } from './equipment-reports.controller';
+import { EquipmentReportsService } from './equipment-reports.service';
 import { HandoverPhotosController } from './handover-photos.controller';
 import { HandoverFieldsService } from './handover-fields.service';
 import { HandoverFieldsController, HandoversController } from './handovers.controller';
@@ -25,6 +27,7 @@ import { RoomsService } from './rooms.service';
     RoomsController,
     RoomBookingsController,
     EquipmentBookingsController,
+    EquipmentReportsController,
     HandoverFieldsController,
     HandoversController,
     HandoverPhotosController,
@@ -40,6 +43,7 @@ import { RoomsService } from './rooms.service';
     HandoversService,
     RoomJobsService,
     RoomReportsService,
+    EquipmentReportsService,
   ],
   exports: [
     RoomsService,

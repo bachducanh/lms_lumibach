@@ -13,7 +13,30 @@ import { soSanhBanGiao } from './handovers.service';
 import { HandoverFieldsService } from './handover-fields.service';
 
 /** Khoảng thời gian tối đa cho một lần chạy báo cáo. */
-const KHOANG_TOI_DA_NGAY = 400;
+export const KHOANG_TOI_DA_NGAY = 400;
+
+/**
+ * Đổi khoảng thời gian của tham số báo cáo sang `Date`, kèm hai chốt chặn dùng
+ * chung cho cả báo cáo phòng lẫn báo cáo thiết bị.
+ */
+export function doiKhoangBaoCao(query: { from: string; to: string }): { from: Date; to: Date } {
+  const from = new Date(query.from);
+  const to = new Date(query.to);
+
+  if (to.getTime() <= from.getTime()) {
+    throw new BadRequestException('Khoảng thời gian không hợp lệ.');
+  }
+  // Chặn khoảng quá rộng: báo cáo gom số liệu trong bộ nhớ nên một lần quét
+  // nhiều năm sẽ kéo cả bảng lên.
+  const soNgay = (to.getTime() - from.getTime()) / 86_400_000;
+  if (soNgay > KHOANG_TOI_DA_NGAY) {
+    throw new BadRequestException(
+      `Khoảng báo cáo tối đa ${KHOANG_TOI_DA_NGAY} ngày. Vui lòng chia nhỏ khoảng thời gian.`
+    );
+  }
+
+  return { from, to };
+}
 
 const BOOKING_SELECT = {
   id: true,
@@ -217,22 +240,7 @@ export class RoomReportsService {
   // ── Trợ giúp nội bộ ──────────────────────────────────────────
 
   private doiKhoang(query: RoomReportQuery): { from: Date; to: Date } {
-    const from = new Date(query.from);
-    const to = new Date(query.to);
-
-    if (to.getTime() <= from.getTime()) {
-      throw new BadRequestException('Khoảng thời gian không hợp lệ.');
-    }
-    // Chặn khoảng quá rộng: báo cáo gom số liệu trong bộ nhớ nên một lần quét
-    // nhiều năm sẽ kéo cả bảng lên.
-    const soNgay = (to.getTime() - from.getTime()) / 86_400_000;
-    if (soNgay > KHOANG_TOI_DA_NGAY) {
-      throw new BadRequestException(
-        `Khoảng báo cáo tối đa ${KHOANG_TOI_DA_NGAY} ngày. Vui lòng chia nhỏ khoảng thời gian.`
-      );
-    }
-
-    return { from, to };
+    return doiKhoangBaoCao(query);
   }
 
   private khoaNhom(
