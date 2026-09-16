@@ -219,6 +219,77 @@
   }
 }
 
+/* ── Thanh cuộn ─────────────────────────────────────────────
+   Thanh cuộn mặc định của Windows dày và xám bệch, nằm lạc hẳn trong giao diện
+   tối. Ở đây làm mảnh lại, bo tròn, và đổi màu theo chủ đề.
+
+   Cố ý KHÔNG giấu hẳn thanh cuộn. Trang quản lý có nhiều bảng cuộn ngang, và
+   người dùng cần nhìn ra là còn nội dung bên phải; thanh cuộn chỉ hiện khi rê
+   chuột là kiểu của điện thoại, đặt lên bảng dữ liệu thì rất dễ bỏ sót cột. */
+
+:root {
+  --scrollbar-size: 10px;
+  --scrollbar-thumb: oklch(0.82 0.02 254);
+  --scrollbar-thumb-hover: oklch(0.66 0.035 254);
+}
+
+.dark {
+  --scrollbar-thumb: oklch(1 0 0 / 14%);
+  --scrollbar-thumb-hover: oklch(1 0 0 / 30%);
+}
+
+/* Firefox: chỉ chỉnh được độ dày theo nấc và màu, không bo tròn được.
+   Bọc trong @supports là BẮT BUỘC chứ không phải cho đẹp: Chromium từ bản 121
+   đã hiểu `scrollbar-width`, và hễ thấy thuộc tính này là nó dùng thanh cuộn
+   hệ thống rồi bỏ qua sạch phần ::-webkit-scrollbar bên dưới — mất cả bo tròn
+   lẫn màu, lại còn hiện hai nút mũi tên của Windows. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+/* Rãnh trong suốt để thanh cuộn nổi trên nền của khối đang cuộn, thay vì kẻ một
+   vệt xám dọc mép mọi thẻ. */
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  /* Viền trong suốt bóp con trượt mảnh lại mà vùng bấm vẫn rộng nguyên
+     var(--scrollbar-size) — mảnh về thị giác, không mảnh về thao tác. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.15s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Ô vuông nơi thanh dọc gặp thanh ngang: để trống, nếu không nó hiện một mảng
+   xám mặc định chẳng ăn nhập với đâu. */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Hai nút mũi tên ở đầu thanh. Tạo kiểu cho thanh cuộn mà bỏ quên chúng thì
+   trình duyệt vẫn vẽ nút mặc định, và trên một thanh đã bo tròn mảnh thì hai
+   ô vuông xám ở hai đầu trông như lỗi hiển thị. */
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* ── Rich-text content styles ───────────────────────────────
    Dùng chung cho editor (.ProseMirror) và chế độ chỉ xem
    (.rich-content của RichTextView). Trước đây chỉ .ProseMirror
