@@ -265,6 +265,137 @@ export class QuestionsService {
     return { questionId: question.id };
   }
 
+  /**
+   * Nhập hàng loạt câu hỏi từ tệp đề Word.
+   *
+   * Cả mẻ vào hoặc không vào gì: giáo viên nhập một trăm câu mà hỏng ở câu thứ
+   * chín mươi thì thứ họ cần là sửa tệp rồi nhập lại, chứ không phải đi dò xem
+   * câu nào đã vào để xoá thủ công.
+   *
+   * Thư mục được tạo theo TÊN. Tên đã có thì dùng lại, nên nhập nhiều tệp vào
+   * cùng một chương sẽ gom về một chỗ thay vì đẻ ra các thư mục trùng tên.
+   */
+  async importMany(
+    user: AuthUser,
+    owner: { courseId?: string | null; bankCategoryId?: string | null },
+    questions: {
+      type: string;
+      content: string;
+      explanation?: string | null;
+      points?: number;
+      folder?: string | null;
+      options?: { content: string; isCorrect: boolean }[];
+      testCases?: {
+        input: string;
+        expectedOutput: string;
+        isHidden?: boolean;
+        points?: number;
+      }[];
+      starterCode?: string | null;
+      solutionCode?: string | null;
+      timeLimit?: number | null;
+      memoryLimit?: number | null;
+    }[]
+  ): Promise<{ created: number; foldersCreated: number; message: string }> {
+    const courseId = owner.courseId ?? null;
+    const bankCategoryId = owner.bankCategoryId ?? null;
+    if (!courseId === !bankCategoryId) {
+      throw new ForbiddenException(
+        'Câu hỏi phải thuộc đúng một nơi: một khoá học hoặc ngân hàng của một danh mục.'
+      );
+    }
+    if (bankCategoryId) {
+      await this.bank.assertCanManageBank(user, bankCategoryId);
+    } else if (!(await this.canManage(user.id, user.role, courseId as string))) {
+      throw new ForbiddenException('Không có quyền.');
+    }
+
+    // Thư mục nằm NGOÀI giao dịch: tạo trước để mọi câu đều có sẵn chỗ đứng, và
+    // để hai tệp nhập liên tiếp vào cùng một chương không tạo hai thư mục.
+    const tenThuMuc = [
+      ...new Set(questions.map((q) => (q.folder ?? '').trim()).filter((t) => t !== '')),
+    ];
+    const idTheoTen = new Map<string, string>();
+    let foldersCreated = 0;
+
+    if (tenThuMuc.length > 0) {
+      const where = bankCategoryId ? { bankCategoryId } : { courseId };
+      const daCo = await this.prisma.questionCategory.findMany({
+        where: where as never,
+        select: { id: true, name: true, position: true },
+      });
+      for (const c of daCo) idTheoTen.set(c.name.trim(), c.id);
+
+      let position = daCo.reduce((max, c) => Math.max(max, c.position), -1);
+      for (const ten of tenThuMuc) {
+        if (idTheoTen.has(ten)) continue;
+        position += 1;
+        const tao = await this.prisma.questionCategory.create({
+          data: {
+            courseId,
+            bankCategoryId,
+            name: ten,
+            position,
+            // Thư mục của kho danh mục ghi người tạo để chỉ người đó sửa được;
+            // thư mục của khoá học để trống, đúng như hành vi có sẵn.
+            createdBy: bankCategoryId ? user.id : null,
+          } as never,
+          select: { id: true },
+        });
+        idTheoTen.set(ten, tao.id);
+        foldersCreated += 1;
+      }
+    }
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      let dem = 0;
+      for (const q of questions) {
+        const ten = (q.folder ?? '').trim();
+        await (tx.question as any).create({
+          data: {
+            courseId,
+            bankCategoryId,
+            categoryId: ten ? (idTheoTen.get(ten) ?? null) : null,
+            type: q.type,
+            content: q.content,
+            explanation: q.explanation ?? null,
+            points: q.points ?? 1,
+            createdBy: user.id,
+            starterCode: q.starterCode ?? null,
+            solutionCode: q.solutionCode ?? null,
+            timeLimit: q.timeLimit ?? null,
+            memoryLimit: q.memoryLimit ?? null,
+            options: {
+              create: (q.options ?? []).map((o, i) => ({
+                content: o.content,
+                isCorrect: o.isCorrect,
+                position: i,
+              })),
+            },
+            testCases: {
+              create: (q.testCases ?? []).map((tc, i) => ({
+                input: tc.input,
+                expectedOutput: tc.expectedOutput,
+                isHidden: tc.isHidden ?? false,
+                points: tc.points ?? 1,
+                position: i,
+              })),
+            },
+          },
+        });
+        dem += 1;
+      }
+      return dem;
+    });
+
+    const phanThuMuc = foldersCreated > 0 ? `, tạo mới ${foldersCreated} thư mục` : '';
+    return {
+      created,
+      foldersCreated,
+      message: `Đã nhập ${created} câu hỏi${phanThuMuc}.`,
+    };
+  }
+
   async update(
     user: AuthUser,
     questionId: string,

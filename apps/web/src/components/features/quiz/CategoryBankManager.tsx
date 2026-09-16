@@ -24,6 +24,7 @@ import type {
 import { apiClient, ApiError } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { MathText } from '@/components/ui/editor/MathText';
 import { DeleteQuestionButton } from '@/components/features/quiz/DeleteQuestionButton';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn, stripHtml } from '@/lib/utils';
@@ -97,7 +98,7 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
                     o.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
                   )}
                 >
-                  {o.isCorrect ? '✓' : '·'} {stripHtml(o.content)}
+                  {o.isCorrect ? '✓' : '·'} <MathText text={stripHtml(o.content)} />
                 </li>
               ))}
             </ul>

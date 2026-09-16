@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* KaTeX kèm phông riêng, đóng gói trong bản build — máy chủ nội bộ không có
+   Internet nên tuyệt đối không dùng CDN cho phần này. */
+@import "katex/dist/katex.min.css";
 
 @custom-variant dark (&:is(.dark *));
 

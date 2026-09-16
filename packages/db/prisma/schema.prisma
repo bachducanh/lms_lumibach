@@ -142,6 +142,7 @@ enum QuestionType {
   CODE_DEBUG_CPP
   ORDERING
   MATCHING
+  SHORT_ANSWER
 }
 
 enum AttemptStatus {

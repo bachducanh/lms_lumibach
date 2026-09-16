@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn, stripHtml } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { MathText } from '@/components/ui/editor/MathText';
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuestionButton } from '@/components/features/quiz/DeleteQuestionButton';
 import { toast } from 'sonner';
@@ -170,9 +171,13 @@ function QuestionRow({
                     <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
                       {i + 1}
                     </span>
-                    <span className="font-medium">{p.left}</span>
+                    <span className="font-medium">
+                      <MathText text={p.left} />
+                    </span>
                     <ArrowRight className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
-                    <span className="text-muted-foreground">{p.right}</span>
+                    <span className="text-muted-foreground">
+                      <MathText text={p.right} />
+                    </span>
                   </div>
                 ))}
               </div>
@@ -201,7 +206,7 @@ function QuestionRow({
                       ) : (
                         <Circle className="h-3.5 w-3.5 shrink-0 opacity-30" />
                       )}
-                      {opt.content}
+                      <MathText text={opt.content} />
                       {!isOrdering && opt.isCorrect && (
                         <span className="ml-auto font-medium">Đúng</span>
                       )}

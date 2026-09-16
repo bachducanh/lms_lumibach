@@ -153,3 +153,52 @@ export const BankFolderBodySchema = z.object({
   name: z.string().trim().min(1, 'Tên thư mục không được để trống').max(120),
 });
 export type BankFolderBody = z.infer<typeof BankFolderBodySchema>;
+
+// ── Nhập hàng loạt từ tệp Word ─────────────────────────────────
+
+export const ImportOptionSchema = z.object({
+  content: z.string(),
+  isCorrect: z.boolean(),
+});
+
+export const ImportTestCaseSchema = z.object({
+  input: z.string(),
+  expectedOutput: z.string(),
+  isHidden: z.boolean().optional(),
+  points: z.number().optional(),
+});
+
+export const ImportQuestionSchema = z.object({
+  type: z.string().min(1),
+  content: z.string().min(1),
+  explanation: z.string().nullable().optional(),
+  points: z.number().positive().max(100).optional(),
+  /** Tên thư mục trong kho; tạo mới nếu chưa có. */
+  folder: z.string().trim().max(120).nullable().optional(),
+  options: z.array(ImportOptionSchema).max(50).optional(),
+  testCases: z.array(ImportTestCaseSchema).max(100).optional(),
+  starterCode: z.string().nullable().optional(),
+  solutionCode: z.string().nullable().optional(),
+  timeLimit: z.number().nullable().optional(),
+  memoryLimit: z.number().nullable().optional(),
+});
+export type ImportQuestionInput = z.infer<typeof ImportQuestionSchema>;
+
+export const ImportQuestionsBodySchema = z
+  .object({
+    /** Đúng một trong hai: kho của khoá học, hoặc ngân hàng của danh mục. */
+    courseId: z.string().min(1).nullable().optional(),
+    bankCategoryId: z.string().min(1).nullable().optional(),
+    questions: z.array(ImportQuestionSchema).min(1).max(200),
+  })
+  .refine((v) => !!v.courseId !== !!v.bankCategoryId, {
+    message: 'Phải chọn đúng một nơi nhận: khoá học hoặc ngân hàng của danh mục.',
+  });
+export type ImportQuestionsBody = z.infer<typeof ImportQuestionsBodySchema>;
+
+export type ImportQuestionsResult = {
+  created: number;
+  /** Số thư mục được tạo thêm trong lần nhập này. */
+  foldersCreated: number;
+  message: string;
+};

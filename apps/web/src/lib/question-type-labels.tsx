@@ -17,6 +17,7 @@ import {
   Bug,
   ListOrdered,
   Link2,
+  TextCursorInput,
 } from 'lucide-react';
 
 export const QUESTION_TYPE_BADGE: Record<string, string> = {
@@ -34,6 +35,7 @@ export const QUESTION_TYPE_BADGE: Record<string, string> = {
   CODE_DEBUG_CPP: 'bg-pink-500/10 text-pink-700 dark:text-pink-400',
   ORDERING: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
   MATCHING: 'bg-lime-500/10 text-lime-700 dark:text-lime-400',
+  SHORT_ANSWER: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
 };
 
 export const QUESTION_TYPE_SHORT: Record<string, string> = {
@@ -51,6 +53,7 @@ export const QUESTION_TYPE_SHORT: Record<string, string> = {
   CODE_DEBUG_CPP: 'Debug-C++',
   ORDERING: 'Thứ tự',
   MATCHING: 'Ghép',
+  SHORT_ANSWER: 'TL ngắn',
 };
 
 export const QUESTION_TYPE_LABEL: Record<string, string> = {
@@ -68,6 +71,7 @@ export const QUESTION_TYPE_LABEL: Record<string, string> = {
   CODE_DEBUG_CPP: 'Debug C++',
   ORDERING: 'Sắp xếp thứ tự',
   MATCHING: 'Ghép nối',
+  SHORT_ANSWER: 'Trả lời ngắn',
 };
 
 export const QUESTION_TYPE_ICON: Record<string, LucideIcon> = {
@@ -85,4 +89,5 @@ export const QUESTION_TYPE_ICON: Record<string, LucideIcon> = {
   CODE_DEBUG_CPP: Bug,
   ORDERING: ListOrdered,
   MATCHING: Link2,
+  SHORT_ANSWER: TextCursorInput,
 };

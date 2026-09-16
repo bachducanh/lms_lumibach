@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { renderMathInHtml } from '@/lib/render-math';
 
 // Lớp phòng thủ XSS cho nội dung rich-text (do giáo viên soạn qua RichTextEditor).
 // Gỡ script/style, thuộc tính sự kiện on*, và href/src dạng javascript:.
@@ -27,7 +28,9 @@ export function RichTextView({ html, className }: Props) {
   return (
     <div
       className={cn('rich-content max-w-none', className)}
-      dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+      // Lọc rác trước, dựng công thức sau: KaTeX sinh rất nhiều thẻ span và
+      // không nên đưa chúng qua bộ lọc dành cho nội dung người dùng gõ.
+      dangerouslySetInnerHTML={{ __html: renderMathInHtml(sanitizeHtml(html)) }}
     />
   );
 }

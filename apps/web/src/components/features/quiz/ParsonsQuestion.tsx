@@ -20,6 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MathText } from '@/components/ui/editor/MathText';
 
 export type ParsonsLine = { id: string; content: string };
 
@@ -58,7 +59,9 @@ function SortableLine({
         <GripVertical className="h-4 w-4" />
       </button>
       {plainText ? (
-        <span className="flex-1 text-sm leading-relaxed">{content}</span>
+        <span className="flex-1 text-sm leading-relaxed">
+          <MathText text={content} />
+        </span>
       ) : (
         <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre">
           {content}
@@ -109,7 +112,9 @@ export function ParsonsQuestion({ initialLines, onChange, readOnly = false, plai
               {idx + 1}
             </span>
             {plainText ? (
-              <span className="flex-1 text-sm leading-relaxed">{item.content}</span>
+              <span className="flex-1 text-sm leading-relaxed">
+                <MathText text={item.content} />
+              </span>
             ) : (
               <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre">
                 {item.content}

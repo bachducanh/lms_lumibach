@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/core';
 import { GripVertical, ArrowRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MathText } from '@/components/ui/editor/MathText';
 
 export type MatchPair = { id: string; left: string; right: string };
 
@@ -49,7 +50,9 @@ function RightChip({ id, text, idle }: { id: string; text: string; idle?: boolea
       )}
     >
       <GripVertical className="text-muted-foreground/40 h-4 w-4 shrink-0" />
-      <span className="flex-1">{text}</span>
+      <span className="flex-1">
+        <MathText text={text} />
+      </span>
     </div>
   );
 }
@@ -171,7 +174,9 @@ export function MatchingQuestion({ pairs, value, onChange, shuffleSeed = '' }: P
                 <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
                   {i + 1}
                 </span>
-                <span className="min-w-0 flex-1 break-words">{p.left}</span>
+                <span className="min-w-0 flex-1 break-words">
+                  <MathText text={p.left} />
+                </span>
               </div>
               <ArrowRight className="text-muted-foreground/40 mt-3 h-4 w-4 shrink-0" />
               <Slot
@@ -209,7 +214,9 @@ export function MatchingQuestion({ pairs, value, onChange, shuffleSeed = '' }: P
         {activeId ? (
           <div className="border-primary bg-card flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg">
             <GripVertical className="text-muted-foreground/40 h-4 w-4 shrink-0" />
-            <span className="flex-1">{rightText(activeId)}</span>
+            <span className="flex-1">
+              <MathText text={rightText(activeId)} />
+            </span>
           </div>
         ) : null}
       </DragOverlay>

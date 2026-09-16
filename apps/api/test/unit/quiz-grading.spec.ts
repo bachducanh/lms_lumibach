@@ -47,6 +47,55 @@ describe('MULTIPLE_CHOICE_SINGLE', () => {
   });
 });
 
+describe('SHORT_ANSWER', () => {
+  // Mỗi option là một cách viết được chấp nhận; tất cả đều isCorrect.
+  const options = [opt('a', '0.5', true, 0), opt('b', '1/2', true, 1)];
+
+  it('gõ đúng đáp án chính → trọn điểm', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('0.5'))).toEqual({
+      isCorrect: true,
+      score: 2,
+    });
+  });
+
+  it('gõ cách viết thay thế → trọn điểm', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('1/2'))?.score).toBe(2);
+  });
+
+  it('dấu phẩy thập phân kiểu Việt vẫn tính đúng', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('0,5'))?.score).toBe(2);
+  });
+
+  it('thừa số 0 ở phần thập phân vẫn tính đúng', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('0.50'))?.score).toBe(2);
+  });
+
+  it('thừa khoảng trắng hai đầu vẫn tính đúng', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('  0.5  '))?.score).toBe(2);
+  });
+
+  it('chữ hoa chữ thường không ảnh hưởng', () => {
+    const chu = [opt('a', 'Hà Nội', true, 0)];
+    expect(gradeOptionAnswer('SHORT_ANSWER', chu, 1, text('hà nội'))?.score).toBe(1);
+  });
+
+  it('gõ sai → 0', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('0.6'))?.score).toBe(0);
+  });
+
+  it('bỏ trắng → 0', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, NO_ANSWER)?.score).toBe(0);
+  });
+
+  it('chỉ gõ khoảng trắng → 0', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', options, 2, text('   '))?.score).toBe(0);
+  });
+
+  it('đề chưa có đáp án nào → 0, không cho điểm tự do', () => {
+    expect(gradeOptionAnswer('SHORT_ANSWER', [], 2, text('bất kỳ'))?.score).toBe(0);
+  });
+});
+
 describe('MULTIPLE_CHOICE_MULTIPLE', () => {
   const options = [opt('a', 'A', true), opt('b', 'B', true), opt('c', 'C', false)];
 

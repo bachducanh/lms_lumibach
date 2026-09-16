@@ -9,6 +9,7 @@ import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { MathText } from '@/components/ui/editor/MathText';
 import { toRichHtml } from '@/lib/utils';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { hasMinRole } from '@/lib/permissions';
@@ -37,6 +38,7 @@ const TYPE_LABEL: Record<string, string> = {
   CODE_WEB: 'Code Web (chấm tay)',
   PARSONS: 'Sắp xếp code',
   CODE_FILL: 'Điền vào chỗ trống',
+  SHORT_ANSWER: 'Trả lời ngắn',
   CODE_DEBUG_PYTHON: 'Debug Python',
   CODE_DEBUG_CPP: 'Debug C++',
   ORDERING: 'Sắp xếp thứ tự',
@@ -277,6 +279,7 @@ export default async function AttemptPage({
             const isCodeFill = qType === 'CODE_FILL';
             const isOrdering = qType === 'ORDERING';
             const isMatching = qType === 'MATCHING';
+            const isShortAnswer = qType === 'SHORT_ANSWER';
 
             let resultIcon = <Minus className="text-muted-foreground h-4 w-4" />;
             if (!isManual && ans) {
@@ -349,7 +352,7 @@ export default async function AttemptPage({
                           ) : (
                             <Circle className="h-3.5 w-3.5 shrink-0 opacity-40" />
                           )}
-                          {opt.content}
+                          <MathText text={opt.content} />
                           {isSelected && !isCorrect && (
                             <span className="ml-auto text-xs opacity-60">Bạn chọn</span>
                           )}
@@ -380,7 +383,7 @@ export default async function AttemptPage({
                                 : 'border-border bg-muted/20 text-muted-foreground'
                           )}
                         >
-                          {opt.content}
+                          <MathText text={opt.content} />
                           {opt.isCorrect ? ' ✓' : ''}
                         </span>
                       );
@@ -417,6 +420,34 @@ export default async function AttemptPage({
                   </div>
                 )}
 
+                {/* SHORT_ANSWER */}
+                {isShortAnswer && (
+                  <div className="space-y-2 pl-9">
+                    {ans?.textAnswer ? (
+                      <p
+                        className={`inline-block rounded-lg border px-3 py-1.5 font-mono text-sm ${
+                          ans.isCorrect
+                            ? 'border-green-500/40 bg-green-500/5 text-green-700 dark:text-green-400'
+                            : 'border-red-500/40 bg-red-500/5 text-red-700 dark:text-red-400'
+                        }`}
+                      >
+                        {ans.textAnswer}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs italic">Không có câu trả lời</p>
+                    )}
+                    <p className="text-muted-foreground text-xs">
+                      Đáp án chấp nhận:{' '}
+                      <span className="text-foreground font-medium">
+                        {q.question.options
+                          .filter((o) => o.isCorrect)
+                          .map((o) => o.content)
+                          .join('  ·  ')}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
                 {/* TRUE_FALSE_MULTI */}
                 {isTFMulti && (
                   <div className="space-y-1.5 pl-9">
@@ -436,7 +467,9 @@ export default async function AttemptPage({
                           <span className="bg-muted flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
                             {String.fromCharCode(97 + oi)}
                           </span>
-                          <span className="flex-1">{opt.content}</span>
+                          <span className="flex-1">
+                            <MathText text={opt.content} />
+                          </span>
                           <span className="shrink-0 font-medium">
                             {studentDong ? 'Đúng' : 'Sai'}
                             {correct ? ' ✓' : ' ✗'}
@@ -714,7 +747,9 @@ export default async function AttemptPage({
                                   <span className="text-muted-foreground w-4 shrink-0 tabular-nums">
                                     {li + 1}
                                   </span>
-                                  <span className="flex-1">{item.content}</span>
+                                  <span className="flex-1">
+                                    <MathText text={item.content} />
+                                  </span>
                                   {isCorrectPos ? (
                                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
                                   ) : (
@@ -742,7 +777,9 @@ export default async function AttemptPage({
                                 <span className="text-muted-foreground w-4 shrink-0 tabular-nums">
                                   {li + 1}
                                 </span>
-                                <span className="flex-1">{item.content}</span>
+                                <span className="flex-1">
+                                  <MathText text={item.content} />
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -783,7 +820,9 @@ export default async function AttemptPage({
                               <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
                                 {i + 1}
                               </span>
-                              <span className="font-medium">{p.left}</span>
+                              <span className="font-medium">
+                                <MathText text={p.left} />
+                              </span>
                               <ArrowRight className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
                               <span
                                 className={cn(
@@ -793,7 +832,9 @@ export default async function AttemptPage({
                                 {chosen ?? '(chưa ghép)'}
                               </span>
                               {!ok && (
-                                <span className="text-muted-foreground">→ đúng: {p.right}</span>
+                                <span className="text-muted-foreground">
+                                  → đúng: <MathText text={p.right} />
+                                </span>
                               )}
                               {ok ? (
                                 <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />

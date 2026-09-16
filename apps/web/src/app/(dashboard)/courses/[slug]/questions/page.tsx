@@ -6,7 +6,7 @@ import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, QuestionBankData } from '@lumibach/types';
 import { QuestionBankList } from '@/components/features/quiz/QuestionBankList';
 import { hasMinRole } from '@/lib/permissions';
-import { ArrowLeft, Library } from 'lucide-react';
+import { ArrowLeft, FileUp, Library } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import type { UserRole } from '@lumibach/db';
 
@@ -46,13 +46,22 @@ export default async function QuestionsPage({ params }: { params: Promise<{ slug
           </p>
         </div>
         {canManage && (
-          <Link
-            href={`/courses/${slug}/questions/bank`}
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
-          >
-            <Library className="mr-1.5 h-4 w-4" />
-            Ngân hàng chung
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/courses/${slug}/questions/import`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <FileUp className="mr-1.5 h-4 w-4" />
+              Nhập từ Word
+            </Link>
+            <Link
+              href={`/courses/${slug}/questions/bank`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <Library className="mr-1.5 h-4 w-4" />
+              Ngân hàng chung
+            </Link>
+          </div>
         )}
       </div>
 

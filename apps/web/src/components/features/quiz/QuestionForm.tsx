@@ -69,7 +69,8 @@ type QType =
   | 'CODE_DEBUG_PYTHON'
   | 'CODE_DEBUG_CPP'
   | 'ORDERING'
-  | 'MATCHING';
+  | 'MATCHING'
+  | 'SHORT_ANSWER';
 
 const CODE_LANG_MAP: Partial<Record<QType, 'PYTHON3' | 'CPP17' | 'WEB'>> = {
   CODE_PYTHON: 'PYTHON3',
@@ -118,6 +119,8 @@ function defaultOptions(type: QType): Option[] {
     ];
   // Matching — pairs of left ↔ right.
   if (type === 'MATCHING') return [emptyPair(), emptyPair(), emptyPair()];
+  // Trả lời ngắn — mỗi option là một cách viết được chấp nhận, tất cả đều đúng.
+  if (type === 'SHORT_ANSWER') return [{ content: '', isCorrect: true }];
   const noOpts: QType[] = [
     'ESSAY',
     'CODE_PYTHON',
@@ -239,6 +242,11 @@ export function QuestionForm({
     setOptions((prev) => [...prev, { content: '', isCorrect: false }]);
   }
 
+  /** Cách viết được chấp nhận của câu trả lời ngắn — luôn tính là đáp án đúng. */
+  function addShortAnswer() {
+    setOptions((prev) => [...prev, { content: '', isCorrect: true }]);
+  }
+
   function removeOption(i: number) {
     setOptions((prev) => prev.filter((_, j) => j !== i));
   }
@@ -358,6 +366,10 @@ export function QuestionForm({
       if (options.some((o) => !o.content.trim())) return 'Tất cả phát biểu phải có nội dung.';
       if (options.length < 2) return 'Phải có ít nhất 2 phát biểu.';
     }
+    if (type === 'SHORT_ANSWER') {
+      if (options.length === 0) return 'Phải nhập ít nhất 1 đáp án được chấp nhận.';
+      if (options.some((o) => !o.content.trim())) return 'Đáp án không được để trống.';
+    }
     if (type === 'CODE_PYTHON' || type === 'CODE_CPP') {
       if (testCases.length === 0) return 'Phải có ít nhất 1 test case để tự chấm.';
     }
@@ -428,6 +440,17 @@ export function QuestionForm({
         timeLimit: null,
         memoryLimit: null,
       };
+    } else if (type === 'SHORT_ANSWER') {
+      // Bộ chấm chỉ xét option có isCorrect, nên ép mọi cách viết về đáp án đúng.
+      values = {
+        ...baseVals,
+        options: options.map((o) => ({ content: o.content.trim(), isCorrect: true })),
+        testCases: [],
+        starterCode: null,
+        solutionCode: null,
+        timeLimit: null,
+        memoryLimit: null,
+      };
     } else if (isDebug) {
       values = {
         ...baseVals,
@@ -479,6 +502,7 @@ export function QuestionForm({
   const isCodeFill = type === 'CODE_FILL';
   const isOrdering = type === 'ORDERING';
   const isMatching = type === 'MATCHING';
+  const isShortAnswer = type === 'SHORT_ANSWER';
   const isDebugType = type === 'CODE_DEBUG_PYTHON' || type === 'CODE_DEBUG_CPP';
   const isCodeType = type === 'CODE_PYTHON' || type === 'CODE_CPP' || type === 'CODE_WEB';
   const isAutoGraded = isCodeType || isDebugType;
@@ -942,6 +966,55 @@ export function QuestionForm({
               className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Thêm cặp
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SHORT_ANSWER — học sinh gõ đáp án, hệ thống so với danh sách chấp nhận */}
+      {isShortAnswer && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs text-emerald-700 dark:text-emerald-400">
+            <strong>Trả lời ngắn</strong> — Học sinh gõ đáp án vào một ô. Khớp được bất kỳ dòng nào
+            bên dưới là trọn điểm. Chữ hoa hay thường không ảnh hưởng, và đáp số viết
+            <code className="mx-1 rounded bg-emerald-500/10 px-1 font-mono">0,5</code>hay
+            <code className="mx-1 rounded bg-emerald-500/10 px-1 font-mono">0.5</code>đều được tính
+            như nhau.
+          </div>
+          <div className="space-y-2">
+            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Đáp án được chấp nhận · {options.length} cách viết
+            </label>
+            <div className="space-y-2">
+              {options.map((o, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="bg-muted text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                    {i + 1}
+                  </span>
+                  <input
+                    value={o.content}
+                    onChange={(e) => updateOption(i, e.target.value)}
+                    placeholder={
+                      i === 0 ? 'Đáp án chính...' : 'Cách viết khác cũng tính là đúng...'
+                    }
+                    className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                  />
+                  {options.length > 1 && (
+                    <button
+                      onClick={() => removeOption(i)}
+                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={addShortAnswer}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Thêm cách viết khác
             </button>
           </div>
         </div>

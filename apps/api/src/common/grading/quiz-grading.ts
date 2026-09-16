@@ -103,6 +103,27 @@ function trueFalseCorrectValue(options: GradableOption[]): boolean | null {
   return sorted[0]?.id === correct.id;
 }
 
+/**
+ * Đáp số viết theo kiểu Việt ("0,5") và kiểu quốc tế ("0.5") là cùng một số, và
+ * "2" với "2.0" cũng vậy. Trả `null` khi chuỗi không phải một số, để nơi gọi
+ * quay về so chữ.
+ */
+function asNumber(raw: string): number | null {
+  const compact = raw.replace(/\s+/g, '').replace(',', '.');
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(compact)) return null;
+  const value = Number(compact);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** So đáp án ngắn: ưu tiên so giá trị số, nếu không phải số thì so chữ đã gọn hoá. */
+function shortAnswerMatches(student: string, accepted: string): boolean {
+  const a = asNumber(student);
+  const b = asNumber(accepted);
+  if (a !== null && b !== null) return a === b;
+  const gonHoa = (raw: string) => raw.trim().replace(/\s+/g, ' ').toLowerCase();
+  return gonHoa(student) === gonHoa(accepted);
+}
+
 function ratioScore(correct: number, total: number, points: number): number {
   return total > 0 ? Math.round((correct / total) * points * 10) / 10 : 0;
 }
@@ -158,6 +179,17 @@ export function gradeOptionAnswer(
       isCorrect: options.length > 0 && correct === options.length,
       score: ratioScore(correct, options.length, points),
     };
+  }
+
+  if (type === 'SHORT_ANSWER') {
+    // Mỗi option là MỘT cách viết được chấp nhận (tất cả đều isCorrect); khớp
+    // được cái nào là trọn điểm. Không có đáp án nào thì câu chưa soạn xong,
+    // cho 0 chứ không cho điểm tự do.
+    const student = (answer?.textAnswer ?? '').trim();
+    const accepted = options.filter((o) => o.isCorrect);
+    const isCorrect =
+      student !== '' && accepted.some((o) => shortAnswerMatches(student, o.content));
+    return { isCorrect, score: isCorrect ? points : 0 };
   }
 
   if (type === 'PARSONS' || type === 'ORDERING') {

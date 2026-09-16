@@ -3,10 +3,12 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import {
   BankFolderBodySchema,
   CopyQuestionBodySchema,
+  ImportQuestionsBodySchema,
   QuestionBankQuerySchema,
   ShareQuestionBodySchema,
   type BankFolderBody,
   type CopyQuestionBody,
+  type ImportQuestionsBody,
   type QuestionBankQuery,
   type ShareQuestionBody,
 } from '@lumibach/types';
@@ -146,6 +148,17 @@ export class QuestionsController {
   @ApiOperation({ summary: 'Chi tiết câu hỏi' })
   getById(@Param('id') id: string) {
     return this.service.getById(id);
+  }
+
+  // Khai TRƯỚC @Post(), nếu không "import" không bao giờ tới được route riêng.
+  @Post('import')
+  @ApiOperation({ summary: 'Nhập hàng loạt câu hỏi từ tệp đề Word' })
+  importMany(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(ImportQuestionsBodySchema)) body: ImportQuestionsBody
+  ) {
+    const { courseId, bankCategoryId, questions } = body;
+    return this.service.importMany(user, { courseId, bankCategoryId }, questions);
   }
 
   @Post()

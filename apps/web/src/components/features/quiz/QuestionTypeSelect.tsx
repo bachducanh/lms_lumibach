@@ -14,7 +14,7 @@ import {
 import { QUESTION_TYPE_LABEL, QUESTION_TYPE_ICON } from '@/lib/question-type-labels';
 import { cn } from '@/lib/utils';
 
-// Grouped so the (now 14) types stay scannable in the menu.
+// Grouped so the (now 15) types stay scannable in the menu.
 const GROUPS: { label: string; types: string[] }[] = [
   {
     label: 'Trắc nghiệm / Đúng – Sai',
@@ -22,7 +22,7 @@ const GROUPS: { label: string; types: string[] }[] = [
   },
   {
     label: 'Tự luận & Ghép / Sắp xếp',
-    types: ['ESSAY', 'ORDERING', 'MATCHING'],
+    types: ['ESSAY', 'SHORT_ANSWER', 'ORDERING', 'MATCHING'],
   },
   {
     label: 'Lập trình',

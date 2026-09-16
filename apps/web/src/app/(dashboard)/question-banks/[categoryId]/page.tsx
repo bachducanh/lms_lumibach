@@ -7,7 +7,7 @@ import { hasMinRole } from '@/lib/permissions';
 import { CategoryBankManager } from '@/components/features/quiz/CategoryBankManager';
 import type { CategoryQuestionBankData } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
-import { ArrowLeft, FolderKanban } from 'lucide-react';
+import { ArrowLeft, FileUp, FolderKanban } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 
 export const metadata = { title: 'Kho câu hỏi của danh mục' };
@@ -49,13 +49,22 @@ export default async function CategoryBankPage({
             {data.categoryPath}
           </p>
         </div>
-        <Link
-          href={`/question-banks/${categoryId}/content`}
-          className={buttonVariants({ variant: 'outline', size: 'sm' })}
-        >
-          <FolderKanban className="mr-1.5 h-4 w-4" />
-          Kho nội dung
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/question-banks/${categoryId}/questions/import`}
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          >
+            <FileUp className="mr-1.5 h-4 w-4" />
+            Nhập từ Word
+          </Link>
+          <Link
+            href={`/question-banks/${categoryId}/content`}
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          >
+            <FolderKanban className="mr-1.5 h-4 w-4" />
+            Kho nội dung
+          </Link>
+        </div>
       </div>
 
       <CategoryBankManager data={data} />

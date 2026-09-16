@@ -17,6 +17,7 @@ const TYPE_LABEL: Record<string, string> = {
   TRUE_FALSE: 'Đúng / Sai',
   TRUE_FALSE_MULTI: 'Đúng / Sai nhiều ý',
   ESSAY: 'Tự luận',
+  SHORT_ANSWER: 'Trả lời ngắn',
   MATCHING: 'Ghép nối',
   ORDERING: 'Sắp xếp',
   PARSONS: 'Parsons',

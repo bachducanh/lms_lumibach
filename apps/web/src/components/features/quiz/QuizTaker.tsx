@@ -36,6 +36,7 @@ const MatchingQuestion = nextDynamic(
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn, richTextIsEmpty, toRichHtml } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { MathText } from '@/components/ui/editor/MathText';
 import type { CodeLanguage } from '@lumibach/db';
 
 // ── Seeded shuffle ─────────────────────────────────────────────
@@ -264,6 +265,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
       // Tự luận lưu HTML — `<p></p>` rỗng vẫn dài hơn 0 ký tự nên phải bóc thẻ.
       if (t === 'ESSAY') return !richTextIsEmpty(texts[q.questionId] ?? '');
       if (codeTypes.includes(t)) return (texts[q.questionId] ?? '').trim().length > 0;
+      if (t === 'SHORT_ANSWER') return (texts[q.questionId] ?? '').trim().length > 0;
       if (t === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
       if (t === 'TRUE_FALSE_MULTI') return selected[q.questionId] !== undefined;
       if (t === 'PARSONS' || t === 'ORDERING') {
@@ -323,6 +325,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
     CODE_DEBUG_CPP: 'Debug C++',
     ORDERING: 'Sắp xếp thứ tự',
     MATCHING: 'Ghép nối',
+    SHORT_ANSWER: 'Trả lời ngắn',
   };
 
   return (
@@ -382,6 +385,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
             ];
             if (qType === 'ESSAY') return !richTextIsEmpty(texts[q.questionId] ?? '');
             if (codeTypes.includes(qType)) return (texts[q.questionId] ?? '').trim().length > 0;
+            if (qType === 'SHORT_ANSWER') return (texts[q.questionId] ?? '').trim().length > 0;
             if (qType === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
             if (qType === 'PARSONS' || qType === 'ORDERING') {
               try {
@@ -464,7 +468,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         ) : (
                           <Circle className="text-muted-foreground/40 h-4 w-4 shrink-0" />
                         )}
-                        {opt.content}
+                        <MathText text={opt.content} />
                       </button>
                     );
                   })}
@@ -497,7 +501,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         >
                           {isChosen && <CheckCircle2 className="text-primary-foreground h-3 w-3" />}
                         </span>
-                        {opt.content}
+                        <MathText text={opt.content} />
                       </button>
                     );
                   })}
@@ -551,7 +555,9 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
                           {String.fromCharCode(97 + oi)}
                         </span>
-                        <p className="flex-1 text-sm">{opt.content}</p>
+                        <p className="flex-1 text-sm">
+                          <MathText text={opt.content} />
+                        </p>
                         <div className="flex shrink-0 items-center gap-2">
                           <button
                             onClick={() => handleTFMulti(q.questionId, opt.id, true)}
@@ -602,6 +608,22 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     allowImages={false}
                     compact
                   />
+                </div>
+              )}
+
+              {/* SHORT_ANSWER — chỉ một ô chữ, chấm bằng cách so với danh sách
+                  đáp án chấp nhận. Dùng chung handleEssay vì cùng lưu vào textAnswer. */}
+              {qType === 'SHORT_ANSWER' && (
+                <div className="space-y-1.5 pl-10">
+                  <input
+                    value={texts[q.questionId] ?? ''}
+                    onChange={(e) => handleEssay(q.questionId, e.target.value)}
+                    placeholder="Nhập đáp án..."
+                    className="border-input bg-background focus:ring-ring w-full max-w-md rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Chỉ ghi đáp số hoặc cụm từ ngắn, không cần trình bày lời giải.
+                  </p>
                 </div>
               )}
 

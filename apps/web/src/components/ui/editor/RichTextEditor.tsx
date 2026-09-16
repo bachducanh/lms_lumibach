@@ -11,6 +11,7 @@ import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
+import { Mathematics } from '@tiptap/extension-mathematics';
 import { TableKit } from '@tiptap/extension-table';
 import type { Editor } from '@tiptap/react';
 import type { EditorView } from '@tiptap/pm/view';
@@ -22,6 +23,8 @@ import {
   Strikethrough,
   Subscript as SubscriptIcon,
   Superscript as SuperscriptIcon,
+  Sigma,
+  SquareRadical,
   Heading1,
   Heading2,
   Heading3,
@@ -478,6 +481,9 @@ export function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       Subscript,
       Superscript,
+      // Công thức lưu dưới dạng mã LaTeX nguồn trong data-latex; KaTeX chỉ
+      // dựng lúc hiển thị. Gõ $x^2$ giữa dòng cũng tự thành công thức.
+      Mathematics.configure({ katexOptions: { throwOnError: false } }),
       TableKit.configure({
         table: { resizable: true, lastColumnResizable: true, renderWrapper: true },
       }),
@@ -557,6 +563,16 @@ export function RichTextEditor({
   async function handleInsertYoutube() {
     const url = await openPrompt('URL video YouTube');
     if (url) ed.commands.setYoutubeVideo({ src: url });
+  }
+
+  async function handleInsertMath(block: boolean) {
+    const latex = await openPrompt(
+      block ? 'Công thức đứng riêng dòng (LaTeX)' : 'Công thức trong dòng (LaTeX)',
+      ''
+    );
+    if (!latex) return;
+    if (block) ed.chain().focus().insertBlockMath({ latex }).run();
+    else ed.chain().focus().insertInlineMath({ latex }).run();
   }
 
   async function handleInsertImage() {
@@ -845,6 +861,12 @@ export function RichTextEditor({
           )}
           <TBtn title="Nhúng video YouTube" onClick={handleInsertYoutube}>
             <PlaySquare className="h-4 w-4" />
+          </TBtn>
+          <TBtn title="Công thức trong dòng" onClick={() => void handleInsertMath(false)}>
+            <Sigma className="h-4 w-4" />
+          </TBtn>
+          <TBtn title="Công thức đứng riêng dòng" onClick={() => void handleInsertMath(true)}>
+            <SquareRadical className="h-4 w-4" />
           </TBtn>
 
           <Sep />

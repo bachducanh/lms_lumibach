@@ -46,7 +46,9 @@ test('tạo quiz trong kho rồi thêm câu hỏi cho nó', async ({ page }) => 
   // Từ trang cấu hình sang trang câu hỏi.
   await page.getByRole('link', { name: /Câu hỏi/ }).click();
   await page.waitForURL(/\/manage$/, { timeout: 30_000 });
-  await expect(page.getByText('Quản lý câu hỏi')).toBeVisible();
+  // Chữ này có ở cả breadcrumb trên header lẫn tiêu đề trang, nên phải chỉ rõ
+  // vùng nội dung chính, không thì phép tìm mơ hồ và test đỏ oan.
+  await expect(page.getByRole('main').getByText('Quản lý câu hỏi')).toBeVisible();
 
   // Lối tạo câu hỏi phải trỏ về kho DANH MỤC, không phải kho của lớp.
   const taoMoi = page.getByRole('link', { name: 'Tạo câu hỏi mới' });

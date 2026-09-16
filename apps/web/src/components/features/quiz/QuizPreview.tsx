@@ -20,6 +20,7 @@ import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import nextDynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
+import { MathText } from '@/components/ui/editor/MathText';
 import { toRichHtml } from '@/lib/utils';
 
 // dnd-kit generates random IDs on mount which mismatch between SSR and CSR,
@@ -89,6 +90,23 @@ function parseMatchPairs(options: { id: string; content: string; position: numbe
 
 // ── Scoring helpers (mirrors submitAttemptAction logic) ────────
 
+/** Đáp số "0,5" và "0.5" là một; trả null khi chuỗi không phải số. */
+function asNumber(raw: string): number | null {
+  const compact = raw.replace(/\s+/g, '').replace(',', '.');
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(compact)) return null;
+  const value = Number(compact);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** Cùng luật với gradeOptionAnswer bên API, để xem trước và chấm thật khớp nhau. */
+function shortAnswerMatches(student: string, accepted: string): boolean {
+  const a = asNumber(student);
+  const b = asNumber(accepted);
+  if (a !== null && b !== null) return a === b;
+  const gonHoa = (raw: string) => raw.trim().replace(/\s+/g, ' ').toLowerCase();
+  return gonHoa(student) === gonHoa(accepted);
+}
+
 type ScoreResult = { score: number; isCorrect: boolean | null; unchecked?: boolean };
 
 function computeScore(
@@ -145,6 +163,13 @@ function computeScore(
     const total = results.length;
     const score = total > 0 ? Math.round((passed / total) * pts * 10) / 10 : 0;
     return { score, isCorrect: passed === total };
+  }
+
+  if (type === 'SHORT_ANSWER') {
+    const student = (texts[q.questionId] ?? '').trim();
+    const accepted = opts.filter((o) => o.isCorrect);
+    const ok = student !== '' && accepted.some((o) => shortAnswerMatches(student, o.content));
+    return { score: ok ? pts : 0, isCorrect: ok };
   }
 
   if (type === 'PARSONS') {
@@ -429,7 +454,7 @@ export function QuizPreview({ quiz }: Props) {
                           ) : (
                             <Circle className="text-muted-foreground/30 h-4 w-4 shrink-0" />
                           )}
-                          {opt.content}
+                          <MathText text={opt.content} />
                         </div>
                       );
                     })}
@@ -497,7 +522,9 @@ export function QuizPreview({ quiz }: Props) {
                           <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
                             {String.fromCharCode(97 + oi)}
                           </span>
-                          <p className="flex-1 text-sm">{opt.content}</p>
+                          <p className="flex-1 text-sm">
+                            <MathText text={opt.content} />
+                          </p>
                           <div className="flex shrink-0 items-center gap-1.5">
                             {isRight ? (
                               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -539,6 +566,34 @@ export function QuizPreview({ quiz }: Props) {
                     )}
                     <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
                       Câu tự luận — giáo viên chấm thủ công.
+                    </p>
+                  </div>
+                )}
+
+                {/* SHORT_ANSWER review */}
+                {qType === 'SHORT_ANSWER' && (
+                  <div className="space-y-2 pl-10">
+                    {textVal ? (
+                      <p
+                        className={`inline-block rounded-lg border px-3 py-1.5 font-mono text-sm ${
+                          sr.isCorrect
+                            ? 'border-green-500/40 bg-green-500/5 text-green-700 dark:text-green-400'
+                            : 'border-red-500/40 bg-red-500/5 text-red-700 dark:text-red-400'
+                        }`}
+                      >
+                        {textVal}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs italic">Chưa trả lời.</p>
+                    )}
+                    <p className="text-muted-foreground text-xs">
+                      Đáp án chấp nhận:{' '}
+                      <span className="text-foreground font-medium">
+                        {opts
+                          .filter((o) => o.isCorrect)
+                          .map((o) => o.content)
+                          .join('  ·  ')}
+                      </span>
                     </p>
                   </div>
                 )}
@@ -843,7 +898,9 @@ export function QuizPreview({ quiz }: Props) {
                               <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
                                 {i + 1}
                               </span>
-                              <span className="font-medium">{p.left}</span>
+                              <span className="font-medium">
+                                <MathText text={p.left} />
+                              </span>
                               <ArrowRight className="text-muted-foreground/50 h-3.5 w-3.5 shrink-0" />
                               <span
                                 className={cn(
@@ -853,7 +910,9 @@ export function QuizPreview({ quiz }: Props) {
                                 {chosen ?? '(chưa ghép)'}
                               </span>
                               {!ok && (
-                                <span className="text-muted-foreground">→ đúng: {p.right}</span>
+                                <span className="text-muted-foreground">
+                                  → đúng: <MathText text={p.right} />
+                                </span>
                               )}
                               {ok ? (
                                 <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />
@@ -933,6 +992,7 @@ export function QuizPreview({ quiz }: Props) {
               qType === 'CODE_DEBUG_CPP'
             )
               return (texts[q.questionId] ?? '').trim().length > 0;
+            if (qType === 'SHORT_ANSWER') return (texts[q.questionId] ?? '').trim().length > 0;
             if (qType === 'TRUE_FALSE') return booleans[q.questionId] !== undefined;
             if (qType === 'PARSONS' || qType === 'ORDERING')
               return (texts[q.questionId] ?? '').length > 0;
@@ -1007,7 +1067,7 @@ export function QuizPreview({ quiz }: Props) {
                         ) : (
                           <Circle className="text-muted-foreground/40 h-4 w-4 shrink-0" />
                         )}
-                        {opt.content}
+                        <MathText text={opt.content} />
                       </button>
                     );
                   })}
@@ -1040,7 +1100,7 @@ export function QuizPreview({ quiz }: Props) {
                         >
                           {isChosen && <CheckCircle2 className="text-primary-foreground h-3 w-3" />}
                         </span>
-                        {opt.content}
+                        <MathText text={opt.content} />
                       </button>
                     );
                   })}
@@ -1094,7 +1154,9 @@ export function QuizPreview({ quiz }: Props) {
                         <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
                           {String.fromCharCode(97 + oi)}
                         </span>
-                        <p className="flex-1 text-sm">{opt.content}</p>
+                        <p className="flex-1 text-sm">
+                          <MathText text={opt.content} />
+                        </p>
                         <div className="flex shrink-0 items-center gap-2">
                           <button
                             onClick={() => handleTFMulti(q.questionId, opt.id, true)}
@@ -1139,6 +1201,21 @@ export function QuizPreview({ quiz }: Props) {
                     rows={5}
                     className="border-input bg-background focus:ring-ring w-full resize-none rounded-xl border px-4 py-3 text-sm focus:ring-1 focus:outline-none"
                   />
+                </div>
+              )}
+
+              {/* SHORT_ANSWER */}
+              {qType === 'SHORT_ANSWER' && (
+                <div className="space-y-1.5 pl-10">
+                  <input
+                    value={texts[q.questionId] ?? ''}
+                    onChange={(e) => handleText(q.questionId, e.target.value)}
+                    placeholder="Nhập đáp án..."
+                    className="border-input bg-background focus:ring-ring w-full max-w-md rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Chỉ ghi đáp số hoặc cụm từ ngắn, không cần trình bày lời giải.
+                  </p>
                 </div>
               )}
 
