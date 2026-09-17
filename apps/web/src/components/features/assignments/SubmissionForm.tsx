@@ -7,7 +7,7 @@ import { RichTextEditor } from '@/components/ui/editor/RichTextEditor';
 import { FileUploader } from '@/components/ui/uploader/FileUploader';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
-import { Paperclip, X } from 'lucide-react';
+import { Download, Paperclip, X } from 'lucide-react';
 
 type SubmissionFile = {
   name: string;
@@ -119,6 +119,16 @@ export function SubmissionForm({
                   <span className="text-muted-foreground shrink-0 text-xs">
                     {formatBytes(f.size)}
                   </span>
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download={f.name}
+                    className="text-muted-foreground hover:text-primary shrink-0 p-1 transition-colors"
+                    title="Tải xuống"
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
                   <button
                     type="button"
                     onClick={() => handleRemove(f)}
