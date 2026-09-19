@@ -59,26 +59,17 @@ DB ra Internet dù tường lửa đang bật. web/api chỉ nghe ở `127.0.0.1
 
 ## 3. Phát hành phiên bản mới
 
-Máy chủ có Internet nên **build ngay tại chỗ**. Từ máy phát triển, trong thư mục repo:
+Commit xong, trên máy phát triển chạy **một lệnh**:
 
 ```bash
-# 1. Chép mã nguồn lên (chỉ file có trong git, không kèm .env của máy dev)
-git ls-files -z | tar --null -T - -czf - | ssh -i ~/.ssh/lumibach_ed25519 root@222.255.182.231 'tar -C /opt/lumibach -xzf -'
-
-# 2. Sao lưu về máy mình TRƯỚC — migration chỉ đi một chiều
-bash scripts/backup-full.sh
+bash scripts/deploy.sh
 ```
 
-Rồi trên máy chủ:
-
-```bash
-cd /opt/lumibach
-C="docker compose -f docker-compose.single.yml"
-$C --profile tools build migrate api worker web      # 10-20 phút
-$C --profile tools run --rm migrate                   # migration TRƯỚC
-$C up -d                                              # rồi mới lên bản mới
-docker builder prune -af                              # ổ chỉ 50GB, cache build 10-15GB
-```
+Nó làm đúng thứ tự: sao lưu về máy này → chép mã nguồn → build ngay trên máy chủ
+(máy có Internet, 10-20 phút, bản cũ vẫn phục vụ trong lúc đó) → migration →
+lên bản mới → dọn cache build → kiểm chấm code, email, giờ, và 3 URL qua tên miền.
+Build hỏng thì dừng trước khi đụng vào bản đang chạy. Còn thay đổi chưa commit
+thì nó từ chối chạy — máy chủ luôn chạy đúng một commit, ghi ở `/opt/lumibach/REVISION`.
 
 > **Migration chạy TRƯỚC `up -d`.** Ngược lại có một khoảng mã mới đọc lược đồ
 > cũ: trang lỗi hoặc hiện rỗng (sự cố Kho năng lực 13/8).
@@ -151,7 +142,7 @@ Hai tầng:
 
 - **Trên máy chủ**, hằng ngày lúc 2h: `/opt/lumibach/backups/`. Chỉ cứu được lỗi
   thao tác — mất cả máy là mất luôn.
-- **Trên máy phát triển**, chạy tay mỗi tuần và trước mỗi lần phát hành:
+- **Trên máy phát triển**, chạy tay mỗi tuần (`deploy.sh` cũng tự chạy trước mỗi lần phát hành):
 
   ```bash
   bash scripts/backup-full.sh          # → E:/lumibach-backups/full-<thời điểm>
@@ -171,6 +162,15 @@ MinIO có **3** bucket: `lumibach-avatars` và `lumibach-files` cho đọc ẩn 
 **từng file** (chỉ `s3:GetObject`); `lumibach-handovers` riêng tư. Đừng dùng
 `mc anonymous set download` — nó kèm quyền liệt kê, ai cũng xem được danh sách
 tên file bài nộp.
+
+**Xem file trong MinIO** (trang quản trị chỉ mở trong máy chủ): trên máy phát
+triển chạy lệnh dưới, để nguyên cửa sổ đó, rồi mở <http://localhost:9001> và
+đăng nhập bằng `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` trong `.env`. Đóng cửa sổ
+là đường vào đóng theo.
+
+```bash
+ssh -i ~/.ssh/lumibach_ed25519 -N -L 9001:127.0.0.1:9001 root@222.255.182.231
+```
 
 ---
 
