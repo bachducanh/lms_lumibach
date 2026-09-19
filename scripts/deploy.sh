@@ -45,7 +45,9 @@ $C --profile tools build migrate api worker web > /root/build.log 2>&1 \
   || { tail -30 /root/build.log; echo "!! Build hỏng — bản cũ vẫn đang chạy, chưa có gì thay đổi" >&2; exit 1; }
 
 echo "==> Migration (TRƯỚC khi lên bản mới)"
-$C --profile tools run --rm migrate 2>&1 | tail -3
+# -T và </dev/null: script này đang được đọc qua stdin (bash -s). Không chặn thì
+# `run` nuốt phần còn lại của script — migration xong là dừng, không lên bản mới.
+$C --profile tools run --rm -T migrate </dev/null 2>&1 | tail -3
 
 echo "==> Lên bản mới"
 $C up -d --remove-orphans 2>&1 | grep -v "Running\|Waiting\|Healthy" || true
