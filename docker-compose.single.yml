@@ -1,0 +1,242 @@
+# LumiBach LMS trên MỘT máy chủ có Internet (cloud VPS 222.255.182.231, từ 2026-09).
+#
+# Gộp mọi thứ vào một file: PostgreSQL, Redis, MinIO, Judge0, web/api/worker và
+# cloudflared. Máy có Internet nên build thẳng tại chỗ — không cần registry,
+# không cần chuyển tay web.tar như hạ tầng cũ (docker-compose.deploy.yml).
+#
+#   docker compose -f docker-compose.single.yml build
+#   docker compose -f docker-compose.single.yml --profile tools run --rm migrate
+#   docker compose -f docker-compose.single.yml up -d
+#   docker compose -f docker-compose.single.yml --profile tunnel up -d cloudflared
+#
+# Sau mỗi lần build: `docker builder prune -f` — ổ chỉ 50GB, cache build 10-15GB.
+#
+# BẢO MẬT: máy này có IP công khai. KHÔNG service nào mở cổng ra 0.0.0.0 —
+# Docker tự chèn luật iptables qua mặt ufw, nên `ports: '5432:5432'` là lộ DB ra
+# Internet dù tường lửa có bật. Người dùng vào qua cloudflared (kết nối RA
+# ngoài), web/api chỉ nghe ở 127.0.0.1 để thử qua SSH tunnel.
+#
+# Giá trị bí mật nằm trong .env cạnh file này; compose đọc cả để thay ${...}.
+
+# Cố định tên để mạng luôn là `lumibach_default` — scripts/restore-to-server.sh cần nó.
+name: lumibach
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: lumibach-postgres
+    environment:
+      POSTGRES_USER: lumibach
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?đặt PG_PASSWORD trong .env}
+      POSTGRES_DB: lumibach_lms
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lumibach -d lumibach_lms']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Cache và HÀNG ĐỢI EMAIL — appendonly để email chưa gửi không mất khi khởi động lại.
+  redis:
+    image: redis:7-alpine
+    container_name: lumibach-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?đặt REDIS_PASSWORD trong .env}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # MinIO riêng của LumiBach (hạ tầng cũ dùng chung với dự án khác). Khoá gốc
+  # chính là MINIO_ACCESS_KEY / MINIO_SECRET_KEY mà ứng dụng dùng.
+  # Docker Hub không còn phát hành image minio — lấy từ quay.io.
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: lumibach-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  judge0-db:
+    image: postgres:13
+    container_name: judge0-db
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0_secret
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U judge0']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  judge0-redis:
+    image: redis:6-alpine
+    container_name: judge0-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - judge0_redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # privileged + JUDGE0_API_KEY trống: chạy code tuỳ ý. TUYỆT ĐỐI không mở cổng 2358.
+  # api gọi qua tên service: JUDGE0_API_URL=http://judge0-server:2358
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-server
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-workers
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
+    privileged: true
+    restart: unless-stopped
+    command: ['/api/scripts/workers']
+    depends_on:
+      - judge0-server
+
+  # Image migrate THẬT (có CMD), dựng từ Dockerfile.migrate — xem HANDOVER.md.
+  migrate:
+    profiles: ['tools']
+    build:
+      context: .
+      dockerfile: packages/db/Dockerfile.migrate
+    image: lumibach/migrate:latest
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: lumibach/api:latest
+    container_name: lumibach-api
+    env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - '127.0.0.1:4000:4000'
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:4000/api/v1/health',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nơi DUY NHẤT gửi email. Máy này có Internet nên tới được smtp.gmail.com.
+  worker:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.worker
+    image: lumibach/worker:latest
+    container_name: lumibach-worker
+    env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      # NHÚNG vào image lúc build. MinIO là service `minio` trong cùng mạng.
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+        NEXT_PUBLIC_MEDIA_URL: ${NEXT_PUBLIC_MEDIA_URL}
+        API_INTERNAL_URL: http://api:4000/api/v1
+        MINIO_INTERNAL_ENDPOINT: minio
+        MINIO_INTERNAL_PORT: '9000'
+    image: lumibach/web:latest
+    container_name: lumibach-web
+    env_file: .env
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      API_INTERNAL_URL: http://api:4000/api/v1
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Cổng vào tên miền. Tách profile riêng để dựng và thử toàn bộ hệ thống qua
+  # SSH tunnel trước, chỉ bật cái này lúc chuyển hẳn lumibach.com sang máy mới.
+  # Hai cách cấp quyền, dùng một:
+  #   - Token (Cloudflare Zero Trust → Tunnels → tunnel → Install): đặt
+  #     TUNNEL_TOKEN trong .env; tuyến đường khai trên dashboard.
+  #   - File: ./cloudflared/config.yml + <UUID>.json chép từ máy .105, trỏ
+  #     service về http://web:3000, http://api:4000, http://minio:9000.
+  cloudflared:
+    profiles: ['tunnel']
+    image: cloudflare/cloudflared:latest
+    container_name: lumibach-cloudflared
+    command: ${CLOUDFLARED_ARGS:-tunnel --no-autoupdate run}
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    restart: unless-stopped
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  judge0_db_data:
+  judge0_redis_data:

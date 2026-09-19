@@ -1,0 +1,19 @@
+# Lịch chạy trên máy chủ (giờ Việt Nam — máy đã đặt timedatectl Asia/Ho_Chi_Minh).
+# Cài / cập nhật:   bash /opt/lumibach/scripts/server/install-cron.sh
+# CRON_SECRET được install-cron.sh điền từ .env — ĐỪNG commit giá trị thật vào đây.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+L=/var/log/lumibach-cron.log
+
+# Sao lưu DB + MinIO lúc 2 giờ sáng
+0 2 * * * /opt/lumibach/scripts/server/backup.sh >> $L 2>&1
+
+# Dọn khoá học / hoạt động quá 30 ngày trong thùng rác
+0 3 * * * curl -s -H "x-cron-secret: __CRON_SECRET__" http://127.0.0.1:3000/api/cron/purge-trash >> $L 2>&1; echo >> $L
+
+# Phòng chức năng: đánh dấu đơn quá giờ không nhận, dọn ảnh bàn giao quá hạn
+*/15 * * * * curl -s -X POST -H "x-cron-secret: __CRON_SECRET__" http://127.0.0.1:4000/api/v1/room-jobs/no-show >> $L 2>&1; echo >> $L
+30 3 * * * curl -s -X POST -H "x-cron-secret: __CRON_SECRET__" http://127.0.0.1:4000/api/v1/room-jobs/purge-photos >> $L 2>&1; echo >> $L
+
+# Dọn image/cache Docker cũ mỗi Chủ nhật — ổ chỉ 50GB
+0 4 * * 0 docker image prune -f >> $L 2>&1; docker builder prune -f --filter until=168h >> $L 2>&1
