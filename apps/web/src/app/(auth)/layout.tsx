@@ -9,8 +9,11 @@ import { AuthTabs } from '@/components/features/auth/AuthTabs';
  *
  * Mép phải của panel cắt chéo chứ không thẳng đứng: hai hình chữ nhật đặt cạnh
  * nhau trông như hai trang bị dán lại, còn đường chéo buộc mắt đi từ khối chữ
- * bên trái sang ô nhập bên phải. Panel được kéo rộng thêm `-mr-28` rồi mới cắt,
- * nên phần lấn sang không ăn vào chỗ đặt form.
+ * bên trái sang ô nhập bên phải.
+ *
+ * Đường chéo cắt VÀO TRONG cột của panel, không tràn sang cột form. Bản đầu
+ * kéo panel rộng thêm rồi mới cắt, và ở màn 1024px phần tràn đó che mất 80px
+ * bên trái của cặp tab lẫn thẻ đăng nhập.
  */
 const DIAGONAL = 'polygon(0 0, 100% 0, calc(100% - 7rem) 100%, 0 100%)';
 
@@ -27,11 +30,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <span className="bg-lb-navy w-[20%]" />
       </div>
 
-      {/* ── Panel thương hiệu (ẩn trên mobile) ──
-          pointer-events-none: panel lấn sang cột form nên nếu bắt chuột sẽ nuốt
-          cú bấm vào mép trái của thẻ đăng nhập. Trong này không có gì để bấm. */}
+      {/* ── Panel thương hiệu (ẩn trên mobile) ── */}
       <aside
-        className="bg-lb-navy-deep lb-on-navy pointer-events-none relative z-10 hidden overflow-hidden text-white lg:-mr-28 lg:flex lg:flex-col lg:justify-between lg:p-12 lg:pr-28"
+        className="bg-lb-navy-deep lb-on-navy relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:justify-between lg:py-12 lg:pr-32 lg:pl-12"
         style={{ clipPath: DIAGONAL, WebkitClipPath: DIAGONAL }}
       >
         <span
