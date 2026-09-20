@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FolderOpen, Hash, Tag, Users } from 'lucide-react';
+import { Tag, Users } from 'lucide-react';
 import type { CourseListItem } from '@lumibach/types';
 import { cn } from '@/lib/utils';
 
@@ -112,13 +112,9 @@ export function CourseCard({ course }: Props) {
         </div>
 
         {/* ── Thông tin ở chân thẻ ──────────────────────────── */}
+        {/* Chỉ giữ ba dòng: sĩ số, môn, trạng thái. Mã lớp và đường dẫn danh mục
+            đã có ở trang khoá học — nhét vào đây chỉ làm thẻ cao lệch nhau. */}
         <ul className="text-foreground/90 flex flex-col gap-2 px-4 pt-6 pb-5 text-sm">
-          {course.shortName && (
-            <li className="flex items-center gap-2">
-              <Hash className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="truncate font-mono">{course.shortName}</span>
-            </li>
-          )}
           <li className="flex items-center gap-2">
             <Users className="h-5 w-5 shrink-0" aria-hidden />
             <span>{course._count.enrollments} học sinh</span>
@@ -127,15 +123,6 @@ export function CourseCard({ course }: Props) {
             <li className="flex items-center gap-2">
               <Tag className="h-5 w-5 shrink-0" aria-hidden />
               <span className="truncate">{course.subject}</span>
-            </li>
-          )}
-          {course.category && (
-            <li
-              className="flex items-center gap-2"
-              title={course.category.breadcrumb.map((b) => b.name).join(' / ')}
-            >
-              <FolderOpen className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="truncate">{course.category.name}</span>
             </li>
           )}
           <li className="flex items-center gap-2">

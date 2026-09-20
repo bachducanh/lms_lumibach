@@ -9,7 +9,6 @@ import { logActivity } from '@/lib/activity';
 import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { EnrollmentCodePanel } from '@/components/features/courses/EnrollmentCodePanel';
 import type { CourseDetail, CourseMember, CourseTA, CourseMembersResponse } from '@lumibach/types';
 import {
   BookOpen,
@@ -354,15 +353,6 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
 
           {(role === 'TEACHER' || role === 'TA' || role === 'ADMIN') && (
             <TeacherView enrollments={enrollments} tas={tas} />
-          )}
-
-          {/* ── Enrollment code (cấp khoá → chỉ chủ khoá/ADMIN) ─────── */}
-          {canEditCourse && (
-            <EnrollmentCodePanel
-              courseId={course.id}
-              initialCode={course.enrollmentCode ?? null}
-              canManage={canEditCourse}
-            />
           )}
         </div>
       </div>

@@ -1,22 +1,22 @@
-import { CheckCircle2 } from 'lucide-react';
 import { LumiLogo } from '@/components/features/landing/LumiLogo';
 import { MarketingShell } from '@/components/features/landing/MarketingShell';
 import { AuthTabs } from '@/components/features/auth/AuthTabs';
-
-const POINTS = [
-  'Viết và chạy code ngay trong trình duyệt',
-  'Bài làm được chấm tự động qua test case',
-  'Sổ điểm và báo cáo tiến độ luôn sẵn sàng',
-];
 
 /**
  * Khung chung cho các trang đăng nhập, đăng ký, quên/đặt lại mật khẩu, xác thực email.
  * Từ màn hình lớn: bên trái là panel thương hiệu (navy), bên phải là form.
  * Trên điện thoại chỉ còn logo phía trên form.
+ *
+ * Mép phải của panel cắt chéo chứ không thẳng đứng: hai hình chữ nhật đặt cạnh
+ * nhau trông như hai trang bị dán lại, còn đường chéo buộc mắt đi từ khối chữ
+ * bên trái sang ô nhập bên phải. Panel được kéo rộng thêm `-mr-28` rồi mới cắt,
+ * nên phần lấn sang không ăn vào chỗ đặt form.
  */
+const DIAGONAL = 'polygon(0 0, 100% 0, calc(100% - 7rem) 100%, 0 100%)';
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <MarketingShell className="relative lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <MarketingShell className="relative lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       {/* ── Thanh màu thương hiệu trên đỉnh trang ──
           Vắt ngang cả hai cột nên phải nằm ngoài luồng lưới; z-20 để panel navy
           bên trái (có hai quầng blur) không phủ lên. */}
@@ -27,8 +27,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <span className="bg-lb-navy w-[20%]" />
       </div>
 
-      {/* ── Panel thương hiệu (ẩn trên mobile) ── */}
-      <aside className="bg-lb-navy-deep lb-on-navy relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+      {/* ── Panel thương hiệu (ẩn trên mobile) ──
+          pointer-events-none: panel lấn sang cột form nên nếu bắt chuột sẽ nuốt
+          cú bấm vào mép trái của thẻ đăng nhập. Trong này không có gì để bấm. */}
+      <aside
+        className="bg-lb-navy-deep lb-on-navy pointer-events-none relative z-10 hidden overflow-hidden text-white lg:-mr-28 lg:flex lg:flex-col lg:justify-between lg:p-12 lg:pr-28"
+        style={{ clipPath: DIAGONAL, WebkitClipPath: DIAGONAL }}
+      >
         <span
           aria-hidden
           className="bg-lb-pink/80 absolute -top-24 -left-24 h-72 w-72 rounded-full blur-3xl"
@@ -40,19 +45,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative">
           <LumiLogo tone="dark" size={44} priority />
         </div>
-        <div className="relative max-w-md">
-          <h2 className="text-4xl leading-tight font-bold text-balance">
+
+        <div className="relative flex max-w-xl items-stretch gap-7">
+          {/* Vạch hồng nghiêng, lặp lại góc nghiêng của mép panel. */}
+          <span aria-hidden className="bg-lb-pink w-2 shrink-0 -skew-x-12 rounded-full" />
+          <h2 className="text-5xl leading-[1.05] font-bold text-balance xl:text-6xl">
             Chuyển đổi ước mơ bằng <span className="text-lb-cyan">mã nguồn thực tế</span>.
           </h2>
-          <ul className="mt-8 space-y-4">
-            {POINTS.map((p) => (
-              <li key={p} className="flex items-start gap-3 text-base text-white/85">
-                <CheckCircle2 className="text-lb-cyan mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                {p}
-              </li>
-            ))}
-          </ul>
         </div>
+
         <p className="relative text-sm text-white/60">
           © {new Date().getFullYear()} LumiBach Learning
         </p>

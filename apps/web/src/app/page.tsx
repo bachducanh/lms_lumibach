@@ -82,7 +82,7 @@ const TRACKS: {
 const HIGHLIGHTS: { icon: typeof BookOpen; text: string }[] = [
   { icon: MonitorPlay, text: 'Chạy hoàn toàn trên trình duyệt, không cần cài đặt' },
   { icon: Code2, text: 'Chấm code tự động qua test case' },
-  { icon: Table2, text: 'Nhập danh sách lớp từ Excel trong vài giây' },
+  { icon: Table2, text: 'Theo dõi được mình đã học tới đâu' },
 ];
 
 const FEATURES: {
@@ -93,8 +93,8 @@ const FEATURES: {
 }[] = [
   {
     icon: BookOpen,
-    title: 'Giáo trình có cấu trúc',
-    body: 'Tổ chức nội dung theo chương — bài giảng, bài tập, quiz, project — dẫn dắt học sinh đi từ nền tảng đến nâng cao theo lộ trình rõ ràng.',
+    title: 'Lộ trình rõ ràng',
+    body: 'Nội dung chia theo chương — bài giảng, bài tập, quiz, project — đi từ nền tảng lên nâng cao, biết rõ mình đang ở đâu và bước kế tiếp là gì.',
     tone: 'bg-lb-pink-soft text-lb-pink-strong',
   },
   {
@@ -105,8 +105,8 @@ const FEATURES: {
   },
   {
     icon: Brain,
-    title: 'Ngân hàng câu hỏi đa dạng',
-    body: 'Mười hai dạng câu hỏi — từ trắc nghiệm, tự luận đến Parsons, Debug, điền chỗ trống — đo lường tư duy ở mọi cấp độ Bloom.',
+    title: 'Luyện tập nhiều kiểu',
+    body: 'Mười hai dạng bài — trắc nghiệm, tự luận, sắp xếp câu lệnh, tìm lỗi sai, điền chỗ trống — để hiểu chắc chứ không phải học vẹt.',
     tone: 'bg-lb-pink-soft text-lb-pink-strong',
   },
   {
@@ -117,14 +117,14 @@ const FEATURES: {
   },
   {
     icon: FileText,
-    title: 'Đánh giá & rubric',
-    body: 'Chấm điểm theo rubric tuỳ biến, tổng hợp tự động vào sổ điểm, xuất báo cáo tiến độ chuyên nghiệp cho phụ huynh và nhà trường.',
+    title: 'Biết điểm đến từ đâu',
+    body: 'Mỗi bài chấm theo tiêu chí rõ ràng, không phải một con số từ trên trời rơi xuống. Bạn xem được mình mạnh phần nào, còn hổng phần nào.',
     tone: 'bg-lb-pink-soft text-lb-pink-strong',
   },
   {
     icon: Sparkles,
-    title: 'Phân tích & theo dõi thời gian thực',
-    body: 'Dashboard trực quan cho phép giáo viên nắm bắt mức độ tham gia, phát hiện học sinh gặp khó khăn và can thiệp đúng lúc.',
+    title: 'Không ai bị bỏ lại',
+    body: 'Tiến độ của bạn hiện ngay trên màn hình của thầy cô. Đuối ở chương nào là có người biết để hỏi han, không phải đợi đến lúc kiểm tra mới lộ ra.',
     tone: 'bg-lb-cyan-soft text-lb-navy',
   },
 ];
@@ -132,47 +132,50 @@ const FEATURES: {
 const ROADMAP: { stage: string; title: string; items: string[] }[] = [
   {
     stage: 'Bước 1',
-    title: 'Thiết kế khoá học',
-    items: ['Khởi tạo lớp học', 'Xây dựng chương & lộ trình', 'Mời đồng nghiệp & trợ giảng'],
-  },
-  {
-    stage: 'Bước 2',
-    title: 'Soạn nội dung học liệu',
+    title: 'Tìm hiểu ý nghĩa',
     items: [
-      'Bài giảng đa phương tiện',
-      'Bài tập & quiz',
-      'Bài thực hành chấm tự động',
-      'Project Scratch',
+      'Bài giảng theo từng chương',
+      'Hiểu bài toán trước khi gõ code',
+      'Ví dụ có lời giải thích',
     ],
   },
   {
+    stage: 'Bước 2',
+    title: 'Khám phá',
+    items: ['Chạy thử chương trình mẫu', 'Sửa một dòng, xem đổi gì', 'Không cần cài đặt gì'],
+  },
+  {
     stage: 'Bước 3',
-    title: 'Kết nối học sinh',
-    items: ['Mã tham gia lớp', 'Import danh sách từ Excel', 'Gửi lời mời cá nhân'],
+    title: 'Tạo ra',
+    items: [
+      'Tự viết chương trình của mình',
+      'Làm project từ đầu đến cuối',
+      'Sản phẩm chạy được thật',
+    ],
   },
   {
     stage: 'Bước 4',
-    title: 'Đánh giá & phản hồi',
-    items: ['Sổ điểm tự động', 'Chấm rubric chi tiết', 'Báo cáo & xuất dữ liệu'],
+    title: 'Chỉnh sửa',
+    items: ['Chấm tự động chỉ rõ chỗ sai', 'Sửa rồi nộp lại', 'Mỗi lần làm lại là một lần khá lên'],
   },
 ];
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: 'Nền tảng phù hợp với những lứa tuổi nào?',
-    a: 'Từ học sinh tiểu học (lập trình kéo–thả Scratch) đến THPT (Python, C++, Web). Nội dung tổ chức theo chương nên dễ điều chỉnh theo trình độ lớp.',
+    q: 'Em chưa biết gì về lập trình, bắt đầu được không?',
+    a: 'Được. Lộ trình bắt đầu từ Scratch — kéo thả khối lệnh, không cần gõ chữ nào — rồi mới sang Python. Mỗi bài đều có ví dụ mẫu trước khi đến lượt bạn tự làm.',
   },
   {
-    q: 'Bài code được chấm như thế nào?',
-    a: 'Học sinh viết code ngay trong trình duyệt; hệ thống chạy qua bộ test case và trả kết quả tự động trong vài giây, kèm điểm theo từng test.',
+    q: 'Học ở đây thì học được những gì?',
+    a: 'Scratch cho những bước đầu tiên, Python cho nền tảng thuật toán và cũng là ngôn ngữ của trí tuệ nhân tạo, C++ cho tư duy giải thuật, và HTML/CSS/JavaScript để tự dựng trang web của mình.',
   },
   {
-    q: 'Một giáo viên quản lý được bao nhiêu học sinh?',
-    a: 'Nền tảng vận hành tốt với quy mô vài trăm học sinh mỗi giáo viên, hỗ trợ nhập danh sách từ Excel và mã tham gia lớp để ghi danh nhanh.',
+    q: 'Làm sai thì sao?',
+    a: 'Sai là chuyện bình thường khi học lập trình. Bài nộp được chấm trong vài giây và chỉ rõ test nào chưa qua, bạn sửa rồi nộp lại — không giới hạn số lần trừ khi thầy cô đặt khác.',
   },
   {
-    q: 'Có cần cài đặt gì không?',
-    a: 'Không. Mọi thứ chạy trên trình duyệt — giáo viên và học sinh chỉ cần đăng nhập là dùng được ngay.',
+    q: 'Cần máy tính mạnh hay phải cài phần mềm gì không?',
+    a: 'Không. Mọi thứ chạy trong trình duyệt, kể cả lúc viết và chạy code. Máy tính ở phòng máy nhà trường hay máy ở nhà đều dùng được, chỉ cần vào mạng.',
   },
 ];
 
@@ -284,9 +287,9 @@ export default async function HomePage() {
                 </h1>
 
                 <p className="text-muted-foreground mt-5 max-w-xl text-lg leading-relaxed text-pretty">
-                  Nơi giáo viên kiến tạo những lớp học truyền cảm hứng và học sinh biến mọi ý tưởng
-                  thành sản phẩm. LumiBach đồng hành cùng hành trình khám phá tư duy thuật toán — từ
-                  những khối lệnh Scratch đầu tiên đến dòng Python chuyên nghiệp.
+                  Từ khối lệnh Scratch đầu tiên đến dòng Python chạy được, từ tư duy thuật toán đến
+                  nền tảng của trí tuệ nhân tạo. Bạn viết code ngay trong trình duyệt, máy chấm
+                  trong vài giây, và bạn biết chính xác mình còn thiếu chỗ nào.
                 </p>
 
                 <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -434,10 +437,11 @@ export default async function HomePage() {
                   Chuyển đổi ước mơ bằng mã nguồn thực tế
                 </h2>
                 <p className="text-muted-foreground mt-4 text-lg leading-relaxed text-pretty">
-                  Chúng tôi tin rằng việc học lập trình không nên bị giới hạn bởi bảng tính điểm thủ
-                  công, các nền tảng rời rạc, hay những công cụ không phù hợp lứa tuổi. LumiBach
-                  mang đến trải nghiệm liền mạch — học, thực hành, đánh giá và phản hồi — trong một
-                  không gian được thiết kế riêng cho giáo dục lập trình hiện đại.
+                  Máy tính chỉ làm đúng những gì ta bảo nó làm. Học lập trình là học cách nói cho rõ
+                  ràng — chia một việc lớn thành từng bước nhỏ, kiểm tra lại từng bước, và sửa khi
+                  sai. Đó cũng chính là nền tảng của trí tuệ nhân tạo: đằng sau mỗi mô hình là
+                  Python, là dữ liệu, là tư duy thuật toán. Ở đây, học sinh bắt đầu từ khối lệnh
+                  kéo–thả đầu tiên và đi tới chỗ tự viết được chương trình của riêng mình.
                 </p>
               </div>
             </div>
@@ -448,8 +452,8 @@ export default async function HomePage() {
         <section id="features" className={cn(CONTAINER, 'py-16 sm:py-24')}>
           <SectionHead
             eyebrow="Tính năng"
-            title="Bộ công cụ toàn diện cho giáo dục lập trình"
-            lede="Từ soạn giáo trình đến chấm điểm — mọi công đoạn đều được tối ưu để giáo viên tập trung vào điều quan trọng nhất: truyền cảm hứng và đồng hành cùng học sinh."
+            title="Học lập trình thì cần gì, ở đây có đủ"
+            lede="Chỗ để đọc hiểu, chỗ để tự tay gõ code, chỗ biết mình sai ở đâu và chỗ nhìn lại xem mình đã đi được bao xa."
           />
           <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => {
@@ -482,8 +486,8 @@ export default async function HomePage() {
           <div className={cn(CONTAINER, 'py-16 sm:py-24')}>
             <SectionHead
               eyebrow="Quy trình"
-              title="Bốn bước kiến tạo lớp học của bạn"
-              lede="Một quy trình được tinh giản dựa trên kinh nghiệm thực tế của hàng trăm giáo viên Tin học — đơn giản, có thể triển khai ngay trong tuần đầu tiên."
+              title="Quy trình học tập"
+              lede="Bốn bước lặp lại ở mỗi bài học. Không ai viết đúng ngay từ lần đầu — vòng lặp này mới là cách người ta thật sự học lập trình."
             />
             <ol className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
               {ROADMAP.map((step, i) => (
@@ -552,8 +556,8 @@ export default async function HomePage() {
                 Kết nối công nghệ, kiến tạo tri thức
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-pretty text-white/80">
-                Khởi tạo tài khoản trong vài phút, thiết lập lớp học đầu tiên ngay hôm nay và bắt
-                đầu hành trình truyền cảm hứng cho học sinh của bạn.
+                Dòng code đầu tiên của bạn chỉ cách đây một lần đăng nhập. Không cần cài đặt, không
+                cần máy cấu hình cao — mở trình duyệt lên là học được ngay.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link

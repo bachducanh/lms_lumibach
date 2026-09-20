@@ -67,9 +67,11 @@ export function CourseFilterBar({ role }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    // Điện thoại: ô tìm và ô danh mục chiếm trọn bề ngang, hàng chip trượt
+    // ngang được. Xếp ba thứ này cạnh nhau trên màn hẹp thì cái nào cũng bị bóp.
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       {/* Search */}
-      <div className="relative">
+      <div className="relative w-full sm:w-64">
         <Search
           className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2"
           aria-hidden
@@ -79,12 +81,12 @@ export function CourseFilterBar({ role }: Props) {
           placeholder="Tìm khoá học..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="border-input bg-card placeholder:text-muted-foreground focus:ring-ring/40 focus:border-ring h-10 w-64 rounded-full border pr-4 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
+          className="border-input bg-card placeholder:text-muted-foreground focus:ring-ring/40 focus:border-ring h-11 w-full rounded-full border pr-4 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none sm:h-10"
         />
       </div>
 
       {/* Category picker */}
-      <div className="w-56">
+      <div className="w-full sm:w-56">
         <CategoryTreePicker
           value={currentCategoryId}
           onChange={handleCategory}
@@ -94,16 +96,18 @@ export function CourseFilterBar({ role }: Props) {
         />
       </div>
 
-      {/* Status pill chips */}
+      {/* Chip trạng thái. Trên điện thoại hàng này trượt ngang được; -mx-3/px-3
+          khớp đúng padding p-3 của main để nó chạm sát hai mép mà không đẩy
+          trang rộng thêm. */}
       {showStatusFilter && (
-        <div className="flex items-center gap-1.5">
+        <div className="-mx-3 flex items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:gap-1.5 sm:overflow-visible sm:px-0 sm:pb-0">
           {STATUS_CHIPS.map((chip) => (
             <button
               key={chip.value}
               type="button"
               onClick={() => handleStatus(chip.value)}
               className={cn(
-                'h-9 rounded-full border px-4 text-sm font-medium transition-colors duration-150',
+                'h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors duration-150 sm:h-9',
                 currentStatus === chip.value
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-card text-foreground hover:border-foreground/40'
