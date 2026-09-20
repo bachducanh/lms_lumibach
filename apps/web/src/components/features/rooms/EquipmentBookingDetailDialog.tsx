@@ -75,7 +75,7 @@ export function EquipmentBookingDetailDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Chi tiết đơn mượn thiết bị</DialogTitle>
           {booking && (
@@ -276,7 +276,7 @@ export function EquipmentBookingDetailDialog({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[7.5rem_1fr] items-start gap-3">
+    <div className="grid grid-cols-[6.5rem_1fr] items-start gap-3 sm:grid-cols-[7.5rem_1fr]">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>

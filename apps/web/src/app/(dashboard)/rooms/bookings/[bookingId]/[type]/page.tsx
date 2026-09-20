@@ -69,8 +69,12 @@ export default async function HandoverPage({ params }: { params: Params }) {
           <ChevronLeft className="mr-1 h-4 w-4" />
           Đơn của tôi
         </Link>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          {loai === 'CHECKIN' ? <DoorOpen className="h-6 w-6" /> : <LogOut className="h-6 w-6" />}
+        <h1 className="font-heading flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          {loai === 'CHECKIN' ? (
+            <DoorOpen className="text-primary h-6 w-6 shrink-0" />
+          ) : (
+            <LogOut className="text-primary h-6 w-6 shrink-0" />
+          )}
           {loai === 'CHECKIN' ? 'Nhận phòng' : 'Trả phòng'}
         </h1>
       </div>

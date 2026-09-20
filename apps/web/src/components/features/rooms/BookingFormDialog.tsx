@@ -146,7 +146,7 @@ export function BookingFormDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{dangSua ? 'Sửa đơn mượn phòng' : 'Đăng ký mượn phòng'}</DialogTitle>
           <DialogDescription>

@@ -58,9 +58,9 @@ export function CodeAssignmentSetup({ existing }: Props) {
   }
 
   return (
-    <div className="border-border bg-card space-y-6 rounded-2xl border p-6 shadow-sm">
+    <div className="border-border bg-card space-y-6 rounded-xl border p-6 shadow-sm">
       <div className="flex items-center gap-2">
-        <Settings2 className="h-4 w-4 text-violet-500" />
+        <Settings2 className="h-4 w-4 text-violet-700 dark:text-violet-400" />
         <h3 className="font-semibold">Cấu hình bài tập code</h3>
       </div>
 
@@ -68,9 +68,7 @@ export function CodeAssignmentSetup({ existing }: Props) {
       <div className="flex flex-wrap gap-4">
         {/* Language */}
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Ngôn ngữ
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Ngôn ngữ</label>
           <SimpleSelect
             size="sm"
             aria-label="Ngôn ngữ"
@@ -82,24 +80,20 @@ export function CodeAssignmentSetup({ existing }: Props) {
 
         {/* Time limit */}
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Thời gian (giây)
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Thời gian (giây)</label>
           <input
             type="number"
             min={1}
             max={30}
             value={timeLimit}
             onChange={(e) => setTimeLimit(Number(e.target.value))}
-            className="border-input bg-background focus:ring-ring w-24 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-24 rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
         {/* Memory limit */}
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Bộ nhớ (MB)
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Bộ nhớ (MB)</label>
           <input
             type="number"
             min={16}
@@ -107,14 +101,14 @@ export function CodeAssignmentSetup({ existing }: Props) {
             step={16}
             value={memoryLimit}
             onChange={(e) => setMemoryLimit(Number(e.target.value))}
-            className="border-input bg-background focus:ring-ring w-24 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-24 rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
       </div>
 
       {/* ── Starter code ── */}
       <div className="space-y-2">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <label className="text-muted-foreground text-xs font-medium">
           Code khởi đầu (học sinh nhìn thấy)
         </label>
         <div className="border-border overflow-hidden rounded-xl border">
@@ -132,7 +126,7 @@ export function CodeAssignmentSetup({ existing }: Props) {
         <button
           type="button"
           onClick={() => setShowSolution((v) => !v)}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase transition-colors"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-medium transition-colors"
         >
           <ChevronDown
             className={`h-3.5 w-3.5 transition-transform ${showSolution ? 'rotate-180' : ''}`}
@@ -153,9 +147,7 @@ export function CodeAssignmentSetup({ existing }: Props) {
 
       {/* ── Test cases ── */}
       <div className="space-y-2">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Test cases
-        </label>
+        <label className="text-muted-foreground text-xs font-medium">Test cases</label>
         <TestCaseBuilder initial={testCases} onChange={setTestCases} />
       </div>
 

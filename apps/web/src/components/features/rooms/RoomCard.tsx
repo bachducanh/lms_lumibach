@@ -10,7 +10,7 @@ export function RoomCard({ room }: { room: RoomListItem }) {
       href={`/rooms/${room.code}`}
       className="focus-visible:ring-ring rounded-xl focus-visible:ring-2 focus-visible:outline-none"
     >
-      <Card className="hover:border-primary/40 h-full transition-colors">
+      <Card className="h-full transition-shadow hover:shadow-md">
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="text-base">{room.name}</CardTitle>

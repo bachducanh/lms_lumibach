@@ -158,14 +158,14 @@ export function RoomCalendar({ room, staffProfile, defaultFullName }: Props) {
 
         <div className="flex items-center gap-2">
           {/* Chế độ xem chỉ có nghĩa trên lưới; điện thoại luôn là danh sách. */}
-          <div className="border-border hidden overflow-hidden rounded-lg border md:flex">
+          <div className="border-border hidden overflow-hidden rounded-full border md:flex">
             {(['week', 'day'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setViewMode(mode)}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium transition-colors',
+                  'h-8 px-4 text-xs font-medium transition-colors',
                   viewMode === mode
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-muted text-muted-foreground'

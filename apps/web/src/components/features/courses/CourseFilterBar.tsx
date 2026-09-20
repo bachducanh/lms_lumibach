@@ -70,13 +70,16 @@ export function CourseFilterBar({ role }: Props) {
     <div className="flex flex-wrap items-center gap-3">
       {/* Search */}
       <div className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
+        <Search
+          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2"
+          aria-hidden
+        />
         <input
           type="search"
           placeholder="Tìm khoá học..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="border-input bg-background placeholder:text-muted-foreground focus:ring-ring focus:border-primary/50 h-9 w-56 rounded-full border pr-3 pl-8 text-sm transition-colors focus:ring-1 focus:outline-none"
+          className="border-input bg-card placeholder:text-muted-foreground focus:ring-ring/40 focus:border-ring h-10 w-64 rounded-full border pr-4 pl-9 text-sm transition-colors focus:ring-2 focus:outline-none"
         />
       </div>
 
@@ -100,10 +103,10 @@ export function CourseFilterBar({ role }: Props) {
               type="button"
               onClick={() => handleStatus(chip.value)}
               className={cn(
-                'h-8 rounded-full px-4 text-sm font-medium transition-all duration-150',
+                'h-9 rounded-full border px-4 text-sm font-medium transition-colors duration-150',
                 currentStatus === chip.value
-                  ? 'bg-primary text-primary-foreground shadow-primary/30 shadow-sm'
-                  : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-foreground hover:border-foreground/40'
               )}
             >
               {chip.label}

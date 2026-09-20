@@ -45,7 +45,7 @@ export default async function EditBankForumPage({
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex items-center gap-2">
-          <MessagesSquare className="h-5 w-5 text-sky-400" />
+          <MessagesSquare className="h-5 w-5 text-sky-700 dark:text-sky-400" />
           <div className="min-w-0">
             <h1 className="truncate text-xl font-bold">{forum.title}</h1>
             <p className="text-muted-foreground text-xs">Bản mẫu trong kho nội dung</p>

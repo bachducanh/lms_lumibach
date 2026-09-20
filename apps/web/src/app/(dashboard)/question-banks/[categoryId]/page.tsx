@@ -41,11 +41,9 @@ export default async function CategoryBankPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-muted-foreground/70 font-mono text-[11px] tracking-[0.18em] uppercase">
-            Kho câu hỏi
-          </p>
+          <p className="text-muted-foreground/70 font-mono text-xs">Kho câu hỏi</p>
           <h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{data.categoryName}</h1>
-          <p className="text-muted-foreground/70 mt-1 truncate font-mono text-[11px] tracking-tight">
+          <p className="text-muted-foreground/70 mt-1 truncate font-mono text-xs tracking-tight">
             {data.categoryPath}
           </p>
         </div>

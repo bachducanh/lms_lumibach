@@ -32,10 +32,10 @@ export default async function NotificationSettingsPage() {
     });
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="w-full max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Thông báo</h1>
-        <p className="text-muted-foreground text-sm">Chọn loại thông báo bạn muốn nhận.</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Thông báo</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Chọn loại thông báo bạn muốn nhận.</p>
       </div>
 
       <Separator />

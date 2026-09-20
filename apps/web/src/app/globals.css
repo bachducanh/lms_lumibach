@@ -5,7 +5,10 @@
    Internet nên tuyệt đối không dùng CDN cho phần này. */
 @import "katex/dist/katex.min.css";
 
-@custom-variant dark (&:is(.dark *));
+/* `.theme-light` (trang giới thiệu, đăng nhập/đăng ký) luôn sáng dù app đang ở
+   dark mode, nên biến thể `dark:` phải im lặng bên trong vùng đó — nếu không
+   các class `dark:` của shadcn (Input, Alert…) vẫn bật lên trên nền sáng. */
+@custom-variant dark (&:is(.dark *):not(.theme-light *));
 
 @theme inline {
   --color-background: var(--background);
@@ -13,6 +16,16 @@
   --font-sans: var(--font-exo2);
   --font-mono: var(--font-jetbrains-mono);
   --font-heading: var(--font-exo2);
+  --font-display: var(--font-exo2);
+  --color-lb-pink: var(--lb-pink);
+  --color-lb-pink-strong: var(--lb-pink-strong);
+  --color-lb-pink-soft: var(--lb-pink-soft);
+  --color-lb-navy: var(--lb-navy);
+  --color-lb-navy-mid: var(--lb-navy-mid);
+  --color-lb-navy-deep: var(--lb-navy-deep);
+  --color-lb-cyan: var(--lb-cyan);
+  --color-lb-cyan-soft: var(--lb-cyan-soft);
+  --color-lb-tint: var(--lb-tint);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,7 +65,8 @@
 }
 
 /* ============================================================
-   LIGHT MODE — #2596be as primary
+   LIGHT MODE — mặc định. Chữ/nút hồng dùng bản đậm #d6004f (5.3:1 với chữ trắng);
+   #fd085d nguyên bản vẫn là màu thương hiệu ở mảng lớn, vòng focus và trang trí.
    ============================================================ */
 :root {
   --background:          oklch(0.965 0.008 254);
@@ -64,9 +78,9 @@
   --popover:             oklch(1 0 0);
   --popover-foreground:  oklch(0.15 0.035 258);
 
-  /* Brand primary — #fd085d */
-  --primary:             #fd085d;
-  --primary-foreground:  oklch(0.98 0.005 0);
+  /* Brand primary — bản đậm của #fd085d để chữ trắng trên nút đạt AA */
+  --primary:             #d6004f;
+  --primary-foreground:  oklch(0.99 0.003 0);
 
   --secondary:           oklch(0.94 0.012 215);
   --secondary-foreground: oklch(0.15 0.035 258);
@@ -82,7 +96,7 @@
   --destructive:         oklch(0.570 0.233 24.4);
 
   --border:              oklch(0.88 0.015 254);
-  --input:               oklch(0.88 0.015 254);
+  --input:               oklch(0.70 0.03 254);
   --ring:                #fd085d;
 
   --radius: 0.5rem;
@@ -93,14 +107,14 @@
   --chart-4:  oklch(0.60 0.18  140);
   --chart-5:  oklch(0.570 0.233 24.4);
 
-  /* Sidebar — dark navy (same feel as before) */
-  --sidebar:                    oklch(0.11 0.028 258);
-  --sidebar-foreground:         oklch(0.80 0.015 255);
-  --sidebar-primary:            #fd085d;
-  --sidebar-primary-foreground: oklch(0.98 0.005 0);
-  --sidebar-accent:             oklch(0.18 0.038 257);
-  --sidebar-accent-foreground:  oklch(0.92 0.010 255);
-  --sidebar-border:             oklch(1 0 0 / 7%);
+  /* Sidebar — trắng, gọn (kiểu edX/Coursera); dark mode giữ navy đậm ở khối .dark */
+  --sidebar:                    #ffffff;
+  --sidebar-foreground:         #33455b;
+  --sidebar-primary:            #d6004f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent:             #f1f5f9;
+  --sidebar-accent-foreground:  #0b1f36;
+  --sidebar-border:             #e3e9f1;
   --sidebar-ring:               #fd085d;
 }
 
@@ -154,6 +168,50 @@
   --sidebar-accent-foreground:  oklch(0.92 0.010 255);
   --sidebar-border:             oklch(1 0 0 / 6%);
   --sidebar-ring:               #fd085d;
+}
+
+/* ============================================================
+   MARKETING / AUTH — bảng màu thương hiệu (không phụ thuộc theme)
+   Lấy từ logo: hồng #fd085d, xanh navy, xanh cyan ở viền khối lập phương.
+   --lb-pink        : màu thương hiệu thuần, dùng cho mảng màu lớn / trang trí.
+   --lb-pink-strong : bản đậm hơn cho chữ & nút (trắng trên #fd085d chỉ đạt
+                      3.9:1, dưới ngưỡng AA 4.5:1; bản đậm đạt >5:1).
+   ============================================================ */
+:root {
+  --lb-pink: #fd085d;
+  --lb-pink-strong: #d6004f;
+  --lb-pink-soft: #fff0f5;
+  --lb-navy: #003e78;
+  --lb-navy-mid: #0b2a4a;
+  --lb-navy-deep: #071a2f;
+  --lb-cyan: #1ab5f0;
+  --lb-cyan-soft: #e7f6fd;
+  --lb-tint: #f4f7fb;
+  --lb-ink: #0b1f36;
+}
+
+/* Vùng luôn sáng: khai báo lại bộ token shadcn để mọi component dùng
+   `bg-background`, `text-muted-foreground`, `bg-primary`… tự đổi theo. */
+.theme-light {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: var(--lb-ink);
+  --card: #ffffff;
+  --card-foreground: var(--lb-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--lb-ink);
+  --primary: var(--lb-pink-strong);
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0f7;
+  --secondary-foreground: var(--lb-ink);
+  --muted: var(--lb-tint);
+  --muted-foreground: #46586e;
+  --accent: var(--lb-pink-soft);
+  --accent-foreground: var(--lb-ink);
+  --destructive: #c62039;
+  --border: #dbe3ee;
+  --input: #7d8fa8; /* viền ô nhập >= 3:1 trên nền trắng (WCAG 1.4.11) */
+  --ring: var(--lb-pink);
 }
 
 @layer base {
@@ -792,4 +850,67 @@
   .lb-tilt > * { transform: none; }
   .lb-caret { animation: none; }
   .lb-gradient-text { animation: none; }
+}
+
+/* ============================================================
+   MARKETING / AUTH — kiểu chữ, focus, độ cao điều khiển
+   ============================================================ */
+.lb-marketing {
+  font-family: var(--font-exo2), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+}
+.lb-marketing :is(h1, h2, h3, h4),
+.lb-marketing [data-slot='card-title'],
+.lb-marketing .font-display {
+  font-family: var(--font-exo2), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+/* Font mono giữ nguyên JetBrains Mono cho khung code */
+.lb-marketing .font-mono {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Vòng focus liền 3px, đủ tương phản trên nền sáng; đổi sang trắng trên nền navy. */
+.lb-marketing :is(a, button, summary, input, select, textarea):focus-visible {
+  outline: 3px solid var(--lb-navy);
+  outline-offset: 2px;
+}
+.lb-marketing .lb-on-navy :is(a, button, summary):focus-visible {
+  outline-color: #ffffff;
+}
+.lb-marketing [data-slot='input']:focus-visible {
+  outline: none; /* Input đã có ring riêng */
+}
+
+/* Điều khiển form cao hơn một chút (44px) cho cảm giác thoáng, dễ bấm. */
+.theme-light [data-slot='input'] {
+  height: 2.75rem;
+  border-color: var(--input);
+  background-color: #ffffff;
+}
+.theme-light form [data-slot='button'][type='submit'] {
+  height: 2.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+/* Nút bấm dạng viên thuốc (như edX); thẻ phẳng, bóng mỏng. */
+.lb-marketing [data-slot='button'] {
+  border-radius: 9999px;
+}
+.theme-light [data-slot='card'] {
+  border-radius: 0.75rem;
+  box-shadow:
+    0 1px 3px rgb(11 31 54 / 10%),
+    0 1px 2px -1px rgb(11 31 54 / 10%);
+}
+
+/* Cuộn mượt tới #mục, chừa chỗ cho header dính */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.lb-marketing) {
+    scroll-behavior: smooth;
+  }
+}
+html:has(.lb-marketing) {
+  scroll-padding-top: 5rem;
 }

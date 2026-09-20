@@ -163,19 +163,18 @@ export function ActivityCompetencyWorkspace({
 
   return (
     <div className="space-y-5">
-      <div className="border-border bg-card overflow-hidden rounded-lg border">
-        <div className="relative border-b px-5 py-5">
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+        <div className="relative border-b px-4 py-5 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="bg-primary/10 border-primary/20 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border">
                 <Target className="text-primary h-5 w-5" />
               </div>
               <div>
-                <p className="text-primary text-[11px] font-bold tracking-[0.2em] uppercase">
-                  Chấm năng lực
-                </p>
-                <h1 className="mt-1 text-2xl font-bold">{activityTitle ?? 'Hoạt động học tập'}</h1>
+                <p className="text-primary text-sm font-semibold">Chấm năng lực</p>
+                <h1 className="font-heading mt-1 text-2xl font-bold tracking-tight break-words sm:text-3xl">
+                  {activityTitle ?? 'Hoạt động học tập'}
+                </h1>
                 <p className="text-muted-foreground mt-1 text-sm">
                   Gán chỉ báo cho hoạt động và ghi nhận mức độ thành thạo theo từng học sinh.
                 </p>
@@ -288,9 +287,7 @@ export function ActivityCompetencyWorkspace({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-card px-4 py-3">
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-        {label}
-      </p>
+      <p className="text-muted-foreground text-xs font-semibold">{label}</p>
       <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
     </div>
   );
@@ -444,13 +441,13 @@ function IndicatorAssignment({
                 .filter((category) => category.components.some((c) => c.indicators.length > 0))
                 .map((category) => (
                   <div key={category.id} className="border-border rounded-lg border p-3">
-                    <p className="text-xs font-bold tracking-wide uppercase">{category.name}</p>
+                    <p className="text-sm font-bold">{category.name}</p>
                     <div className="mt-2 space-y-3">
                       {category.components
                         .filter((component) => component.indicators.length > 0)
                         .map((component) => (
                           <div key={component.id}>
-                            <p className="text-muted-foreground text-[11px] font-semibold">
+                            <p className="text-muted-foreground text-xs font-semibold">
                               {component.code ? `${component.code} · ` : ''}
                               {component.name}
                             </p>
@@ -509,9 +506,7 @@ function RubricReference({ rubric }: { rubric: CompetencyRubricText }) {
 
   return (
     <div className="border-border bg-muted/10 space-y-1.5 rounded-lg border px-3 py-2.5">
-      <p className="text-muted-foreground text-[11px] font-semibold uppercase">
-        Rubric của hoạt động này
-      </p>
+      <p className="text-muted-foreground text-xs font-semibold">Rubric của hoạt động này</p>
       {filled.map(({ level, text }) => (
         <p key={level.value} className="text-xs leading-relaxed">
           <span
@@ -576,7 +571,7 @@ function RubricForm({
         return (
           <label key={key} className="block space-y-1">
             <span
-              className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
+              className="rounded px-1.5 py-0.5 text-xs font-semibold"
               style={{ backgroundColor: level.color, color: level.textColor }}
             >
               {level.label}

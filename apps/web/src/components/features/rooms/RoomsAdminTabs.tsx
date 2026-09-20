@@ -24,8 +24,8 @@ export function RoomsAdminTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="border-border flex w-full items-center justify-between gap-2 border-b">
-      <nav className="flex gap-1 overflow-x-auto" aria-label="Phòng chức năng">
+    <div className="border-border flex w-full flex-wrap items-center justify-between gap-x-2 border-b">
+      <nav className="flex max-w-full min-w-0 gap-1 overflow-x-auto" aria-label="Phòng chức năng">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = pathname === tab.href;
@@ -34,7 +34,7 @@ export function RoomsAdminTabs() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                'inline-flex h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
+                'inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium whitespace-nowrap transition-colors',
                 active
                   ? 'border-primary text-primary'
                   : 'text-muted-foreground hover:text-foreground border-transparent'

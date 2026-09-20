@@ -31,7 +31,7 @@ export default async function QuizPreviewPage({
   if (!quiz) notFound();
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-3">
         <Link
@@ -41,7 +41,7 @@ export default async function QuizPreviewPage({
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex min-w-0 items-center gap-2">
-          <Brain className="h-4 w-4 shrink-0 text-violet-500" />
+          <Brain className="text-primary h-4 w-4 shrink-0" />
           <Link
             href={`/courses/${slug}/quizzes/${quizId}`}
             className="text-muted-foreground hover:text-foreground truncate text-sm transition-colors"
@@ -54,7 +54,9 @@ export default async function QuizPreviewPage({
       </div>
 
       <div>
-        <h1 className="text-xl font-bold">Xem thử bài quiz</h1>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          Xem thử bài quiz
+        </h1>
         <p className="text-muted-foreground mt-0.5 text-sm">
           Trải nghiệm quiz như học sinh, không lưu kết quả.
         </p>

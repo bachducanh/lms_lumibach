@@ -34,7 +34,7 @@ function SelectTrigger({
         'inline-flex w-fit items-center justify-between gap-2 rounded-lg border px-3 text-sm',
         'transition-colors outline-none focus-visible:ring-[3px]',
         'disabled:pointer-events-none disabled:opacity-50',
-        size === 'sm' ? 'h-8' : 'h-9',
+        size === 'sm' ? 'h-8' : 'h-10',
         className
       )}
       {...props}

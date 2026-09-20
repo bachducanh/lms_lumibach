@@ -17,10 +17,12 @@ export default async function EditCoursePage({ params }: { params: Promise<{ slu
   if (!course.viewerIsOwner) redirect(`/courses/${slug}`);
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Chỉnh sửa khoá học</h1>
-        <p className="text-muted-foreground text-sm">{course.name}</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          Chỉnh sửa khoá học
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">{course.name}</p>
       </div>
       <CourseForm mode="edit" course={course} />
     </div>

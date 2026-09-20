@@ -14,7 +14,7 @@ export const metadata = { title: 'Quiz' };
 
 const STATUS_CLASS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
-  PUBLISHED: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  PUBLISHED: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400',
   CLOSED: 'bg-destructive/10 text-destructive',
 };
 const STATUS_LABEL: Record<string, string> = {
@@ -34,15 +34,15 @@ function QuizCard({ quiz, slug, isStaff }: { quiz: QuizListItem; slug: string; i
   return (
     <Link
       href={`/courses/${slug}/quizzes/${quiz.id}`}
-      className="border-border bg-card hover:bg-accent/40 flex items-center gap-4 rounded-xl border px-5 py-4 transition-colors"
+      className="border-border bg-card flex items-center gap-3 rounded-xl border px-4 py-4 shadow-sm transition-shadow hover:shadow-md sm:gap-4 sm:px-5"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-        <Brain className="h-5 w-5 text-violet-500" />
+      <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+        <Brain className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate font-semibold">{quiz.title}</p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 font-semibold break-words">{quiz.title}</p>
           {isStaff && (
             <span
               className={cn(
@@ -107,14 +107,14 @@ export default async function QuizzesPage({ params }: { params: Promise<{ slug: 
   const total = groups.reduce((s, g) => s + g.quizzes.length, 0) + standalone.length;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       {/* Header */}
       <div>
         <div className="text-muted-foreground mb-1 flex items-center gap-2 text-sm">
-          <Brain className="h-4 w-4 text-violet-500" />
+          <Brain className="text-primary h-4 w-4" />
           <span>{course.name}</span>
         </div>
-        <h1 className="text-2xl font-bold">Quiz</h1>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Quiz</h1>
         {total > 0 && (
           <p className="text-muted-foreground mt-0.5 text-sm">
             {total} quiz trong {groups.length} chương
@@ -123,11 +123,13 @@ export default async function QuizzesPage({ params }: { params: Promise<{ slug: 
       </div>
 
       {total === 0 ? (
-        <div className="border-border bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed py-16 text-center">
-          <Brain className="text-muted-foreground/30 h-10 w-10" />
+        <div className="border-border bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-16 text-center">
+          <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-lg">
+            <Brain className="h-6 w-6" />
+          </div>
           <p className="text-muted-foreground font-medium">Chưa có quiz nào</p>
           {isStaff && (
-            <p className="text-muted-foreground/60 text-xs">
+            <p className="text-muted-foreground text-sm">
               Thêm quiz qua mục "Thêm hoạt động và tài nguyên" trong từng chương.
             </p>
           )}
@@ -137,9 +139,9 @@ export default async function QuizzesPage({ params }: { params: Promise<{ slug: 
           {/* Quizzes grouped by module */}
           {groups.map((group) => (
             <div key={group.moduleId} className="space-y-2">
-              <div className="flex items-center gap-2.5 rounded-lg border border-violet-500/10 bg-violet-500/5 px-4 py-2.5">
-                <BookOpen className="h-4 w-4 shrink-0 text-violet-500" />
-                <span className="text-sm font-semibold text-violet-700 dark:text-violet-400">
+              <div className="border-border bg-muted/50 flex items-center gap-2.5 rounded-lg border px-4 py-2.5">
+                <BookOpen className="text-primary h-4 w-4 shrink-0" />
+                <span className="min-w-0 text-sm font-semibold break-words">
                   {group.moduleName}
                 </span>
                 <span className="text-muted-foreground ml-auto text-xs">

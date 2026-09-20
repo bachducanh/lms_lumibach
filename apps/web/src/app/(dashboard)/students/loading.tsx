@@ -4,7 +4,6 @@ export default function StudentsLoading() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="bg-muted h-10 w-10 rounded-xl" />
           <div className="space-y-1.5">
             <div className="bg-muted h-6 w-40 rounded" />
             <div className="bg-muted h-3.5 w-24 rounded" />
@@ -14,12 +13,12 @@ export default function StudentsLoading() {
 
       {/* Filter */}
       <div className="flex gap-2">
-        <div className="bg-muted h-9 w-64 rounded-md" />
-        <div className="bg-muted h-9 w-44 rounded-md" />
+        <div className="bg-muted h-10 w-full max-w-64 rounded-lg" />
+        <div className="bg-muted h-10 w-44 rounded-lg" />
       </div>
 
       {/* Table */}
-      <div className="ring-foreground/10 overflow-hidden rounded-xl ring-1">
+      <div className="border-border bg-card overflow-hidden rounded-xl border">
         <div className="bg-muted/50 flex gap-6 px-4 py-3">
           {[120, 160, 80, 60, 120, 60].map((w, i) => (
             <div key={i} className="bg-muted h-3.5 rounded" style={{ width: w }} />

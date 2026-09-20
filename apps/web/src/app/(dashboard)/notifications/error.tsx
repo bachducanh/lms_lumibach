@@ -16,7 +16,7 @@ export default function NotificationsError({
   }, [error]);
 
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="bg-destructive/10 flex h-16 w-16 items-center justify-center rounded-full">
         <AlertTriangle className="text-destructive h-8 w-8" />
       </div>

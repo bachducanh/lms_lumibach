@@ -6,7 +6,7 @@ import { ThemeToggle } from '@/components/layouts/ThemeToggle';
 import { UserMenu } from '@/components/features/auth/UserMenu';
 import { NotificationBell } from '@/components/features/notifications/NotificationBell';
 import { useSidebar } from '@/components/layouts/SidebarContext';
-import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 const SEGMENT_LABEL: Record<string, string> = {
   dashboard: 'Tổng quan',
@@ -63,14 +63,11 @@ export function Header({ showNotifications = true }: { showNotifications?: boole
   const crumbs = buildCrumbs(clientPathname);
 
   return (
-    <header
-      className="border-border bg-card/60 relative z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 backdrop-blur-md sm:gap-3 sm:px-4 md:px-6"
-      style={{ boxShadow: '0 1px 0 0 oklch(1 0 0 / 5%)' }}
-    >
+    <header className="border-border bg-card relative z-10 flex h-16 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4 md:px-6">
       {/* Mobile hamburger */}
       <button
         onClick={toggle}
-        className="text-muted-foreground hover:bg-muted/40 hover:text-foreground -ml-1 flex h-9 w-9 items-center justify-center rounded-md transition-colors md:hidden"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground -ml-1 flex h-9 w-9 items-center justify-center rounded-md transition-colors md:hidden"
         aria-label="Mở menu"
       >
         <Menu className="h-5 w-5" />
@@ -78,7 +75,7 @@ export function Header({ showNotifications = true }: { showNotifications?: boole
 
       <button
         onClick={toggleCollapsed}
-        className="text-muted-foreground hover:bg-muted/40 hover:text-foreground -ml-1 hidden h-9 w-9 items-center justify-center rounded-md transition-colors md:flex"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground -ml-1 hidden h-9 w-9 items-center justify-center rounded-md transition-colors md:flex"
         title={isCollapsed ? 'Mở sidebar' : 'Thu gọn sidebar'}
         aria-label={isCollapsed ? 'Mở sidebar' : 'Thu gọn sidebar'}
       >
@@ -90,24 +87,28 @@ export function Header({ showNotifications = true }: { showNotifications?: boole
       </button>
 
       {/* Breadcrumb — hidden on mobile, the page hero already shows context */}
-      <div className="hidden min-w-0 flex-1 items-center gap-1.5 text-xs font-medium select-none md:flex">
+      <nav
+        aria-label="Vị trí hiện tại"
+        className="hidden min-w-0 flex-1 items-center gap-1.5 text-sm font-medium select-none md:flex"
+      >
         {crumbs.map((crumb, i) => (
           <span key={i} className="flex min-w-0 items-center gap-1.5">
-            {i > 0 && <span className="text-muted-foreground/30 shrink-0">/</span>}
+            {i > 0 && <ChevronRight className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
             <span
+              aria-current={i === crumbs.length - 1 && i > 0 ? 'page' : undefined}
               className={
                 i === 0
-                  ? 'text-primary/80 shrink-0 font-semibold'
+                  ? 'font-heading text-foreground shrink-0 font-bold'
                   : i === crumbs.length - 1
                     ? 'text-foreground truncate'
-                    : 'text-muted-foreground/60 shrink-0'
+                    : 'text-muted-foreground shrink-0'
               }
             >
               {crumb}
             </span>
           </span>
         ))}
-      </div>
+      </nav>
 
       {/* Right controls */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">

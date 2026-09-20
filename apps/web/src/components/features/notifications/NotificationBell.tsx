@@ -121,12 +121,12 @@ export function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        className="hover:bg-muted relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+        className="hover:bg-muted relative flex h-10 w-10 items-center justify-center rounded-full transition-colors"
         aria-label="Thông báo"
       >
-        <Bell className="text-muted-foreground h-4 w-4" />
+        <Bell className="text-muted-foreground h-5 w-5" />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-violet-600 text-[9px] leading-none font-bold text-white">
+          <span className="bg-primary text-primary-foreground absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-bold">
             {count > 99 ? '99+' : count}
           </span>
         )}
@@ -142,7 +142,7 @@ export function NotificationBell() {
               {count > 0 && (
                 <button
                   onClick={handleMarkAll}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors"
                   disabled={pending}
                 >
                   <CheckCheck className="h-3 w-3" />
@@ -151,7 +151,7 @@ export function NotificationBell() {
               )}
               <Link
                 href="/notifications"
-                className="hover:bg-muted rounded-md px-2 py-1 text-xs text-violet-500 transition-colors hover:text-violet-600"
+                className="hover:bg-muted text-primary rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
                 onClick={() => setOpen(false)}
               >
                 Xem tất cả
@@ -200,7 +200,7 @@ function NotifRow({
 
   const inner = (
     <div
-      className={`hover:bg-muted/50 group flex cursor-pointer gap-3 px-3 py-3 transition-colors sm:px-4 ${!item.isRead ? 'bg-violet-500/5' : ''}`}
+      className={`hover:bg-muted/50 group flex cursor-pointer gap-3 px-3 py-3 transition-colors sm:px-4 ${!item.isRead ? 'bg-primary/[0.04]' : ''}`}
       onClick={() => {
         if (!item.isRead) onRead(item.id);
       }}
@@ -215,13 +215,13 @@ function NotifRow({
         {item.body && (
           <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs">{item.body}</p>
         )}
-        <p className="text-muted-foreground/60 mt-1 text-[10px]">
+        <p className="text-muted-foreground mt-1 text-[11px]">
           {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: vi })}
         </p>
       </div>
       {!item.isRead && (
         <div className="flex shrink-0 items-start pt-1">
-          <div className="h-2 w-2 rounded-full bg-violet-500" />
+          <div className="bg-primary h-2 w-2 rounded-full" />
         </div>
       )}
     </div>

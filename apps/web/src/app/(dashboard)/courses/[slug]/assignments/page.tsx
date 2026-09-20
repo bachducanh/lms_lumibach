@@ -38,7 +38,7 @@ const TYPE_LABEL: Record<
 
 const STATUS_CLASS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
-  PUBLISHED: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  PUBLISHED: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400',
   CLOSED: 'bg-destructive/10 text-destructive',
 };
 const STATUS_LABEL: Record<string, string> = {
@@ -49,7 +49,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const EX_STATUS_CLASS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
-  PUBLISHED: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  PUBLISHED: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400',
   CLOSED: 'bg-destructive/10 text-destructive',
 };
 
@@ -81,15 +81,15 @@ function AssignmentCard({
   return (
     <Link
       href={`/courses/${slug}/assignments/${a.id}`}
-      className="border-border bg-card hover:bg-accent/40 flex items-center gap-4 rounded-xl border px-5 py-4 transition-colors"
+      className="border-border bg-card flex items-center gap-3 rounded-xl border px-4 py-4 shadow-sm transition-shadow hover:shadow-md sm:gap-4 sm:px-5"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-        <TypeIcon className="h-5 w-5 text-blue-500" />
+      <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+        <TypeIcon className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate font-semibold">{a.title}</p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 font-semibold break-words">{a.title}</p>
           {isStaff && (
             <span
               className={cn(
@@ -143,16 +143,16 @@ function ExerciseCard({
   return (
     <Link
       href={`/courses/${slug}/exercises/${ex.id}`}
-      className="bg-card flex items-center gap-4 rounded-xl border border-violet-500/20 px-5 py-4 transition-colors hover:bg-violet-500/5"
+      className="border-border bg-card flex items-center gap-3 rounded-xl border px-4 py-4 shadow-sm transition-shadow hover:shadow-md sm:gap-4 sm:px-5"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-        <Code2 className="h-5 w-5 text-violet-500" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-700 dark:text-violet-400">
+        <Code2 className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate font-semibold">{ex.title}</p>
-          <span className="shrink-0 rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-xs font-medium text-violet-400">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 font-semibold break-words">{ex.title}</p>
+          <span className="shrink-0 rounded-full border border-violet-600/25 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-400">
             {LANG_LABEL[ex.language] ?? ex.language}
           </span>
           {isStaff && (
@@ -194,16 +194,16 @@ function PracticeTestCard({
   return (
     <Link
       href={`/courses/${slug}/practice-tests/${pt.id}`}
-      className="bg-card flex items-center gap-4 rounded-xl border border-cyan-500/20 px-5 py-4 transition-colors hover:bg-cyan-500/5"
+      className="border-border bg-card flex items-center gap-3 rounded-xl border px-4 py-4 shadow-sm transition-shadow hover:shadow-md sm:gap-4 sm:px-5"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
-        <FileQuestion className="h-5 w-5 text-cyan-500" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">
+        <FileQuestion className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate font-semibold">{pt.title}</p>
-          <span className="shrink-0 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-xs font-medium text-cyan-500">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 font-semibold break-words">{pt.title}</p>
+          <span className="shrink-0 rounded-full border border-cyan-600/25 bg-cyan-50 px-2 py-0.5 text-xs font-medium text-cyan-800 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-400">
             Đề PDF
           </span>
           {isStaff && (
@@ -337,14 +337,16 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
     pStandalone.length;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       {/* Header */}
       <div>
         <div className="text-muted-foreground mb-1 flex items-center gap-2 text-sm">
-          <ClipboardList className="h-4 w-4 text-blue-500" />
+          <ClipboardList className="text-primary h-4 w-4" />
           <span>{course.name}</span>
         </div>
-        <h1 className="text-2xl font-bold">Bài tập &amp; Lập trình</h1>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          Bài tập &amp; Lập trình
+        </h1>
         {totalItems > 0 && (
           <p className="text-muted-foreground mt-0.5 text-sm">
             {aGroups.reduce((s, g) => s + g.assignments.length, 0) + aStandalone.length} bài tập ·{' '}
@@ -356,11 +358,13 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
       </div>
 
       {totalItems === 0 ? (
-        <div className="border-border bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed py-16 text-center">
-          <ClipboardList className="text-muted-foreground/30 h-10 w-10" />
+        <div className="border-border bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-16 text-center">
+          <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-lg">
+            <ClipboardList className="h-6 w-6" />
+          </div>
           <p className="text-muted-foreground font-medium">Chưa có bài tập nào</p>
           {isStaff && (
-            <p className="text-muted-foreground/60 text-xs">
+            <p className="text-muted-foreground text-sm">
               Thêm bài tập qua mục "Thêm hoạt động và tài nguyên" trong từng chương.
             </p>
           )}
@@ -370,9 +374,11 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ sl
           {/* Groups by module */}
           {mergedGroups.map((group) => (
             <div key={group.moduleId} className="space-y-2">
-              <div className="bg-primary/5 border-primary/10 flex items-center gap-2.5 rounded-lg border px-4 py-2.5">
+              <div className="border-border bg-muted/50 flex items-center gap-2.5 rounded-lg border px-4 py-2.5">
                 <BookOpen className="text-primary h-4 w-4 shrink-0" />
-                <span className="text-primary text-sm font-semibold">{group.moduleName}</span>
+                <span className="min-w-0 text-sm font-semibold break-words">
+                  {group.moduleName}
+                </span>
                 <span className="text-muted-foreground ml-auto text-xs">
                   {group.assignments.length + group.exercises.length + group.practiceTests.length}{' '}
                   hoạt động

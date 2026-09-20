@@ -193,13 +193,13 @@ export function BookingDetailDialog({
         )}
 
         {booking?.status === 'APPROVED' && (
-          <p className="rounded-lg bg-sky-500/10 px-3 py-2 text-sm text-sky-800 dark:text-sky-200">
+          <p className="rounded-lg border border-sky-600/25 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
             Đơn đã được duyệt. Vui lòng gặp Quản trị viên để nhận chìa khoá.
           </p>
         )}
 
         {booking?.status === 'CHECKED_OUT' && (
-          <p className="rounded-lg bg-teal-500/10 px-3 py-2 text-sm text-teal-800 dark:text-teal-200">
+          <p className="rounded-lg border border-teal-600/25 bg-teal-50 px-3 py-2 text-sm text-teal-800 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300">
             Vui lòng mang trả chìa khoá cho Quản trị viên.
           </p>
         )}
@@ -354,7 +354,7 @@ function PhotoGroup({ label, photos }: { label: string; photos: HandoverPhotoDto
 
 function Dong({ nhan, children }: { nhan: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[8rem_1fr] items-start gap-3">
+    <div className="grid grid-cols-[6.5rem_1fr] items-start gap-3 sm:grid-cols-[8rem_1fr]">
       <dt className="text-muted-foreground">{nhan}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>

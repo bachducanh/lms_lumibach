@@ -70,7 +70,7 @@ export function RubricGrader({ submissionId, maxScore, rubric, initialGrades }: 
 
   return (
     <div className="border-border bg-card overflow-hidden rounded-xl border">
-      <div className="border-border bg-muted/30 flex items-center justify-between border-b px-5 py-3">
+      <div className="border-border bg-muted/30 flex flex-wrap items-center justify-between gap-2 border-b px-5 py-3">
         <p className="text-sm font-semibold">Chấm theo rubric</p>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-muted-foreground">
@@ -82,7 +82,7 @@ export function RubricGrader({ submissionId, maxScore, rubric, initialGrades }: 
               total > maxScore
                 ? 'text-destructive'
                 : allGraded
-                  ? 'text-green-600 dark:text-green-400'
+                  ? 'text-green-700 dark:text-green-400'
                   : ''
             )}
           >
@@ -121,9 +121,9 @@ export function RubricGrader({ submissionId, maxScore, rubric, initialGrades }: 
                       )}
                     >
                       <span className="block font-semibold">{l.label}</span>
-                      <span className="text-[11px] opacity-80">{l.points} điểm</span>
+                      <span className="text-xs opacity-80">{l.points} điểm</span>
                       {l.description && (
-                        <span className="mt-1 block max-w-[160px] text-[11px] leading-relaxed">
+                        <span className="mt-1 block max-w-[160px] text-xs leading-relaxed">
                           {l.description}
                         </span>
                       )}
@@ -136,14 +136,14 @@ export function RubricGrader({ submissionId, maxScore, rubric, initialGrades }: 
         })}
       </div>
 
-      <div className="border-border bg-muted/20 flex items-center justify-between border-t px-5 py-3">
+      <div className="border-border bg-muted/20 flex flex-wrap items-center justify-between gap-2 border-t px-5 py-3">
         {!allGraded && (
           <p className="text-muted-foreground text-xs">
             Còn {rubric.criteria.length - gradedCount} tiêu chí chưa chấm
           </p>
         )}
         {allGraded && (
-          <p className="text-xs font-medium text-green-600 dark:text-green-400">
+          <p className="text-xs font-medium text-green-700 dark:text-green-400">
             Đã chọn đủ {rubric.criteria.length} tiêu chí
           </p>
         )}

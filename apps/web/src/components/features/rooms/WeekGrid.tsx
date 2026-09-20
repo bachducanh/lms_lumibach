@@ -92,109 +92,111 @@ export function WeekGrid({
   }
 
   return (
-    <div className="border-border overflow-hidden rounded-xl border">
-      {/* Hàng tiêu đề: nhãn thứ + ngày */}
-      <div
-        className="border-border bg-muted/40 grid border-b"
-        style={{ gridTemplateColumns: `4rem repeat(${days.length}, minmax(0, 1fr))` }}
-      >
-        <div className="border-border border-r" />
-        {days.map((day) => {
-          const homNay = vnDateKey(day) === vnDateKey(new Date());
-          const { day: ngay, month } = vnParts(day);
-          return (
-            <div
-              key={vnDateKey(day)}
-              className={cn(
-                'border-border border-r px-2 py-2 text-center last:border-r-0',
-                homNay && 'bg-primary/10'
-              )}
-            >
-              <div className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                {vnWeekdayLabel(day)}
+    <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
+      <div className="min-w-[720px]">
+        {/* Hàng tiêu đề: nhãn thứ + ngày */}
+        <div
+          className="border-border bg-muted/40 grid border-b"
+          style={{ gridTemplateColumns: `4rem repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          <div className="border-border border-r" />
+          {days.map((day) => {
+            const homNay = vnDateKey(day) === vnDateKey(new Date());
+            const { day: ngay, month } = vnParts(day);
+            return (
+              <div
+                key={vnDateKey(day)}
+                className={cn(
+                  'border-border border-r px-2 py-2 text-center last:border-r-0',
+                  homNay && 'bg-primary/10'
+                )}
+              >
+                <div className="text-muted-foreground text-xs font-semibold">
+                  {vnWeekdayLabel(day)}
+                </div>
+                <div className={cn('text-sm font-semibold', homNay && 'text-primary')}>
+                  {ngay}/{month}
+                </div>
               </div>
-              <div className={cn('text-sm font-semibold', homNay && 'text-primary')}>
-                {ngay}/{month}
+            );
+          })}
+        </div>
+
+        {/* Thân lịch */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `4rem repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          <TruccGio
+            openMinutes={openMinutes}
+            soBuoc={soBuoc}
+            stepMinutes={stepMinutes}
+            chieuCao={chieuCao}
+          />
+
+          {days.map((day) => {
+            const dateKey = vnDateKey(day);
+            const donTrongNgay = bookings.filter((b) => vnDateKey(new Date(b.startAt)) === dateKey);
+
+            return (
+              <div
+                key={dateKey}
+                className="border-border relative border-r last:border-r-0"
+                style={{ height: chieuCao }}
+                onPointerDown={(e) => {
+                  // Bỏ qua khi bấm trúng một khối đơn — khối tự xử lý click.
+                  if ((e.target as HTMLElement).closest('[data-booking-block]')) return;
+                  const phut = phutTuToaDo(e);
+                  keoRef.current = { dateKey, mocPhut: phut };
+                  setDangKeo({ dateKey, tuPhut: phut, denPhut: phut });
+                }}
+                onPointerMove={(e) => {
+                  if (!keoRef.current || keoRef.current.dateKey !== dateKey) return;
+                  setDangKeo({
+                    dateKey,
+                    tuPhut: keoRef.current.mocPhut,
+                    denPhut: phutTuToaDo(e),
+                  });
+                }}
+              >
+                {/* Đường kẻ ngang mỗi bước slot */}
+                {Array.from({ length: soBuoc }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      'border-border/60 absolute inset-x-0 border-t',
+                      // Vạch đậm hơn ở mỗi đầu giờ tròn.
+                      (openMinutes + i * stepMinutes) % 60 === 0 ? 'border-border' : 'border-dashed'
+                    )}
+                    style={{ top: i * SLOT_HEIGHT }}
+                  />
+                ))}
+
+                {/* Vùng đang kéo chọn */}
+                {dangKeo?.dateKey === dateKey && (
+                  <VungChon
+                    tuPhut={Math.min(dangKeo.tuPhut, dangKeo.denPhut)}
+                    denPhut={Math.max(dangKeo.tuPhut, dangKeo.denPhut) + stepMinutes}
+                    openMinutes={openMinutes}
+                    tongPhut={tongPhut}
+                  />
+                )}
+
+                <DuongKeHienTai day={day} openMinutes={openMinutes} tongPhut={tongPhut} />
+
+                {donTrongNgay.map((booking) => (
+                  <KhoiDon
+                    key={booking.id}
+                    booking={booking}
+                    openMinutes={openMinutes}
+                    tongPhut={tongPhut}
+                    onClick={() => onSelectBooking(booking)}
+                  />
+                ))}
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Thân lịch */}
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: `4rem repeat(${days.length}, minmax(0, 1fr))` }}
-      >
-        <TruccGio
-          openMinutes={openMinutes}
-          soBuoc={soBuoc}
-          stepMinutes={stepMinutes}
-          chieuCao={chieuCao}
-        />
-
-        {days.map((day) => {
-          const dateKey = vnDateKey(day);
-          const donTrongNgay = bookings.filter((b) => vnDateKey(new Date(b.startAt)) === dateKey);
-
-          return (
-            <div
-              key={dateKey}
-              className="border-border relative border-r last:border-r-0"
-              style={{ height: chieuCao }}
-              onPointerDown={(e) => {
-                // Bỏ qua khi bấm trúng một khối đơn — khối tự xử lý click.
-                if ((e.target as HTMLElement).closest('[data-booking-block]')) return;
-                const phut = phutTuToaDo(e);
-                keoRef.current = { dateKey, mocPhut: phut };
-                setDangKeo({ dateKey, tuPhut: phut, denPhut: phut });
-              }}
-              onPointerMove={(e) => {
-                if (!keoRef.current || keoRef.current.dateKey !== dateKey) return;
-                setDangKeo({
-                  dateKey,
-                  tuPhut: keoRef.current.mocPhut,
-                  denPhut: phutTuToaDo(e),
-                });
-              }}
-            >
-              {/* Đường kẻ ngang mỗi bước slot */}
-              {Array.from({ length: soBuoc }).map((_, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'border-border/60 absolute inset-x-0 border-t',
-                    // Vạch đậm hơn ở mỗi đầu giờ tròn.
-                    (openMinutes + i * stepMinutes) % 60 === 0 ? 'border-border' : 'border-dashed'
-                  )}
-                  style={{ top: i * SLOT_HEIGHT }}
-                />
-              ))}
-
-              {/* Vùng đang kéo chọn */}
-              {dangKeo?.dateKey === dateKey && (
-                <VungChon
-                  tuPhut={Math.min(dangKeo.tuPhut, dangKeo.denPhut)}
-                  denPhut={Math.max(dangKeo.tuPhut, dangKeo.denPhut) + stepMinutes}
-                  openMinutes={openMinutes}
-                  tongPhut={tongPhut}
-                />
-              )}
-
-              <DuongKeHienTai day={day} openMinutes={openMinutes} tongPhut={tongPhut} />
-
-              {donTrongNgay.map((booking) => (
-                <KhoiDon
-                  key={booking.id}
-                  booking={booking}
-                  openMinutes={openMinutes}
-                  tongPhut={tongPhut}
-                  onClick={() => onSelectBooking(booking)}
-                />
-              ))}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -59,8 +59,8 @@ export default async function PracticeAttemptPage({
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <div className="bg-muted/20 border-border -mx-6 -mt-6 mb-6 flex flex-wrap items-center gap-2 border-b px-6 py-4">
-        <FileQuestion className="h-4 w-4 text-cyan-500" />
+      <div className="bg-muted/20 border-border -mx-3 -mt-3 mb-6 flex flex-wrap items-center gap-2 border-b px-4 py-4 sm:-mx-4 sm:-mt-4 md:-mx-6 md:-mt-6 md:px-6">
+        <FileQuestion className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
         <Link
           href={`/courses/${slug}/practice-tests/${practiceTestId}`}
           className="text-muted-foreground hover:text-foreground truncate text-sm transition-colors"
@@ -80,7 +80,7 @@ export default async function PracticeAttemptPage({
       </div>
 
       {/* Score card */}
-      <div className="border-primary/20 bg-primary/5 rounded-2xl border-2 p-8 text-center">
+      <div className="border-primary/20 bg-primary/5 rounded-xl border-2 p-8 text-center">
         {isStaff && studentName && (
           <p className="text-muted-foreground mb-2 text-sm">
             Bài làm của <span className="text-foreground font-semibold">{studentName}</span>
@@ -98,24 +98,18 @@ export default async function PracticeAttemptPage({
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Điểm hệ 10
-          </p>
+          <p className="text-muted-foreground text-xs font-semibold">Điểm hệ 10</p>
           <p className="text-primary mt-1 text-lg font-bold">{score10.toFixed(2)}</p>
         </div>
         <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Câu đúng hoàn toàn
-          </p>
+          <p className="text-muted-foreground text-xs font-semibold">Câu đúng hoàn toàn</p>
           <p className="mt-1 text-lg font-bold">
             {correctCount}
             <span className="text-muted-foreground text-sm">/{questions.length}</span>
           </p>
         </div>
         <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Điểm thô
-          </p>
+          <p className="text-muted-foreground text-xs font-semibold">Điểm thô</p>
           <p className="mt-1 text-lg font-bold">
             {score}
             <span className="text-muted-foreground text-sm">/{maxScore}</span>
@@ -125,14 +119,10 @@ export default async function PracticeAttemptPage({
 
       {/* Per-question table grouped by section */}
       <div className="space-y-5">
-        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-          Chi tiết theo câu
-        </h2>
+        <h2 className="text-muted-foreground text-sm font-semibold">Chi tiết theo câu</h2>
         {sections.map((section) => (
           <div key={section.type} className="space-y-2">
-            <p className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
-              {section.label}
-            </p>
+            <p className="text-muted-foreground text-xs font-bold">{section.label}</p>
             <div className="border-border overflow-hidden rounded-xl border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-muted-foreground text-xs">
@@ -157,7 +147,7 @@ export default async function PracticeAttemptPage({
                           {formatStudentAnswer(question, answer)}
                         </td>
                         {answersVisible && (
-                          <td className="px-3 py-2 text-emerald-600 dark:text-emerald-400">
+                          <td className="px-3 py-2 text-emerald-700 dark:text-emerald-400">
                             {question.correctAnswer ? formatCorrectAnswer(question) : '—'}
                           </td>
                         )}
@@ -166,9 +156,9 @@ export default async function PracticeAttemptPage({
                             className={cn(
                               'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-bold tabular-nums',
                               full
-                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                                 : earned > 0
-                                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                                   : 'border-destructive/30 bg-destructive/10 text-destructive'
                             )}
                           >
@@ -193,7 +183,7 @@ export default async function PracticeAttemptPage({
       {/* PDF reference */}
       <details className="border-border bg-card group overflow-hidden rounded-xl border" open>
         <summary className="hover:bg-muted/40 flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-semibold">
-          <FileQuestion className="h-4 w-4 text-cyan-500" />
+          <FileQuestion className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
           Đề bài PDF
         </summary>
         <iframe

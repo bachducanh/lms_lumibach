@@ -121,16 +121,14 @@ export function ExerciseSetup({ exercise, owner }: Props) {
   return (
     <div className="space-y-6">
       {/* ── Basic info ─────────────────────────────────────── */}
-      <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
+      <div className="border-border bg-card space-y-4 rounded-xl border p-6">
         <div className="flex items-center gap-2">
-          <Settings2 className="h-4 w-4 text-violet-500" />
+          <Settings2 className="h-4 w-4 text-violet-700 dark:text-violet-400" />
           <h3 className="font-semibold">Thông tin bài tập</h3>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Tiêu đề
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Tiêu đề</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -139,9 +137,7 @@ export function ExerciseSetup({ exercise, owner }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Mô tả / Đề bài
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Mô tả / Đề bài</label>
           <RichTextEditor
             content={description}
             onChange={setDescription}
@@ -155,9 +151,7 @@ export function ExerciseSetup({ exercise, owner }: Props) {
               luôn là nháp và chỉ hiện với người soạn kho. */}
           {!isBank && (
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Trạng thái
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">Trạng thái</label>
               <SimpleSelect
                 size="sm"
                 aria-label="Trạng thái"
@@ -173,25 +167,21 @@ export function ExerciseSetup({ exercise, owner }: Props) {
 
           {exercise.language !== 'WEB' && (
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Thời gian (giây)
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">Thời gian (giây)</label>
               <input
                 type="number"
                 min={1}
                 max={30}
                 value={timeLimit}
                 onChange={(e) => setTimeLimit(Number(e.target.value))}
-                className="border-input bg-background focus:ring-ring w-24 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                className="border-input bg-background focus:ring-ring w-24 rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
               />
             </div>
           )}
 
           {exercise.language !== 'WEB' && (
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Bộ nhớ (MB)
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">Bộ nhớ (MB)</label>
               <input
                 type="number"
                 min={16}
@@ -199,7 +189,7 @@ export function ExerciseSetup({ exercise, owner }: Props) {
                 step={16}
                 value={memoryLimit}
                 onChange={(e) => setMemoryLimit(Number(e.target.value))}
-                className="border-input bg-background focus:ring-ring w-24 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                className="border-input bg-background focus:ring-ring w-24 rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
               />
             </div>
           )}
@@ -209,10 +199,8 @@ export function ExerciseSetup({ exercise, owner }: Props) {
       {/* ── Non-WEB: starter / solution / test cases ──────── */}
       {exercise.language !== 'WEB' && (
         <>
-          <div className="border-border bg-card space-y-4 rounded-2xl border p-6">
-            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-              Code mẫu
-            </h3>
+          <div className="border-border bg-card space-y-4 rounded-xl border p-6">
+            <h3 className="text-muted-foreground text-sm font-semibold">Code mẫu</h3>
 
             <div className="space-y-2">
               <label className="text-muted-foreground text-xs font-medium">
@@ -252,10 +240,8 @@ export function ExerciseSetup({ exercise, owner }: Props) {
             </div>
           </div>
 
-          <div className="border-border bg-card space-y-3 rounded-2xl border p-6">
-            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-              Test cases
-            </h3>
+          <div className="border-border bg-card space-y-3 rounded-xl border p-6">
+            <h3 className="text-muted-foreground text-sm font-semibold">Test cases</h3>
             <TestCaseBuilder initial={testCases} onChange={setTestCases} />
           </div>
         </>
@@ -263,9 +249,9 @@ export function ExerciseSetup({ exercise, owner }: Props) {
 
       {/* ── WEB: starter code editor ──────────────────────── */}
       {exercise.language === 'WEB' && (
-        <div className="border-border bg-card space-y-3 rounded-2xl border p-6">
+        <div className="border-border bg-card space-y-3 rounded-xl border p-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+            <h3 className="text-muted-foreground text-sm font-semibold">
               Code khởi đầu (học sinh sẽ thấy)
             </h3>
             <span className="text-muted-foreground rounded-full bg-purple-500/10 px-2 py-0.5 text-xs text-purple-600 dark:text-purple-400">

@@ -309,7 +309,12 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
               }}
               className="border-input bg-background h-8 rounded-md border px-2 text-sm"
             />
-            <button type="button" onClick={luuTen} disabled={pending} className="text-emerald-600">
+            <button
+              type="button"
+              onClick={luuTen}
+              disabled={pending}
+              className="text-emerald-700 dark:text-emerald-400"
+            >
               <Check className="h-4 w-4" />
             </button>
             <button
@@ -444,14 +449,14 @@ function ModuleBlock({ mod, categoryId }: { mod: CategoryBankModule; categoryId:
             type="button"
             onClick={themHoatDong}
             disabled={pending || !newTitle.trim()}
-            className={buttonVariants({ size: 'sm' })}
+            className={cn(buttonVariants({ size: 'sm' }))}
           >
             Tạo & soạn
           </button>
           <button
             type="button"
             onClick={() => setAddingType(null)}
-            className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
           >
             Huỷ
           </button>
@@ -524,7 +529,7 @@ export function CategoryContentBankManager({ data }: { data: CategoryContentBank
         <button
           type="button"
           onClick={() => setAdding((v) => !v)}
-          className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
         >
           <FolderPlus className="mr-1.5 h-4 w-4" />
           Thêm chương
@@ -548,14 +553,14 @@ export function CategoryContentBankManager({ data }: { data: CategoryContentBank
             type="button"
             onClick={themChuong}
             disabled={pending || !newName.trim()}
-            className={buttonVariants({ size: 'sm' })}
+            className={cn(buttonVariants({ size: 'sm' }))}
           >
             Lưu
           </button>
           <button
             type="button"
             onClick={() => setAdding(false)}
-            className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
           >
             Huỷ
           </button>

@@ -53,7 +53,7 @@ export default async function EditExercisePage({
           <ArrowLeft className="mr-1 h-4 w-4" /> Xem bài tập
         </Link>
         <div className="flex items-center gap-2">
-          <Code2 className="h-5 w-5 text-violet-400" />
+          <Code2 className="h-5 w-5 text-violet-700 dark:text-violet-400" />
           <div>
             <h1 className="text-xl font-bold">Chỉnh sửa bài tập code</h1>
             <p className="text-muted-foreground text-xs">{course.name}</p>

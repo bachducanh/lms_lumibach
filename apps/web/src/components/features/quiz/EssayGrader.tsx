@@ -45,9 +45,7 @@ export function EssayGrader({ answerId, maxPoints, initialScore, initialFeedback
 
   return (
     <div className="border-border bg-muted/20 space-y-3 rounded-lg border p-4">
-      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-        Chấm điểm tự luận
-      </p>
+      <p className="text-muted-foreground text-xs font-semibold">Chấm điểm tự luận</p>
       <div className="flex items-center gap-2">
         <input
           type="number"
@@ -57,7 +55,7 @@ export function EssayGrader({ answerId, maxPoints, initialScore, initialFeedback
           value={score}
           onChange={(e) => setScore(e.target.value)}
           placeholder="0"
-          className="border-input bg-background focus:ring-ring w-20 rounded-md border px-3 py-1.5 text-center text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-20 rounded-lg border px-3 py-1.5 text-center text-sm focus:ring-1 focus:outline-none"
         />
         <span className="text-muted-foreground text-sm">/ {maxPoints} điểm</span>
       </div>
@@ -66,7 +64,7 @@ export function EssayGrader({ answerId, maxPoints, initialScore, initialFeedback
         onChange={(e) => setFeedback(e.target.value)}
         placeholder="Nhận xét (tuỳ chọn)..."
         rows={2}
-        className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
+        className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-xs focus:ring-1 focus:outline-none"
       />
       <div className="flex justify-end">
         <Button type="button" size="sm" onClick={handleSave} disabled={pending}>

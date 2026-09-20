@@ -25,8 +25,10 @@ export function MyEquipmentBookingsList({ bookings }: { bookings: EquipmentBooki
 
   if (bookings.length === 0) {
     return (
-      <div className="border-border text-muted-foreground rounded-xl border border-dashed px-6 py-10 text-center">
-        <CalendarX className="mx-auto mb-3 h-9 w-9 opacity-40" />
+      <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed px-6 py-10 text-center">
+        <span className="bg-primary/10 text-primary mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg">
+          <CalendarX className="h-6 w-6" />
+        </span>
         <p className="font-medium">Bạn chưa có đơn mượn thiết bị nào</p>
       </div>
     );
@@ -65,11 +67,9 @@ function Group({
 }) {
   return (
     <section>
-      <h2 className="text-muted-foreground mb-2 text-xs font-bold tracking-[0.15em] uppercase">
-        {title}
-      </h2>
+      <h2 className="mb-2 text-sm font-semibold">{title}</h2>
       <ul
-        className={`border-border divide-border divide-y rounded-xl border ${muted ? 'opacity-70' : ''}`}
+        className={`border-border bg-card divide-border divide-y rounded-xl border shadow-sm ${muted ? 'opacity-70' : ''}`}
       >
         {bookings.map((booking) => {
           const { Icon, label, block } = STATUS_VISUAL[booking.status];

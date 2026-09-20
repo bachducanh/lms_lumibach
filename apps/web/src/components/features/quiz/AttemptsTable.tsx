@@ -255,7 +255,7 @@ export function AttemptsTable({
           type="button"
           onClick={() => toggleSort(col)}
           className={cn(
-            'flex items-center gap-1 text-xs font-semibold tracking-wide uppercase transition-colors',
+            'flex items-center gap-1 text-xs font-semibold transition-colors',
             sortKey === col ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -310,7 +310,7 @@ export function AttemptsTable({
                   setSelected(new Set());
                 }}
                 className={cn(
-                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                  'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                   loc === gt
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -321,14 +321,14 @@ export function AttemptsTable({
             ))}
           </div>
 
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="text-muted-foreground/50 absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
             <input
               value={tuKhoa}
               onChange={(e) => setTuKhoa(e.target.value)}
               placeholder="Tìm tên hoặc email…"
               aria-label="Tìm học sinh"
-              className="border-border bg-card h-8 w-52 rounded-lg border pl-8 text-xs"
+              className="border-border bg-card h-9 w-full rounded-lg border pl-8 text-xs sm:w-52"
             />
           </div>
         </div>
@@ -349,7 +349,7 @@ export function AttemptsTable({
       </div>
 
       {/* Table */}
-      <div className="border-border overflow-x-auto rounded-xl border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-border bg-muted/50 border-b">
@@ -362,13 +362,13 @@ export function AttemptsTable({
                 />
               </th>
 
-              <th className="text-muted-foreground min-w-48 px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+              <th className="text-muted-foreground min-w-48 px-3 py-2.5 text-left text-xs font-semibold">
                 Họ và tên
               </th>
-              <th className="text-muted-foreground min-w-44 px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+              <th className="text-muted-foreground min-w-44 px-3 py-2.5 text-left text-xs font-semibold">
                 Email
               </th>
-              <th className="text-muted-foreground min-w-36 px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+              <th className="text-muted-foreground min-w-36 px-3 py-2.5 text-left text-xs font-semibold">
                 Trạng thái
               </th>
 
@@ -380,7 +380,7 @@ export function AttemptsTable({
               {questions.map((q, idx) => (
                 <th
                   key={q.questionId}
-                  className="text-muted-foreground min-w-14 px-3 py-2.5 text-center text-xs font-semibold tracking-wide whitespace-nowrap uppercase"
+                  className="text-muted-foreground min-w-14 px-3 py-2.5 text-center text-xs font-semibold whitespace-nowrap"
                 >
                   Q{idx + 1}/{q.points % 1 === 0 ? q.points : q.points.toFixed(2)}
                 </th>
@@ -401,7 +401,7 @@ export function AttemptsTable({
                 <tr
                   key={a.id}
                   className={cn(
-                    'hover:bg-muted/30 transition-colors',
+                    'hover:bg-muted/40 transition-colors',
                     selected.has(a.id) && 'bg-primary/5'
                   )}
                 >
@@ -461,7 +461,7 @@ export function AttemptsTable({
                           <span
                             className={cn(
                               'text-xs font-medium',
-                              ans.isCorrect === true && 'text-green-600 dark:text-green-400',
+                              ans.isCorrect === true && 'text-green-700 dark:text-green-400',
                               ans.isCorrect === false && 'text-destructive'
                             )}
                           >
@@ -483,7 +483,7 @@ export function AttemptsTable({
              * giáo viên cần nhắc. Không có ô chọn: không có bài nào để xoá.
              */}
             {chuaLamHienThi.map((u) => (
-              <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+              <tr key={u.id} className="hover:bg-muted/40 transition-colors">
                 <td className="px-3 py-3" />
                 <td className="px-3 py-3">
                   <p className="text-muted-foreground leading-snug font-medium">{tenHocSinh(u)}</p>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SimpleSelect } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { apiClient, ApiError } from '@/lib/api-client';
 import {
@@ -26,13 +27,21 @@ import {
 import type { ContentBankResult, ModuleWithItems } from '@lumibach/types';
 
 const TYPE_META: Record<string, { label: string; icon: typeof BookOpen; color: string }> = {
-  LESSON: { label: 'Bài học', icon: BookOpen, color: 'text-teal-500' },
-  ASSIGNMENT: { label: 'Bài tập', icon: ClipboardList, color: 'text-blue-500' },
-  QUIZ: { label: 'Quiz', icon: Brain, color: 'text-violet-500' },
-  PRACTICE_TEST: { label: 'Đề ôn tập', icon: FileQuestion, color: 'text-cyan-500' },
-  CODE_EXERCISE: { label: 'Bài code', icon: Code2, color: 'text-fuchsia-500' },
-  FORUM: { label: 'Diễn đàn', icon: MessagesSquare, color: 'text-sky-500' },
-  EXTERNAL_URL: { label: 'Link ngoài', icon: Link2, color: 'text-amber-500' },
+  LESSON: { label: 'Bài học', icon: BookOpen, color: 'text-teal-600 dark:text-teal-400' },
+  ASSIGNMENT: { label: 'Bài tập', icon: ClipboardList, color: 'text-blue-600 dark:text-blue-400' },
+  QUIZ: { label: 'Quiz', icon: Brain, color: 'text-violet-600 dark:text-violet-400' },
+  PRACTICE_TEST: {
+    label: 'Đề ôn tập',
+    icon: FileQuestion,
+    color: 'text-cyan-600 dark:text-cyan-400',
+  },
+  CODE_EXERCISE: {
+    label: 'Bài code',
+    icon: Code2,
+    color: 'text-fuchsia-600 dark:text-fuchsia-400',
+  },
+  FORUM: { label: 'Diễn đàn', icon: MessagesSquare, color: 'text-sky-600 dark:text-sky-400' },
+  EXTERNAL_URL: { label: 'Link ngoài', icon: Link2, color: 'text-amber-600 dark:text-amber-400' },
 };
 
 type NhomChuong = {
@@ -143,7 +152,7 @@ export function ContentBankBrowser({
         <p className="text-muted-foreground text-sm">
           Khoá học chưa có chương nào để nhận nội dung.
         </p>
-        <p className="text-muted-foreground/70 mt-1 text-xs">
+        <p className="text-muted-foreground mt-1 text-xs">
           Tạo ít nhất một chương ở trang Chương trước khi chép nội dung về.
         </p>
       </div>
@@ -159,7 +168,7 @@ export function ContentBankBrowser({
         }}
         className="flex flex-wrap gap-2"
       >
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-0 flex-1 basis-48">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             value={q}
@@ -171,18 +180,13 @@ export function ContentBankBrowser({
         <Button type="submit" variant="outline">
           Tìm
         </Button>
-        <select
+        <SimpleSelect
           value={targetModuleId}
-          onChange={(e) => setTargetModuleId(e.target.value)}
-          className="border-input bg-background text-foreground dark:bg-card h-9 rounded-md border px-3 text-sm"
-          title="Chương sẽ nhận bản sao"
-        >
-          {modules.map((m) => (
-            <option key={m.id} value={m.id}>
-              Chép vào: {m.name}
-            </option>
-          ))}
-        </select>
+          onValueChange={setTargetModuleId}
+          aria-label="Chương sẽ nhận bản sao"
+          className="w-full min-w-0 sm:w-auto sm:max-w-xs"
+          options={modules.map((m) => ({ value: m.id, label: `Chép vào: ${m.name}` }))}
+        />
       </form>
 
       {loading ? (
@@ -196,12 +200,12 @@ export function ContentBankBrowser({
         </div>
       ) : !data || data.items.length === 0 ? (
         <div className="border-border flex flex-col items-center gap-2 rounded-xl border border-dashed py-14 text-center">
-          <Library className="text-muted-foreground/30 h-10 w-10" />
+          <Library className="text-muted-foreground/50 h-10 w-10" />
           <p className="text-muted-foreground text-sm">
             {search ? 'Không tìm thấy hoạt động nào khớp.' : 'Ngân hàng nội dung chưa có gì.'}
           </p>
           {!search && (
-            <p className="text-muted-foreground/70 max-w-lg text-xs">
+            <p className="text-muted-foreground max-w-lg text-xs">
               Hoạt động vào đây khi giáo viên của một khoá cùng nhánh danh mục bật “Chia sẻ” cho
               hoạt động đó ở trang Chương.
             </p>
@@ -209,7 +213,7 @@ export function ContentBankBrowser({
         </div>
       ) : (
         <>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground text-sm">
             {data.items.length} hoạt động từ {data.sourceCourseCount} khoá học cùng nhánh danh mục.
           </p>
 
@@ -224,7 +228,7 @@ export function ContentBankBrowser({
               return (
                 <div
                   key={nhom.key}
-                  className="border-border bg-card overflow-hidden rounded-xl border"
+                  className="border-border bg-card overflow-hidden rounded-xl border shadow-sm"
                 >
                   <button
                     type="button"
@@ -247,7 +251,7 @@ export function ContentBankBrowser({
                     <FolderOpen className="text-muted-foreground/60 h-4 w-4 shrink-0" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold">{nhom.tenChuong}</span>
-                      <span className="text-muted-foreground block truncate font-mono text-[11px]">
+                      <span className="text-muted-foreground block truncate font-mono text-xs">
                         {nhom.nguon}
                       </span>
                     </span>
@@ -269,7 +273,7 @@ export function ContentBankBrowser({
                         return (
                           <div
                             key={item.moduleItemId}
-                            className="flex flex-wrap items-center gap-3 py-3 pr-4 pl-11"
+                            className="flex flex-wrap items-center gap-3 py-3 pr-4 pl-4 sm:pl-11"
                           >
                             <div className="bg-muted/50 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
                               <Icon className={`h-4 w-4 ${meta.color}`} />

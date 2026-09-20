@@ -34,13 +34,16 @@ export function FirstPostBody({
 
   return (
     <div className="space-y-2">
-      <RichTextView html={toRichHtml(content)} className="text-foreground/90 text-sm" />
+      <RichTextView
+        html={toRichHtml(content)}
+        className="text-foreground/90 text-sm [overflow-wrap:anywhere]"
+      />
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+        className="text-muted-foreground hover:text-foreground -ml-1 inline-flex min-h-9 items-center gap-1.5 rounded-md px-1 text-sm"
       >
-        <Pencil className="h-3 w-3" />
+        <Pencil className="h-3.5 w-3.5" />
         Sửa nội dung
       </button>
     </div>

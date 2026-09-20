@@ -46,13 +46,13 @@ export function ActivityLogFilter({
     <div className="flex flex-wrap gap-2">
       {/* Search (admin system log — free text user search) */}
       {showCourse && (
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
           <input
             value={val('q')}
             onChange={(e) => update('q', e.target.value)}
             placeholder="Tìm người dùng..."
-            className="border-input bg-background focus:ring-ring h-9 w-44 rounded-md border pr-3 pl-8 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full rounded-lg border pr-3 pl-8 text-sm outline-none focus-visible:ring-3 sm:w-52"
           />
         </div>
       )}
@@ -99,7 +99,7 @@ export function ActivityLogFilter({
         type="date"
         value={val('dateFrom')}
         onChange={(e) => update('dateFrom', e.target.value)}
-        className="border-input bg-background focus:ring-ring h-9 rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
+        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 rounded-lg border px-3 text-sm outline-none focus-visible:ring-3"
       />
 
       {/* Date to */}
@@ -107,7 +107,7 @@ export function ActivityLogFilter({
         type="date"
         value={val('dateTo')}
         onChange={(e) => update('dateTo', e.target.value)}
-        className="border-input bg-background focus:ring-ring h-9 rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
+        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 rounded-lg border px-3 text-sm outline-none focus-visible:ring-3"
       />
 
       {/* Clear */}
@@ -120,7 +120,7 @@ export function ActivityLogFilter({
         <button
           type="button"
           onClick={() => router.push(pathname)}
-          className="border-border bg-card hover:bg-muted h-9 rounded-md border px-3 text-sm transition-colors"
+          className="border-border bg-card hover:bg-muted h-10 rounded-full border px-4 text-sm font-medium transition-colors"
         >
           Xóa bộ lọc
         </button>

@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   const courseId = formData.get('courseId') as string | null;
+  // Cùng một đường tải ảnh cho hai ô của khoá học: ảnh bìa và logo đè lên nó.
+  const field = formData.get('field') === 'logo' ? 'logo' : 'thumbnail';
 
   if (!file) return NextResponse.json({ error: 'Không có file' }, { status: 400 });
   if (!ALLOWED_TYPES.includes(file.type))
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
     await ensureBucket(BUCKET_FILES);
 
     const ext = file.name.split('.').pop() ?? 'jpg';
-    const objectName = `thumbnails/${randomBytes(8).toString('hex')}.${ext}`;
+    const objectName = `${field === 'logo' ? 'course-logos' : 'thumbnails'}/${randomBytes(8).toString('hex')}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     await minioClient.putObject(BUCKET_FILES, objectName, buffer, buffer.length, {
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (courseId) {
       const updated = await prisma.course.update({
         where: { id: courseId },
-        data: { thumbnail: url },
+        data: field === 'logo' ? { logo: url } : { thumbnail: url },
         select: { slug: true },
       });
       revalidatePath('/courses', 'layout');

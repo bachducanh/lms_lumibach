@@ -58,7 +58,7 @@ export function NewTopicForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="border-border bg-card space-y-4 rounded-xl border p-5">
+      <div className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-6">
         <div className="space-y-1.5">
           <Label htmlFor="title">Tiêu đề</Label>
           <Input
@@ -83,7 +83,7 @@ export function NewTopicForm({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={isPending}>
           {isPending ? 'Đang đăng...' : 'Đăng chủ đề'}
         </Button>

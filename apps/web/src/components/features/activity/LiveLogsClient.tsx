@@ -106,23 +106,23 @@ export function LiveLogsClient({ courseId }: { courseId?: string } = {}) {
   }, [courseId]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
             <Radio
               className={cn(
                 'h-4 w-4',
-                loading ? 'text-muted-foreground' : 'animate-pulse text-rose-500'
+                loading ? 'text-muted-foreground' : 'animate-pulse text-rose-600 dark:text-rose-500'
               )}
             />
             Live logs
           </h2>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground mt-1 text-sm">
             Cập nhật mỗi 10 giây, dữ liệu trong {data?.windowMinutes ?? 5} phút gần nhất.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-muted-foreground inline-flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" />
             {data?.onlineUsers.length ?? 0} online
@@ -142,33 +142,35 @@ export function LiveLogsClient({ courseId }: { courseId?: string } = {}) {
       )}
 
       {data && data.onlineUsers.length > 0 && (
-        <div className="border-border bg-card flex flex-wrap gap-2 rounded-lg border p-3">
+        <div className="border-border bg-card flex flex-wrap gap-2 rounded-xl border p-3 shadow-sm">
           {data.onlineUsers.slice(0, 8).map((u) => (
             <div
               key={u.id}
-              className="border-border bg-background inline-flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+              className="border-border bg-background inline-flex max-w-full min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm"
             >
               <span className="relative inline-flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span className="max-w-44 truncate font-medium">{u.fullName ?? u.email}</span>
+              <span className="max-w-32 truncate font-medium sm:max-w-44">
+                {u.fullName ?? u.email}
+              </span>
               <span className="text-muted-foreground">
                 {ROLE_LABEL[u.role] ?? u.role} · {relativeTime(u.lastActiveAt, now)}
               </span>
             </div>
           ))}
           {data.onlineUsers.length > 8 && (
-            <span className="text-muted-foreground px-2 py-1.5 text-xs">
+            <span className="text-muted-foreground px-2 py-2 text-sm">
               +{data.onlineUsers.length - 8} người khác
             </span>
           )}
         </div>
       )}
 
-      <div className="border-border bg-card overflow-x-auto rounded-lg border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
         <table className="w-full min-w-[1180px] text-sm">
-          <thead className="border-border bg-muted/30 border-b text-left text-xs">
+          <thead className="border-border bg-muted/50 border-b text-left text-xs">
             <tr>
               <Th>Course</Th>
               <Th>Time</Th>
@@ -193,7 +195,7 @@ export function LiveLogsClient({ courseId }: { courseId?: string } = {}) {
             {data?.recentActions.map((log) => {
               const context = getEventContext(log.resourceName, log.courseName, log.resourceType);
               return (
-                <tr key={log.id} className="border-border/50 hover:bg-muted/20 border-b">
+                <tr key={log.id} className="border-border hover:bg-muted/40 border-b last:border-0">
                   <Td>{log.courseName ?? 'LMS FOR LUMIBACH'}</Td>
                   <Td>
                     <span className="whitespace-nowrap">{formatLogTime(log.createdAt)}</span>
@@ -232,12 +234,12 @@ export function LiveLogsClient({ courseId }: { courseId?: string } = {}) {
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="text-muted-foreground px-3 py-2.5 font-semibold whitespace-nowrap">
+    <th className="text-muted-foreground px-4 py-3 text-xs font-semibold whitespace-nowrap">
       {children}
     </th>
   );
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2.5 align-top">{children}</td>;
+  return <td className="px-4 py-3 align-top">{children}</td>;
 }

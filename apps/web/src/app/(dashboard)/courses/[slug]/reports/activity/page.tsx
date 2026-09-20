@@ -130,26 +130,29 @@ export default async function ActivityReportPage({
 
   return (
     <div className="space-y-5">
-      <div className="text-muted-foreground text-xs">
+      <div className="text-muted-foreground text-sm">
         {totalItems} mục · {enrollCount} học viên · tổng lượt xem và lượt tương tác của lớp
       </div>
 
       <div className="space-y-6">
         {modules.length === 0 && (
-          <p className="text-muted-foreground py-12 text-center text-sm">
+          <p className="text-muted-foreground border-border bg-card rounded-xl border border-dashed py-12 text-center text-sm">
             Khóa học chưa có chương nào.
           </p>
         )}
 
         {modules.map((module) => (
-          <div key={module.id} className="border-border bg-card overflow-hidden rounded-lg border">
-            <div className="border-border bg-muted/30 border-b px-4 py-2.5">
-              <h3 className="text-sm font-semibold">{module.name}</h3>
-              <p className="text-muted-foreground text-[11px]">{module.items.length} mục</p>
+          <div
+            key={module.id}
+            className="border-border bg-card overflow-hidden rounded-xl border shadow-sm"
+          >
+            <div className="border-border border-b px-4 py-3">
+              <h3 className="text-base font-semibold">{module.name}</h3>
+              <p className="text-muted-foreground text-sm">{module.items.length} mục</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
-                <thead className="text-muted-foreground border-border bg-muted/20 border-b text-left text-xs">
+                <thead className="text-muted-foreground border-border bg-muted/50 border-b text-left text-xs">
                   <tr>
                     <Th>Loại</Th>
                     <Th>Tài liệu / bài kiểm tra</Th>
@@ -163,7 +166,7 @@ export default async function ActivityReportPage({
                     <tr>
                       <td
                         colSpan={5}
-                        className="text-muted-foreground p-6 text-center text-xs italic"
+                        className="text-muted-foreground p-6 text-center text-sm italic"
                       >
                         Chương rỗng.
                       </td>
@@ -183,30 +186,31 @@ export default async function ActivityReportPage({
                     const percent = enrollCount > 0 ? Math.round((unique / enrollCount) * 100) : 0;
 
                     return (
-                      <tr key={item.id} className="border-border/40 hover:bg-muted/20 border-b">
-                        <td className="px-3 py-2 align-top">
+                      <tr
+                        key={item.id}
+                        className="border-border hover:bg-muted/40 border-b last:border-0"
+                      >
+                        <td className="px-4 py-3 align-top">
                           <Badge
                             variant="outline"
-                            className={`${TYPE_BADGE[item.type] ?? ''} border-transparent text-[10px]`}
+                            className={`${TYPE_BADGE[item.type] ?? ''} border-transparent text-xs`}
                           >
                             {TYPE_LABEL[item.type] ?? item.type}
                           </Badge>
                         </td>
-                        <td className="px-3 py-2 align-top">
+                        <td className="px-4 py-3 align-top">
                           <p className="font-medium">{item.title}</p>
                         </td>
-                        <td className="px-3 py-2 text-right align-top">
+                        <td className="px-4 py-3 text-right align-top">
                           <span className="font-mono tabular-nums">{views}</span>
                         </td>
-                        <td className="px-3 py-2 text-right align-top">
+                        <td className="px-4 py-3 text-right align-top">
                           <span className="font-mono tabular-nums">
                             {unique} / {enrollCount}
                           </span>
-                          <span className="text-muted-foreground ml-1 text-[10px]">
-                            ({percent}%)
-                          </span>
+                          <span className="text-muted-foreground ml-1 text-xs">({percent}%)</span>
                         </td>
-                        <td className="px-3 py-2 text-right align-top">
+                        <td className="px-4 py-3 text-right align-top">
                           {interactions === null ? (
                             <span className="text-muted-foreground">-</span>
                           ) : (
@@ -254,7 +258,7 @@ function getInteractions(
 function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
   return (
     <th
-      className={`px-3 py-2.5 font-semibold tracking-wide uppercase ${
+      className={`text-muted-foreground px-4 py-3 text-xs font-semibold whitespace-nowrap ${
         align === 'right' ? 'text-right' : 'text-left'
       }`}
     >

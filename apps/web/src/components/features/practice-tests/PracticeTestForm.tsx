@@ -22,7 +22,7 @@ type Props = {
 const LETTERS = 'ABCDEFGH'.split('');
 const TF_LABELS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const FIELD_INPUT =
-  'border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none';
+  'border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none';
 
 function round2(value: number) {
   return Math.round(value * 100) / 100;
@@ -319,7 +319,7 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-border flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <Link
             href={backHref}
@@ -329,8 +329,8 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
             Quay lại
           </Link>
           <div className="flex items-center gap-2">
-            <FileQuestion className="h-5 w-5 text-cyan-500" />
-            <h1 className="text-2xl font-bold">
+            <FileQuestion className="h-5 w-5 text-cyan-700 dark:text-cyan-400" />
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
               {mode === 'create' ? 'Tạo đề luyện tập' : 'Chỉnh sửa đề luyện tập'}
             </h1>
           </div>
@@ -338,7 +338,7 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
             PDF ở bên trái, phiếu trả lời và đáp án tự chấm ở bên phải.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           {!isBank && (
             <Button
               variant="outline"
@@ -363,22 +363,22 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-semibold uppercase">Tiêu đề</label>
+            <label className="text-muted-foreground text-xs font-semibold">Tiêu đề</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="VD: Đề luyện tập chương 1"
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-semibold uppercase">Mô tả</label>
+            <label className="text-muted-foreground text-xs font-semibold">Mô tả</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Ghi chú ngắn cho học sinh..."
-              className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
 
@@ -460,7 +460,7 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
           )}
         </div>
 
-        <div className="border-border bg-card space-y-4 rounded-lg border p-4">
+        <div className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm">
           <div>
             <p className="text-sm font-semibold">File đề bài PDF</p>
             <p className="text-muted-foreground text-xs">
@@ -504,8 +504,8 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
         </div>
       </section>
 
-      <section className="border-border bg-card rounded-lg border">
-        <div className="flex flex-col gap-4 border-b p-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="border-border bg-card rounded-xl border shadow-sm">
+        <div className="border-border flex flex-col gap-4 border-b p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-base font-bold">Cấu trúc phiếu trả lời</h2>
             <p className="text-muted-foreground text-sm">
@@ -668,13 +668,13 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
                     ))}
                   </div>
                   <div className="border-border bg-muted/20 rounded-md border p-3">
-                    <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+                    <p className="text-muted-foreground mb-2 text-xs font-semibold">
                       Thang điểm theo số phát biểu đúng
                     </p>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                       {Array.from({ length: count }, (_, i) => i + 1).map((correctCount) => (
                         <label key={correctCount} className="space-y-1">
-                          <span className="text-muted-foreground block text-[10px] font-semibold uppercase">
+                          <span className="text-muted-foreground block text-xs font-semibold">
                             Đúng {correctCount}
                           </span>
                           <input
@@ -717,7 +717,7 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
                   }
                   rows={3}
                   placeholder="Mỗi dòng là một đáp án được chấp nhận"
-                  className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                 />
                 <div className="space-y-2">
                   <PointsInput
@@ -757,7 +757,7 @@ export function PracticeTestForm({ mode, owner, moduleId, practiceTest }: Props)
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1.5">
-      <span className="text-muted-foreground text-xs font-semibold uppercase">{label}</span>
+      <span className="text-muted-foreground text-xs font-semibold">{label}</span>
       {children}
     </label>
   );
@@ -774,16 +774,14 @@ function CountControl({
 }) {
   return (
     <label className="space-y-1">
-      <span className="text-muted-foreground block text-[10px] font-semibold uppercase">
-        {label}
-      </span>
+      <span className="text-muted-foreground block text-xs font-semibold">{label}</span>
       <input
         type="number"
         min={0}
         max={80}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="border-input bg-background focus:ring-ring w-full rounded-md border px-2 py-1.5 text-sm focus:ring-1 focus:outline-none"
+        className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-2 py-1.5 text-sm focus:ring-1 focus:outline-none"
       />
     </label>
   );
@@ -792,7 +790,7 @@ function CountControl({
 function PointsInput({ value, onChange }: { value?: number; onChange: (value: number) => void }) {
   return (
     <label className="space-y-1">
-      <span className="text-muted-foreground block text-[10px] font-semibold uppercase">Điểm</span>
+      <span className="text-muted-foreground block text-xs font-semibold">Điểm</span>
       <input
         type="number"
         min={0.1}
@@ -828,7 +826,7 @@ function QuestionSection({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">{title}</h3>
+      <h3 className="text-muted-foreground text-xs font-bold">{title}</h3>
       {rows.length === 0 ? (
         <div className="border-border bg-muted/10 text-muted-foreground rounded-lg border border-dashed px-4 py-5 text-center text-sm">
           {empty}

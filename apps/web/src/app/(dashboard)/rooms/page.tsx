@@ -48,8 +48,8 @@ export default async function RoomsPage() {
         style={{ ['--i' as string]: 0 }}
       >
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <DoorOpen className="h-6 w-6" />
+          <h1 className="font-heading flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+            <DoorOpen className="text-primary h-6 w-6 shrink-0" />
             Phòng chức năng
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -86,10 +86,12 @@ export default async function RoomsPage() {
 
       {!loadError && rooms.length === 0 && (
         <div
-          className="border-border text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center"
+          className="border-border bg-card text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center"
           style={{ ['--i' as string]: 1 }}
         >
-          <DoorOpen className="mx-auto mb-3 h-10 w-10 opacity-40" />
+          <span className="bg-primary/10 text-primary mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg">
+            <DoorOpen className="h-6 w-6" />
+          </span>
           <p className="font-medium">Chưa có phòng chức năng nào</p>
           <p className="mt-1 text-sm">
             Quản trị viên cần tạo phòng trước khi giáo viên có thể đăng ký mượn.

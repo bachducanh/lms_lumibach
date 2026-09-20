@@ -25,8 +25,10 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Chỉnh sửa tài khoản</h1>
-        <p className="text-muted-foreground text-sm">{user.email}</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          Chỉnh sửa tài khoản
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm break-all">{user.email}</p>
       </div>
       <EditUserForm user={user} />
     </div>

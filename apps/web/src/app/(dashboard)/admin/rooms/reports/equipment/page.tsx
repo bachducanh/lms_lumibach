@@ -32,8 +32,8 @@ export default async function EquipmentReportsPage() {
   return (
     <div className="lb-stagger w-full space-y-5">
       <div style={{ ['--i' as string]: 0 }}>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <PackageSearch className="h-6 w-6" />
+        <h1 className="font-heading flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          <PackageSearch className="text-primary h-6 w-6 shrink-0" />
           Báo cáo mượn thiết bị
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">

@@ -51,7 +51,7 @@ export default async function EditBankExercisePage({
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex items-center gap-2">
-          <Code2 className="h-5 w-5 text-violet-400" />
+          <Code2 className="h-5 w-5 text-violet-700 dark:text-violet-400" />
           <div className="min-w-0">
             <h1 className="truncate text-xl font-bold">{exercise.title}</h1>
             <p className="text-muted-foreground text-xs">Bản mẫu trong kho nội dung</p>

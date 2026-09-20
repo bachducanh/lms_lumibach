@@ -111,7 +111,7 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
 
   if (students.length === 0) {
     return (
-      <div className="border-border bg-muted/30 flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center">
+      <div className="border-border bg-muted/30 flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
         <p className="text-muted-foreground text-sm">Chưa có học sinh nào đã hoàn thành bài.</p>
       </div>
     );
@@ -119,8 +119,8 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-muted-foreground text-sm">
           {sorted.length} học sinh · {columns.length} cột đánh giá
           {classAvg !== null && (
             <span className="text-foreground ml-2 font-medium">
@@ -130,20 +130,20 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
         </p>
         <button
           onClick={() => exportCsv(columns, students)}
-          className="border-border bg-card hover:bg-accent/50 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+          className="border-border bg-card hover:bg-muted flex h-9 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors"
         >
-          <Download className="h-3.5 w-3.5" />
+          <Download className="h-4 w-4" />
           Xuất CSV
         </button>
       </div>
 
-      <div className="border-border overflow-x-auto rounded-xl border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-border bg-muted/30 border-b">
+            <tr className="border-border bg-muted/50 border-b">
               {/* Sticky student name column */}
               <th
-                className="bg-muted/60 text-muted-foreground sticky left-0 z-10 min-w-[180px] cursor-pointer px-4 py-3 text-left text-xs font-semibold whitespace-nowrap backdrop-blur-sm select-none"
+                className="bg-muted text-muted-foreground sticky left-0 z-10 min-w-[160px] cursor-pointer px-4 py-3 text-left text-xs font-semibold whitespace-nowrap select-none sm:min-w-[200px]"
                 onClick={() => toggleSort('name')}
               >
                 <span className="flex items-center gap-1">
@@ -154,7 +154,7 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
               {columns.map((col) => (
                 <th
                   key={col.id}
-                  className="text-muted-foreground min-w-[110px] cursor-pointer px-3 py-3 text-center text-xs font-semibold whitespace-nowrap select-none"
+                  className="text-muted-foreground min-w-[120px] cursor-pointer px-3 py-3 text-center text-xs font-semibold select-none"
                   onClick={() => toggleSort(col.id)}
                 >
                   <span className="flex flex-col items-center gap-0.5">
@@ -174,7 +174,7 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
                       <SortIcon col={col.id} />
                     </span>
                     <span className="line-clamp-2 max-w-[100px] leading-tight">{col.title}</span>
-                    <span className="text-[10px] font-normal opacity-60">/{col.maxScore}đ</span>
+                    <span className="text-xs font-normal opacity-70">/{col.maxScore}đ</span>
                   </span>
                 </th>
               ))}
@@ -197,25 +197,25 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
                 <tr
                   key={student.id}
                   className={cn(
-                    'border-border/50 hover:bg-accent/20 border-b transition-colors',
-                    ri % 2 === 0 ? 'bg-card' : 'bg-muted/10'
+                    'border-border hover:bg-muted/40 border-b transition-colors last:border-0',
+                    ri % 2 === 0 ? 'bg-card' : 'bg-muted/20'
                   )}
                 >
                   {/* Sticky name cell */}
                   <td
                     className={cn(
-                      'sticky left-0 z-10 min-w-[180px] px-4 py-2.5 backdrop-blur-sm',
-                      ri % 2 === 0 ? 'bg-card' : 'bg-muted/10'
+                      'sticky left-0 z-10 min-w-[160px] px-4 py-3 sm:min-w-[200px]',
+                      ri % 2 === 0 ? 'bg-card' : 'bg-muted'
                     )}
                   >
                     <Link
                       href={`/courses/${courseSlug}/portfolio/${student.id}`}
-                      className="hover:text-primary max-w-[160px] truncate text-sm font-medium hover:underline"
+                      className="hover:text-primary block max-w-[160px] truncate text-sm font-medium hover:underline sm:max-w-[200px]"
                       title="Xem hồ sơ học tập"
                     >
                       {student.name}
                     </Link>
-                    <p className="text-muted-foreground max-w-[160px] truncate text-[10px]">
+                    <p className="text-muted-foreground max-w-[160px] truncate text-xs sm:max-w-[200px]">
                       {student.email}
                     </p>
                   </td>
@@ -224,11 +224,13 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
                     const cell = student.scores[col.id] ?? null;
                     const p = cell ? pct(cell.score, cell.maxScore) : null;
                     return (
-                      <td key={col.id} className="px-3 py-2.5 text-center">
+                      <td key={col.id} className="px-3 py-3 text-center">
                         {!cell ? (
-                          <span className="text-muted-foreground/30 text-xs">—</span>
+                          <span className="text-muted-foreground/50 text-xs">—</span>
                         ) : cell.score === null ? (
-                          <span className="text-xs text-amber-500">Chờ chấm</span>
+                          <span className="text-xs text-amber-700 dark:text-amber-400">
+                            Chờ chấm
+                          </span>
                         ) : (
                           <span className={cn('font-mono text-xs font-semibold', cellColor(p))}>
                             {cell.score}
@@ -241,11 +243,11 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
                     );
                   })}
 
-                  <td className="px-3 py-2.5 text-center">
+                  <td className="px-3 py-3 text-center">
                     {a !== null ? (
                       <span className={cn('text-xs font-bold', cellColor(a))}>{a}%</span>
                     ) : (
-                      <span className="text-muted-foreground/30 text-xs">—</span>
+                      <span className="text-muted-foreground/50 text-xs">—</span>
                     )}
                   </td>
                 </tr>
@@ -256,7 +258,7 @@ export function GradebookTable({ columns, students, courseSlug }: Props) {
       </div>
 
       {/* Legend */}
-      <div className="text-muted-foreground flex flex-wrap gap-3 px-1 text-[10px]">
+      <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1.5 px-1 text-xs">
         <span className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-emerald-500" /> ≥ 80%
         </span>

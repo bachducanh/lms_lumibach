@@ -125,9 +125,9 @@ export default async function SubmissionsPage({
                 )}
               >
                 {sub?.status === 'GRADED' ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700 dark:text-green-400" />
                 ) : sub && sub.status !== 'DRAFT' ? (
-                  <Clock className="h-4 w-4 shrink-0 text-blue-500" />
+                  <Clock className="h-4 w-4 shrink-0 text-blue-700 dark:text-blue-400" />
                 ) : (
                   <Circle className="text-muted-foreground/40 h-4 w-4 shrink-0" />
                 )}

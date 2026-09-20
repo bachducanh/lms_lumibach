@@ -62,8 +62,10 @@ export default async function CompetencyReportPage({
 
   if (stats.totalIndicators === 0) {
     return (
-      <div className="border-border bg-card flex flex-col items-center justify-center rounded-lg border py-14 text-center">
-        <Target className="text-muted-foreground/40 mb-3 h-10 w-10" />
+      <div className="border-border bg-card flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-14 text-center">
+        <div className="bg-primary/10 text-primary mb-3 flex h-12 w-12 items-center justify-center rounded-lg">
+          <Target className="h-6 w-6" />
+        </div>
         <p className="font-medium">Khoá học chưa có chỉ báo năng lực.</p>
         <p className="text-muted-foreground mt-1 max-w-md text-sm">
           Hãy tạo danh mục &amp; chỉ báo trong mục{' '}
@@ -78,8 +80,8 @@ export default async function CompetencyReportPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-muted-foreground text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-muted-foreground max-w-3xl text-sm">
           Tổng hợp năng lực toàn khoá. Có thể xuất file XLSX bảng dữ liệu của toàn bộ HS (gồm bài
           làm, minh chứng năng lực, tự đánh giá) để phân tích thêm.
         </p>
@@ -93,7 +95,7 @@ export default async function CompetencyReportPage({
         <SummaryCard
           label="Danh mục"
           value={String(stats.categories.length)}
-          tone="text-cyan-500"
+          tone="text-cyan-700 dark:text-cyan-400"
         />
       </div>
 
@@ -102,7 +104,7 @@ export default async function CompetencyReportPage({
       {/* Điểm năng lực theo kỳ đánh giá */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">Điểm năng lực theo kỳ</h2>
+          <h2 className="text-lg font-bold sm:text-xl">Điểm năng lực theo kỳ</h2>
           {periods.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {periods.map((p) => (
@@ -110,7 +112,7 @@ export default async function CompetencyReportPage({
                   key={p.id}
                   href={`/courses/${slug}/reports/competency?period=${p.id}`}
                   className={cn(
-                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    'rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
                     p.id === selectedPeriodId
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-border bg-card hover:bg-muted/40'
@@ -124,7 +126,7 @@ export default async function CompetencyReportPage({
         </div>
 
         {!periodGrid ? (
-          <div className="border-border bg-card text-muted-foreground rounded-lg border border-dashed py-10 text-center text-sm">
+          <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed px-4 py-10 text-center text-sm">
             Khoá học chưa có kỳ đánh giá năng lực. Vào{' '}
             <Link href={`/courses/${slug}/competencies/levels`} className="text-primary underline">
               Cấp độ năng lực
@@ -132,9 +134,9 @@ export default async function CompetencyReportPage({
             để tạo kỳ và nhập cấp độ xuất phát/đích cho học sinh.
           </div>
         ) : (
-          <div className="border-border bg-card overflow-x-auto rounded-lg border">
+          <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
             <table className="w-full min-w-[900px] text-sm">
-              <thead className="border-border bg-muted/30 border-b text-left text-xs">
+              <thead className="border-border bg-muted/50 border-b text-left text-xs">
                 <tr>
                   <Th>Học sinh</Th>
                   <Th>Danh mục</Th>
@@ -155,7 +157,7 @@ export default async function CompetencyReportPage({
                   return (
                     <tr
                       key={`${row.studentId}::${row.categoryId}`}
-                      className="border-border/50 hover:bg-muted/20 border-b"
+                      className="border-border hover:bg-muted/40 border-b last:border-0"
                     >
                       <Td>{row.studentName}</Td>
                       <Td>
@@ -205,15 +207,18 @@ export default async function CompetencyReportPage({
       {/* Trung bình theo danh mục */}
       {stats.categories.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Trung bình theo danh mục</h2>
+          <h2 className="text-lg font-bold sm:text-xl">Trung bình theo danh mục</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {stats.categories.map((c) => (
-              <div key={c.categoryId} className="border-border bg-card rounded-lg border px-4 py-3">
+              <div
+                key={c.categoryId}
+                className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm"
+              >
                 <p className="truncate text-sm font-medium" title={c.categoryName}>
                   {c.categoryName}
                 </p>
                 <p className="text-primary mt-1 text-xl font-bold">{scoreLabel(c.averageScore)}</p>
-                <p className="text-muted-foreground mt-0.5 text-xs">
+                <p className="text-muted-foreground mt-0.5 text-sm">
                   {c.totalAssessments} lượt đánh giá
                 </p>
               </div>
@@ -224,10 +229,10 @@ export default async function CompetencyReportPage({
 
       {/* Phân bố mức độ theo chỉ báo */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Phân bố mức độ theo chỉ báo</h2>
-        <div className="border-border bg-card overflow-x-auto rounded-lg border">
+        <h2 className="text-lg font-bold sm:text-xl">Phân bố mức độ theo chỉ báo</h2>
+        <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
           <table className="w-full min-w-[820px] text-sm">
-            <thead className="border-border bg-muted/30 border-b text-left text-xs">
+            <thead className="border-border bg-muted/50 border-b text-left text-xs">
               <tr>
                 <Th>Chỉ báo</Th>
                 <Th>Danh mục</Th>
@@ -238,7 +243,10 @@ export default async function CompetencyReportPage({
             </thead>
             <tbody>
               {stats.indicators.map((ind) => (
-                <tr key={ind.indicatorId} className="border-border/50 hover:bg-muted/20 border-b">
+                <tr
+                  key={ind.indicatorId}
+                  className="border-border hover:bg-muted/40 border-b last:border-0"
+                >
                   <Td>
                     <p className="font-medium">
                       {ind.indicatorCode && (
@@ -270,10 +278,10 @@ export default async function CompetencyReportPage({
 
       {/* Học viên theo năng lực */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Năng lực theo học viên</h2>
-        <div className="border-border bg-card overflow-x-auto rounded-lg border">
+        <h2 className="text-lg font-bold sm:text-xl">Năng lực theo học viên</h2>
+        <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
           <table className="w-full min-w-[760px] text-sm">
-            <thead className="border-border bg-muted/30 border-b text-left text-xs">
+            <thead className="border-border bg-muted/50 border-b text-left text-xs">
               <tr>
                 <Th>Học viên</Th>
                 <Th>Email</Th>
@@ -284,7 +292,10 @@ export default async function CompetencyReportPage({
             </thead>
             <tbody>
               {stats.students.map((s) => (
-                <tr key={s.studentId} className="border-border/50 hover:bg-muted/20 border-b">
+                <tr
+                  key={s.studentId}
+                  className="border-border hover:bg-muted/40 border-b last:border-0"
+                >
                   <Td>
                     <Link
                       href={`/courses/${slug}/portfolio/${s.studentId}`}
@@ -315,20 +326,20 @@ export default async function CompetencyReportPage({
       {/* Loại minh chứng */}
       {stats.evidenceTypes.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Loại minh chứng đã ghi nhận</h2>
-          <div className="border-border bg-card space-y-2 rounded-lg border p-4">
+          <h2 className="text-lg font-bold sm:text-xl">Loại minh chứng đã ghi nhận</h2>
+          <div className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm">
             {stats.evidenceTypes.map((e) => {
               const max = stats.evidenceTypes[0]?.count ?? 1;
               const pct = max > 0 ? Math.round((e.count / max) * 100) : 0;
               return (
                 <div key={e.evidenceType} className="flex items-center gap-3">
-                  <span className="w-64 shrink-0 truncate text-xs" title={e.label}>
+                  <span className="w-28 shrink-0 truncate text-sm sm:w-64" title={e.label}>
                     {e.label}
                   </span>
                   <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
                     <div className="bg-primary h-full rounded-full" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="text-muted-foreground w-8 shrink-0 text-right text-xs tabular-nums">
+                  <span className="text-muted-foreground w-8 shrink-0 text-right text-sm tabular-nums">
                     {e.count}
                   </span>
                 </div>
@@ -345,7 +356,7 @@ function LevelLegend() {
   return (
     <div className="flex flex-wrap gap-3">
       {COMPETENCY_LEVELS.map((l) => (
-        <div key={l.value} className="flex items-center gap-1.5 text-xs">
+        <div key={l.value} className="flex items-center gap-1.5 text-sm">
           <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundColor: l.color }} />
           <span className="text-muted-foreground">{l.label}</span>
         </div>
@@ -392,8 +403,8 @@ function SummaryCard({
   tone?: string;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border px-4 py-3">
-      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{label}</p>
+    <div className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm">
+      <p className="text-muted-foreground text-sm font-medium">{label}</p>
       <p className={`mt-1 text-2xl font-bold ${tone}`}>{value}</p>
     </div>
   );
@@ -402,7 +413,7 @@ function SummaryCard({
 function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
   return (
     <th
-      className={`text-muted-foreground px-3 py-2.5 font-semibold whitespace-nowrap ${
+      className={`text-muted-foreground px-4 py-3 text-xs font-semibold whitespace-nowrap ${
         align === 'right' ? 'text-right' : 'text-left'
       }`}
     >
@@ -413,7 +424,7 @@ function Th({ children, align = 'left' }: { children: React.ReactNode; align?: '
 
 function Td({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
   return (
-    <td className={`px-3 py-2.5 align-top ${align === 'right' ? 'text-right' : 'text-left'}`}>
+    <td className={`px-4 py-3 align-top ${align === 'right' ? 'text-right' : 'text-left'}`}>
       {children}
     </td>
   );

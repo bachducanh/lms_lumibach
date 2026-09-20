@@ -53,8 +53,8 @@ export default async function MyRoomBookingsPage() {
           <ChevronLeft className="mr-1 h-4 w-4" />
           Phòng chức năng
         </Link>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <CalendarCheck className="h-6 w-6" />
+        <h1 className="font-heading flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          <CalendarCheck className="text-primary h-6 w-6 shrink-0" />
           Đơn mượn phòng của tôi
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -73,7 +73,7 @@ export default async function MyRoomBookingsPage() {
         ) : (
           <div className="space-y-8">
             <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
                 <CalendarCheck className="h-5 w-5" />
                 Đơn mượn phòng
               </h2>
@@ -81,7 +81,7 @@ export default async function MyRoomBookingsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
                 <Package className="h-5 w-5" />
                 Đơn mượn thiết bị
               </h2>

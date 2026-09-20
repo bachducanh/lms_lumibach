@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { BarChart3, ChevronRight, Target } from 'lucide-react';
 import type { ActivityType } from '@lumibach/types';
@@ -30,18 +31,17 @@ export function ActivityCompetencyPanel({
   const href = `/courses/${courseSlug}/competencies/grade?activityType=${activityType}&activityId=${activityId}`;
 
   return (
-    <section className="border-border bg-card overflow-hidden rounded-lg border">
-      <div className="relative px-5 py-4">
-        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+    <section className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      <div className="relative px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="bg-primary/10 border-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border">
+            <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
               <Target className="text-primary h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-semibold">Đánh giá năng lực</h2>
-                <Badge variant="outline" className="text-[11px]">
+                <h2 className="text-base font-semibold">Đánh giá năng lực</h2>
+                <Badge variant="outline" className="text-xs">
                   {ACTIVITY_LABEL[activityType]}
                 </Badge>
               </div>
@@ -53,7 +53,9 @@ export function ActivityCompetencyPanel({
           </div>
           <Link
             href={href}
-            className={buttonVariants({ variant: canManage ? 'default' : 'outline', size: 'sm' })}
+            className={cn(
+              buttonVariants({ variant: canManage ? 'default' : 'outline', size: 'sm' })
+            )}
           >
             <BarChart3 className="mr-1.5 h-4 w-4" />
             Mở trang chấm

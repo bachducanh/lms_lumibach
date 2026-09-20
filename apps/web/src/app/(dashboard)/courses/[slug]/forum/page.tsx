@@ -113,26 +113,30 @@ export default async function ForumPage({
   const totalForums = data.groups.reduce((n, g) => n + g.forums.length, 0);
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <Link
         href={`/courses/${slug}`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         {course.name}
       </Link>
 
-      <div className="flex items-center gap-2">
-        <MessagesSquare className="h-5 w-5 text-sky-400" />
-        <h1 className="text-xl font-bold">Diễn đàn</h1>
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+          <MessagesSquare className="h-5 w-5 text-sky-700 dark:text-sky-400" />
+        </div>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Diễn đàn</h1>
       </div>
 
       {totalForums === 0 && data.legacyTopicCount === 0 ? (
-        <div className="border-border flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
-          <MessagesSquare className="text-muted-foreground/30 h-10 w-10" />
+        <div className="border-border bg-card flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-4 py-16 text-center">
+          <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-lg">
+            <MessagesSquare className="h-6 w-6" />
+          </div>
           <p className="text-muted-foreground text-sm">Khoá học chưa có diễn đàn nào.</p>
           {canManage && (
-            <p className="text-muted-foreground/70 max-w-md text-xs">
+            <p className="text-muted-foreground max-w-md text-sm">
               Diễn đàn là một hoạt động học tập: vào trang Chương, bấm “Thêm bài học / bài tập” rồi
               chọn <strong>Diễn đàn</strong> để tạo trong chương mong muốn.
             </p>
@@ -149,30 +153,28 @@ export default async function ForumPage({
       ) : (
         <div className="space-y-6">
           {data.groups.map((group) => (
-            <section key={group.moduleId ?? 'none'} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <FolderOpen className="text-muted-foreground h-4 w-4" />
-                <h2 className="text-sm font-semibold tracking-wide uppercase">
-                  {group.moduleName}
-                </h2>
-                <span className="text-muted-foreground text-xs">
+            <section key={group.moduleId ?? 'none'} className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <FolderOpen className="text-muted-foreground h-4 w-4 shrink-0" />
+                <h2 className="text-base font-semibold sm:text-lg">{group.moduleName}</h2>
+                <span className="text-muted-foreground text-sm">
                   {group.forums.length} diễn đàn
                 </span>
               </div>
 
-              <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
+              <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border shadow-sm">
                 {group.forums.map((forum) => (
                   <Link
                     key={forum.id}
                     href={`/courses/${slug}/forum?forumId=${forum.id}`}
-                    className="hover:bg-accent/30 group flex items-start gap-4 px-5 py-4 transition-colors"
+                    className="hover:bg-muted/40 group flex items-start gap-3 px-4 py-4 transition-colors sm:gap-4 sm:px-5"
                   >
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
-                      <MessagesSquare className="h-4.5 w-4.5 text-sky-400" />
+                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+                      <MessagesSquare className="h-5 w-5 text-sky-700 dark:text-sky-400" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="group-hover:text-primary truncate text-sm font-semibold transition-colors">
+                        <span className="group-hover:text-primary text-base font-semibold break-words transition-colors">
                           {forum.title}
                         </span>
                         {!forum.isPublished && (
@@ -185,10 +187,10 @@ export default async function ForumPage({
                       {forum.description && (
                         <RichTextView
                           html={forum.description}
-                          className="text-muted-foreground mt-1 line-clamp-2 text-xs"
+                          className="text-muted-foreground mt-1 line-clamp-2 text-sm"
                         />
                       )}
-                      <p className="text-muted-foreground mt-1 text-xs">
+                      <p className="text-muted-foreground mt-1 text-sm">
                         {forum.topicCount} chủ đề ·{' '}
                         {Math.max(0, forum.postCount - forum.topicCount)} trả lời
                         {forum.lastActivityAt && <> · mới nhất {timeAgo(forum.lastActivityAt)}</>}
@@ -202,25 +204,23 @@ export default async function ForumPage({
           ))}
 
           {data.legacyTopicCount > 0 && (
-            <section className="space-y-2">
+            <section className="space-y-3">
               <div className="flex items-center gap-2">
                 <FolderOpen className="text-muted-foreground h-4 w-4" />
-                <h2 className="text-sm font-semibold tracking-wide uppercase">
-                  Chủ đề chung của khoá học
-                </h2>
+                <h2 className="text-base font-semibold sm:text-lg">Chủ đề chung của khoá học</h2>
               </div>
               <Link
                 href={`/courses/${slug}/forum?legacy=1`}
-                className="border-border bg-card hover:bg-accent/30 group flex items-center gap-4 rounded-xl border px-5 py-4 transition-colors"
+                className="border-border bg-card hover:bg-muted/40 group flex items-center gap-3 rounded-xl border px-4 py-4 shadow-sm transition-colors sm:gap-4 sm:px-5"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-500/10">
-                  <MessageSquare className="h-4.5 w-4.5 text-slate-400" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-500/10">
+                  <MessageSquare className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="group-hover:text-primary text-sm font-semibold transition-colors">
+                  <p className="group-hover:text-primary text-base font-semibold transition-colors">
                     {data.legacyTopicCount} chủ đề chưa thuộc diễn đàn nào
                   </p>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
+                  <p className="text-muted-foreground mt-0.5 text-sm">
                     Tạo từ trước khi diễn đàn trở thành hoạt động trong chương.
                   </p>
                 </div>
@@ -254,10 +254,10 @@ function TopicList({
   canManage: boolean;
 }) {
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <Link
         href={`/courses/${slug}/forum`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Tất cả diễn đàn
@@ -265,35 +265,39 @@ function TopicList({
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          {moduleName && (
-            <p className="text-muted-foreground text-xs tracking-wide uppercase">{moduleName}</p>
-          )}
-          <div className="flex items-center gap-2">
-            <MessagesSquare className="h-5 w-5 shrink-0 text-sky-400" />
-            <h1 className="text-xl font-bold">{title}</h1>
+          {moduleName && <p className="text-muted-foreground mb-1 text-sm">{moduleName}</p>}
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+              <MessagesSquare className="h-5 w-5 text-sky-700 dark:text-sky-400" />
+            </div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight break-words sm:text-3xl">
+              {title}
+            </h1>
           </div>
           {description && (
             <RichTextView html={description} className="text-muted-foreground mt-2 text-sm" />
           )}
         </div>
-        <Link href={newTopicHref} className={buttonVariants({ size: 'sm' })}>
+        <Link href={newTopicHref} className={buttonVariants()}>
           <Plus className="mr-1.5 h-4 w-4" />
           Tạo chủ đề mới
         </Link>
       </div>
 
       {topics.length === 0 ? (
-        <div className="border-border flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
-          <MessageSquare className="text-muted-foreground/30 h-10 w-10" />
+        <div className="border-border bg-card flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-4 py-16 text-center">
+          <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-lg">
+            <MessageSquare className="h-6 w-6" />
+          </div>
           <p className="text-muted-foreground text-sm">
             Chưa có chủ đề nào. Hãy bắt đầu cuộc trò chuyện!
           </p>
-          <Link href={newTopicHref} className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          <Link href={newTopicHref} className={buttonVariants({ variant: 'outline' })}>
             Tạo chủ đề đầu tiên
           </Link>
         </div>
       ) : (
-        <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border">
+        <div className="divide-border border-border bg-card divide-y overflow-hidden rounded-xl border shadow-sm">
           {topics.map((topic) => {
             const lastPost = topic.posts[0];
             const postCount = topic._count.posts;
@@ -301,25 +305,25 @@ function TopicList({
               <Link
                 key={topic.id}
                 href={`/courses/${slug}/forum/${topic.id}`}
-                className="hover:bg-accent/30 group flex items-start gap-4 px-5 py-4 transition-colors"
+                className="hover:bg-muted/40 group flex items-start gap-3 px-4 py-4 transition-colors sm:gap-4 sm:px-5"
               >
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
-                  <MessageSquare className="h-4.5 w-4.5 text-sky-400" />
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
+                  <MessageSquare className="h-5 w-5 text-sky-700 dark:text-sky-400" />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    {topic.isPinned && <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" />}
-                    {topic.isLocked && (
-                      <Lock className="text-muted-foreground/60 h-3.5 w-3.5 shrink-0" />
+                    {topic.isPinned && (
+                      <Pin className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                     )}
-                    <span className="group-hover:text-primary truncate text-sm leading-snug font-semibold transition-colors">
+                    {topic.isLocked && <Lock className="text-muted-foreground h-4 w-4 shrink-0" />}
+                    <span className="group-hover:text-primary text-base leading-snug font-semibold break-words transition-colors">
                       {topic.title}
                     </span>
                     {topic.isPinned && (
                       <Badge
                         variant="outline"
-                        className="shrink-0 border-amber-400/30 text-xs text-amber-400"
+                        className="shrink-0 border-amber-600/25 bg-amber-50 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
                       >
                         Ghim
                       </Badge>
@@ -330,7 +334,7 @@ function TopicList({
                       </Badge>
                     )}
                   </div>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
+                  <p className="text-muted-foreground mt-1 text-sm">
                     {authorName(topic.author)} &middot; {timeAgo(topic.createdAt)}
                     {lastPost && lastPost.createdAt > topic.createdAt && (
                       <>
@@ -341,7 +345,7 @@ function TopicList({
                   </p>
                 </div>
 
-                <div className="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">
+                <div className="text-muted-foreground flex shrink-0 items-center gap-2 pt-1 text-sm sm:gap-3">
                   <span className="flex items-center gap-1">
                     <MessageSquare className="h-3.5 w-3.5" />
                     {Math.max(0, postCount - 1)}
@@ -355,7 +359,7 @@ function TopicList({
       )}
 
       {canManage && topics.length > 0 && (
-        <p className="text-muted-foreground/60 text-center text-xs">
+        <p className="text-muted-foreground text-center text-sm">
           Bạn là giáo viên — có thể sửa nội dung, ghim, khoá và xoá chủ đề trong trang chi tiết.
         </p>
       )}

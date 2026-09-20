@@ -94,10 +94,10 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
   }
 
   return (
-    <div className="border-border bg-card space-y-4 rounded-xl border p-5">
+    <div className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-5">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Users className="h-4 w-4 text-cyan-400" />
+          <Users className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
           Bài nộp của học sinh ({submissions.length})
         </h3>
       </div>
@@ -111,7 +111,7 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
             return (
               <div
                 key={s.id}
-                className="border-border/60 bg-muted/10 overflow-hidden rounded-lg border"
+                className="border-border bg-muted/20 overflow-hidden rounded-lg border"
               >
                 <div className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold">
@@ -125,20 +125,20 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
                       authorName(s.student).charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{authorName(s.student)}</p>
+                  <div className="min-w-0 flex-1 basis-40">
+                    <p className="text-sm font-medium break-words">{authorName(s.student)}</p>
                     <p className="text-muted-foreground text-xs">
                       Lần {s.attemptNumber} · Nộp lúc {fmtTime(s.submittedAt)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2 max-sm:w-full max-sm:justify-between">
                     {isGraded ? (
-                      <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-3 w-3" />
                         {s.score} / {s.maxScore}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                         <Clock className="h-3 w-3" />
                         Chờ chấm
                       </span>
@@ -205,7 +205,7 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
                     </div>
                     <div className="flex items-center gap-2">
                       {!!open.gradedAt && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
                           {open.score} / {open.maxScore}
                         </span>
@@ -241,9 +241,7 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="space-y-1.5">
-                      <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                        Điểm
-                      </label>
+                      <label className="text-muted-foreground text-xs font-medium">Điểm</label>
                       <input
                         type="number"
                         min={0}
@@ -252,11 +250,11 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
                         onChange={(e) =>
                           setScoreInput((prev) => ({ ...prev, [open.id]: e.target.value }))
                         }
-                        className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                        className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                      <label className="text-muted-foreground text-xs font-medium">
                         Trên thang
                       </label>
                       <input
@@ -267,7 +265,7 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
                         onChange={(e) =>
                           setMaxScoreInput((prev) => ({ ...prev, [open.id]: e.target.value }))
                         }
-                        className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                        className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                       />
                     </div>
                     <div className="flex items-end">
@@ -284,7 +282,7 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                    <label className="text-muted-foreground text-xs font-medium">
                       Nhận xét (tuỳ chọn)
                     </label>
                     <textarea
@@ -294,7 +292,7 @@ export function ScratchTeacherPanel({ submissions, rubric }: Props) {
                       }
                       rows={3}
                       placeholder="Phản hồi cho học sinh..."
-                      className="border-input bg-background focus:ring-ring w-full resize-y rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring w-full resize-y rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     />
                   </div>
                 </div>

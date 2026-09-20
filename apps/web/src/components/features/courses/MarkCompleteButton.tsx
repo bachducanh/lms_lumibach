@@ -43,11 +43,10 @@ export function MarkCompleteButton({
   if (isCompleted) {
     return (
       <Button
-        size="sm"
         variant="ghost"
         onClick={handleClick}
         disabled={pending}
-        className="hover:text-muted-foreground hover:bg-muted gap-1.5 text-green-600"
+        className="hover:text-muted-foreground hover:bg-muted w-full gap-1.5 text-emerald-700 sm:w-auto dark:text-emerald-400"
       >
         <CheckCircle2 className="h-4 w-4" />
         {pending ? 'Đang cập nhật...' : 'Đã hoàn thành'}
@@ -57,11 +56,10 @@ export function MarkCompleteButton({
 
   return (
     <Button
-      size="sm"
       variant="outline"
       onClick={handleClick}
       disabled={pending}
-      className="gap-1.5"
+      className="w-full gap-1.5 sm:w-auto"
     >
       <Circle className="h-4 w-4" />
       {pending ? 'Đang lưu...' : 'Đánh dấu hoàn thành'}

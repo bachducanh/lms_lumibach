@@ -15,6 +15,7 @@ import { ExerciseSubmitPanel } from '@/components/features/code/ExerciseSubmitPa
 import { TeacherSubmissionsPanel } from '@/components/features/code/TeacherSubmissionsPanel';
 import { ActivityCompetencyPanel } from '@/components/features/competencies/ActivityCompetencyPanel';
 import { buttonVariants } from '@/components/ui/button';
+import { PageHero } from '@/components/layouts/PageHero';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { ChevronLeft, ChevronRight, Code2, Pencil, Clock, Cpu } from 'lucide-react';
 import { hasMinRole } from '@/lib/permissions';
@@ -125,108 +126,83 @@ export default async function ExerciseViewPage({
     currentIndex < allNavItems.length - 1 ? (allNavItems[currentIndex + 1] ?? null) : null;
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-[1600px] space-y-8 pb-12">
       {/* ── Hero header ─────────────────────────────────────── */}
-      <div className="border-border bg-card relative -mx-6 -mt-6 overflow-hidden border-b">
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.03]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern id="ex-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#ex-grid)" />
-        </svg>
-        <div
-          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl"
-          style={{ background: 'rgb(139 92 246 / 10%)' }}
-        />
-        <div
-          className="absolute top-0 right-0 left-0 h-[2px]"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgb(139 92 246 / 60%), transparent)',
-          }}
-        />
-
-        <div className="relative px-6 py-8">
-          <Link
-            href={`/courses/${slug}/modules`}
-            className="text-muted-foreground mb-4 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase transition-colors hover:text-violet-400"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            Nội dung khoá học
-          </Link>
-
-          <div className="flex items-end justify-between gap-4">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <Code2
-                  className="h-3.5 w-3.5 text-violet-400"
-                  style={{ filter: 'drop-shadow(0 0 6px #7c3aed)' }}
-                />
-                <p className="text-[11px] font-bold tracking-[0.2em] text-violet-400 uppercase">
-                  Bài tập code
-                </p>
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight">{exercise.title}</h1>
-
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded border border-violet-400/20 bg-violet-400/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-violet-400">
-                  <Code2 className="h-3 w-3" /> {LANG_LABEL[exercise.language] ?? exercise.language}
-                </span>
-                {moduleItem && (
-                  <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
-                    {moduleItem.module.name}
-                  </span>
-                )}
-                {allNavItems.length > 1 && currentIndex >= 0 && (
-                  <span className="inline-flex items-center gap-1 rounded border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-cyan-400">
-                    Mục {currentIndex + 1}/{allNavItems.length}
-                  </span>
-                )}
-                {exercise.language !== 'WEB' && (
-                  <>
-                    <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs">
-                      <Clock className="h-3 w-3" /> {exercise.timeLimit}s
-                    </span>
-                    <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs">
-                      <Cpu className="h-3 w-3" /> {Math.round(exercise.memoryLimit / 1024)} MB
-                    </span>
-                  </>
-                )}
-              </div>
+      <PageHero
+        footer={
+          allNavItems.length > 1 ? (
+            <div className="bg-muted h-1">
+              <div
+                className="bg-primary h-full transition-all duration-500"
+                style={{ width: `${((currentIndex + 1) / allNavItems.length) * 100}%` }}
+              />
             </div>
+          ) : null
+        }
+      >
+        <Link
+          href={`/courses/${slug}/modules`}
+          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Nội dung khoá học
+        </Link>
 
-            {canEdit && (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <Link
-                  href={`/courses/${slug}/exercises/${exerciseId}/edit`}
-                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                >
-                  <Pencil className="text-muted-foreground mr-1 h-3.5 w-3.5" /> Chỉnh sửa
-                </Link>
-              </div>
-            )}
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <Code2 className="text-primary h-4 w-4" />
+              <p className="text-primary text-sm font-semibold">Bài tập code</p>
+            </div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight break-words sm:text-3xl">
+              {exercise.title}
+            </h1>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full border border-violet-600/25 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-400">
+                <Code2 className="h-3 w-3" /> {LANG_LABEL[exercise.language] ?? exercise.language}
+              </span>
+              {moduleItem && (
+                <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold">
+                  {moduleItem.module.name}
+                </span>
+              )}
+              {allNavItems.length > 1 && currentIndex >= 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-600/25 bg-cyan-50 px-2.5 py-0.5 text-xs font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-400">
+                  Mục {currentIndex + 1}/{allNavItems.length}
+                </span>
+              )}
+              {exercise.language !== 'WEB' && (
+                <>
+                  <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs">
+                    <Clock className="h-3 w-3" /> {exercise.timeLimit}s
+                  </span>
+                  <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs">
+                    <Cpu className="h-3 w-3" /> {Math.round(exercise.memoryLimit / 1024)} MB
+                  </span>
+                </>
+              )}
+            </div>
           </div>
+
+          {canEdit && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Link
+                href={`/courses/${slug}/exercises/${exerciseId}/edit`}
+                className={buttonVariants({ variant: 'outline', size: 'sm' })}
+              >
+                <Pencil className="text-muted-foreground mr-1 h-3.5 w-3.5" /> Chỉnh sửa
+              </Link>
+            </div>
+          )}
         </div>
+      </PageHero>
 
-        {allNavItems.length > 1 && (
-          <div className="bg-muted h-1">
-            <div
-              className="h-full bg-violet-500 transition-all duration-500"
-              style={{ width: `${((currentIndex + 1) / allNavItems.length) * 100}%` }}
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="mx-auto w-full max-w-[1600px] space-y-8 px-6 pb-12">
+      <div className="space-y-8">
         {/* Description + sample test cases */}
         {(exercise.description ||
           (exercise.language !== 'WEB' && exercise.testCases.some((tc) => !tc.isHidden))) && (
-          <div className="border-border/60 bg-card/40 space-y-5 rounded-2xl border p-6 backdrop-blur-md">
+          <div className="border-border bg-card space-y-5 rounded-xl border p-4 shadow-sm sm:p-6">
             {exercise.description && (
               <div>
                 <h2 className="mb-3 text-base font-semibold">Đề bài</h2>
@@ -241,14 +217,14 @@ export default async function ExerciseViewPage({
                 return (
                   <div>
                     <h2 className="mb-3 text-base font-semibold">Ví dụ</h2>
-                    <div className="border-border overflow-x-auto rounded-xl border">
+                    <div className="border-border overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                           <tr>
-                            <th className="text-muted-foreground border-border w-1/2 border-b px-4 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+                            <th className="text-muted-foreground border-border w-1/2 border-b px-4 py-2.5 text-left text-xs font-semibold">
                               Đầu vào (Input)
                             </th>
-                            <th className="text-muted-foreground border-border w-1/2 border-b border-l px-4 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+                            <th className="text-muted-foreground border-border w-1/2 border-b border-l px-4 py-2.5 text-left text-xs font-semibold">
                               Kết quả mong đợi (Output)
                             </th>
                           </tr>
@@ -328,9 +304,7 @@ export default async function ExerciseViewPage({
               >
                 <ChevronLeft className="text-muted-foreground group-hover:text-primary h-5 w-5 shrink-0 transition-all group-hover:-translate-x-1" />
                 <div className="min-w-0">
-                  <p className="text-muted-foreground mb-0.5 text-[10px] font-bold tracking-wider uppercase">
-                    Bài trước
-                  </p>
+                  <p className="text-muted-foreground mb-0.5 text-xs font-semibold">Bài trước</p>
                   <p className="max-w-[100px] truncate text-sm font-semibold sm:max-w-xs">
                     {prevNavItem.title}
                   </p>
@@ -355,7 +329,7 @@ export default async function ExerciseViewPage({
               >
                 <ChevronRight className="text-muted-foreground group-hover:text-primary h-5 w-5 shrink-0 transition-all group-hover:translate-x-1" />
                 <div className="min-w-0">
-                  <p className="text-muted-foreground mb-0.5 text-[10px] font-bold tracking-wider uppercase">
+                  <p className="text-muted-foreground mb-0.5 text-xs font-semibold">
                     Bài tiếp theo
                   </p>
                   <p className="max-w-[100px] truncate text-sm font-semibold sm:max-w-xs">

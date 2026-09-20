@@ -14,9 +14,12 @@ function formatBytes(bytes: number): string {
 }
 
 function FileIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith('image/')) return <FileImage className="h-4 w-4 text-blue-500" />;
-  if (mimeType === 'application/pdf') return <FileText className="h-4 w-4 text-red-500" />;
-  if (mimeType.includes('zip')) return <FileArchive className="h-4 w-4 text-yellow-500" />;
+  if (mimeType.startsWith('image/'))
+    return <FileImage className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+  if (mimeType === 'application/pdf')
+    return <FileText className="h-4 w-4 text-red-600 dark:text-red-400" />;
+  if (mimeType.includes('zip'))
+    return <FileArchive className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
   return <File className="text-muted-foreground h-4 w-4" />;
 }
 
@@ -66,9 +69,11 @@ export function LessonAttachments({ lessonId, initialAttachments, canEdit }: Pro
           {attachments.map((att) => (
             <li
               key={att.id}
-              className="hover:bg-muted/30 flex items-center gap-3 px-3 py-2.5 transition-colors"
+              className="hover:bg-muted/40 flex items-center gap-2 px-3 py-2 transition-colors sm:gap-3"
             >
-              <FileIcon mimeType={att.mimeType} />
+              <span className="shrink-0">
+                <FileIcon mimeType={att.mimeType} />
+              </span>
               <span className="flex-1 truncate text-sm">{att.name}</span>
               <span className="text-muted-foreground shrink-0 text-xs">
                 {formatBytes(att.size)}
@@ -78,7 +83,7 @@ export function LessonAttachments({ lessonId, initialAttachments, canEdit }: Pro
                 target="_blank"
                 rel="noopener noreferrer"
                 download={att.name}
-                className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors"
                 title="Tải xuống"
               >
                 <Download className="h-4 w-4" />
@@ -87,7 +92,7 @@ export function LessonAttachments({ lessonId, initialAttachments, canEdit }: Pro
                 <button
                   type="button"
                   onClick={() => handleDelete(att.id)}
-                  className="text-muted-foreground hover:text-destructive p-1 transition-colors"
+                  className="text-muted-foreground hover:text-destructive hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors"
                   title="Xoá"
                 >
                   <Trash2 className="h-4 w-4" />

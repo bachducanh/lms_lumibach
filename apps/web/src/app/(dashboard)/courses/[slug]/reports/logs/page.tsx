@@ -138,17 +138,21 @@ export default async function CourseLogsPage({
   }
 
   return (
-    <div className="space-y-5">
-      <form className="space-y-3">
-        <h2 className="text-lg font-semibold">Choose which logs you want to see:</h2>
-        <div className="flex flex-wrap gap-2">
-          <Select name="course" defaultValue={course.id} className="min-w-[250px]">
+    <div className="space-y-6">
+      <form className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-5">
+        <h2 className="text-lg font-bold sm:text-xl">Choose which logs you want to see:</h2>
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+          <Select
+            name="course"
+            defaultValue={course.id}
+            className="w-full sm:w-auto sm:min-w-[250px]"
+          >
             <option value={course.id}>{course.shortName ?? course.name}</option>
           </Select>
-          <Select name="group" defaultValue="" className="min-w-[125px]">
+          <Select name="group" defaultValue="" className="w-full sm:w-auto sm:min-w-[125px]">
             <option value="">All groups</option>
           </Select>
-          <Select name="userId" defaultValue={userId} className="min-w-[240px]">
+          <Select name="userId" defaultValue={userId} className="w-full sm:w-auto sm:min-w-[240px]">
             <option value="">All participants</option>
             {participants.map((u) => (
               <option key={u.id} value={u.id}>
@@ -156,13 +160,17 @@ export default async function CourseLogsPage({
               </option>
             ))}
           </Select>
-          <Select name="day" defaultValue={day} className="min-w-[210px]">
+          <Select name="day" defaultValue={day} className="w-full sm:w-auto sm:min-w-[210px]">
             <option value="">All days</option>
             <option value="today">Today</option>
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
           </Select>
-          <Select name="activity" defaultValue={activity} className="min-w-[230px]">
+          <Select
+            name="activity"
+            defaultValue={activity}
+            className="w-full sm:w-auto sm:min-w-[230px]"
+          >
             <option value="">All activities</option>
             {ACTIVITY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -170,18 +178,22 @@ export default async function CourseLogsPage({
               </option>
             ))}
           </Select>
-          <Select name="action" defaultValue={actionGroup} className="min-w-[135px]">
+          <Select
+            name="action"
+            defaultValue={actionGroup}
+            className="w-full sm:w-auto sm:min-w-[135px]"
+          >
             <option value="">All actions</option>
             <option value="view">View</option>
             <option value="submit">Submit</option>
             <option value="quiz">Quiz</option>
             <option value="login">Login</option>
           </Select>
-          <Select name="source" defaultValue={source} className="min-w-[135px]">
+          <Select name="source" defaultValue={source} className="w-full sm:w-auto sm:min-w-[135px]">
             <option value="">All sources</option>
             <option value="web">web</option>
           </Select>
-          <Select name="event" defaultValue={event} className="min-w-[145px]">
+          <Select name="event" defaultValue={event} className="w-full sm:w-auto sm:min-w-[145px]">
             <option value="">All events</option>
             {EVENT_OPTIONS.map((value) => (
               <option key={value} value={value}>
@@ -190,7 +202,7 @@ export default async function CourseLogsPage({
             ))}
           </Select>
           <span
-            className="text-muted-foreground inline-flex h-10 w-8 items-center justify-center"
+            className="text-muted-foreground hidden h-10 w-8 items-center justify-center sm:inline-flex"
             title="Course logs are scoped to this course."
           >
             <HelpCircle className="h-4 w-4" />
@@ -211,13 +223,13 @@ export default async function CourseLogsPage({
         </div>
       </form>
 
-      <div className="text-muted-foreground text-xs">
+      <div className="text-muted-foreground text-sm">
         {total.toLocaleString('vi-VN')} events · page {page}/{totalPages}
       </div>
 
-      <div className="border-border bg-card overflow-x-auto rounded-lg border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
         <table className="w-full min-w-[1180px] text-sm">
-          <thead className="border-border bg-muted/30 border-b text-left text-xs">
+          <thead className="border-border bg-muted/50 border-b text-left text-xs">
             <tr>
               <Th>Course</Th>
               <Th>Time</Th>
@@ -242,7 +254,7 @@ export default async function CourseLogsPage({
             {logs.map((log) => {
               const userName = displayUserName(log.user);
               return (
-                <tr key={log.id} className="border-border/50 hover:bg-muted/20 border-b">
+                <tr key={log.id} className="border-border hover:bg-muted/40 border-b last:border-0">
                   <Td>{log.course?.name ?? course.name}</Td>
                   <Td>
                     <span className="whitespace-nowrap">{formatLogTime(log.createdAt)}</span>
@@ -427,12 +439,12 @@ function nhanCuaOption(children: React.ReactNode): string {
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="text-muted-foreground px-3 py-2.5 font-semibold whitespace-nowrap">
+    <th className="text-muted-foreground px-4 py-3 text-xs font-semibold whitespace-nowrap">
       {children}
     </th>
   );
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2.5 align-top">{children}</td>;
+  return <td className="px-4 py-3 align-top">{children}</td>;
 }

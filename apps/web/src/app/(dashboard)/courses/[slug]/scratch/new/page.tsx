@@ -32,7 +32,7 @@ export default async function NewScratchExercisePage({
     <div className="max-w-3xl space-y-5">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10">
-          <Cat className="h-5 w-5 text-orange-400" />
+          <Cat className="h-5 w-5 text-orange-700 dark:text-orange-400" />
         </div>
         <div>
           <h1 className="text-xl font-bold">Tạo bài Scratch</h1>

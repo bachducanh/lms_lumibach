@@ -68,9 +68,7 @@ export function QuestionTypeSelect({ value, onChange, disabled }: Props) {
           <div key={group.label}>
             {gi > 0 && <DropdownMenuSeparator />}
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-[10px] tracking-wider uppercase">
-                {group.label}
-              </DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs">{group.label}</DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
               {group.types.map((t) => {

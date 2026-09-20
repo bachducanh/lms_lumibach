@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { hasMinRole } from '@/lib/permissions';
-import { ChevronLeft, Database } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 import { ClusteringDataset } from '@/components/features/analytics/ClusteringDataset';
 
@@ -18,22 +18,21 @@ export default async function ClusteringPage({ params }: { params: Promise<{ slu
   if (!role || !hasMinRole(role, 'TA')) redirect(`/courses/${slug}`);
 
   return (
-    <div className="max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <div>
         <Link
           href={`/courses/${slug}/analytics`}
-          className="text-muted-foreground hover:text-primary mb-2 inline-flex items-center gap-1.5 text-xs transition-colors"
+          className="text-muted-foreground hover:text-primary mb-3 inline-flex items-center gap-1.5 text-sm transition-colors"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           Phân tích khoá học
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-            <Database className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">Dữ liệu phân cụm học sinh</h1>
-            <p className="text-muted-foreground text-sm">
+        <div>
+          <div className="min-w-0">
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+              Dữ liệu phân cụm học sinh
+            </h1>
+            <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
               Ma trận đặc trưng mỗi học sinh = 1 dòng. Xuất CSV/XLSX để xử lý phân cụm (K-Means,
               thuật toán tiến hoá…).
             </p>
@@ -41,7 +40,7 @@ export default async function ClusteringPage({ params }: { params: Promise<{ slu
         </div>
       </div>
 
-      <div className="border-border bg-card rounded-xl border p-5">
+      <div className="border-border bg-card rounded-xl border p-4 shadow-sm sm:p-5">
         <ClusteringDataset courseSlug={slug} />
       </div>
 

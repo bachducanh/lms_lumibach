@@ -137,63 +137,53 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
     <div className="max-w-3xl space-y-6">
       {/* Title */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Tiêu đề *
-        </label>
+        <label className="text-muted-foreground text-xs font-medium">Tiêu đề *</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Tên quiz..."
-          className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
         />
       </div>
 
       {/* Description */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Mô tả (tuỳ chọn)
-        </label>
+        <label className="text-muted-foreground text-xs font-medium">Mô tả (tuỳ chọn)</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Mô tả ngắn về quiz..."
           rows={3}
-          className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
         />
       </div>
 
       {/* Time + attempts + passing */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Thời gian (phút)
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Thời gian (phút)</label>
           <input
             type="number"
             min={1}
             value={timeLimit}
             onChange={(e) => setTimeLimit(e.target.value)}
             placeholder="Không giới hạn"
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Số lần làm tối đa
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Số lần làm tối đa</label>
           <input
             type="number"
             min={1}
             value={maxAttempts}
             onChange={(e) => setMaxAttempts(e.target.value)}
             placeholder="Không giới hạn"
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Điểm đạt (%)
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Điểm đạt (%)</label>
           <input
             type="number"
             min={0}
@@ -202,7 +192,7 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
             value={passingScore}
             onChange={(e) => setPassingScore(e.target.value)}
             placeholder="Không yêu cầu"
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
       </div>
@@ -211,34 +201,28 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
           và thao tác chép về lớp cũng không mang theo. */}
       <div className={isBank ? 'hidden' : 'grid grid-cols-1 gap-4 sm:grid-cols-2'}>
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Mở từ
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Mở từ</label>
           <input
             type="datetime-local"
             value={availableFrom}
             onChange={(e) => setAvailableFrom(e.target.value)}
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Hạn nộp
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Hạn nộp</label>
           <input
             type="datetime-local"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
       </div>
 
       {/* Toggle options */}
       <div className="border-border bg-muted/20 space-y-3 rounded-xl border p-4">
-        <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Tuỳ chọn
-        </p>
+        <p className="text-muted-foreground text-xs font-medium">Tuỳ chọn</p>
         {[
           { label: 'Trộn thứ tự câu hỏi', value: shuffleQuestions, set: setShuffleQuestions },
           { label: 'Trộn thứ tự đáp án', value: shuffleAnswers, set: setShuffleAnswers },

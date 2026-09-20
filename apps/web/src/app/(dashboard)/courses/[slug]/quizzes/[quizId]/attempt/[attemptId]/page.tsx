@@ -148,7 +148,7 @@ export default async function AttemptPage({
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Header */}
-      <div className="bg-muted/20 border-border -mx-6 -mt-6 mb-6 flex items-center gap-3 border-b px-6 py-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Brain className="text-primary h-4 w-4" />
         <Link
           href={`/courses/${slug}/quizzes`}
@@ -159,7 +159,7 @@ export default async function AttemptPage({
         <span className="text-muted-foreground/40">/</span>
         <Link
           href={`/courses/${slug}/quizzes/${quizId}`}
-          className="text-muted-foreground hover:text-foreground truncate text-sm transition-colors"
+          className="text-muted-foreground hover:text-foreground max-w-[60vw] min-w-0 truncate text-sm transition-colors sm:max-w-md"
         >
           {quiz.title}
         </Link>
@@ -170,21 +170,21 @@ export default async function AttemptPage({
       {/* Score card */}
       <div
         className={cn(
-          'space-y-2 rounded-2xl border-2 p-8 text-center',
+          'space-y-2 rounded-xl border p-6 text-center sm:p-8',
           attempt.status === 'SUBMITTED' && ungradedEssay
-            ? 'border-amber-500/30 bg-amber-500/5'
+            ? 'border-amber-600/25 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/5'
             : passed
-              ? 'border-green-500/30 bg-green-500/5'
+              ? 'border-emerald-600/25 bg-emerald-50 dark:border-green-500/30 dark:bg-green-500/5'
               : 'border-primary/20 bg-primary/5'
         )}
       >
         <div
           className={cn(
-            'text-6xl font-bold',
+            'text-5xl font-bold sm:text-6xl',
             attempt.status === 'SUBMITTED' && ungradedEssay
-              ? 'text-amber-600 dark:text-amber-400'
+              ? 'text-amber-700 dark:text-amber-400'
               : passed
-                ? 'text-green-600 dark:text-green-400'
+                ? 'text-green-700 dark:text-green-400'
                 : 'text-foreground'
           )}
         >
@@ -196,14 +196,14 @@ export default async function AttemptPage({
           <p
             className={cn(
               'text-sm font-medium',
-              passed ? 'text-green-600 dark:text-green-400' : 'text-destructive'
+              passed ? 'text-green-700 dark:text-green-400' : 'text-destructive'
             )}
           >
             {passed ? '✓ Đạt yêu cầu' : '✗ Chưa đạt'} (ngưỡng {quiz.passingScore}%)
           </p>
         )}
         {ungradedEssay && (
-          <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+          <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
             Điểm chưa đầy đủ — đang chờ chấm điểm câu tự luận
           </p>
         )}
@@ -211,10 +211,8 @@ export default async function AttemptPage({
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Thời gian làm
-          </p>
+        <div className="border-border bg-card rounded-lg border px-4 py-3 text-center">
+          <p className="text-muted-foreground text-xs font-semibold">Thời gian làm</p>
           <p className="mt-1 text-lg font-bold">
             {durationMin !== null
               ? durationMin > 0
@@ -223,32 +221,26 @@ export default async function AttemptPage({
               : '—'}
           </p>
         </div>
-        <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Điểm hệ 10
-          </p>
+        <div className="border-border bg-card rounded-lg border px-4 py-3 text-center">
+          <p className="text-muted-foreground text-xs font-semibold">Điểm hệ 10</p>
           <p
             className={cn(
               'mt-1 text-lg font-bold',
-              passed ? 'text-green-600 dark:text-green-400' : ''
+              passed ? 'text-green-700 dark:text-green-400' : ''
             )}
           >
             {score10 !== null ? score10.toFixed(1) : '—'}
           </p>
         </div>
-        <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Câu đúng
-          </p>
+        <div className="border-border bg-card rounded-lg border px-4 py-3 text-center">
+          <p className="text-muted-foreground text-xs font-semibold">Câu đúng</p>
           <p className="mt-1 text-lg font-bold">
             {correctCount}
             <span className="text-muted-foreground text-sm">/{autoGradedCount}</span>
           </p>
         </div>
-        <div className="border-border bg-card rounded-xl border px-4 py-3 text-center">
-          <p className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-            Điểm thô
-          </p>
+        <div className="border-border bg-card rounded-lg border px-4 py-3 text-center">
+          <p className="text-muted-foreground text-xs font-semibold">Điểm thô</p>
           <p className="mt-1 text-lg font-bold">
             {score ?? 0}
             <span className="text-muted-foreground text-sm">/{maxScore ?? '?'}</span>
@@ -259,9 +251,7 @@ export default async function AttemptPage({
       {/* Per-question breakdown (if showResults) */}
       {(quiz.showResults || isStaff) && (
         <div className="space-y-4">
-          <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-            Chi tiết câu hỏi
-          </h2>
+          <h2 className="text-lg font-bold sm:text-xl">Chi tiết câu hỏi</h2>
           {attempt.questions.map((q) => {
             const ans = answerMap.get(q.questionId);
             const qType = q.question.type;
@@ -284,19 +274,19 @@ export default async function AttemptPage({
             let resultIcon = <Minus className="text-muted-foreground h-4 w-4" />;
             if (!isManual && ans) {
               resultIcon = ans.isCorrect ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
               ) : (
                 <XCircle className="text-destructive h-4 w-4" />
               );
             }
             if (isManual && ans?.score != null) {
-              resultIcon = <CheckCircle2 className="h-4 w-4 text-amber-500" />;
+              resultIcon = <CheckCircle2 className="h-4 w-4 text-amber-600 dark:text-amber-500" />;
             }
 
             return (
               <div
                 key={q.questionId}
-                className="border-border bg-card space-y-3 rounded-xl border p-5"
+                className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5"
               >
                 {/* Question header */}
                 <div className="flex items-start gap-3">
@@ -304,7 +294,7 @@ export default async function AttemptPage({
                     {resultIcon}
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                    <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
                       <span>{TYPE_LABEL[qType] ?? qType}</span>
                       <span>·</span>
                       <span>
@@ -329,7 +319,7 @@ export default async function AttemptPage({
 
                 {/* MCQ options */}
                 {(qType === 'MULTIPLE_CHOICE_SINGLE' || qType === 'MULTIPLE_CHOICE_MULTIPLE') && (
-                  <div className="space-y-1.5 pl-9">
+                  <div className="space-y-1.5 sm:pl-9">
                     {q.question.options.map((opt) => {
                       const isSelected = (ans?.selectedOptionIds ?? []).includes(opt.id);
                       const isCorrect = opt.isCorrect;
@@ -337,7 +327,7 @@ export default async function AttemptPage({
                         <div
                           key={opt.id}
                           className={cn(
-                            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                            'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm',
                             isCorrect
                               ? 'border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400'
                               : isSelected
@@ -364,7 +354,7 @@ export default async function AttemptPage({
 
                 {/* TRUE_FALSE */}
                 {qType === 'TRUE_FALSE' && (
-                  <div className="flex gap-2 pl-9">
+                  <div className="flex gap-2 sm:pl-9">
                     {q.question.options.map((opt) => {
                       const studentChoseDong = ans?.booleanAnswer === true;
                       const isDong = opt.content === 'Đúng';
@@ -375,7 +365,7 @@ export default async function AttemptPage({
                         <span
                           key={opt.id}
                           className={cn(
-                            'rounded-lg border px-3 py-1.5 text-xs font-medium',
+                            'rounded-lg border px-3 py-1.5 text-sm font-medium',
                             opt.isCorrect
                               ? 'border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400'
                               : isSelected
@@ -393,7 +383,7 @@ export default async function AttemptPage({
 
                 {/* ESSAY */}
                 {isEssay && (
-                  <div className="space-y-3 pl-9">
+                  <div className="space-y-3 sm:pl-9">
                     {ans?.textAnswer ? (
                       <RichTextView
                         html={toRichHtml(ans.textAnswer)}
@@ -422,7 +412,7 @@ export default async function AttemptPage({
 
                 {/* SHORT_ANSWER */}
                 {isShortAnswer && (
-                  <div className="space-y-2 pl-9">
+                  <div className="space-y-2 sm:pl-9">
                     {ans?.textAnswer ? (
                       <p
                         className={`inline-block rounded-lg border px-3 py-1.5 font-mono text-sm ${
@@ -450,7 +440,7 @@ export default async function AttemptPage({
 
                 {/* TRUE_FALSE_MULTI */}
                 {isTFMulti && (
-                  <div className="space-y-1.5 pl-9">
+                  <div className="space-y-1.5 sm:pl-9">
                     {q.question.options.map((opt, oi) => {
                       const studentDong = (ans?.selectedOptionIds ?? []).includes(opt.id);
                       const correct = studentDong === opt.isCorrect;
@@ -458,16 +448,16 @@ export default async function AttemptPage({
                         <div
                           key={opt.id}
                           className={cn(
-                            'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                            'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm',
                             correct
                               ? 'border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-400'
                               : 'border-destructive/30 bg-destructive/5 text-destructive'
                           )}
                         >
-                          <span className="bg-muted flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
+                          <span className="bg-muted flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                             {String.fromCharCode(97 + oi)}
                           </span>
-                          <span className="flex-1">
+                          <span className="min-w-0 flex-1 basis-40">
                             <MathText text={opt.content} />
                           </span>
                           <span className="shrink-0 font-medium">
@@ -485,9 +475,9 @@ export default async function AttemptPage({
 
                 {/* CODE_PYTHON / CODE_CPP */}
                 {isCodeAuto && (
-                  <div className="space-y-2 pl-4">
+                  <div className="space-y-2 sm:pl-4">
                     {ans?.textAnswer ? (
-                      <div className="border-border overflow-hidden rounded-xl border">
+                      <div className="border-border overflow-hidden rounded-lg border">
                         <CodeEditor
                           value={ans.textAnswer}
                           language={CODE_LANG[qType] ?? 'PYTHON3'}
@@ -496,7 +486,9 @@ export default async function AttemptPage({
                         />
                       </div>
                     ) : (
-                      <p className="text-muted-foreground pl-5 text-xs italic">Không có code nộp</p>
+                      <p className="text-muted-foreground text-xs italic sm:pl-5">
+                        Không có code nộp
+                      </p>
                     )}
                     {ans?.score != null && (
                       <p className="text-muted-foreground flex items-center gap-1.5 pl-1 text-xs">
@@ -509,11 +501,13 @@ export default async function AttemptPage({
 
                 {/* CODE_WEB */}
                 {isCodeWeb && (
-                  <div className="space-y-3 pl-4">
+                  <div className="space-y-3 sm:pl-4">
                     {ans?.textAnswer ? (
                       <WebCodeEditor value={ans.textAnswer} readOnly />
                     ) : (
-                      <p className="text-muted-foreground pl-5 text-xs italic">Không có code nộp</p>
+                      <p className="text-muted-foreground text-xs italic sm:pl-5">
+                        Không có code nộp
+                      </p>
                     )}
                     {ans?.feedback && (
                       <div className="border-border bg-card space-y-1 rounded-lg border px-4 py-3 text-xs">
@@ -535,9 +529,9 @@ export default async function AttemptPage({
 
                 {/* CODE_DEBUG result — show submitted code + score */}
                 {isCodeAuto && (qType === 'CODE_DEBUG_PYTHON' || qType === 'CODE_DEBUG_CPP') && (
-                  <div className="space-y-2 pl-4">
+                  <div className="space-y-2 sm:pl-4">
                     {ans?.textAnswer ? (
-                      <div className="overflow-hidden rounded-xl border border-orange-500/30">
+                      <div className="overflow-hidden rounded-lg border border-orange-500/30">
                         <CodeEditor
                           value={ans.textAnswer}
                           language={CODE_LANG[qType] ?? 'PYTHON3'}
@@ -546,7 +540,9 @@ export default async function AttemptPage({
                         />
                       </div>
                     ) : (
-                      <p className="text-muted-foreground pl-5 text-xs italic">Không có code nộp</p>
+                      <p className="text-muted-foreground text-xs italic sm:pl-5">
+                        Không có code nộp
+                      </p>
                     )}
                     {ans?.score != null && (
                       <p className="text-muted-foreground flex items-center gap-1.5 pl-1 text-xs">
@@ -575,7 +571,7 @@ export default async function AttemptPage({
                       }
                     }
                     return (
-                      <div className="space-y-3 pl-9">
+                      <div className="space-y-3 sm:pl-9">
                         {studentLines.length > 0 ? (
                           <div className="space-y-1.5">
                             <p className="text-muted-foreground text-xs font-medium">
@@ -587,7 +583,7 @@ export default async function AttemptPage({
                                 <div
                                   key={line.id}
                                   className={cn(
-                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm',
                                     isCorrectPos
                                       ? 'border-green-500/30 bg-green-500/5'
                                       : 'border-destructive/30 bg-destructive/5'
@@ -600,7 +596,7 @@ export default async function AttemptPage({
                                     {line.content}
                                   </pre>
                                   {isCorrectPos ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-500" />
                                   ) : (
                                     <XCircle className="text-destructive h-3.5 w-3.5 shrink-0" />
                                   )}
@@ -640,9 +636,9 @@ export default async function AttemptPage({
                     const template = q.question.starterCode ?? '';
                     const parts = template.split('___');
                     return (
-                      <div className="space-y-3 pl-9">
+                      <div className="space-y-3 sm:pl-9">
                         {template && (
-                          <div className="border-border bg-muted/20 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                          <div className="border-border bg-muted/20 overflow-x-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
                             {parts.map((part: string, pi: number) => (
                               <span key={pi}>
                                 {part}
@@ -696,7 +692,7 @@ export default async function AttemptPage({
                                   </span>
                                 )}
                                 {correct ? (
-                                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-500" />
                                 ) : (
                                   <XCircle className="text-destructive h-3.5 w-3.5 shrink-0" />
                                 )}
@@ -726,7 +722,7 @@ export default async function AttemptPage({
                       }
                     }
                     return (
-                      <div className="space-y-3 pl-9">
+                      <div className="space-y-3 sm:pl-9">
                         {studentItems.length > 0 ? (
                           <div className="space-y-1.5">
                             <p className="text-muted-foreground text-xs font-medium">
@@ -738,7 +734,7 @@ export default async function AttemptPage({
                                 <div
                                   key={item.id}
                                   className={cn(
-                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                    'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm',
                                     isCorrectPos
                                       ? 'border-green-500/30 bg-green-500/5'
                                       : 'border-destructive/30 bg-destructive/5'
@@ -751,7 +747,7 @@ export default async function AttemptPage({
                                     <MathText text={item.content} />
                                   </span>
                                   {isCorrectPos ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-500" />
                                   ) : (
                                     <XCircle className="text-destructive h-3.5 w-3.5 shrink-0" />
                                   )}
@@ -772,7 +768,7 @@ export default async function AttemptPage({
                             {sortedCorrect.map((item, li) => (
                               <div
                                 key={item.id}
-                                className="border-border bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
+                                className="border-border bg-muted/20 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
                               >
                                 <span className="text-muted-foreground w-4 shrink-0 tabular-nums">
                                   {li + 1}
@@ -800,7 +796,7 @@ export default async function AttemptPage({
                       map = {};
                     }
                     return (
-                      <div className="space-y-1.5 pl-9">
+                      <div className="space-y-1.5 sm:pl-9">
                         {pairs.map((p, i) => {
                           const chosenId = map[p.id];
                           const ok = chosenId === p.id;
@@ -811,13 +807,13 @@ export default async function AttemptPage({
                             <div
                               key={p.id}
                               className={cn(
-                                'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs',
+                                'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm',
                                 ok
                                   ? 'border-green-500/30 bg-green-500/5'
                                   : 'border-destructive/30 bg-destructive/5'
                               )}
                             >
-                              <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
+                              <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                                 {i + 1}
                               </span>
                               <span className="font-medium">
@@ -837,7 +833,7 @@ export default async function AttemptPage({
                                 </span>
                               )}
                               {ok ? (
-                                <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-500" />
+                                <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-500" />
                               ) : (
                                 <XCircle className="text-destructive ml-auto h-3.5 w-3.5 shrink-0" />
                               )}
@@ -853,7 +849,7 @@ export default async function AttemptPage({
                   !isManual &&
                   !isCodeAuto &&
                   !(isParsons || isCodeFill) && (
-                    <div className="bg-muted/30 text-muted-foreground rounded-lg px-4 py-3 pl-9 text-xs">
+                    <div className="bg-muted/30 text-muted-foreground rounded-lg px-4 py-3 text-sm sm:pl-9">
                       <span className="font-medium">Giải thích: </span>
                       {q.question.explanation}
                     </div>
@@ -865,7 +861,7 @@ export default async function AttemptPage({
       )}
 
       {/* Back links */}
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2">
         <Link
           href={`/courses/${slug}/quizzes/${quizId}`}
           className="text-muted-foreground hover:text-foreground text-sm transition-colors"

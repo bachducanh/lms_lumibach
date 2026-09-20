@@ -51,7 +51,10 @@ export function ReplyForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-border bg-card space-y-3 rounded-xl border p-4">
+    <form
+      onSubmit={handleSubmit}
+      className="border-border bg-card space-y-3 rounded-xl border p-3 shadow-sm sm:p-4"
+    >
       <RichTextEditor
         content={content}
         onChange={setContent}
@@ -59,12 +62,12 @@ export function ReplyForm({
         allowImages={canUploadImages}
         compact
       />
-      <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={isPending}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" disabled={isPending}>
           {isPending ? 'Đang gửi...' : 'Gửi trả lời'}
         </Button>
         {onDone && (
-          <Button type="button" variant="ghost" size="sm" onClick={onDone} disabled={isPending}>
+          <Button type="button" variant="ghost" onClick={onDone} disabled={isPending}>
             Huỷ
           </Button>
         )}

@@ -160,7 +160,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
   return (
     <div>
       {/* ── Sticky bar ──────────────────────────────────────── */}
-      <div className="bg-muted/20 -mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b px-4">
+      <div className="bg-muted/20 -mx-3 -mt-3 mb-8 flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2 sm:-mx-4 sm:-mt-4 md:-mx-6 md:-mt-6">
         <Link
           href={cancelHref}
           className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-sm transition-colors"
@@ -169,7 +169,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
           {isBank ? 'Kho nội dung' : mode === 'create' ? 'Bài tập' : 'Chi tiết'}
         </Link>
         <span className="bg-border mx-2 h-4 w-px" />
-        <p className="text-muted-foreground flex-1 truncate text-sm font-medium">
+        <p className="text-muted-foreground min-w-32 flex-1 truncate text-sm font-medium">
           {title.trim() || (mode === 'create' ? 'Bài tập mới' : 'Chưa có tiêu đề')}
         </p>
         <div className="flex shrink-0 items-center gap-2">
@@ -218,9 +218,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {/* Type */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Kiểu nộp
-            </label>
+            <label className="text-muted-foreground text-xs font-medium">Kiểu nộp</label>
             <SimpleSelect
               className="w-full"
               aria-label="Hình thức nộp bài"
@@ -237,9 +235,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
 
           {/* Max score */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Điểm tối đa
-            </label>
+            <label className="text-muted-foreground text-xs font-medium">Điểm tối đa</label>
             <input
               type="number"
               min={0}
@@ -247,15 +243,13 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
               step={0.5}
               value={maxScore}
               onChange={(e) => setMaxScore(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
 
           {/* Weight */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Trọng số (%)
-            </label>
+            <label className="text-muted-foreground text-xs font-medium">Trọng số (%)</label>
             <input
               type="number"
               min={0}
@@ -263,15 +257,13 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
               step={0.5}
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
 
           {/* Late policy */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Chính sách trễ
-            </label>
+            <label className="text-muted-foreground text-xs font-medium">Chính sách trễ</label>
             <SimpleSelect
               className="w-full"
               aria-label="Chính sách nộp muộn"
@@ -290,36 +282,36 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
             và thao tác chép về lớp cũng không mang theo. */}
         <div className={cn('grid grid-cols-1 gap-4 sm:grid-cols-3', isBank && 'hidden')}>
           <div className="space-y-1.5">
-            <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <CalendarDays className="h-3.5 w-3.5" /> Mở từ
             </label>
             <input
               type="datetime-local"
               value={availableFrom}
               onChange={(e) => setAvailableFrom(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <Clock className="h-3.5 w-3.5" /> Hạn nộp
             </label>
             <input
               type="datetime-local"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
               <Clock className="text-destructive h-3.5 w-3.5" /> Hạn trễ
             </label>
             <input
               type="datetime-local"
               value={lateDeadline}
               onChange={(e) => setLateDeadline(e.target.value)}
-              className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
               disabled={latePolicy === 'NONE'}
             />
           </div>
@@ -338,7 +330,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
                 value={latePenalty}
                 onChange={(e) => setLatePenalty(e.target.value)}
                 placeholder="0"
-                className="border-input bg-background focus:ring-ring w-16 rounded-md border px-2 py-1 text-center text-sm focus:ring-1 focus:outline-none"
+                className="border-input bg-background focus:ring-ring w-16 rounded-lg border px-2 py-1 text-center text-sm focus:ring-1 focus:outline-none"
               />
               <span className="text-muted-foreground">% / ngày trễ</span>
             </div>
@@ -362,7 +354,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
                   value={maxAttempts}
                   onChange={(e) => setMaxAttempts(e.target.value)}
                   placeholder="∞"
-                  className="border-input bg-background focus:ring-ring w-14 rounded-md border px-2 py-1 text-center text-sm focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring w-14 rounded-lg border px-2 py-1 text-center text-sm focus:ring-1 focus:outline-none"
                 />
                 <span className="text-muted-foreground">lần</span>
               </>
@@ -373,9 +365,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
         {/* File submission settings */}
         {(type === 'FILE' || type === 'BOTH') && (
           <div className="border-border bg-muted/20 space-y-3 rounded-lg border p-4">
-            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Cấu hình nộp file
-            </p>
+            <p className="text-muted-foreground text-xs font-medium">Cấu hình nộp file</p>
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Dung lượng tối đa / file</span>
@@ -386,7 +376,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
                   value={maxFileSizeMb}
                   onChange={(e) => setMaxFileSizeMb(e.target.value)}
                   placeholder="50"
-                  className="border-input bg-background focus:ring-ring w-20 rounded-md border px-2 py-1 text-center focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring w-20 rounded-lg border px-2 py-1 text-center focus:ring-1 focus:outline-none"
                 />
                 <span className="text-muted-foreground">MB</span>
               </div>
@@ -399,7 +389,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
                   value={maxFiles}
                   onChange={(e) => setMaxFiles(e.target.value)}
                   placeholder="∞"
-                  className="border-input bg-background focus:ring-ring w-16 rounded-md border px-2 py-1 text-center focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring w-16 rounded-lg border px-2 py-1 text-center focus:ring-1 focus:outline-none"
                 />
               </div>
             </div>
@@ -424,9 +414,7 @@ export function AssignmentForm({ mode, owner, modules, defaultModuleId, assignme
         {/* Module assignment (create only) */}
         {mode === 'create' && !isBank && modules.length > 0 && (
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Thêm vào chương
-            </label>
+            <label className="text-muted-foreground text-xs font-medium">Thêm vào chương</label>
             <SimpleSelect
               className="w-full max-w-sm"
               aria-label="Chương"

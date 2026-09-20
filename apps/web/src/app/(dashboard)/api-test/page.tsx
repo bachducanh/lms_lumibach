@@ -31,21 +31,23 @@ export default async function ApiTestPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-3xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">API Bridge Test (Phase 1 demo)</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          API Bridge Test (Phase 1 demo)
+        </h1>
+        <p className="text-muted-foreground mt-2 text-sm break-words">
           Server Component này gọi{' '}
-          <code className="bg-muted rounded px-1.5 py-0.5">GET /api/v1/me</code> của NestJS backend
-          (apps/api) qua cookie NextAuth đã forward. Nếu thấy user info bên dưới ⇒ auth bridge FE→BE
-          hoạt động end-to-end.
+          <code className="bg-muted rounded px-1.5 py-0.5 font-mono break-all">GET /api/v1/me</code>{' '}
+          của NestJS backend (apps/api) qua cookie NextAuth đã forward. Nếu thấy user info bên dưới
+          ⇒ auth bridge FE→BE hoạt động end-to-end.
         </p>
       </header>
 
-      <section className="rounded-lg border p-4">
-        <h2 className="mb-2 font-semibold">Kết quả</h2>
+      <section className="border-border bg-card rounded-xl border p-4 shadow-sm sm:p-5">
+        <h2 className="mb-3 text-base font-semibold">Kết quả</h2>
         {result.ok ? (
-          <pre className="bg-muted overflow-x-auto rounded p-3 text-xs">
+          <pre className="bg-muted overflow-x-auto rounded-lg p-3 font-mono text-xs">
             {JSON.stringify(result.me, null, 2)}
           </pre>
         ) : (
@@ -66,7 +68,9 @@ export default async function ApiTestPage() {
       <section className="text-muted-foreground text-xs">
         <p>
           Trang này sẽ được xóa sau khi Phase 1 done. Đường dẫn:{' '}
-          <code>apps/web/src/app/(dashboard)/api-test/page.tsx</code>
+          <code className="font-mono break-all">
+            apps/web/src/app/(dashboard)/api-test/page.tsx
+          </code>
         </p>
       </section>
     </div>

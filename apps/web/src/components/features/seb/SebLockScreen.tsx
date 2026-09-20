@@ -14,7 +14,7 @@ type Props = {
 export function SebLockScreen({ title, launchUrl, downloadUrl }: Props) {
   return (
     <div className="mx-auto max-w-xl">
-      <div className="border-border bg-card space-y-5 rounded-2xl border p-8 text-center shadow-lg">
+      <div className="border-border bg-card space-y-5 rounded-xl border p-6 text-center shadow-sm sm:p-8">
         <div className="bg-primary/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
           <ShieldAlert className="text-primary h-8 w-8" />
         </div>
@@ -30,7 +30,7 @@ export function SebLockScreen({ title, launchUrl, downloadUrl }: Props) {
           <div className="space-y-3">
             <a
               href={launchUrl}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-colors"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition-colors"
             >
               <ShieldAlert className="h-4 w-4" />
               Mở bằng Safe Exam Browser
@@ -58,7 +58,7 @@ export function SebLockScreen({ title, launchUrl, downloadUrl }: Props) {
             </p>
           </div>
         ) : (
-          <p className="text-sm text-amber-600 dark:text-amber-400">
+          <p className="text-sm text-amber-700 dark:text-amber-400">
             Giáo viên chưa tải lên file cấu hình SEB. Vui lòng liên hệ giáo viên.
           </p>
         )}

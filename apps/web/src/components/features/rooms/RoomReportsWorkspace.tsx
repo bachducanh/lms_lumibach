@@ -175,7 +175,7 @@ export function RoomReportsWorkspace() {
   return (
     <div className="space-y-4">
       {/* Thanh điều kiện */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
         <div className="space-y-1">
           <label htmlFor="tu-ngay" className="text-muted-foreground text-xs font-medium">
             Từ ngày
@@ -185,7 +185,7 @@ export function RoomReportsWorkspace() {
             type="date"
             value={tuNgay}
             onChange={(e) => setTuNgay(e.target.value)}
-            className="w-40"
+            className="w-full sm:w-40"
           />
         </div>
         <div className="space-y-1">
@@ -197,15 +197,16 @@ export function RoomReportsWorkspace() {
             type="date"
             value={denNgay}
             onChange={(e) => setDenNgay(e.target.value)}
-            className="w-40"
+            className="w-full sm:w-40"
           />
         </div>
 
         {tab === 'usage' && (
-          <div className="space-y-1">
+          <div className="col-span-2 space-y-1 sm:col-auto">
             <label className="text-muted-foreground block text-xs font-medium">Gom nhóm</label>
             <SimpleSelect
               aria-label="Gom nhóm"
+              className="w-full sm:w-auto"
               value={groupBy}
               onValueChange={(v) => setGroupBy(v as ReportGroupBy)}
               options={(Object.keys(REPORT_GROUP_BY_LABEL) as ReportGroupBy[]).map((k) => ({
@@ -216,23 +217,28 @@ export function RoomReportsWorkspace() {
           </div>
         )}
 
-        <div className="flex-1" />
+        <div className="hidden flex-1 sm:block" />
 
-        <Button variant="outline" size="sm" onClick={xuatExcel} disabled={dangTai}>
+        <Button
+          variant="outline"
+          onClick={xuatExcel}
+          disabled={dangTai}
+          className="col-span-2 sm:col-auto"
+        >
           <FileSpreadsheet className="mr-1.5 h-4 w-4" />
           Xuất Excel
         </Button>
       </div>
 
       {/* Chọn loại báo cáo */}
-      <div className="border-border flex w-fit overflow-hidden rounded-lg border">
+      <div className="border-border bg-card flex w-full overflow-hidden rounded-full border sm:w-fit">
         {TABS.map((t) => (
           <button
             key={t.value}
             type="button"
             onClick={() => setTab(t.value)}
             className={cn(
-              'px-3 py-1.5 text-sm font-medium transition-colors',
+              'h-9 flex-1 px-4 text-sm font-medium transition-colors sm:flex-none',
               tab === t.value
                 ? 'bg-primary text-primary-foreground'
                 : 'hover:bg-muted text-muted-foreground'
@@ -270,9 +276,9 @@ function BangTanSuat({ report }: { report: UsageReport }) {
   if (report.rows.length === 0) return <Rong noiDung="Không có đơn nào trong khoảng đã chọn." />;
 
   return (
-    <div className="border-border overflow-x-auto rounded-xl border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-muted-foreground">
+    <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
+      <table className="w-full min-w-[640px] text-sm">
+        <thead className="bg-muted/50 text-muted-foreground text-xs">
           <tr>
             <Th className="text-left">{REPORT_GROUP_BY_LABEL[report.groupBy]}</Th>
             <Th>Số đơn</Th>
@@ -285,7 +291,7 @@ function BangTanSuat({ report }: { report: UsageReport }) {
         </thead>
         <tbody className="divide-border divide-y">
           {report.rows.map((r) => (
-            <tr key={r.key}>
+            <tr key={r.key} className="hover:bg-muted/40">
               <Td className="text-left font-medium">{r.label}</Td>
               <Td>{r.bookingCount}</Td>
               <Td>{r.totalHours}</Td>
@@ -298,7 +304,7 @@ function BangTanSuat({ report }: { report: UsageReport }) {
             </tr>
           ))}
         </tbody>
-        <tfoot className="bg-muted/40 font-semibold">
+        <tfoot className="bg-muted/50 font-semibold">
           <tr>
             <Td className="text-left">Tổng</Td>
             <Td>{report.total.bookingCount}</Td>
@@ -316,9 +322,9 @@ function BangKhongDenNhan({ rows }: { rows: NoShowReportRow[] }) {
     return <Rong noiDung="Không có đơn nào bị đánh dấu không đến nhận." icon={UserX} />;
 
   return (
-    <div className="border-border overflow-x-auto rounded-xl border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-muted-foreground">
+    <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
+      <table className="w-full min-w-[640px] text-sm">
+        <thead className="bg-muted/50 text-muted-foreground text-xs">
           <tr>
             <Th className="text-left">Phòng</Th>
             <Th className="text-left">Thời gian</Th>
@@ -329,7 +335,7 @@ function BangKhongDenNhan({ rows }: { rows: NoShowReportRow[] }) {
         </thead>
         <tbody className="divide-border divide-y">
           {rows.map((r) => (
-            <tr key={r.id}>
+            <tr key={r.id} className="hover:bg-muted/40">
               <Td className="text-left font-medium">{r.roomName}</Td>
               <Td className="text-left tabular-nums">
                 {vnRangeLabel(new Date(r.startAt), new Date(r.endAt))}
@@ -355,7 +361,7 @@ function BangThieu({ rows }: { rows: DiscrepancyReportRow[] }) {
   return (
     <div className="space-y-3">
       {rows.map((r) => (
-        <div key={r.bookingId} className="border-border rounded-xl border p-4">
+        <div key={r.bookingId} className="border-border bg-card rounded-xl border p-4 shadow-sm">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-medium">
               {r.roomName} · {vnRangeLabel(new Date(r.startAt), new Date(r.endAt))}
@@ -396,8 +402,10 @@ function Rong({
   icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="border-border text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center text-sm">
-      <Icon className="mx-auto mb-3 h-9 w-9 opacity-40" />
+    <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center text-sm">
+      <span className="bg-primary/10 text-primary mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg">
+        <Icon className="h-6 w-6" />
+      </span>
       {noiDung}
     </div>
   );
@@ -405,7 +413,7 @@ function Rong({
 
 function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
-    <th className={cn('px-3 py-2.5 text-right font-semibold whitespace-nowrap', className)}>
+    <th className={cn('px-4 py-3 text-right font-semibold whitespace-nowrap', className)}>
       {children}
     </th>
   );
@@ -421,7 +429,7 @@ function Td({
   colSpan?: number;
 }) {
   return (
-    <td colSpan={colSpan} className={cn('px-3 py-2.5 text-right tabular-nums', className)}>
+    <td colSpan={colSpan} className={cn('px-4 py-3 text-right tabular-nums', className)}>
       {children}
     </td>
   );

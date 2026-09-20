@@ -86,129 +86,131 @@ export function LineChart({
           ];
 
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} className="h-auto w-full">
-      {showAxis && (
-        <>
-          {/* Horizontal grid + Y labels */}
-          {uniqueYTicks.map((t) => {
-            const y = padTop + chartH - (t / max) * chartH;
-            return (
-              <g key={`yt-${t}`}>
-                <line
-                  x1={padLeft}
-                  y1={y}
-                  x2={padLeft + chartW}
-                  y2={y}
-                  stroke="currentColor"
-                  strokeWidth="0.5"
-                  strokeDasharray={t === 0 ? '' : '2 3'}
-                  className="text-border"
-                  opacity={t === 0 ? 0.9 : 0.45}
-                />
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${w} ${height}`} className="h-auto w-full min-w-[520px]">
+        {showAxis && (
+          <>
+            {/* Horizontal grid + Y labels */}
+            {uniqueYTicks.map((t) => {
+              const y = padTop + chartH - (t / max) * chartH;
+              return (
+                <g key={`yt-${t}`}>
+                  <line
+                    x1={padLeft}
+                    y1={y}
+                    x2={padLeft + chartW}
+                    y2={y}
+                    stroke="currentColor"
+                    strokeWidth="0.5"
+                    strokeDasharray={t === 0 ? '' : '2 3'}
+                    className="text-border"
+                    opacity={t === 0 ? 0.9 : 0.45}
+                  />
+                  <text
+                    x={padLeft - 4}
+                    y={y + 3}
+                    textAnchor="end"
+                    className="fill-muted-foreground text-[11px] tabular-nums"
+                  >
+                    {t}
+                  </text>
+                </g>
+              );
+            })}
+            {/* Y-axis line */}
+            <line
+              x1={padLeft}
+              y1={padTop}
+              x2={padLeft}
+              y2={padTop + chartH}
+              stroke="currentColor"
+              strokeWidth="0.5"
+              className="text-border"
+            />
+            {/* X-axis tick labels */}
+            {xTickIndices.map((i) => {
+              const p = points[i];
+              if (!p) return null;
+              return (
                 <text
-                  x={padLeft - 4}
-                  y={y + 3}
-                  textAnchor="end"
-                  className="fill-muted-foreground text-[9px] tabular-nums"
+                  key={`xt-${i}`}
+                  x={p.x}
+                  y={padTop + chartH + 14}
+                  textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}
+                  className="fill-muted-foreground text-[11px] tabular-nums"
                 >
-                  {t}
+                  {formatShortDate(p.date)}
                 </text>
-              </g>
-            );
-          })}
-          {/* Y-axis line */}
-          <line
-            x1={padLeft}
-            y1={padTop}
-            x2={padLeft}
-            y2={padTop + chartH}
-            stroke="currentColor"
-            strokeWidth="0.5"
-            className="text-border"
-          />
-          {/* X-axis tick labels */}
-          {xTickIndices.map((i) => {
-            const p = points[i];
-            if (!p) return null;
-            return (
+              );
+            })}
+            {/* Y label / unit */}
+            {yLabel && (
               <text
-                key={`xt-${i}`}
-                x={p.x}
-                y={padTop + chartH + 14}
-                textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}
-                className="fill-muted-foreground text-[9px] tabular-nums"
+                x={padLeft}
+                y={padTop - 4}
+                textAnchor="start"
+                className="fill-muted-foreground text-[11px]"
               >
-                {formatShortDate(p.date)}
+                {yLabel}
               </text>
-            );
-          })}
-          {/* Y label / unit */}
-          {yLabel && (
+            )}
+          </>
+        )}
+        {fill && areaPath && <path d={areaPath} fill={color} opacity={0.14} />}
+        <path
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {points.map((p, i) => (
+          <g key={i}>
+            {/* Always-visible small dot so users see actual data points */}
+            <circle cx={p.x} cy={p.y} r={1.5} fill={color} opacity={0.75} />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={hover === i ? 4 : 0}
+              fill={color}
+              className="transition-all"
+            />
+            <rect
+              x={p.x - stepX / 2}
+              y={padTop}
+              width={Math.max(stepX, 4)}
+              height={chartH}
+              fill="transparent"
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+            />
+          </g>
+        ))}
+        {hover !== null && points[hover] && (
+          <g>
+            <line
+              x1={points[hover]!.x}
+              y1={padTop}
+              x2={points[hover]!.x}
+              y2={padTop + chartH}
+              stroke={color}
+              strokeDasharray="2 2"
+              strokeWidth="0.8"
+              opacity={0.6}
+            />
             <text
-              x={padLeft}
-              y={padTop - 4}
-              textAnchor="start"
-              className="fill-muted-foreground text-[9px]"
+              x={Math.min(Math.max(points[hover]!.x, padLeft + 40), padLeft + chartW - 40)}
+              y={Math.max(points[hover]!.y - 8, padTop + 8)}
+              textAnchor="middle"
+              className="fill-foreground text-[11px] font-semibold"
             >
-              {yLabel}
+              {points[hover]!.value} · {formatShortDate(points[hover]!.date)}
             </text>
-          )}
-        </>
-      )}
-      {fill && areaPath && <path d={areaPath} fill={color} opacity={0.14} />}
-      <path
-        d={path}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {points.map((p, i) => (
-        <g key={i}>
-          {/* Always-visible small dot so users see actual data points */}
-          <circle cx={p.x} cy={p.y} r={1.5} fill={color} opacity={0.75} />
-          <circle
-            cx={p.x}
-            cy={p.y}
-            r={hover === i ? 4 : 0}
-            fill={color}
-            className="transition-all"
-          />
-          <rect
-            x={p.x - stepX / 2}
-            y={padTop}
-            width={Math.max(stepX, 4)}
-            height={chartH}
-            fill="transparent"
-            onMouseEnter={() => setHover(i)}
-            onMouseLeave={() => setHover(null)}
-          />
-        </g>
-      ))}
-      {hover !== null && points[hover] && (
-        <g>
-          <line
-            x1={points[hover]!.x}
-            y1={padTop}
-            x2={points[hover]!.x}
-            y2={padTop + chartH}
-            stroke={color}
-            strokeDasharray="2 2"
-            strokeWidth="0.8"
-            opacity={0.6}
-          />
-          <text
-            x={Math.min(Math.max(points[hover]!.x, padLeft + 40), padLeft + chartW - 40)}
-            y={Math.max(points[hover]!.y - 8, padTop + 8)}
-            textAnchor="middle"
-            className="fill-foreground text-[10px] font-semibold"
-          >
-            {points[hover]!.value} · {formatShortDate(points[hover]!.date)}
-          </text>
-        </g>
-      )}
-    </svg>
+          </g>
+        )}
+      </svg>
+    </div>
   );
 }
 
@@ -242,89 +244,91 @@ export function BarChart({
   const needRotate = data.some((d) => d.label.length > 6) || data.length > 6;
 
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} className="h-auto w-full">
-      {/* Y grid + labels */}
-      {yTicks.map((t) => {
-        const y = padTop + chartH - (t / max) * chartH;
-        return (
-          <g key={`yt-${t}`}>
-            <line
-              x1={padLeft}
-              y1={y}
-              x2={padLeft + chartW}
-              y2={y}
-              stroke="currentColor"
-              strokeWidth="0.5"
-              strokeDasharray={t === 0 ? '' : '2 3'}
-              className="text-border"
-              opacity={t === 0 ? 0.9 : 0.4}
-            />
-            <text
-              x={padLeft - 4}
-              y={y + 3}
-              textAnchor="end"
-              className="fill-muted-foreground text-[9px] tabular-nums"
-            >
-              {t}
-            </text>
-          </g>
-        );
-      })}
-      {/* Y label */}
-      {yLabel && (
-        <text
-          x={padLeft}
-          y={padTop - 6}
-          textAnchor="start"
-          className="fill-muted-foreground text-[9px]"
-        >
-          {yLabel}
-        </text>
-      )}
-      {data.map((d, i) => {
-        const h = (d.value / max) * chartH;
-        const x = padLeft + i * barW + barW * 0.15;
-        const y = padTop + chartH - h;
-        const cx = padLeft + i * barW + barW / 2;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={barW * 0.7} height={Math.max(h, 0)} fill={color} rx={2}>
-              <title>{`${d.label}: ${d.value}`}</title>
-            </rect>
-            {needRotate ? (
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${w} ${height}`} className="h-auto w-full min-w-[440px]">
+        {/* Y grid + labels */}
+        {yTicks.map((t) => {
+          const y = padTop + chartH - (t / max) * chartH;
+          return (
+            <g key={`yt-${t}`}>
+              <line
+                x1={padLeft}
+                y1={y}
+                x2={padLeft + chartW}
+                y2={y}
+                stroke="currentColor"
+                strokeWidth="0.5"
+                strokeDasharray={t === 0 ? '' : '2 3'}
+                className="text-border"
+                opacity={t === 0 ? 0.9 : 0.4}
+              />
               <text
-                x={cx}
-                y={padTop + chartH + 14}
+                x={padLeft - 4}
+                y={y + 3}
                 textAnchor="end"
-                transform={`rotate(-30 ${cx} ${padTop + chartH + 14})`}
-                className="fill-muted-foreground text-[9px]"
+                className="fill-muted-foreground text-[11px] tabular-nums"
               >
-                {d.label}
+                {t}
               </text>
-            ) : (
-              <text
-                x={cx}
-                y={padTop + chartH + 14}
-                textAnchor="middle"
-                className="fill-muted-foreground text-[9px]"
-              >
-                {d.label}
-              </text>
-            )}
-            {d.value > 0 && (
-              <text
-                x={cx}
-                y={y - 3}
-                textAnchor="middle"
-                className="fill-foreground text-[9px] font-semibold tabular-nums"
-              >
-                {d.value}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+            </g>
+          );
+        })}
+        {/* Y label */}
+        {yLabel && (
+          <text
+            x={padLeft}
+            y={padTop - 6}
+            textAnchor="start"
+            className="fill-muted-foreground text-[11px]"
+          >
+            {yLabel}
+          </text>
+        )}
+        {data.map((d, i) => {
+          const h = (d.value / max) * chartH;
+          const x = padLeft + i * barW + barW * 0.15;
+          const y = padTop + chartH - h;
+          const cx = padLeft + i * barW + barW / 2;
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={barW * 0.7} height={Math.max(h, 0)} fill={color} rx={2}>
+                <title>{`${d.label}: ${d.value}`}</title>
+              </rect>
+              {needRotate ? (
+                <text
+                  x={cx}
+                  y={padTop + chartH + 14}
+                  textAnchor="end"
+                  transform={`rotate(-30 ${cx} ${padTop + chartH + 14})`}
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {d.label}
+                </text>
+              ) : (
+                <text
+                  x={cx}
+                  y={padTop + chartH + 14}
+                  textAnchor="middle"
+                  className="fill-muted-foreground text-[11px]"
+                >
+                  {d.label}
+                </text>
+              )}
+              {d.value > 0 && (
+                <text
+                  x={cx}
+                  y={y - 3}
+                  textAnchor="middle"
+                  className="fill-foreground text-[11px] font-semibold tabular-nums"
+                >
+                  {d.value}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -359,9 +363,7 @@ export function HorizontalBars({
                 style={{ width: `${w}%`, backgroundColor: color }}
               />
             </div>
-            {item.sublabel && (
-              <p className="text-muted-foreground mt-1 text-[10px]">{item.sublabel}</p>
-            )}
+            {item.sublabel && <p className="text-muted-foreground mt-1 text-xs">{item.sublabel}</p>}
           </>
         );
         return <div key={i}>{inner}</div>;

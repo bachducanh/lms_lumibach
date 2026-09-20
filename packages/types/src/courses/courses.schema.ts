@@ -16,6 +16,8 @@ export const CreateCourseBodySchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   thumbnail: z.string().optional(),
+  /** Logo riêng của khoá, đè lên ảnh bìa ở thẻ khoá học. Trống = logo LumiBach. */
+  logo: z.string().optional(),
   /** Vào khoá học: các chương đổ xuống sẵn (true) hay chỉ hiện tên chương. */
   modulesExpandedByDefault: z.boolean().default(true),
 });
@@ -62,6 +64,7 @@ export type CourseListItem = {
   shortName: string | null;
   slug: string;
   thumbnail: string | null;
+  logo: string | null;
   subject: string | null;
   categoryId: string;
   category: CourseCategoryRef;

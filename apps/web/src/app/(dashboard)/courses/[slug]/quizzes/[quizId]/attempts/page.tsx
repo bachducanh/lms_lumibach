@@ -66,7 +66,7 @@ export default async function AttemptsPage({
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="text-muted-foreground flex items-center gap-2 text-sm">
-        <Brain className="h-4 w-4 shrink-0 text-violet-500" />
+        <Brain className="h-4 w-4 shrink-0 text-violet-700 dark:text-violet-400" />
         <Link href={`/courses/${slug}/quizzes`} className="hover:text-foreground transition-colors">
           Quiz
         </Link>
@@ -92,7 +92,7 @@ export default async function AttemptsPage({
             {hocSinh.length > 0 && (
               <>
                 <span>·</span>
-                <span className={chuaLam.length > 0 ? 'text-amber-600 dark:text-amber-400' : ''}>
+                <span className={chuaLam.length > 0 ? 'text-amber-700 dark:text-amber-400' : ''}>
                   {chuaLam.length} chưa làm
                 </span>
               </>

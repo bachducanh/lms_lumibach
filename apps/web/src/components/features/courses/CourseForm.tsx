@@ -35,8 +35,11 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
   const [pending, startTransition] = useTransition();
   const [thumbnailUrl, setThumbnailUrl] = useState<string>(course?.thumbnail ?? '');
   const [thumbnailPreview, setThumbnailPreview] = useState<string>(course?.thumbnail ?? '');
+  const [logoUrl, setLogoUrl] = useState<string>(course?.logo ?? '');
+  const [logoPreview, setLogoPreview] = useState<string>(course?.logo ?? '');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const logoRef = useRef<HTMLInputElement>(null);
 
   const [values, setValues] = useState<CourseFormValues>({
     name: course?.name ?? '',
@@ -55,23 +58,32 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
     setValues((prev) => ({ ...prev, [key]: val }));
   }
 
-  async function handleThumbnail(e: React.ChangeEvent<HTMLInputElement>) {
+  /** Ảnh bìa và logo đi chung một đường tải, chỉ khác ô được ghi vào. */
+  async function handleImage(e: React.ChangeEvent<HTMLInputElement>, field: 'thumbnail' | 'logo') {
     const file = e.target.files?.[0];
     if (!file) return;
-    setThumbnailPreview(URL.createObjectURL(file));
+    const isLogo = field === 'logo';
+    const setPreview = isLogo ? setLogoPreview : setThumbnailPreview;
+    const setUrl = isLogo ? setLogoUrl : setThumbnailUrl;
+    const previous = isLogo ? logoUrl : thumbnailUrl;
+
+    setPreview(URL.createObjectURL(file));
     setUploading(true);
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('field', field);
     if (course?.id) fd.append('courseId', course.id);
     const res = await fetch('/api/upload/thumbnail', { method: 'POST', body: fd });
     setUploading(false);
     if (res.ok) {
       const data = (await res.json()) as { url: string };
-      setThumbnailUrl(data.url);
+      setUrl(data.url);
     } else {
-      toast.error('Upload ảnh thất bại');
-      setThumbnailPreview(thumbnailUrl);
+      toast.error(isLogo ? 'Upload logo thất bại' : 'Upload ảnh thất bại');
+      setPreview(previous);
     }
+    // Chọn lại đúng file vừa bỏ vẫn phải kích hoạt onChange.
+    e.target.value = '';
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -82,7 +94,8 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
     }
     startTransition(async () => {
       try {
-        const payload = { ...values, thumbnail: thumbnailUrl || undefined };
+        // logo gửi cả chuỗi rỗng: đó là cách người dùng gỡ logo riêng về mặc định.
+        const payload = { ...values, thumbnail: thumbnailUrl || undefined, logo: logoUrl };
         const result =
           mode === 'create'
             ? await createCourseAction(payload)
@@ -104,7 +117,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+    <form onSubmit={handleSubmit} className="w-full max-w-3xl space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>{mode === 'create' ? 'Tạo khoá học mới' : 'Chỉnh sửa khoá học'}</CardTitle>
@@ -116,7 +129,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="border-input bg-muted/50 hover:bg-muted relative flex h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed transition-colors"
+              className="border-input bg-muted/50 hover:bg-muted relative flex h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed px-3 transition-colors"
             >
               {thumbnailPreview ? (
                 <img
@@ -141,7 +154,52 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="hidden"
-              onChange={handleThumbnail}
+              onChange={(e) => handleImage(e, 'thumbnail')}
+            />
+          </div>
+
+          {/* Logo riêng của khoá — ô trắng đè lên ảnh bìa ở thẻ khoá học */}
+          <div className="space-y-1.5">
+            <Label>Logo khoá học</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => logoRef.current?.click()}
+                className="border-input bg-muted/50 hover:bg-muted relative flex h-[60px] w-[180px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed p-2 transition-colors"
+              >
+                <img
+                  src={logoPreview || '/LumiBach_secondlogo.png'}
+                  alt={logoPreview ? 'Logo khoá học' : 'Logo mặc định LumiBach'}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </button>
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {logoPreview
+                    ? 'Nhấn vào ảnh để đổi logo khác.'
+                    : 'Đang dùng logo LumiBach. Nhấn vào ảnh để tải logo riêng của khoá (nền trong suốt, PNG ngang đẹp nhất).'}
+                </p>
+                {logoPreview && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setLogoUrl('');
+                      setLogoPreview('');
+                    }}
+                  >
+                    Dùng lại logo mặc định
+                  </Button>
+                )}
+              </div>
+            </div>
+            <input
+              ref={logoRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => handleImage(e, 'logo')}
             />
           </div>
 
@@ -213,7 +271,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="startDate">Ngày bắt đầu</Label>
               <Input
@@ -234,7 +292,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="status">Trạng thái</Label>
               <SimpleSelect
@@ -245,7 +303,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
                 options={STATUS_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
               />
             </div>
-            <div className="flex items-center gap-2 pt-6">
+            <div className="flex items-center gap-2 sm:pt-6">
               <input
                 id="isPublic"
                 type="checkbox"
@@ -279,7 +337,7 @@ export function CourseForm({ mode, course, initialCategoryId, initialCategoryLab
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={pending || uploading}>
           {uploading
             ? 'Đang upload ảnh...'

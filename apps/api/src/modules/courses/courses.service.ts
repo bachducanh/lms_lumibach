@@ -89,6 +89,7 @@ export class CoursesService {
         ownerId: actor.id,
         publishedAt: body.status === 'PUBLISHED' ? new Date() : null,
         thumbnail: body.thumbnail || null,
+        logo: body.logo || null,
       },
     });
 
@@ -154,6 +155,7 @@ export class CoursesService {
         publishedAt,
         archivedAt,
         ...(body.thumbnail !== undefined ? { thumbnail: body.thumbnail || null } : {}),
+        ...(body.logo !== undefined ? { logo: body.logo || null } : {}),
       },
     });
 
@@ -179,7 +181,8 @@ export class CoursesService {
    */
   private async collectCourseFileUrls(
     courseId: string,
-    thumbnail: string | null
+    thumbnail: string | null,
+    logo: string | null
   ): Promise<string[]> {
     const [submissionFiles, quizzes, practiceTests, exercises, codeSubmissions] = await Promise.all(
       [
@@ -208,6 +211,7 @@ export class CoursesService {
 
     const urls: (string | null)[] = [
       thumbnail,
+      logo,
       ...submissionFiles.map((f) => f.url),
       ...quizzes.map((q) => q.sebConfigUrl),
       ...practiceTests.flatMap((p) => [p.pdfUrl, p.sebConfigUrl]),
@@ -287,7 +291,7 @@ export class CoursesService {
       throw new ForbiddenException('Chỉ xoá vĩnh viễn được khoá học đã ở trong thùng rác');
     }
 
-    await this.purge(courseId, existing.slug, existing.thumbnail);
+    await this.purge(courseId, existing.slug, existing.thumbnail, existing.logo);
 
     this.audit.log({
       userId: actor.id,
@@ -300,10 +304,15 @@ export class CoursesService {
   }
 
   /** Dọn thật một khoá học: nội dung con + Lesson + file trên MinIO. */
-  private async purge(courseId: string, slug: string, thumbnail: string | null): Promise<void> {
+  private async purge(
+    courseId: string,
+    slug: string,
+    thumbnail: string | null,
+    logo: string | null
+  ): Promise<void> {
     const itemIds = await this.cleanup.moduleItemIdsOfCourse(courseId);
     const lessonPlan = await this.cleanup.planPurge(itemIds);
-    const courseFiles = await this.collectCourseFileUrls(courseId, thumbnail);
+    const courseFiles = await this.collectCourseFileUrls(courseId, thumbnail, logo);
 
     // Xoá DB trước, file sau: nếu MinIO lỗi thì chỉ còn file rác (vô hại), còn
     // làm ngược lại sẽ mất file của một khoá học vẫn đang tồn tại.
@@ -406,11 +415,11 @@ export class CoursesService {
     const cutoff = new Date(Date.now() - TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000);
     const expired = await this.prisma.course.findMany({
       where: { deletedAt: { not: null, lt: cutoff } },
-      select: { id: true, name: true, slug: true, thumbnail: true },
+      select: { id: true, name: true, slug: true, thumbnail: true, logo: true },
     });
 
     for (const course of expired) {
-      await this.purge(course.id, course.slug, course.thumbnail);
+      await this.purge(course.id, course.slug, course.thumbnail, course.logo);
       this.audit.log({
         action: 'COURSE_PURGE_EXPIRED',
         resource: 'Course',
@@ -491,6 +500,7 @@ export class CoursesService {
           shortName: true,
           slug: true,
           thumbnail: true,
+          logo: true,
           subject: true,
           categoryId: true,
           category: { select: CATEGORY_SELECT },
@@ -555,6 +565,7 @@ export class CoursesService {
         shortName: c.shortName,
         slug: c.slug,
         thumbnail: c.thumbnail,
+        logo: c.logo,
         subject: c.subject,
         categoryId: c.categoryId,
         category: categoryRef,

@@ -42,10 +42,10 @@ export default async function PracticeTestPreviewPage({
         </Link>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4 text-amber-500" />
+            <Eye className="h-4 w-4 text-amber-700 dark:text-amber-400" />
             <span className="text-sm font-semibold">Xem thử</span>
             <span className="text-muted-foreground">/</span>
-            <FileQuestion className="h-4 w-4 text-cyan-500" />
+            <FileQuestion className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
             <span className="text-muted-foreground truncate text-sm">{practiceTest.title}</span>
           </div>
           <p className="text-muted-foreground mt-1 text-xs">

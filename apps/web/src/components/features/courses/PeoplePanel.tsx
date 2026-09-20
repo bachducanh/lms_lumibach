@@ -66,7 +66,7 @@ function CandidatePicker({
 }) {
   return (
     <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-      <p className="text-xs font-medium text-amber-300">
+      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
         Có nhiều người trùng tên — chọn đúng người:
       </p>
       <ul className="divide-border border-border bg-background divide-y rounded-md border">

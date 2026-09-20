@@ -234,7 +234,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
     <div className="space-y-6">
       {/* ── Current questions ─────────────────────────────────── */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Câu hỏi trong quiz ({items.length})</h2>
           {items.length > 0 && (
             <span className="text-muted-foreground text-xs">
@@ -267,7 +267,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(idx)}
                   className={cn(
-                    'border-border bg-card flex cursor-default items-center gap-3 rounded-xl border px-4 py-3',
+                    'border-border bg-card flex cursor-default flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-3 sm:flex-nowrap sm:px-4',
                     pending && 'opacity-60'
                   )}
                 >
@@ -287,7 +287,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                     })()}
                     {TYPE_SHORT[item.question.type]}
                   </span>
-                  <p className="line-clamp-1 min-w-0 flex-1 text-sm">
+                  <p className="line-clamp-1 min-w-0 flex-1 basis-40 text-sm sm:basis-0">
                     {stripHtml(item.question.content)}
                   </p>
                   <div className="flex shrink-0 items-center gap-1">
@@ -302,7 +302,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                       onBlur={() => handlePointsBlur(item.questionId)}
                       placeholder={String(item.question.points)}
                       title="Điểm (để trống = mặc định)"
-                      className="border-input bg-background focus:ring-ring w-16 rounded border px-2 py-1 text-center text-xs focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring h-9 w-16 rounded-lg border px-2 text-center text-xs focus:ring-1 focus:outline-none"
                     />
                     <span className="text-muted-foreground text-xs">đ</span>
                     {pointInputs[item.questionId] === '' && (
@@ -312,7 +312,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                   <button
                     onClick={() => handleRemove(item.questionId)}
                     disabled={pending}
-                    className="text-muted-foreground/40 hover:text-destructive shrink-0 transition-colors disabled:opacity-40"
+                    className="text-muted-foreground hover:text-destructive shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-40"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -324,12 +324,12 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
       </div>
 
       {/* ── Bank picker ───────────────────────────────────────── */}
-      <div className="border-border bg-muted/10 space-y-3 rounded-2xl border p-4">
-        <div className="flex items-center justify-between gap-2">
+      <div className="border-border bg-muted/10 space-y-3 rounded-xl border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Danh mục câu hỏi</h2>
           <Link
             href={newQuestionHref}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
             Tạo câu hỏi mới
@@ -363,7 +363,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                 >
                   <FolderOpen className="h-3.5 w-3.5 shrink-0" />
                   {bank.title}
-                  <span className="bg-muted rounded-full px-1.5 text-[10px]">
+                  <span className="bg-muted rounded-full px-1.5 text-xs">
                     {bank.questions.filter((q) => !inQuizIds.has(q.id)).length}
                   </span>
                   {selectedBankId === bank.id && <ChevronRight className="h-3 w-3 opacity-60" />}
@@ -375,7 +375,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
             {currentBank && (
               <div className="space-y-2">
                 {/* Action toolbar */}
-                <div className="border-border bg-background flex items-center gap-2 rounded-lg border border-dashed px-3 py-2">
+                <div className="border-border bg-background flex flex-wrap items-center gap-2 rounded-lg border border-dashed px-3 py-2">
                   <Shuffle className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
                   <span className="text-muted-foreground shrink-0 text-xs">Ngẫu nhiên</span>
                   <input
@@ -384,7 +384,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                     max={bankQuestions.length || 1}
                     value={randomCount}
                     onChange={(e) => setRandomCount(e.target.value)}
-                    className="border-input bg-background focus:ring-ring w-14 rounded border px-2 py-0.5 text-center text-xs focus:ring-1 focus:outline-none"
+                    className="border-input bg-background focus:ring-ring h-8 w-14 rounded-lg border px-2 text-center text-xs focus:ring-1 focus:outline-none"
                   />
                   <span className="text-muted-foreground shrink-0 text-xs">câu</span>
                   <Button
@@ -392,7 +392,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                     size="sm"
                     onClick={handleAddRandom}
                     disabled={pending || bankQuestions.length === 0}
-                    className="h-7 text-xs"
+                    className="h-8 text-xs"
                   >
                     Thêm ngẫu nhiên
                   </Button>
@@ -403,7 +403,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                         size="sm"
                         onClick={handleAddSelected}
                         disabled={pending}
-                        className="h-7 text-xs"
+                        className="h-8 text-xs"
                       >
                         Thêm {selected.size} câu đã chọn
                       </Button>
@@ -411,7 +411,7 @@ export function QuizBuilder({ quizId, owner, initialItems, banks }: Props) {
                         size="sm"
                         variant="ghost"
                         onClick={() => setSelected(new Set())}
-                        className="h-7 px-2 text-xs"
+                        className="h-8 px-2 text-xs"
                       >
                         Bỏ chọn
                       </Button>

@@ -5,7 +5,7 @@ import { apiServerClient, ApiError } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
 import { CourseCard } from '@/components/features/courses/CourseCard';
 import { CourseFilterBar } from '@/components/features/courses/CourseFilterBar';
-import { Plus, BookOpen, Layers, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Plus, BookOpen, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 import type { CourseListItem } from '@lumibach/types';
 
@@ -68,78 +68,34 @@ export default async function CoursesPage({
   };
 
   return (
-    <div>
-      {/* ── Page hero header ────────────────────────────────── */}
-      <div className="border-border bg-card relative -mx-6 -mt-6 mb-8 overflow-hidden border-b">
-        {/* Tech grid */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.03]"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern id="courses-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#courses-grid)" />
-        </svg>
-
-        {/* Glow accents */}
-        <div
-          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl"
-          style={{ background: 'rgb(253 8 93 / 10%)' }}
-        />
-        <div
-          className="pointer-events-none absolute -bottom-10 left-1/3 h-32 w-64 rounded-full blur-3xl"
-          style={{ background: 'oklch(0.80 0.13 210 / 0.06)' }}
-        />
-
-        {/* Top accent line */}
-        <div
-          className="absolute top-0 right-0 left-0 h-[2px]"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgb(253 8 93 / 60%), transparent)',
-          }}
-        />
-
-        <div className="relative px-6 py-8">
-          <div className="flex items-end justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Layers
-                  className="text-primary h-3.5 w-3.5"
-                  style={{ filter: 'drop-shadow(0 0 6px #fd085d)' }}
-                />
-                <p className="text-primary text-[11px] font-bold tracking-[0.2em] uppercase">
-                  Học tập
-                </p>
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight">Khoá học</h1>
-              <div className="flex items-center gap-2">
-                <p className="text-muted-foreground text-sm">
-                  {total > 0 ? (
-                    <span>
-                      <span className="text-foreground font-semibold">{total}</span> khoá học
-                    </span>
-                  ) : (
-                    'Chưa có khoá học nào'
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {canCreate && (
-              <Link
-                href="/courses/new"
-                className="bg-primary text-primary-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110"
-                style={{ boxShadow: '0 4px 20px rgb(253 8 93 / 35%)' }}
-              >
-                <Plus className="h-4 w-4" />
-                Tạo khoá học
-              </Link>
+    <div className="mx-auto w-full max-w-7xl">
+      {/* ── Page header ─────────────────────────────────────── */}
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-primary text-sm font-bold">Học tập</p>
+          <h1 className="font-heading text-3xl font-bold sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
+            Khoá học
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {total > 0 ? (
+              <span>
+                <span className="text-foreground font-semibold">{total}</span> khoá học
+              </span>
+            ) : (
+              'Chưa có khoá học nào'
             )}
-          </div>
+          </p>
         </div>
+
+        {canCreate && (
+          <Link
+            href="/courses/new"
+            className="bg-primary text-primary-foreground inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-6 text-sm font-semibold transition-colors hover:bg-[#b80043]"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Tạo khoá học
+          </Link>
+        )}
       </div>
 
       {/* ── Filter bar ─────────────────────────────────────── */}
@@ -150,7 +106,7 @@ export default async function CoursesPage({
       {/* ── Course grid ────────────────────────────────────── */}
       {loadError ? (
         <div className="border-destructive/30 bg-destructive/5 flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed py-20 text-center">
-          <div className="bg-destructive/10 flex h-14 w-14 items-center justify-center rounded-2xl">
+          <div className="bg-destructive/10 flex h-14 w-14 items-center justify-center rounded-xl">
             <AlertTriangle className="text-destructive h-7 w-7" />
           </div>
           <div>
@@ -163,12 +119,9 @@ export default async function CoursesPage({
           </Link>
         </div>
       ) : courses.length === 0 ? (
-        <div className="border-border bg-card/40 flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed py-24 text-center">
-          <div
-            className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-2xl"
-            style={{ boxShadow: '0 0 24px rgb(253 8 93 / 15%)' }}
-          >
-            <BookOpen className="text-primary/50 h-8 w-8" />
+        <div className="border-border bg-card/50 flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed py-24 text-center">
+          <div className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-xl">
+            <BookOpen className="text-primary h-8 w-8" aria-hidden />
           </div>
           <div>
             <p className="text-foreground font-semibold">Chưa có khoá học nào</p>
@@ -189,7 +142,7 @@ export default async function CoursesPage({
           )}
         </div>
       ) : (
-        <div className="lb-reveal lb-reveal-children grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {courses.map((c) => (
             <CourseCard key={c.id} course={c} />
           ))}

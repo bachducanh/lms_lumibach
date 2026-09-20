@@ -180,9 +180,12 @@ export function WebEditor({
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <div className="flex w-full overflow-hidden" style={{ height }}>
+    <div
+      className="flex w-full flex-col overflow-hidden md:h-(--web-h) md:flex-row"
+      style={{ '--web-h': `${height}px` } as React.CSSProperties}
+    >
       {/* ── Left: Editor ──────────────────────────────────── */}
-      <div className="flex w-1/2 min-w-0 flex-col border-r border-white/10">
+      <div className="flex w-full min-w-0 flex-col border-b border-white/10 md:w-1/2 md:border-r md:border-b-0">
         {/* VS Code-style file tabs */}
         <div className="flex shrink-0 overflow-x-auto bg-[#161625]" style={{ height: TAB_H }}>
           {TABS.map((t) => {
@@ -239,7 +242,7 @@ export function WebEditor({
       </div>
 
       {/* ── Right: Live preview ───────────────────────────── */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-[360px] min-w-0 flex-col md:h-auto md:flex-1">
         {/* Preview toolbar */}
         <div
           className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#161625] px-3"

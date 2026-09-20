@@ -81,12 +81,12 @@ export default async function TopicDetailPage({
   const [firstPost, ...replyPosts] = topic.posts;
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         <Link
           href={`/courses/${slug}/forum${topic.forumId ? `?forumId=${topic.forumId}` : ''}`}
-          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           {topic.forumTitle ?? 'Diễn đàn'}
@@ -94,34 +94,38 @@ export default async function TopicDetailPage({
       </div>
 
       {/* Topic header */}
-      <div className="border-border bg-card space-y-3 rounded-xl border p-5">
+      <div className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              {topic.isPinned && <Pin className="h-4 w-4 shrink-0 text-amber-400" />}
-              {topic.isLocked && <Lock className="text-muted-foreground/60 h-4 w-4 shrink-0" />}
-              <h1 className="text-lg leading-tight font-bold">{topic.title}</h1>
               {topic.isPinned && (
-                <Badge variant="outline" className="border-amber-400/30 text-xs text-amber-400">
+                <Pin className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              )}
+              {topic.isLocked && <Lock className="text-muted-foreground h-4 w-4 shrink-0" />}
+              <h1 className="font-heading text-xl leading-tight font-bold tracking-tight break-words sm:text-2xl">
+                {topic.title}
+              </h1>
+              {topic.isPinned && (
+                <Badge
+                  variant="outline"
+                  className="border-amber-600/25 bg-amber-50 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
+                >
                   Ghim
                 </Badge>
               )}
               {topic.isLocked && (
-                <Badge
-                  variant="outline"
-                  className="text-muted-foreground border-muted-foreground/30 text-xs"
-                >
+                <Badge variant="outline" className="text-muted-foreground border-border text-xs">
                   Đã khoá
                 </Badge>
               )}
             </div>
-            <p className="text-muted-foreground flex items-center gap-3 text-xs">
+            <p className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="flex items-center gap-1">
-                <Eye className="h-3 w-3" />
+                <Eye className="h-3.5 w-3.5" />
                 {topic.viewCount} lượt xem
               </span>
               <span className="flex items-center gap-1">
-                <MessageSquare className="h-3 w-3" />
+                <MessageSquare className="h-3.5 w-3.5" />
                 {Math.max(0, topic.posts.length - 1)} trả lời
               </span>
             </p>
@@ -142,11 +146,11 @@ export default async function TopicDetailPage({
 
       {/* Original post */}
       {firstPost && (
-        <div className="border-border bg-card overflow-hidden rounded-xl border">
-          <div className="flex gap-4 p-5">
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+          <div className="flex gap-3 p-4 sm:gap-4 sm:p-6">
             {/* Avatar */}
             <div className="flex shrink-0 flex-col items-center gap-1">
-              <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold">
+              <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold">
                 {firstPost.author.avatar ? (
                   <img
                     src={firstPost.author.avatar}
@@ -158,7 +162,7 @@ export default async function TopicDetailPage({
                 )}
               </div>
               {roleLabel(firstPost.author.role) && (
-                <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap">
+                <span className="text-muted-foreground bg-muted rounded-full px-2 py-0.5 text-xs whitespace-nowrap">
                   {roleLabel(firstPost.author.role)}
                 </span>
               )}
@@ -166,7 +170,7 @@ export default async function TopicDetailPage({
 
             {/* Content */}
             <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
                 <p className="text-sm font-semibold">{authorName(firstPost.author)}</p>
                 <span className="text-muted-foreground text-xs">
                   {timeAgo(firstPost.createdAt)}
@@ -181,7 +185,7 @@ export default async function TopicDetailPage({
               ) : (
                 <RichTextView
                   html={toRichHtml(firstPost.content)}
-                  className="text-foreground/90 text-sm"
+                  className="text-foreground/90 text-sm [overflow-wrap:anywhere]"
                 />
               )}
             </div>
@@ -192,9 +196,7 @@ export default async function TopicDetailPage({
       {/* Replies */}
       {replyPosts.length > 0 && (
         <div className="space-y-3">
-          <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            {replyPosts.length} trả lời
-          </p>
+          <h2 className="text-lg font-bold sm:text-xl">{replyPosts.length} trả lời</h2>
           <div className="space-y-3">
             {replyPosts.map((post) => (
               <PostCard
@@ -214,14 +216,12 @@ export default async function TopicDetailPage({
 
       {/* Reply form */}
       {canReply ? (
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            Trả lời
-          </p>
+        <div className="space-y-3">
+          <h2 className="text-lg font-bold sm:text-xl">Trả lời</h2>
           <ReplyForm topicId={topicId} slug={slug} canUploadImages={canUploadImages} />
         </div>
       ) : (
-        <div className="border-border text-muted-foreground rounded-xl border border-dashed p-5 text-center text-sm">
+        <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed p-5 text-center text-sm">
           <Lock className="mx-auto mb-1.5 h-4 w-4 opacity-50" />
           Chủ đề đã bị khoá, không thể trả lời.
         </div>

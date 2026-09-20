@@ -165,10 +165,10 @@ export function SandboxEditor() {
               setRunResult(null);
             }}
             className={cn(
-              'flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-150',
+              'flex min-h-10 items-center gap-2.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
               language === l.key
-                ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                : 'border-border bg-card hover:bg-muted/50 text-muted-foreground hover:border-violet-500/40'
+                ? 'border-violet-500 bg-violet-500/10 text-violet-700 dark:text-violet-400'
+                : 'border-border bg-card hover:bg-muted/50 text-muted-foreground hover:border-primary/40'
             )}
           >
             {l.label}
@@ -178,10 +178,10 @@ export function SandboxEditor() {
 
       {/* Web editor */}
       {isWeb && (
-        <div className="rounded-xl bg-gradient-to-r from-[#fd085d] via-[oklch(0.80_0.13_210/0.5)] to-transparent p-[1px] shadow-sm">
+        <div className="border-border rounded-xl border shadow-sm">
           <div className="overflow-hidden rounded-xl bg-[#1a1a2e]">
-            <div className="flex items-center gap-3 border-b border-white/10 px-3 py-2">
-              <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium text-[#f8f8f2]">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2">
+              <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium whitespace-nowrap text-[#f8f8f2]">
                 Web (HTML + CSS + JS)
               </span>
               <div className="flex-1" />
@@ -208,14 +208,14 @@ export function SandboxEditor() {
       {!isWeb && (
         <div className="flex flex-col items-stretch gap-4 lg:flex-row">
           {/* Editor */}
-          <div className="flex min-w-0 flex-1 flex-col rounded-xl bg-gradient-to-r from-[#fd085d] via-[oklch(0.80_0.13_210/0.5)] to-transparent p-[1px] shadow-sm">
+          <div className="border-border flex min-w-0 flex-1 flex-col rounded-xl border shadow-sm">
             <div className="flex flex-1 flex-col overflow-hidden rounded-xl bg-[#1a1a2e]">
               {/* Toolbar */}
-              <div className="flex items-center gap-3 border-b border-white/10 px-3 py-2">
-                <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium text-[#f8f8f2]">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-3 py-2">
+                <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium whitespace-nowrap text-[#f8f8f2]">
                   {LANGUAGES.find((l) => l.key === language)?.label}
                 </span>
-                <span className="text-[10px] text-[#6272a4]">Ctrl+Enter để chạy</span>
+                <span className="text-xs text-[#6272a4]">Ctrl+Enter để chạy</span>
                 <div className="flex-1" />
                 <button
                   type="button"
@@ -247,10 +247,10 @@ export function SandboxEditor() {
           {/* Right: stdin + output */}
           <div className="flex w-full shrink-0 flex-col gap-4 lg:w-[420px] xl:w-[460px]">
             {/* Stdin */}
-            <div className="rounded-xl bg-gradient-to-r from-transparent via-[oklch(0.80_0.13_210/0.2)] to-[#fd085d] p-[1px] shadow-sm">
+            <div className="border-border rounded-xl border shadow-sm">
               <div className="overflow-hidden rounded-xl bg-[#1a1a2e]">
                 <div className="border-b border-white/10 px-4 py-3">
-                  <label className="text-xs font-semibold tracking-wide text-[#f8f8f2] uppercase">
+                  <label className="text-xs font-semibold text-[#f8f8f2]">
                     Dữ liệu vào (stdin)
                   </label>
                   <textarea
@@ -265,13 +265,11 @@ export function SandboxEditor() {
             </div>
 
             {/* Output */}
-            <div className="flex min-h-[280px] flex-1 flex-col rounded-xl bg-gradient-to-r from-transparent via-[oklch(0.80_0.13_210/0.2)] to-[#fd085d] p-[1px] shadow-sm">
+            <div className="border-border flex min-h-[280px] flex-1 flex-col rounded-xl border shadow-sm">
               <div className="flex flex-1 flex-col overflow-hidden rounded-xl bg-[#1a1a2e]">
                 <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-2">
                   <Terminal className="h-3.5 w-3.5 text-[#7ec8e3]" />
-                  <span className="flex-1 text-xs font-semibold tracking-wider text-[#7ec8e3] uppercase">
-                    Output
-                  </span>
+                  <span className="flex-1 text-xs font-semibold text-[#7ec8e3]">Output</span>
                   {runResult && (
                     <button
                       type="button"

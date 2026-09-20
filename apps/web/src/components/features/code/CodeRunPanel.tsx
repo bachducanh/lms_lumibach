@@ -26,9 +26,9 @@ const STARTER: Record<LangKey, string> = {
 };
 
 const STATUS_CLASS: Record<number, string> = {
-  3: 'text-green-600 dark:text-green-400', // ACCEPTED
+  3: 'text-green-700 dark:text-green-400', // ACCEPTED
   4: 'text-destructive', // WRONG_ANSWER
-  5: 'text-amber-600 dark:text-amber-400', // TIME_LIMIT_EXCEEDED
+  5: 'text-amber-700 dark:text-amber-400', // TIME_LIMIT_EXCEEDED
   6: 'text-destructive', // COMPILATION_ERROR
   11: 'text-destructive', // RUNTIME_ERROR
   13: 'text-muted-foreground', // INTERNAL_ERROR
@@ -96,7 +96,7 @@ export function CodeRunPanel({
   return (
     <div className="border-border flex flex-col overflow-hidden rounded-xl border">
       {/* ── Toolbar ──────────────────────────────────────── */}
-      <div className="border-border bg-muted/40 flex items-center gap-2 border-b px-3 py-2">
+      <div className="border-border bg-muted/40 flex flex-wrap items-center gap-2 border-b px-3 py-2">
         {/* Language */}
         <SimpleSelect
           size="sm"
@@ -125,7 +125,7 @@ export function CodeRunPanel({
           type="button"
           onClick={handleRun}
           disabled={running || !code.trim()}
-          className="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-800 disabled:opacity-50"
         >
           {running ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -137,9 +137,9 @@ export function CodeRunPanel({
       </div>
 
       {/* ── Main area ──────────────────────────────────────── */}
-      <div className="flex min-h-0">
+      <div className="flex min-h-0 flex-col lg:flex-row">
         {/* Editor */}
-        <div className="border-border min-w-0 flex-1 border-r">
+        <div className="border-border min-w-0 flex-1 border-b lg:border-r lg:border-b-0">
           <CodeEditor
             value={code}
             onChange={setCode}
@@ -150,12 +150,10 @@ export function CodeRunPanel({
         </div>
 
         {/* Right panel: stdin + output */}
-        <div className="flex w-72 shrink-0 flex-col">
+        <div className="flex w-full shrink-0 flex-col lg:w-72">
           {/* Stdin */}
           <div className="border-border border-b">
-            <p className="text-muted-foreground px-3 py-1.5 text-xs font-semibold tracking-wide uppercase">
-              Input (stdin)
-            </p>
+            <p className="text-muted-foreground px-3 py-1.5 text-xs font-semibold">Input (stdin)</p>
             <textarea
               value={stdin}
               onChange={(e) => setStdin(e.target.value)}
@@ -168,9 +166,7 @@ export function CodeRunPanel({
           {/* Output */}
           <div className="flex flex-1 flex-col overflow-hidden">
             <div className="flex items-center justify-between px-3 py-1.5">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                Output
-              </p>
+              <p className="text-muted-foreground text-xs font-semibold">Output</p>
               {result?.success && (
                 <span
                   className={cn(

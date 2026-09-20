@@ -164,8 +164,8 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
       {/* ── Editor ─────────────────────────────────────────── */}
       <div className="border-border overflow-hidden rounded-xl border">
         {/* Toolbar */}
-        <div className="border-border bg-muted/40 flex items-center gap-3 border-b px-3 py-2">
-          <span className="border-input bg-background text-muted-foreground rounded-md border px-3 py-1 text-sm">
+        <div className="border-border bg-muted/40 flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          <span className="border-input bg-background text-muted-foreground rounded-lg border px-3 py-1 text-sm">
             {LANG_LABEL[language]}
           </span>
           <div className="flex-1" />
@@ -173,12 +173,12 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
             type="button"
             onClick={handleRunSamples}
             disabled={runPending || subPending || !code.trim()}
-            className="border-border bg-card hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
+            className="border-border bg-card hover:bg-accent inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
           >
             {runPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Play className="h-3.5 w-3.5 fill-current text-green-600" />
+              <Play className="h-3.5 w-3.5 fill-current text-green-700 dark:text-green-500" />
             )}
             Chạy mẫu
           </button>
@@ -186,7 +186,7 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
             type="button"
             onClick={handleSubmit}
             disabled={runPending || subPending || !code.trim()}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
           >
             {subPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -212,9 +212,9 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
             <div className="divide-border divide-y">
               {sampleRes.map((r, i) => (
                 <div key={r.testCaseId} className="space-y-1.5 px-4 py-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {r.passed ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-500" />
                     ) : (
                       <XCircle className="text-destructive h-4 w-4 shrink-0" />
                     )}
@@ -264,7 +264,7 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
                 <div
                   key={sub.id}
                   className={cn(
-                    'hover:bg-muted/30 flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors',
+                    'hover:bg-muted/30 flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors',
                     activeSubId === sub.id && 'bg-muted/30'
                   )}
                   onClick={() => handleViewSub(sub.id)}
@@ -297,7 +297,7 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
           {/* Active submission detail */}
           {activeSub && (
             <div className="border-border bg-muted/20 space-y-3 border-t px-4 py-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold">Chi tiết — Lần {activeSub.attemptNumber}</p>
                 <span
                   className={cn(
@@ -321,9 +321,12 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
               {activeSub.results.length > 0 && (
                 <div className="divide-border border-border divide-y overflow-hidden rounded-lg border">
                   {activeSub.results.map((r, i) => (
-                    <div key={r.testCase.position} className="flex items-center gap-3 px-3 py-2.5">
+                    <div
+                      key={r.testCase.position}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5"
+                    >
                       {r.status === 'ACCEPTED' ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-500" />
                       ) : r.status === 'PENDING' || r.status === 'PROCESSING' ? (
                         <Loader2 className="text-muted-foreground h-3.5 w-3.5 shrink-0 animate-spin" />
                       ) : r.testCase.isHidden ? (
@@ -341,7 +344,7 @@ export function CodeSubmitPanel({ language, starterCode, initialSubs }: Props) {
                         className={cn(
                           'ml-auto text-xs font-medium',
                           r.status === 'ACCEPTED'
-                            ? 'text-green-600 dark:text-green-400'
+                            ? 'text-green-700 dark:text-green-400'
                             : 'text-destructive'
                         )}
                       >

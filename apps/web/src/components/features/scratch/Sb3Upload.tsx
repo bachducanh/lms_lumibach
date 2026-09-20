@@ -75,7 +75,7 @@ export function Sb3Upload({ kind, exerciseId, onUploaded, initialUrl, initialNam
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
           <p className="truncate text-sm font-medium">{savedName ?? 'project.sb3'}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">

@@ -103,15 +103,13 @@ export default async function CourseParticipationPage({
   const mailtoHref = buildMailtoHref(course.name, selected, notCompletedRows);
 
   return (
-    <div className="space-y-5">
-      <form className="border-border bg-card flex flex-wrap items-end gap-3 rounded-lg border p-4">
-        <div className="space-y-1">
-          <label className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
-            Tài liệu / bài tập
-          </label>
+    <div className="space-y-6">
+      <form className="border-border bg-card flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-end sm:p-5">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-semibold">Tài liệu / bài tập</label>
           <SimpleSelect
             name="resource"
-            className="min-w-[320px]"
+            className="w-full sm:w-auto sm:min-w-[320px]"
             aria-label="Tài liệu / bài tập"
             defaultValue={selected?.key ?? ''}
             options={
@@ -124,13 +122,11 @@ export default async function CourseParticipationPage({
             }
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
-            Trạng thái
-          </label>
+        <div className="space-y-1.5">
+          <label className="block text-sm font-semibold">Trạng thái</label>
           <SimpleSelect
             name="status"
-            className="min-w-[180px]"
+            className="w-full sm:w-auto sm:min-w-[180px]"
             aria-label="Trạng thái"
             defaultValue={status}
             options={[
@@ -147,7 +143,7 @@ export default async function CourseParticipationPage({
       </form>
 
       {reminded && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+        <div className="rounded-lg border border-emerald-600/25 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
           Đã tạo nhắc nhở cho {Number(reminded).toLocaleString('vi-VN')} học viên.
         </div>
       )}
@@ -158,20 +154,20 @@ export default async function CourseParticipationPage({
       )}
 
       {selected && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <SummaryCard label="Tổng học viên" value={String(rows.length)} />
           <SummaryCard label="Đã xem" value={String(viewedCount)} />
           <SummaryCard label="Đã tương tác" value={String(interactedCount)} />
           <SummaryCard
             label="Chưa xem"
             value={String(notCompletedRows.length)}
-            tone="text-amber-500"
+            tone="text-amber-700 dark:text-amber-400"
           />
         </div>
       )}
 
       {selected && (
-        <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+        <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 shadow-sm">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{TYPE_LABEL[selected.type] ?? selected.type}</Badge>
@@ -182,7 +178,7 @@ export default async function CourseParticipationPage({
                 {selected.title}
               </Link>
             </div>
-            <p className="text-muted-foreground mt-1 text-xs">{selected.moduleName}</p>
+            <p className="text-muted-foreground mt-1 text-sm">{selected.moduleName}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <a
@@ -210,9 +206,9 @@ export default async function CourseParticipationPage({
         </div>
       )}
 
-      <div className="border-border bg-card overflow-x-auto rounded-lg border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
         <table className="w-full min-w-[820px] text-sm">
-          <thead className="border-border bg-muted/30 border-b text-left text-xs">
+          <thead className="border-border bg-muted/50 border-b text-left text-xs">
             <tr>
               <Th>Học viên</Th>
               <Th>Email</Th>
@@ -230,7 +226,7 @@ export default async function CourseParticipationPage({
               </tr>
             )}
             {filteredRows.map((row) => (
-              <tr key={row.id} className="border-border/50 hover:bg-muted/20 border-b">
+              <tr key={row.id} className="border-border hover:bg-muted/40 border-b last:border-0">
                 <Td>
                   <p className="font-medium">{row.name}</p>
                 </Td>
@@ -440,8 +436,8 @@ function SummaryCard({
   tone?: string;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border px-4 py-3">
-      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{label}</p>
+    <div className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm">
+      <p className="text-muted-foreground text-sm font-medium">{label}</p>
       <p className={`mt-1 text-2xl font-bold ${tone}`}>{value}</p>
     </div>
   );
@@ -449,12 +445,12 @@ function SummaryCard({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="text-muted-foreground px-3 py-2.5 font-semibold whitespace-nowrap">
+    <th className="text-muted-foreground px-4 py-3 text-xs font-semibold whitespace-nowrap">
       {children}
     </th>
   );
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2.5 align-top">{children}</td>;
+  return <td className="px-4 py-3 align-top">{children}</td>;
 }

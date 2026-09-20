@@ -18,7 +18,7 @@ export default function AdminError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-      <div className="bg-destructive/10 flex h-16 w-16 items-center justify-center rounded-full">
+      <div className="bg-destructive/10 flex h-16 w-16 items-center justify-center rounded-xl">
         <AlertTriangle className="text-destructive h-8 w-8" />
       </div>
       <div className="max-w-md space-y-2">
@@ -30,13 +30,13 @@ export default function AdminError({
           <p className="text-muted-foreground/50 font-mono text-xs">{error.digest}</p>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <Button variant="outline" onClick={reset}>
           Thử lại
         </Button>
         <Link
           href="/dashboard"
-          className="border-border bg-background hover:bg-accent inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium transition-colors"
+          className="border-border bg-background hover:bg-accent inline-flex h-10 items-center rounded-full border px-4 text-sm font-medium transition-colors"
         >
           Về trang chủ
         </Link>

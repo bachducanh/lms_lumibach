@@ -333,18 +333,18 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
       {confirmDialog}
 
       {/* Header */}
-      <div className="border-border/60 bg-card mb-8 flex flex-col justify-between gap-4 rounded-2xl border px-6 py-4 shadow-sm sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full">
+      <div className="border-border bg-card sticky top-0 z-20 mb-6 flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 shadow-sm sm:mb-8 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="bg-primary/10 text-primary hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:flex">
             <Brain className="h-4 w-4" />
           </div>
-          <p className="truncate text-lg font-bold">{attempt.quiz.title}</p>
+          <p className="truncate text-sm font-bold sm:text-lg">{attempt.quiz.title}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {timerDisplay && (
             <span
               className={cn(
-                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-sm font-semibold',
+                'flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 font-mono text-sm font-semibold sm:px-3',
                 timeLeft !== null && timeLeft < 60
                   ? 'border-destructive/40 bg-destructive/10 text-destructive'
                   : 'border-border bg-background text-foreground shadow-sm'
@@ -358,7 +358,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
             onClick={handleSubmitClick}
             disabled={submitPending}
             size="sm"
-            className="gap-1.5 rounded-xl shadow-sm transition-transform hover:-translate-y-0.5"
+            className="gap-1.5"
           >
             <Send className="h-4 w-4" />
             {submitPending ? 'Đang nộp...' : 'Nộp bài'}
@@ -367,7 +367,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
       </div>
 
       {/* Questions */}
-      <div className="space-y-8 pb-12">
+      <div className="space-y-6 pb-8 sm:space-y-8 sm:pb-12">
         {questions.map((q, idx) => {
           const shuffledOpts = attempt.quiz.shuffleAnswers
             ? seededShuffle(q.question.options, attempt.id + q.questionId)
@@ -420,7 +420,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
           return (
             <div
               key={q.questionId}
-              className="border-border bg-card space-y-4 rounded-2xl border p-6"
+              className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-6"
             >
               {/* Question header */}
               <div className="flex items-start gap-3">
@@ -434,8 +434,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                 >
                   {isAnswered ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
                     <span>{TYPE_LABEL[qType] ?? qType}</span>
                     <span>·</span>
                     <span>{q.points} điểm</span>
@@ -449,7 +449,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
               {/* MCQ Single */}
               {qType === 'MULTIPLE_CHOICE_SINGLE' && (
-                <div className="space-y-2 pl-10">
+                <div className="space-y-2 sm:pl-10">
                   {shuffledOpts.map((opt) => {
                     const isChosen = selected[q.questionId]?.[0] === opt.id;
                     return (
@@ -457,7 +457,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         key={opt.id}
                         onClick={() => handleMCQSingle(q.questionId, opt.id)}
                         className={cn(
-                          'flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left text-sm transition-colors',
+                          'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-2.5 text-left text-sm transition-colors',
                           isChosen
                             ? 'border-primary bg-primary/10 text-primary font-medium'
                             : 'border-border bg-background hover:bg-muted/50'
@@ -477,7 +477,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
               {/* MCQ Multiple */}
               {qType === 'MULTIPLE_CHOICE_MULTIPLE' && (
-                <div className="space-y-2 pl-10">
+                <div className="space-y-2 sm:pl-10">
                   {shuffledOpts.map((opt) => {
                     const isChosen = (selected[q.questionId] ?? []).includes(opt.id);
                     return (
@@ -485,7 +485,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         key={opt.id}
                         onClick={() => handleMCQMulti(q.questionId, opt.id, !isChosen)}
                         className={cn(
-                          'flex w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left text-sm transition-colors',
+                          'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-2.5 text-left text-sm transition-colors',
                           isChosen
                             ? 'border-primary bg-primary/10 text-primary font-medium'
                             : 'border-border bg-background hover:bg-muted/50'
@@ -510,7 +510,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
               {/* TRUE_FALSE */}
               {qType === 'TRUE_FALSE' && (
-                <div className="flex gap-3 pl-10">
+                <div className="flex gap-3 sm:pl-10">
                   {[
                     { label: 'Đúng', value: true },
                     { label: 'Sai', value: false },
@@ -521,7 +521,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         key={label}
                         onClick={() => handleTF(q.questionId, value)}
                         className={cn(
-                          'flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors',
+                          'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium transition-colors sm:flex-none',
                           isChosen
                             ? 'border-primary bg-primary/10 text-primary'
                             : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
@@ -541,7 +541,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
               {/* TRUE_FALSE_MULTI */}
               {qType === 'TRUE_FALSE_MULTI' && (
-                <div className="space-y-2 pl-10">
+                <div className="space-y-2 sm:pl-10">
                   <p className="text-muted-foreground mb-1 text-xs">
                     Chọn Đúng hoặc Sai cho mỗi phát biểu:
                   </p>
@@ -550,22 +550,22 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     return (
                       <div
                         key={opt.id}
-                        className="border-border bg-background flex items-center gap-3 rounded-xl border px-4 py-2.5"
+                        className="border-border bg-background flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 sm:px-4"
                       >
-                        <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
+                        <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                           {String.fromCharCode(97 + oi)}
                         </span>
-                        <p className="flex-1 text-sm">
+                        <p className="min-w-0 flex-1 basis-40 text-sm">
                           <MathText text={opt.content} />
                         </p>
                         <div className="flex shrink-0 items-center gap-2">
                           <button
                             onClick={() => handleTFMulti(q.questionId, opt.id, true)}
                             className={cn(
-                              'rounded border px-3 py-1 text-xs font-medium transition-colors',
+                              'min-h-9 rounded-lg border px-4 py-1 text-sm font-medium transition-colors',
                               dongSelected
                                 ? 'border-green-500 bg-green-500/15 text-green-700 dark:text-green-400'
-                                : 'border-border text-muted-foreground hover:border-green-400 hover:bg-green-500/5 hover:text-green-600'
+                                : 'border-border text-muted-foreground hover:border-green-400 hover:bg-green-500/5 hover:text-green-700'
                             )}
                           >
                             Đúng
@@ -580,7 +580,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                               fireSave(q.questionId, { type: 'MCQ', selectedOptionIds: next });
                             }}
                             className={cn(
-                              'rounded border px-3 py-1 text-xs font-medium transition-colors',
+                              'min-h-9 rounded-lg border px-4 py-1 text-sm font-medium transition-colors',
                               !dongSelected && selected[q.questionId] !== undefined
                                 ? 'border-red-400 bg-red-400/15 text-red-700 dark:text-red-400'
                                 : 'border-border text-muted-foreground hover:border-red-400 hover:bg-red-400/5 hover:text-red-600'
@@ -597,7 +597,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
               {/* ESSAY */}
               {qType === 'ESSAY' && (
-                <div className="pl-10">
+                <div className="sm:pl-10">
                   {/* Soạn thảo đầy đủ như lúc giáo viên ra đề: đậm/nghiêng, màu
                       chữ, danh sách, bảng, công thức… Upload ảnh tắt vì endpoint
                       chỉ mở cho GV trở lên. */}
@@ -614,12 +614,12 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
               {/* SHORT_ANSWER — chỉ một ô chữ, chấm bằng cách so với danh sách
                   đáp án chấp nhận. Dùng chung handleEssay vì cùng lưu vào textAnswer. */}
               {qType === 'SHORT_ANSWER' && (
-                <div className="space-y-1.5 pl-10">
+                <div className="space-y-1.5 sm:pl-10">
                   <input
                     value={texts[q.questionId] ?? ''}
                     onChange={(e) => handleEssay(q.questionId, e.target.value)}
                     placeholder="Nhập đáp án..."
-                    className="border-input bg-background focus:ring-ring w-full max-w-md rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                    className="border-input bg-background focus:ring-ring min-h-10 w-full max-w-md rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                   />
                   <p className="text-muted-foreground text-xs">
                     Chỉ ghi đáp số hoặc cụm từ ngắn, không cần trình bày lời giải.
@@ -639,8 +639,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                   const compileOutput =
                     checkResults?.find((r) => r.statusId === 6)?.errorDetail ?? null;
                   return (
-                    <div className="space-y-2 pl-4">
-                      <div className="flex items-center justify-between">
+                    <div className="space-y-2 sm:pl-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-muted-foreground text-xs">
                           Viết code {qType === 'CODE_PYTHON' ? 'Python' : 'C++'} — bài sẽ tự động
                           chấm khi nộp.
@@ -652,7 +652,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                           onClick={() =>
                             void handleCheckCode(q.questionId, texts[q.questionId] ?? '')
                           }
-                          className="h-7 gap-1.5 rounded-lg text-xs"
+                          className="h-8 gap-1.5 text-xs"
                         >
                           {isPending ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -663,7 +663,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         </Button>
                       </div>
 
-                      <div className="border-border overflow-hidden rounded-xl border">
+                      <div className="border-border overflow-hidden rounded-lg border">
                         <CodeEditor
                           value={texts[q.questionId] ?? q.question.starterCode ?? ''}
                           onChange={(v) => handleCode(q.questionId, v)}
@@ -674,13 +674,13 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
                       {/* Check results panel */}
                       {checkResults && (
-                        <div className="border-border bg-muted/20 space-y-2 rounded-xl border p-3 text-xs">
+                        <div className="border-border bg-muted/20 space-y-2 rounded-lg border p-3 text-xs">
                           <div
                             className={cn(
                               'flex items-center gap-2 font-semibold',
                               passedCount === totalCount
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-amber-600 dark:text-amber-400'
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-amber-700 dark:text-amber-400'
                             )}
                           >
                             {passedCount === totalCount ? (
@@ -693,8 +693,10 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
                           {hasCompileErr && compileOutput && (
                             <div className="rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-2">
-                              <p className="mb-1 font-semibold text-red-500">Lỗi compile:</p>
-                              <pre className="font-mono whitespace-pre-wrap text-red-500">
+                              <p className="mb-1 font-semibold text-red-600 dark:text-red-400">
+                                Lỗi compile:
+                              </p>
+                              <pre className="font-mono whitespace-pre-wrap text-red-600 dark:text-red-400">
                                 {compileOutput}
                               </pre>
                             </div>
@@ -715,8 +717,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                   className={cn(
                                     'flex items-center gap-1.5 font-medium',
                                     tc.passed
-                                      ? 'text-green-600 dark:text-green-400'
-                                      : 'text-red-500'
+                                      ? 'text-green-700 dark:text-green-400'
+                                      : 'text-red-600 dark:text-red-400'
                                   )}
                                 >
                                   {tc.passed ? (
@@ -737,7 +739,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                     </div>
                                     <div>
                                       <p className="text-muted-foreground mb-0.5">Expected:</p>
-                                      <pre className="bg-background rounded px-2 py-1 font-mono whitespace-pre-wrap text-green-600 dark:text-green-400">
+                                      <pre className="bg-background rounded px-2 py-1 font-mono whitespace-pre-wrap text-green-700 dark:text-green-400">
                                         {tc.expected}
                                       </pre>
                                     </div>
@@ -749,8 +751,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                         className={cn(
                                           'bg-background rounded px-2 py-1 font-mono whitespace-pre-wrap',
                                           tc.passed
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-red-500'
+                                            ? 'text-green-700 dark:text-green-400'
+                                            : 'text-red-600 dark:text-red-400'
                                         )}
                                       >
                                         {tc.actual ?? '(trống)'}
@@ -759,7 +761,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                   </div>
                                 )}
                                 {!tc.isHidden && tc.errorDetail && (
-                                  <pre className="pt-1 font-mono text-[11px] whitespace-pre-wrap text-red-500">
+                                  <pre className="pt-1 font-mono text-xs whitespace-pre-wrap text-red-600 dark:text-red-400">
                                     {tc.errorDetail}
                                   </pre>
                                 )}
@@ -773,7 +775,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
               {/* CODE_WEB */}
               {qType === 'CODE_WEB' && (
-                <div className="space-y-2 pl-4">
+                <div className="space-y-2 sm:pl-4">
                   <p className="text-muted-foreground text-xs">
                     Viết code HTML/CSS/JS — giáo viên sẽ xem và chấm điểm sau khi nộp.
                   </p>
@@ -796,8 +798,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                   const compileOutput =
                     checkResults?.find((r) => r.statusId === 6)?.errorDetail ?? null;
                   return (
-                    <div className="space-y-2 pl-4">
-                      <div className="flex items-center justify-between">
+                    <div className="space-y-2 sm:pl-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-muted-foreground text-xs">
                           Tìm và sửa lỗi trong đoạn code{' '}
                           {qType === 'CODE_DEBUG_PYTHON' ? 'Python' : 'C++'} — chấm tự động khi nộp.
@@ -809,7 +811,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                           onClick={() =>
                             void handleCheckCode(q.questionId, texts[q.questionId] ?? '')
                           }
-                          className="h-7 gap-1.5 rounded-lg text-xs"
+                          className="h-8 gap-1.5 text-xs"
                         >
                           {isPending ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -819,7 +821,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                           {isPending ? 'Đang chạy...' : 'Kiểm tra'}
                         </Button>
                       </div>
-                      <div className="overflow-hidden rounded-xl border border-orange-500/40">
+                      <div className="overflow-hidden rounded-lg border border-orange-500/40">
                         <CodeEditor
                           value={texts[q.questionId] ?? q.question.starterCode ?? ''}
                           onChange={(v) => handleCode(q.questionId, v)}
@@ -828,13 +830,13 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         />
                       </div>
                       {checkResults && (
-                        <div className="border-border bg-muted/20 space-y-2 rounded-xl border p-3 text-xs">
+                        <div className="border-border bg-muted/20 space-y-2 rounded-lg border p-3 text-xs">
                           <div
                             className={cn(
                               'flex items-center gap-2 font-semibold',
                               passedCount === totalCount
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-amber-600 dark:text-amber-400'
+                                ? 'text-green-700 dark:text-green-400'
+                                : 'text-amber-700 dark:text-amber-400'
                             )}
                           >
                             {passedCount === totalCount ? (
@@ -846,8 +848,10 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                           </div>
                           {hasCompileErr && compileOutput && (
                             <div className="rounded-lg border border-red-400/40 bg-red-400/5 px-3 py-2">
-                              <p className="mb-1 font-semibold text-red-500">Lỗi compile:</p>
-                              <pre className="font-mono whitespace-pre-wrap text-red-500">
+                              <p className="mb-1 font-semibold text-red-600 dark:text-red-400">
+                                Lỗi compile:
+                              </p>
+                              <pre className="font-mono whitespace-pre-wrap text-red-600 dark:text-red-400">
                                 {compileOutput}
                               </pre>
                             </div>
@@ -867,8 +871,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                   className={cn(
                                     'flex items-center gap-1.5 font-medium',
                                     tc.passed
-                                      ? 'text-green-600 dark:text-green-400'
-                                      : 'text-red-500'
+                                      ? 'text-green-700 dark:text-green-400'
+                                      : 'text-red-600 dark:text-red-400'
                                   )}
                                 >
                                   {tc.passed ? (
@@ -889,7 +893,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                     </div>
                                     <div>
                                       <p className="text-muted-foreground mb-0.5">Expected:</p>
-                                      <pre className="bg-background rounded px-2 py-1 font-mono whitespace-pre-wrap text-green-600 dark:text-green-400">
+                                      <pre className="bg-background rounded px-2 py-1 font-mono whitespace-pre-wrap text-green-700 dark:text-green-400">
                                         {tc.expected}
                                       </pre>
                                     </div>
@@ -901,8 +905,8 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                         className={cn(
                                           'bg-background rounded px-2 py-1 font-mono whitespace-pre-wrap',
                                           tc.passed
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-red-500'
+                                            ? 'text-green-700 dark:text-green-400'
+                                            : 'text-red-600 dark:text-red-400'
                                         )}
                                       >
                                         {tc.actual ?? '(trống)'}
@@ -940,7 +944,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     initialLines = seededShuffle(sortedLines, attempt.id + q.questionId);
                   }
                   return (
-                    <div className="space-y-2 pl-4">
+                    <div className="space-y-2 sm:pl-4">
                       <p className="text-muted-foreground text-xs">
                         Kéo thả các dòng để sắp xếp đúng thứ tự.
                       </p>
@@ -971,9 +975,9 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                   }
                   const parts = template.split('___');
                   return (
-                    <div className="space-y-4 pl-4">
+                    <div className="space-y-4 sm:pl-4">
                       {/* Template with numbered placeholders */}
-                      <div className="border-border bg-muted/20 overflow-x-auto rounded-xl border p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                      <div className="border-border bg-muted/20 overflow-x-auto rounded-lg border p-4 font-mono text-sm leading-relaxed whitespace-pre-wrap">
                         {parts.map((part: string, pi: number) => (
                           <span key={pi}>
                             {part}
@@ -1005,7 +1009,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                                 }, 800);
                               }}
                               placeholder={`Điền vào ô số ${bi + 1}...`}
-                              className="border-input bg-background focus:ring-ring flex-1 rounded-lg border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
+                              className="border-input bg-background focus:ring-ring min-h-10 min-w-0 flex-1 rounded-lg border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
                             />
                           </div>
                         ))}
@@ -1036,7 +1040,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     initialItems = seededShuffle(sortedItems, attempt.id + q.questionId);
                   }
                   return (
-                    <div className="space-y-2 pl-4">
+                    <div className="space-y-2 sm:pl-4">
                       <p className="text-muted-foreground text-xs">
                         Kéo thả để sắp xếp đúng thứ tự.
                       </p>
@@ -1064,7 +1068,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                     /* malformed — start empty */
                   }
                   return (
-                    <div className="space-y-2 pl-4">
+                    <div className="space-y-2 sm:pl-4">
                       <p className="text-muted-foreground text-xs">
                         Kéo đáp án ở cột phải sang ghép với mục ở cột trái.
                       </p>
@@ -1088,7 +1092,12 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
 
       {/* Bottom submit */}
       <div className="border-border flex justify-end border-t pt-4">
-        <Button onClick={handleSubmitClick} disabled={submitPending} size="lg" className="gap-2">
+        <Button
+          onClick={handleSubmitClick}
+          disabled={submitPending}
+          size="lg"
+          className="w-full gap-2 sm:w-auto"
+        >
           <Send className="h-4 w-4" />
           {submitPending ? 'Đang nộp...' : 'Nộp bài'}
         </Button>

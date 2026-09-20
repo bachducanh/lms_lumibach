@@ -44,7 +44,7 @@ export function TestCaseBuilder({ initial, onChange }: Props) {
     onChange(next.map((tc, i) => ({ ...tc, position: i })));
   }
 
-  const cellCls = 'px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground';
+  const cellCls = 'px-3 py-2 text-xs font-semibold  text-muted-foreground';
   const inputCls =
     'w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring resize-none';
 
@@ -81,7 +81,7 @@ export function TestCaseBuilder({ initial, onChange }: Props) {
             value={tc.label ?? ''}
             onChange={(e) => update(i, { label: e.target.value || null })}
             placeholder="Test 1"
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-2 py-1.5 text-xs focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-2 py-1.5 text-xs focus:ring-1 focus:outline-none"
           />
           <input
             type="number"
@@ -89,7 +89,7 @@ export function TestCaseBuilder({ initial, onChange }: Props) {
             step={0.5}
             value={tc.points}
             onChange={(e) => update(i, { points: Number(e.target.value) })}
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-2 py-1.5 text-center text-xs focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-full rounded-lg border px-2 py-1.5 text-center text-xs focus:ring-1 focus:outline-none"
           />
           <div className="flex justify-center pt-2">
             <input

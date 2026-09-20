@@ -320,7 +320,7 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
               Tối thiểu {photoLimits.min}, tối đa {photoLimits.max} ảnh cho lượt này.
             </p>
           </div>
-          <label className="border-input bg-background hover:bg-muted inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors">
+          <label className="border-input bg-background hover:bg-muted inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors">
             {uploading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -379,7 +379,7 @@ export function HandoverForm({ booking, fields, summary, type, photoLimits }: Pr
       {thieuHut.length > 0 && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+          className="flex items-start gap-2 rounded-lg border border-amber-600/25 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>

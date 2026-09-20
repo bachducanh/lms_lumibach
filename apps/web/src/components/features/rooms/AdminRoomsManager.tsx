@@ -336,7 +336,7 @@ export function AdminRoomsManager({ rooms }: { rooms: RoomListItem[] }) {
           <Plus className="mr-2 h-4 w-4" />
           Tạo phòng
         </Button>
-        <div className="border-border bg-card divide-border max-h-[calc(100dvh-15rem)] divide-y overflow-y-auto rounded-lg border">
+        <div className="border-border bg-card divide-border max-h-[calc(100dvh-15rem)] divide-y overflow-y-auto rounded-xl border shadow-sm">
           {rooms.length === 0 && (
             <p className="text-muted-foreground px-4 py-6 text-center text-sm">Chưa có phòng.</p>
           )}

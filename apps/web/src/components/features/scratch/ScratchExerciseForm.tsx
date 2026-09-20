@@ -91,20 +91,18 @@ export function ScratchExerciseForm(props: Props) {
     <div className="space-y-5">
       {/* Title */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Tiêu đề bài
-        </label>
+        <label className="text-muted-foreground text-xs font-medium">Tiêu đề bài</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Ví dụ: Bài 1 — Mèo đi vòng quanh"
-          className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
         />
       </div>
 
       {/* Description */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <label className="text-muted-foreground text-xs font-medium">
           Mô tả / Đề bài (tuỳ chọn)
         </label>
         <RichTextEditor
@@ -117,10 +115,10 @@ export function ScratchExerciseForm(props: Props) {
 
       {/* Starter .sb3 */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <label className="text-muted-foreground text-xs font-medium">
           Project khởi đầu (.sb3 — tuỳ chọn)
         </label>
-        <p className="text-muted-foreground text-[11px]">
+        <p className="text-muted-foreground text-xs">
           Tải lên project Scratch khởi đầu để học sinh không phải làm từ blank. Nếu trống, học sinh
           bắt đầu với mèo Scratch mặc định.
         </p>
@@ -133,16 +131,16 @@ export function ScratchExerciseForm(props: Props) {
           initialUrl={initialFile}
         />
         {starterName && !initialFile && (
-          <p className="text-xs text-emerald-500">Sẽ dùng làm project khởi đầu cho học sinh.</p>
+          <p className="text-xs text-emerald-700 dark:text-emerald-400">
+            Sẽ dùng làm project khởi đầu cho học sinh.
+          </p>
         )}
       </div>
 
       {/* Status (edit mode only) */}
       {props.mode === 'edit' && (
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Trạng thái
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Trạng thái</label>
           <SimpleSelect
             className="w-full"
             aria-label="Trạng thái"

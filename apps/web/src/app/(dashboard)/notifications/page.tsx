@@ -12,16 +12,15 @@ export default async function NotificationsPage() {
   if (!session?.user?.id) redirect('/login');
 
   return (
-    <div className="max-w-2xl space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-violet-500" />
-          <h1 className="text-xl font-bold">Thông báo</h1>
+    <div className="mx-auto w-full max-w-3xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+            <Bell className="h-5 w-5" />
+          </div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Thông báo</h1>
         </div>
-        <Link
-          href="/settings/notifications"
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-        >
+        <Link href="/settings/notifications" className={buttonVariants({ variant: 'outline' })}>
           <Settings className="mr-1.5 h-4 w-4" />
           Cài đặt
         </Link>

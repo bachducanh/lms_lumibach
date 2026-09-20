@@ -131,12 +131,12 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
   return (
     <div className="space-y-5">
       {/* Instructions banner */}
-      <div className="flex gap-3 rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3 text-sm">
+      <div className="flex gap-3 rounded-xl border border-orange-600/25 bg-orange-50 px-4 py-3 text-sm dark:border-orange-500/30 dark:bg-orange-500/5">
         {hasSelfHost ? (
           <>
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-700 dark:text-orange-400" />
             <div className="space-y-1.5">
-              <p className="font-semibold text-orange-300">Nộp bài tự động</p>
+              <p className="font-semibold text-orange-700 dark:text-orange-400">Nộp bài tự động</p>
               <p className="text-muted-foreground text-xs leading-relaxed">
                 Lập trình xong, trong Scratch chỉ cần vào menu{' '}
                 <strong className="text-foreground">File → Save to your computer</strong> — bài sẽ
@@ -146,9 +146,9 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
           </>
         ) : (
           <>
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-orange-700 dark:text-orange-400" />
             <div className="space-y-1.5">
-              <p className="font-semibold text-orange-300">Hướng dẫn 3 bước</p>
+              <p className="font-semibold text-orange-700 dark:text-orange-400">Hướng dẫn 3 bước</p>
               <ol className="text-muted-foreground list-inside list-decimal space-y-1 text-xs">
                 <li>
                   Bấm <strong className="text-foreground">Mở Scratch Editor</strong> ở khung bên
@@ -157,10 +157,11 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
                 <li>
                   Code xong, vào{' '}
                   <strong className="text-foreground">File → Save to your computer</strong> để tải{' '}
-                  <code className="font-mono text-orange-300">.sb3</code>.
+                  <code className="font-mono text-orange-700 dark:text-orange-400">.sb3</code>.
                 </li>
                 <li>
-                  Kéo file <code className="font-mono text-orange-300">.sb3</code> vào ô{' '}
+                  Kéo file{' '}
+                  <code className="font-mono text-orange-700 dark:text-orange-400">.sb3</code> vào ô{' '}
                   <strong className="text-foreground">Nộp bài</strong> bên dưới → bấm{' '}
                   <strong className="text-foreground">Nộp bài</strong>.
                 </li>
@@ -175,7 +176,7 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
 
       {/* Manual submission area — only shown when self-host is OFF (otherwise auto) */}
       {hasSelfHost === false && (
-        <div className="border-border bg-card space-y-4 rounded-xl border p-5">
+        <div className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Nộp bài</h3>
             {subs.length > 0 && (
@@ -210,7 +211,7 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
 
       {/* My submission history */}
       {subs.length > 0 && (
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5">
+        <div className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm sm:p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold">
             <History className="text-muted-foreground h-4 w-4" />
             Lịch sử nộp bài ({subs.length})
@@ -222,15 +223,15 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
               return (
                 <div
                   key={s.id}
-                  className="border-border/60 bg-muted/10 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
+                  className="border-border bg-muted/20 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span
                       className={cn(
                         'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                         isGraded
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-amber-500/15 text-amber-400'
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
                       )}
                     >
                       #{s.attemptNumber}
@@ -239,11 +240,13 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
                       <p className="flex items-center gap-2 text-sm font-medium">
                         {isGraded ? (
                           <>
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Đã chấm
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />{' '}
+                            Đã chấm
                           </>
                         ) : (
                           <>
-                            <Clock className="h-3.5 w-3.5 text-amber-400" /> Chờ giáo viên chấm
+                            <Clock className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" /> Chờ
+                            giáo viên chấm
                           </>
                         )}
                       </p>
@@ -254,7 +257,7 @@ export function ScratchTakePanel({ exerciseId, starterUrl, initialSubs }: Props)
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     {isGraded && s.score !== null && (
-                      <span className="text-sm font-bold text-emerald-400 tabular-nums">
+                      <span className="text-sm font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
                         {s.score}
                         {s.maxScore ? ` / ${s.maxScore}` : ''}
                       </span>

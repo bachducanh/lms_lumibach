@@ -154,19 +154,19 @@ export function CompetencyLevelGrid({
       )}
 
       {!grid ? (
-        <div className="border-border bg-card rounded-lg border border-dashed py-14 text-center">
+        <div className="border-border bg-card rounded-xl border border-dashed py-14 text-center">
           <p className="text-muted-foreground text-sm">
             Chọn hoặc tạo 1 kỳ đánh giá để nhập cấp độ năng lực.
           </p>
         </div>
       ) : studentBlocks.length === 0 ? (
-        <div className="border-border bg-card rounded-lg border border-dashed py-14 text-center">
+        <div className="border-border bg-card rounded-xl border border-dashed py-14 text-center">
           <p className="text-muted-foreground text-sm">
             Khoá học chưa có học sinh hoặc danh mục năng lực.
           </p>
         </div>
       ) : (
-        <div className="border-border bg-card overflow-x-auto rounded-lg border">
+        <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
           <table className="w-full min-w-[1040px] text-sm">
             <thead className="border-border bg-muted/30 border-b text-left text-xs">
               <tr>
@@ -256,7 +256,10 @@ function CategoryRollupRow({
   return (
     <tr className="border-border/50 bg-muted/20 border-b font-medium">
       {studentName !== null ? (
-        <td rowSpan={studentRowSpan} className="border-border/50 border-r px-3 py-2.5 align-top">
+        <td
+          rowSpan={studentRowSpan}
+          className="border-border/50 min-w-[140px] border-r px-3 py-2.5 align-top font-medium"
+        >
           {studentName}
         </td>
       ) : null}

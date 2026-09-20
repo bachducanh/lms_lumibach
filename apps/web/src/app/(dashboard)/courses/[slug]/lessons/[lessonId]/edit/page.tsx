@@ -38,7 +38,7 @@ export default async function EditLessonPage({
   const moduleId = lesson.moduleItems[0]?.module.id ?? '';
 
   return (
-    <div className="max-w-5xl">
+    <div className="mx-auto w-full max-w-5xl">
       <LessonEditor
         mode="edit"
         owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}

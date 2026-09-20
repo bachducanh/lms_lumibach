@@ -5,13 +5,13 @@ export const metadata = { title: 'Sandbox — Thử nghiệm code' };
 
 export default function SandboxPage() {
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-[1600px] space-y-5">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-          <Terminal className="h-5 w-5 text-violet-400" />
+        <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+          <Terminal className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Sandbox</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Sandbox</h1>
           <p className="text-muted-foreground text-sm">
             Chạy thử Python, C++ hoặc Web — không cần lưu, không chấm điểm
           </p>

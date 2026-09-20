@@ -134,7 +134,7 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
   return (
     <div className="max-w-4xl space-y-6">
       {/* Chọn tệp */}
-      <div className="border-border bg-card space-y-3 rounded-2xl border p-6">
+      <div className="border-border bg-card space-y-3 rounded-xl border p-6">
         <div className="space-y-1">
           <h2 className="text-base font-semibold">Nhập đề từ tệp Word</h2>
           <p className="text-muted-foreground text-sm">
@@ -179,13 +179,13 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
           <div className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-1 text-xs">
             <span>Công thức đọc được: {ketQuaDoc.congThucDaDoi}</span>
             {ketQuaDoc.congThucThatBai > 0 && (
-              <span className="text-amber-600 dark:text-amber-400">
+              <span className="text-amber-700 dark:text-amber-400">
                 Công thức không đọc được: {ketQuaDoc.congThucThatBai}
               </span>
             )}
             <span>Ảnh đã lưu: {ketQuaDoc.anhDaLuu}</span>
             {ketQuaDoc.anhLoi > 0 && (
-              <span className="text-amber-600 dark:text-amber-400">
+              <span className="text-amber-700 dark:text-amber-400">
                 Ảnh bỏ qua: {ketQuaDoc.anhLoi}
               </span>
             )}
@@ -244,12 +244,12 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
                     {coLoi ? (
                       <XCircle className="text-destructive h-4 w-4 shrink-0" />
                     ) : (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700 dark:text-green-400" />
                     )}
                     <span className="text-sm font-semibold">{q.nhan}</span>
                     <span
                       className={cn(
-                        'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        'rounded-full px-2 py-0.5 text-xs font-medium',
                         QUESTION_TYPE_BADGE[q.type] ?? 'bg-muted text-muted-foreground'
                       )}
                     >
@@ -277,7 +277,7 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
                   {q.canhBao.map((l, j) => (
                     <p
                       key={j}
-                      className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"
+                      className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
                     >
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                       {l}
@@ -294,7 +294,7 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
                           className={cn(
                             'text-sm',
                             o.isCorrect
-                              ? 'text-emerald-600 dark:text-emerald-400'
+                              ? 'text-emerald-700 dark:text-emerald-400'
                               : 'text-muted-foreground'
                           )}
                         >

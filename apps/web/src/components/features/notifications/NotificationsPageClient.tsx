@@ -81,12 +81,12 @@ export function NotificationsPageClient() {
   return (
     <div className="space-y-3">
       {unreadCount > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-muted-foreground text-sm">{unreadCount} thông báo chưa đọc</p>
           <button
             onClick={handleMarkAll}
             disabled={pending}
-            className="flex items-center gap-1.5 text-xs text-violet-600 transition-colors hover:text-violet-700"
+            className="text-primary hover:text-primary/80 inline-flex min-h-9 items-center gap-1.5 text-sm font-medium transition-colors"
           >
             <CheckCheck className="h-3.5 w-3.5" />
             Đánh dấu đọc tất cả
@@ -95,12 +95,12 @@ export function NotificationsPageClient() {
       )}
 
       {items.length === 0 ? (
-        <div className="border-border bg-card rounded-xl border p-12 text-center">
+        <div className="border-border bg-card rounded-xl border border-dashed p-12 text-center shadow-sm">
           <p className="mb-2 text-2xl">🔔</p>
           <p className="text-muted-foreground text-sm">Bạn chưa có thông báo nào.</p>
         </div>
       ) : (
-        <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-xl border">
+        <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-xl border shadow-sm">
           {items.map((n) => (
             <NotifFullRow key={n.id} item={n} onRead={handleMarkRead} />
           ))}
@@ -116,32 +116,32 @@ function NotifFullRow({ item, onRead }: { item: NotificationItem; onRead: (id: s
 
   const content = (
     <div
-      className={`hover:bg-muted/30 flex gap-4 px-5 py-4 transition-colors ${!item.isRead ? 'bg-violet-500/5' : ''}`}
+      className={`hover:bg-muted/40 flex gap-3 px-4 py-4 transition-colors sm:gap-4 sm:px-5 ${!item.isRead ? 'bg-primary/[0.04]' : ''}`}
       onClick={() => {
         if (!item.isRead) onRead(item.id);
       }}
     >
-      <span className="shrink-0 pt-0.5 text-xl leading-none">{icon}</span>
+      <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl leading-none">
+        {icon}
+      </span>
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-2">
-          <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-            {label}
-          </span>
-          {!item.isRead && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />}
+          <span className="text-muted-foreground text-xs font-medium">{label}</span>
+          {!item.isRead && <span className="bg-primary h-2 w-2 shrink-0 rounded-full" />}
         </div>
         <p className={`text-sm leading-snug ${!item.isRead ? 'font-semibold' : ''}`}>
           {item.title}
         </p>
         {item.body && (
-          <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{item.body}</p>
+          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{item.body}</p>
         )}
-        <p className="text-muted-foreground/60 mt-1.5 text-[10px]">
+        <p className="text-muted-foreground mt-1.5 text-xs">
           {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: vi })}
         </p>
       </div>
       {!item.isRead && (
         <button
-          className="hover:bg-muted text-muted-foreground shrink-0 self-center rounded-lg p-1.5 transition-colors"
+          className="hover:bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full transition-colors"
           title="Đánh dấu đã đọc"
           onClick={(e) => {
             e.preventDefault();
@@ -149,7 +149,7 @@ function NotifFullRow({ item, onRead }: { item: NotificationItem; onRead: (id: s
             onRead(item.id);
           }}
         >
-          <Check className="h-3.5 w-3.5" />
+          <Check className="h-4 w-4" />
         </button>
       )}
     </div>

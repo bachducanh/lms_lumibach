@@ -188,10 +188,12 @@ export function ImportUsersForm() {
                     <div key={e.email} className="text-xs">
                       <span className="text-muted-foreground font-mono">{e.email}</span>
                       {e.enrolled.length > 0 && (
-                        <span className="ml-2 text-emerald-400">→ {e.enrolled.join(', ')}</span>
+                        <span className="ml-2 text-emerald-700 dark:text-emerald-400">
+                          → {e.enrolled.join(', ')}
+                        </span>
                       )}
                       {e.missing.length > 0 && (
-                        <span className="ml-2 text-amber-400">
+                        <span className="ml-2 text-amber-700 dark:text-amber-400">
                           ⚠ không tìm thấy khoá học: {e.missing.join(', ')}
                         </span>
                       )}
@@ -206,8 +208,8 @@ export function ImportUsersForm() {
                 <p className="text-sm font-medium">
                   Mật khẩu (sao chép ngay — chỉ hiển thị 1 lần):
                 </p>
-                <div className="bg-muted max-h-60 overflow-y-auto rounded-lg p-3">
-                  <table className="w-full font-mono text-xs">
+                <div className="bg-muted max-h-60 overflow-auto rounded-lg p-3">
+                  <table className="w-full min-w-[520px] font-mono text-xs">
                     <thead>
                       <tr className="text-muted-foreground">
                         <th className="pb-2 text-left">Tên</th>
@@ -258,7 +260,7 @@ export function ImportUsersForm() {
             />
           </div>
           <div className="bg-muted/50 text-muted-foreground space-y-2 rounded-lg p-3 text-xs">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-foreground font-medium">Định dạng cột:</p>
               <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
                 <Download className="mr-1.5 h-3.5 w-3.5" />
@@ -293,27 +295,27 @@ export function ImportUsersForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="ring-foreground/10 max-h-96 overflow-auto rounded-lg ring-1">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-muted-foreground sticky top-0">
+            <div className="border-border max-h-96 overflow-auto rounded-xl border">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-muted text-muted-foreground sticky top-0 text-xs">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium">#</th>
-                    <th className="px-3 py-2 text-left font-medium">Họ tên</th>
-                    <th className="px-3 py-2 text-left font-medium">Email</th>
-                    <th className="px-3 py-2 text-left font-medium">Username</th>
-                    <th className="px-3 py-2 text-left font-medium">MK</th>
-                    <th className="px-3 py-2 text-left font-medium">Vai trò</th>
-                    <th className="px-3 py-2 text-left font-medium">Khoá học</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">#</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">Họ tên</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">Email</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">Username</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">MK</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">Vai trò</th>
+                    <th className="px-3 py-2.5 text-left font-semibold">Khoá học</th>
                   </tr>
                 </thead>
                 <tbody className="divide-border divide-y">
                   {rows.map((r, i) => (
-                    <tr key={i} className="hover:bg-muted/30">
+                    <tr key={i} className="hover:bg-muted/40">
                       <td className="text-muted-foreground px-3 py-2">{i + 2}</td>
                       <td className="px-3 py-2">
                         {r.fullName || <span className="text-destructive">Thiếu</span>}
                       </td>
-                      <td className="text-muted-foreground px-3 py-2">
+                      <td className="text-muted-foreground px-3 py-2 break-all">
                         {r.email || <span className="text-destructive">Thiếu</span>}
                       </td>
                       <td className="text-muted-foreground px-3 py-2">{r.username ?? '—'}</td>

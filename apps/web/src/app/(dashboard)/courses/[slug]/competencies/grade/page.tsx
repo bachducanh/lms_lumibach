@@ -67,17 +67,15 @@ export default async function CompetencyGradePage({
     <div className="mx-auto max-w-6xl space-y-5">
       <Link
         href={`/courses/${slug}`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         {course.name}
       </Link>
 
       <div className="flex items-center gap-2">
         <Target className="text-primary h-4 w-4" />
-        <p className="text-muted-foreground text-xs font-bold tracking-[0.18em] uppercase">
-          Trang chấm năng lực riêng
-        </p>
+        <p className="text-muted-foreground text-sm font-semibold">Trang chấm năng lực riêng</p>
       </div>
 
       <ActivityCompetencyWorkspace

@@ -162,12 +162,12 @@ export function CategoryTreeManager({
             </Button>
           </div>
 
-          <div className="border-border bg-card overflow-hidden border">
+          <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
             {initialTree.length === 0 ? (
               <div className="px-6 py-12 text-center">
-                <Folder className="text-muted-foreground/30 mx-auto h-10 w-10" />
+                <Folder className="text-muted-foreground/50 mx-auto h-10 w-10" />
                 <p className="text-muted-foreground mt-3 text-sm">Chưa có danh mục nào</p>
-                <p className="text-muted-foreground/70 mt-1 text-xs">
+                <p className="text-muted-foreground mt-1 text-xs">
                   Tạo danh mục gốc để bắt đầu quản lý khoá học.
                 </p>
               </div>
@@ -204,7 +204,7 @@ export function CategoryTreeManager({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Link href={createCourseHref} className={buttonVariants()}>
+              <Link href={createCourseHref} className={cn(buttonVariants())}>
                 <Plus className="mr-1.5 h-4 w-4" />
                 Tạo khoá học mới
               </Link>
@@ -217,7 +217,7 @@ export function CategoryTreeManager({
             </div>
           )}
 
-          <div className="border-border bg-card mt-5 overflow-hidden border">
+          <div className="border-border bg-card mt-5 overflow-hidden rounded-xl border shadow-sm">
             {!selectedCategoryId ? (
               <EmptyCoursesState message="Chọn hoặc tạo một danh mục để quản lý khoá học." />
             ) : courseLoadError ? (
@@ -227,7 +227,7 @@ export function CategoryTreeManager({
                 <p className="text-muted-foreground max-w-md text-sm">{courseLoadError}</p>
                 <Link
                   href={`/admin/categories?categoryId=${selectedCategoryId}`}
-                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                  className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
                 >
                   <RefreshCw className="mr-1.5 h-4 w-4" />
                   Thử lại
@@ -382,9 +382,9 @@ function TreeRow({
         {isLeaf ? (
           <GraduationCap className="text-primary/70 h-4 w-4 shrink-0" />
         ) : isOpen ? (
-          <FolderOpen className="h-4 w-4 shrink-0 text-amber-500" />
+          <FolderOpen className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         ) : (
-          <Folder className="h-4 w-4 shrink-0 text-amber-500" />
+          <Folder className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         )}
 
         <Link
@@ -407,7 +407,7 @@ function TreeRow({
             type="button"
             onClick={() => onAddChild(node.id)}
             title="Tạo danh mục con"
-            className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
+            className="hover:bg-accent rounded-md p-2 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -415,7 +415,7 @@ function TreeRow({
             type="button"
             onClick={() => onEdit(asListItem)}
             title="Sửa danh mục"
-            className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
+            className="hover:bg-accent rounded-md p-2 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
           >
             <Pencil className="h-4 w-4" />
           </button>
@@ -425,10 +425,10 @@ function TreeRow({
             disabled={!canDelete}
             title={canDelete ? 'Xoá danh mục' : 'Còn chứa danh mục con/khoá học, không xoá được'}
             className={cn(
-              'rounded p-1.5 transition-colors',
+              'rounded-md p-2 transition-colors',
               canDelete
                 ? 'hover:bg-destructive/10 hover:text-destructive text-blue-700 dark:text-blue-400'
-                : 'text-muted-foreground/30 cursor-not-allowed'
+                : 'text-muted-foreground/50 cursor-not-allowed'
             )}
           >
             <Trash2 className="h-4 w-4" />
@@ -505,14 +505,14 @@ function CourseRow({
         <Link
           href={`/courses/${course.slug}/edit`}
           title="Sửa khoá học"
-          className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
+          className="hover:bg-accent rounded-md p-2 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
         >
           <Pencil className="h-4 w-4" />
         </Link>
         <Link
           href={`/courses/${course.slug}`}
           title="Xem khoá học"
-          className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
+          className="hover:bg-accent rounded-md p-2 text-blue-700 transition-colors hover:text-blue-800 dark:text-blue-400"
         >
           <Eye className="h-4 w-4" />
         </Link>
@@ -521,7 +521,7 @@ function CourseRow({
           disabled={pending}
           onClick={() => onArchive(course)}
           title={course.status === 'ARCHIVED' ? 'Khôi phục khoá học' : 'Lưu trữ khoá học'}
-          className="hover:bg-accent rounded p-1.5 text-blue-700 transition-colors hover:text-blue-800 disabled:opacity-50 dark:text-blue-400"
+          className="hover:bg-accent rounded-md p-2 text-blue-700 transition-colors hover:text-blue-800 disabled:opacity-50 dark:text-blue-400"
         >
           {course.status === 'ARCHIVED' ? (
             <RotateCcw className="h-4 w-4" />
@@ -534,7 +534,7 @@ function CourseRow({
           disabled={pending}
           onClick={() => onDelete(course)}
           title="Xoá khoá học"
-          className="hover:bg-destructive/10 hover:text-destructive rounded p-1.5 text-blue-700 transition-colors disabled:opacity-50 dark:text-blue-400"
+          className="hover:bg-destructive/10 hover:text-destructive rounded-md p-2 text-blue-700 transition-colors disabled:opacity-50 dark:text-blue-400"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -546,7 +546,7 @@ function CourseRow({
 function EmptyCoursesState({ message }: { message: string }) {
   return (
     <div className="px-6 py-12 text-center">
-      <GraduationCap className="text-muted-foreground/30 mx-auto h-10 w-10" />
+      <GraduationCap className="text-muted-foreground/50 mx-auto h-10 w-10" />
       <p className="text-muted-foreground mt-3 text-sm">{message}</p>
     </div>
   );

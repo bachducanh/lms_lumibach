@@ -82,40 +82,33 @@ export default async function StudentPortfolioPage({
   if (!portfolio) notFound();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-2">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <Link
         href={`/courses/${slug}`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         {course.name}
       </Link>
 
       {/* Hero header */}
-      <div className="border-border bg-card relative overflow-hidden rounded-2xl border p-6 shadow-sm">
-        {/* Subtle glow accents — work in both light & dark */}
-        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-violet-500/15 blur-3xl dark:bg-violet-500/20" />
-        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-cyan-500/15 blur-3xl dark:bg-cyan-500/20" />
-        <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-cyan-500/5 dark:to-violet-500/10" />
-
+      <div className="border-border bg-card relative overflow-hidden rounded-xl border p-4 shadow-sm sm:p-6">
         <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-start gap-4">
-            <div className="bg-primary/15 border-primary/20 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border shadow-sm">
+            <div className="bg-primary/10 flex h-14 w-14 shrink-0 items-center justify-center rounded-lg">
               <FolderKanban className="text-primary h-7 w-7" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground text-[11px] font-bold tracking-widest uppercase">
-                  Hồ sơ học tập
-                </span>
-                <Badge variant="outline" className="text-[10px]">
+                <span className="text-muted-foreground text-sm font-semibold">Hồ sơ học tập</span>
+                <Badge variant="outline" className="text-xs">
                   {portfolio.canEdit ? 'Của bạn' : 'Giáo viên xem'}
                 </Badge>
               </div>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+              <h1 className="font-heading mt-1 text-2xl font-bold tracking-tight break-words sm:text-3xl">
                 {portfolio.student.name}
               </h1>
-              <p className="text-muted-foreground mt-1 text-sm">
+              <p className="text-muted-foreground mt-1 text-sm break-all sm:break-normal">
                 {portfolio.student.email} · {course.name}
               </p>
             </div>
@@ -140,30 +133,31 @@ export default async function StudentPortfolioPage({
               ? '—'
               : `${Math.round(portfolio.summary.averagePercent)}%`
           }
-          tone="text-emerald-500"
+          tone="text-emerald-600 dark:text-emerald-400"
           icon={<GraduationCap className="h-4 w-4" />}
         />
         <SummaryCard
           label="Minh chứng NL"
           value={String(portfolio.summary.competencyCount)}
-          tone="text-cyan-500"
+          tone="text-cyan-700 dark:text-cyan-400"
           icon={<Sparkles className="h-4 w-4" />}
         />
         <SummaryCard
           label="Tự đánh giá"
           value={String(portfolio.summary.reflectionCount)}
-          tone="text-violet-500"
+          tone="text-violet-600 dark:text-violet-400"
           icon={<NotebookPen className="h-4 w-4" />}
         />
       </div>
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
-          <div>
-            <h2 className="flex items-center gap-2 text-base font-semibold">
-              <Sparkles className="h-4 w-4 text-cyan-500" /> Ma trận năng lực theo chương
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
+              <Sparkles className="h-4 w-4 text-cyan-600 dark:text-cyan-400" /> Ma trận năng lực
+              theo chương
             </h2>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground mt-1 text-sm">
               U1, U2, U3… tương ứng Chương 1, Chương 2, Chương 3… trong nội dung khoá học. Bấm "Xem
               minh chứng" trên một ô để xem các đánh giá cụ thể.
             </p>
@@ -178,13 +172,13 @@ export default async function StudentPortfolioPage({
 
       {/* Graded work */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Bài làm &amp; điểm</h2>
+        <h2 className="text-lg font-bold sm:text-xl">Bài làm &amp; điểm</h2>
         {portfolio.gradedItems.length === 0 ? (
           <p className="text-muted-foreground text-sm">Chưa có bài làm nào được ghi nhận.</p>
         ) : (
-          <div className="border-border bg-card overflow-x-auto rounded-lg border">
+          <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
             <table className="w-full min-w-[680px] text-sm">
-              <thead className="border-border bg-muted/30 border-b text-left text-xs">
+              <thead className="border-border bg-muted/50 border-b text-left text-xs">
                 <tr>
                   <Th>Hoạt động</Th>
                   <Th>Loại</Th>
@@ -197,7 +191,10 @@ export default async function StudentPortfolioPage({
                 {portfolio.gradedItems.map((g) => {
                   const p = pct(g.score, g.maxScore);
                   return (
-                    <tr key={`${g.activityType}-${g.id}`} className="border-border/50 border-b">
+                    <tr
+                      key={`${g.activityType}-${g.id}`}
+                      className="border-border hover:bg-muted/40 border-b last:border-0"
+                    >
                       <Td>
                         <span className="font-medium">{g.title}</span>
                       </Td>
@@ -242,13 +239,13 @@ export default async function StudentPortfolioPage({
 
       {/* Competency evidence */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Minh chứng năng lực</h2>
+        <h2 className="text-lg font-bold sm:text-xl">Minh chứng năng lực</h2>
         {portfolio.competencyEvidence.length === 0 ? (
           <p className="text-muted-foreground text-sm">Chưa có đánh giá năng lực.</p>
         ) : (
-          <div className="border-border bg-card overflow-x-auto rounded-lg border">
+          <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
             <table className="w-full min-w-[760px] text-sm">
-              <thead className="border-border bg-muted/30 border-b text-left text-xs">
+              <thead className="border-border bg-muted/50 border-b text-left text-xs">
                 <tr>
                   <Th>Chỉ báo</Th>
                   <Th>Danh mục</Th>
@@ -261,7 +258,10 @@ export default async function StudentPortfolioPage({
                 {portfolio.competencyEvidence.map((e) => {
                   const lm = levelMeta(e.level);
                   return (
-                    <tr key={e.assessmentId} className="border-border/50 border-b">
+                    <tr
+                      key={e.assessmentId}
+                      className="border-border hover:bg-muted/40 border-b last:border-0"
+                    >
                       <Td>
                         <span className="font-medium">
                           {e.indicatorCode && (
@@ -324,8 +324,8 @@ function SummaryCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="border-border bg-card hover:border-primary/30 rounded-xl border px-4 py-3.5 shadow-sm transition-colors">
-      <div className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
+    <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
+      <div className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
         {icon && <span className={tone}>{icon}</span>}
         <span>{label}</span>
       </div>

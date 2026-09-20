@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SimpleSelect } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
@@ -121,19 +122,15 @@ export function SharedBankBrowser({
           Tìm
         </Button>
         {categories.length > 0 && (
-          <select
+          <SimpleSelect
             value={targetCategoryId}
-            onChange={(e) => setTargetCategoryId(e.target.value)}
-            className="border-input bg-background text-foreground dark:bg-card h-9 rounded-md border px-3 text-sm"
-            title="Bản sao sẽ nằm trong kho nào của khoá học này"
-          >
-            <option value="">Chép vào: ngoài danh mục</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                Chép vào: {c.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setTargetCategoryId}
+            aria-label="Bản sao sẽ nằm trong kho nào của khoá học này"
+            options={[
+              { value: '', label: 'Chép vào: ngoài danh mục' },
+              ...categories.map((c) => ({ value: c.id, label: `Chép vào: ${c.name}` })),
+            ]}
+          />
         )}
       </form>
 
@@ -182,10 +179,7 @@ export function SharedBankBrowser({
                         </span>
                       )}
                       {item.sourceKind === 'BANK' && (
-                        <Badge
-                          variant="outline"
-                          className="border-primary/40 text-primary text-[10px]"
-                        >
+                        <Badge variant="outline" className="border-primary/40 text-primary text-xs">
                           Kho của danh mục
                         </Badge>
                       )}

@@ -17,8 +17,6 @@ import {
   ScrollText,
   Settings,
   Users,
-  ChevronRight,
-  Zap,
   BarChart3,
   FolderTree,
   Trash2,
@@ -95,33 +93,28 @@ function NavLink({
     <Link
       href={href}
       title={collapsed ? item.label : undefined}
+      aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
+        'group relative flex items-center rounded-lg py-2 text-sm font-medium transition-colors duration-150',
         collapsed ? 'justify-center px-2' : 'gap-3 px-3',
         isActive
-          ? 'bg-sidebar-primary/15 text-sidebar-primary'
-          : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+          ? 'bg-sidebar-primary/10 text-sidebar-accent-foreground font-semibold'
+          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
       )}
     >
-      {/* Active indicator — Unity-style left bar */}
+      {/* Vạch nhấn bên trái cho mục đang chọn */}
       {isActive && (
-        <span
-          className="bg-sidebar-primary absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-r-full"
-          style={{ boxShadow: '0 0 8px rgb(253 8 93 / 70%)' }}
-        />
+        <span className="bg-sidebar-primary absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-r-full" />
       )}
 
-      {/* Icon with glow when active */}
       <Icon
         className={cn(
-          'h-4 w-4 shrink-0 transition-all duration-200',
-          isActive ? 'drop-shadow-[0_0_6px_oklch(0.68_0.195_35_/_0.8)]' : 'group-hover:scale-110'
+          'h-[18px] w-[18px] shrink-0',
+          isActive ? 'text-sidebar-primary' : 'text-sidebar-foreground/70'
         )}
       />
 
-      {!collapsed && <span className="flex-1 tracking-wide">{item.label}</span>}
-
-      {isActive && !collapsed && <ChevronRight className="h-3 w-3 opacity-60" />}
+      {!collapsed && <span className="flex-1">{item.label}</span>}
     </Link>
   );
 }
@@ -153,7 +146,7 @@ export function Sidebar() {
       {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
           onClick={close}
           aria-hidden="true"
         />
@@ -169,39 +162,38 @@ export function Sidebar() {
           'md:relative md:translate-x-0 md:transition-[width]',
           isCollapsed ? 'md:w-16' : 'md:w-60'
         )}
-        style={{ boxShadow: '1px 0 0 0 oklch(1 0 0 / 5%)' }}
         aria-label="Điều hướng chính"
       >
         {/* ── Logo ─────────────────────────────────────────────── */}
         <div
           className={cn(
-            'border-sidebar-border flex h-14 shrink-0 items-center border-b px-4',
+            'border-sidebar-border flex h-16 shrink-0 items-center border-b px-4',
             isCollapsed && 'md:justify-center md:px-2'
           )}
         >
           <Link
             href="/dashboard"
-            className={cn('group flex items-center gap-2.5', isCollapsed && 'md:gap-0')}
+            aria-label="LumiBach — Tổng quan"
+            className={cn('flex items-center gap-2.5', isCollapsed && 'md:gap-0')}
           >
-            {/* Logo icon with glow */}
-            <div className="relative shrink-0">
-              <div className="bg-sidebar-primary absolute inset-0 rounded-sm opacity-0 blur-[6px] transition-opacity duration-300 group-hover:opacity-20" />
+            {/* Ảnh logo có nền trắng: multiply cho nền trắng "biến mất" ở theme sáng,
+                theme tối đặt trong ô trắng bo góc. */}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg dark:bg-white dark:p-0.5">
               <Image
-                src="/LumiBach_firstLogo.png"
-                alt="LumiBach"
-                width={28}
-                height={28}
+                src="/icon.png"
+                alt=""
+                width={36}
+                height={36}
                 priority
-                className="relative shrink-0 rounded-sm"
+                className="h-full w-full mix-blend-multiply dark:mix-blend-normal"
               />
-            </div>
+            </span>
 
             <div className={cn('flex flex-col leading-none', isCollapsed && 'md:hidden')}>
-              <span className="text-sidebar-foreground text-sm font-bold tracking-wide">
+              <span className="font-heading text-sidebar-accent-foreground text-lg font-bold tracking-tight">
                 LumiBach
               </span>
-              <span className="text-sidebar-primary flex items-center gap-1 text-[9px] font-semibold tracking-[0.15em] uppercase">
-                <Zap className="h-2 w-2" />
+              <span className="text-sidebar-foreground/70 mt-1 text-[10px] font-semibold tracking-[0.2em] uppercase">
                 Learn
               </span>
             </div>
@@ -209,7 +201,7 @@ export function Sidebar() {
         </div>
 
         {/* ── Main nav ─────────────────────────────────────────── */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {visibleMain.map((item) => (
             <NavLink
               key={item.href}
@@ -224,10 +216,10 @@ export function Sidebar() {
             <>
               {/* Section divider */}
               <div className={cn('my-4 flex items-center gap-2 px-3', isCollapsed && 'md:px-1')}>
-                <span className="text-sidebar-foreground/60 text-[10px] font-bold tracking-[0.2em] uppercase">
+                <span className="text-sidebar-foreground/85 text-[11px] font-semibold tracking-[0.14em] uppercase">
                   {isCollapsed ? '' : 'Quản trị'}
                 </span>
-                <div className="bg-sidebar-foreground/10 h-px flex-1" />
+                <div className="bg-sidebar-border h-px flex-1" />
               </div>
               {visibleAdmin.map((item) => (
                 <NavLink
@@ -245,7 +237,7 @@ export function Sidebar() {
         {/* ── Bottom section ───────────────────────────────────── */}
         <div
           className={cn(
-            'border-sidebar-border shrink-0 space-y-0.5 border-t px-3 py-3',
+            'border-sidebar-border shrink-0 space-y-1 border-t px-3 py-3',
             isCollapsed && 'md:px-2'
           )}
         >
@@ -263,32 +255,31 @@ export function Sidebar() {
           {user && (
             <div
               className={cn(
-                'hover:bg-sidebar-accent mt-2 flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors',
+                'bg-sidebar-accent mt-2 flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2.5',
                 isCollapsed && 'md:justify-center md:px-2'
               )}
               title={isCollapsed ? (user.name ?? user.email ?? '') : undefined}
             >
-              {/* Avatar with orange ring */}
-              <div
-                className="text-sidebar-primary bg-sidebar-primary/20 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                style={{ boxShadow: '0 0 0 1.5px rgb(253 8 93 / 50%)' }}
-              >
+              <div className="bg-sidebar-primary/10 text-sidebar-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                 {initials}
               </div>
 
               <div className={cn('min-w-0 flex-1', isCollapsed && 'md:hidden')}>
-                <p className="text-sidebar-foreground truncate text-xs font-semibold">
+                <p className="text-sidebar-accent-foreground truncate text-xs font-semibold">
                   {user.name ?? user.email}
                 </p>
-                <p className="text-sidebar-foreground/40 text-[10px] tracking-wide">
+                <p className="text-sidebar-foreground/85 text-[11px]">
                   {role ? (ROLE_LABEL[role] ?? role) : ''}
                 </p>
               </div>
 
-              {/* Online indicator */}
+              {/* Trạng thái trực tuyến */}
               <span
-                className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                style={{ boxShadow: '0 0 6px oklch(0.70 0.18 140 / 0.7)' }}
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full bg-emerald-500',
+                  isCollapsed && 'md:hidden'
+                )}
+                aria-hidden
               />
             </div>
           )}

@@ -33,7 +33,7 @@ export default async function NewLessonPage({
   if (!moduleId) redirect(`/courses/${slug}/modules`);
 
   return (
-    <div className="max-w-5xl">
+    <div className="mx-auto w-full max-w-5xl">
       <LessonEditor
         mode="create"
         owner={{ kind: 'course', courseSlug: slug, courseId: course.id }}

@@ -128,13 +128,13 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
       >
         <div className="border-border bg-muted/30 flex items-center justify-between gap-2 border-b px-3 py-1.5 text-xs">
           <span className="text-muted-foreground flex items-center gap-1.5 font-semibold">
-            <Cat className="h-3 w-3 text-orange-400" />
+            <Cat className="h-3 w-3 text-orange-700 dark:text-orange-400" />
             Scratch Editor (LumiBach)
           </span>
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
-            className="border-border bg-background hover:bg-muted inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors"
+            className="border-border bg-background hover:bg-muted inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors"
             title={fullscreen ? 'Thu nhỏ (Esc)' : 'Toàn màn hình'}
           >
             {fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
@@ -148,7 +148,7 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
           allow="autoplay; clipboard-read; clipboard-write; fullscreen; gamepad; microphone; camera"
           style={{
             width: '100%',
-            height: fullscreen ? 'calc(100vh - 32px)' : '640px',
+            height: fullscreen ? 'calc(100dvh - 40px)' : '640px',
             border: 'none',
             display: 'block',
           }}
@@ -164,29 +164,14 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
   const url = `https://turbowarp.org/editor${params.toString() ? '?' + params.toString() : ''}`;
 
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border">
-      <div
-        className="border-border relative border-b px-6 py-8"
-        style={{
-          background: 'linear-gradient(135deg, rgb(255 165 89 / 12%), rgb(155 85 215 / 8%))',
-        }}
-      >
-        <div className="pointer-events-none absolute inset-0 opacity-[0.03]">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-full w-full">
-            <defs>
-              <pattern id="scratch-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-                <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#scratch-grid)" />
-          </svg>
-        </div>
+    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      <div className="border-border relative border-b bg-orange-500/10 px-4 py-6 sm:px-6 sm:py-8">
         <div className="relative flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-orange-500/30 bg-orange-500/15">
-            <Cat className="h-7 w-7 text-orange-400" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-orange-500/30 bg-orange-500/15">
+            <Cat className="h-7 w-7 text-orange-700 dark:text-orange-400" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-[11px] font-bold tracking-[0.2em] text-orange-400 uppercase">
+            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">
               Scratch Editor (TurboWarp)
             </p>
             <h3 className="text-lg font-bold">
@@ -199,23 +184,22 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
                   ? 'Nhấn nút bên dưới để mở Scratch Editor với project khởi đầu đã được nạp sẵn.'
                   : 'Nhấn nút bên dưới để mở Scratch Editor (project trống).'}
             </p>
-            <p className="text-muted-foreground/70 mt-2 text-[11px]">
-              💡 Mẹo: chạy <code className="font-mono text-orange-300">pnpm build:scratch-gui</code>{' '}
+            <p className="text-muted-foreground mt-2 text-xs">
+              💡 Mẹo: chạy{' '}
+              <code className="font-mono text-orange-700 dark:text-orange-300">
+                pnpm build:scratch-gui
+              </code>{' '}
               để embed Scratch ngay trong LMS, không cần mở tab mới.
             </p>
           </div>
         </div>
       </div>
-      <div className="flex flex-col items-stretch gap-3 px-6 py-5 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-stretch gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-6 sm:py-5">
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:brightness-110"
-          style={{
-            background: 'linear-gradient(135deg, #ff8d2a, #f55b3c)',
-            boxShadow: '0 4px 24px rgb(255 141 42 / 35%)',
-          }}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-colors"
         >
           {playerOnly ? <Play className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
           {playerOnly ? 'Mở project (tab mới)' : 'Mở Scratch Editor (tab mới)'}
@@ -224,7 +208,8 @@ export function ScratchEditor({ starterUrl, playerOnly = false, onSaveBlob }: Pr
           <p className="text-muted-foreground text-xs leading-relaxed sm:max-w-md">
             Sau khi code xong, vào{' '}
             <strong className="text-foreground">File → Save to your computer</strong> để tải{' '}
-            <code className="font-mono text-orange-300">.sb3</code>, rồi quay lại trang này để nộp.
+            <code className="font-mono text-orange-700 dark:text-orange-300">.sb3</code>, rồi quay
+            lại trang này để nộp.
           </p>
         )}
       </div>

@@ -36,20 +36,20 @@ const MODE_META: Record<
     label: 'Không có nhóm',
     description: 'Mọi học sinh trong khoá đều xem được toàn bộ hoạt động của chương.',
     icon: <EyeOff className="h-4 w-4" />,
-    color: 'text-slate-500',
+    color: 'text-slate-600 dark:text-slate-400',
   },
   VISIBLE_GROUPS: {
     label: 'Nhóm hiện hữu',
     description: 'Chỉ các nhóm được chọn có thể xem các hoạt động của chương.',
     icon: <Users className="h-4 w-4" />,
-    color: 'text-amber-500',
+    color: 'text-amber-600 dark:text-amber-400',
   },
   SEPARATE_GROUPS: {
     label: 'Phân nhóm',
     description:
       'Học sinh chia thành các nhóm theo một Phân nhóm — bài tập theo nhóm (1 nộp = cả nhóm) cho mọi hoạt động.',
     icon: <Layers className="h-4 w-4" />,
-    color: 'text-violet-500',
+    color: 'text-violet-600 dark:text-violet-400',
   },
 };
 
@@ -171,7 +171,7 @@ export function ModuleGroupModeButton({
 
                   {value === 'VISIBLE_GROUPS' && active && (
                     <div className="border-border mt-2.5 space-y-1 rounded-md border p-2.5">
-                      <p className="text-muted-foreground mb-1.5 text-[11px] font-medium uppercase">
+                      <p className="text-muted-foreground mb-1.5 text-xs font-semibold">
                         Chọn nhóm được xem
                       </p>
                       {loading ? (
@@ -203,7 +203,7 @@ export function ModuleGroupModeButton({
 
                   {value === 'SEPARATE_GROUPS' && active && (
                     <div className="border-border mt-2.5 space-y-1 rounded-md border p-2.5">
-                      <p className="text-muted-foreground mb-1.5 text-[11px] font-medium uppercase">
+                      <p className="text-muted-foreground mb-1.5 text-xs font-semibold">
                         Chọn phân nhóm áp dụng
                       </p>
                       {loading ? (

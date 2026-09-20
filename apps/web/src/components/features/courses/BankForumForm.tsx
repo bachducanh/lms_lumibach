@@ -50,9 +50,7 @@ export function BankForumForm({
   return (
     <div className="max-w-2xl space-y-6">
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Tên diễn đàn *
-        </label>
+        <label className="text-muted-foreground text-sm font-medium">Tên diễn đàn *</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -62,9 +60,7 @@ export function BankForumForm({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Mô tả (tuỳ chọn)
-        </label>
+        <label className="text-muted-foreground text-sm font-medium">Mô tả (tuỳ chọn)</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}

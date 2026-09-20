@@ -281,10 +281,10 @@ export function ExerciseSubmitPanel({
   return (
     <div className="space-y-5">
       {isWeb ? (
-        <div className="rounded-xl bg-gradient-to-r from-[#fd085d] via-[oklch(0.80_0.13_210/0.5)] to-transparent p-[1px] shadow-sm">
+        <div className="border-border rounded-xl border shadow-sm">
           <div className="flex flex-col overflow-hidden rounded-xl border-transparent bg-[#1a1a2e]">
             {/* Toolbar */}
-            <div className="flex items-center gap-3 border-b border-white/10 bg-[#1a1a2e] px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#1a1a2e] px-3 py-2">
               <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium text-[#f8f8f2]">
                 {LANG_LABEL[language]}
               </span>
@@ -295,8 +295,7 @@ export function ExerciseSubmitPanel({
                 type="button"
                 onClick={handleSubmit}
                 disabled={runPending || subPending || !canSubmit}
-                className="bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:brightness-100"
-                style={{ boxShadow: '0 4px 20px rgb(253 8 93 / 40%)' }}
+                className="bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 hover:brightness-110 disabled:opacity-50"
               >
                 {subPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -319,10 +318,10 @@ export function ExerciseSubmitPanel({
       ) : (
         <div className="flex flex-col items-stretch gap-5 lg:flex-row">
           {/* Left Side: Editor */}
-          <div className="flex min-w-0 flex-1 flex-col rounded-xl bg-gradient-to-r from-[#fd085d] via-[oklch(0.80_0.13_210/0.5)] to-transparent p-[1px] shadow-sm">
+          <div className="border-border flex min-w-0 flex-1 flex-col rounded-xl border shadow-sm">
             <div className="flex flex-1 flex-col overflow-hidden rounded-xl border-transparent bg-[#1a1a2e]">
               {/* Toolbar */}
-              <div className="flex items-center gap-3 border-b border-white/10 bg-[#1a1a2e] px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-[#1a1a2e] px-3 py-2">
                 <span className="rounded-md border border-white/20 bg-black/20 px-3 py-1 text-sm font-medium text-[#f8f8f2]">
                   {LANG_LABEL[language]}
                 </span>
@@ -346,8 +345,7 @@ export function ExerciseSubmitPanel({
                   type="button"
                   onClick={handleSubmit}
                   disabled={runPending || subPending || !canSubmit}
-                  className="bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:brightness-100"
-                  style={{ boxShadow: '0 4px 20px rgb(253 8 93 / 40%)' }}
+                  className="bg-primary text-primary-foreground inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 hover:brightness-110 disabled:opacity-50"
                 >
                   {subPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -367,10 +365,10 @@ export function ExerciseSubmitPanel({
           {/* Right Side: Stdin & Terminal */}
           <div className="flex w-full shrink-0 flex-col gap-5 lg:w-[450px] xl:w-[500px]">
             {/* stdin */}
-            <div className="flex flex-col rounded-xl bg-gradient-to-r from-transparent via-[oklch(0.80_0.13_210/0.2)] to-[#fd085d] p-[1px] shadow-sm">
+            <div className="border-border flex flex-col rounded-xl border shadow-sm">
               <div className="flex flex-col overflow-hidden rounded-xl border-transparent bg-[#1a1a2e]">
                 <div className="flex-shrink-0 border-b border-white/10 bg-[#1a1a2e] px-4 py-3">
-                  <label className="text-xs font-semibold tracking-wide text-[#f8f8f2] uppercase">
+                  <label className="text-xs font-semibold text-[#f8f8f2]">
                     Dữ liệu vào (stdin)
                   </label>
                   <textarea
@@ -385,13 +383,11 @@ export function ExerciseSubmitPanel({
             </div>
 
             {/* Terminal */}
-            <div className="flex min-h-[250px] flex-1 flex-col rounded-xl bg-gradient-to-r from-transparent via-[oklch(0.80_0.13_210/0.2)] to-[#fd085d] p-[1px] shadow-sm">
+            <div className="border-border flex min-h-[250px] flex-1 flex-col rounded-xl border shadow-sm">
               <div className="flex flex-1 flex-col overflow-hidden rounded-xl border-transparent bg-[#1a1a2e]">
                 <div className="flex flex-shrink-0 items-center gap-2 border-b border-white/10 px-4 py-2">
                   <Terminal className="h-3.5 w-3.5 text-[#7ec8e3]" />
-                  <span className="text-xs font-semibold tracking-wider text-[#7ec8e3] uppercase">
-                    Output
-                  </span>
+                  <span className="text-xs font-semibold text-[#7ec8e3]">Output</span>
                 </div>
                 <div className="flex-1 overflow-y-auto bg-[#1a1a2e]">
                   <TerminalOutput result={runResult} pending={runPending} />
@@ -411,7 +407,7 @@ export function ExerciseSubmitPanel({
               <div
                 key={sub.id}
                 className={cn(
-                  'hover:bg-muted/30 flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors',
+                  'hover:bg-muted/30 flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 transition-colors',
                   activeSubId === sub.id && 'bg-muted/30'
                 )}
                 onClick={() => handleViewSub(sub.id)}
@@ -449,7 +445,7 @@ export function ExerciseSubmitPanel({
           {/* Detail panel */}
           {activeSub && (
             <div className="border-border bg-muted/20 space-y-3 border-t px-4 py-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold">Chi tiết — Lần {activeSub.attemptNumber}</p>
                 <span
                   className={cn(
@@ -551,20 +547,20 @@ function QuickRun({
 
   return (
     <div className="border-border mt-1 overflow-hidden rounded-xl border">
-      <div className="border-border bg-muted/30 flex items-center gap-3 border-b px-4 py-2.5">
-        <label className="text-muted-foreground flex-1 text-xs font-semibold tracking-wide uppercase">
+      <div className="border-border bg-muted/30 flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
+        <label className="text-muted-foreground flex-1 text-xs font-semibold">
           Chạy thử code này
         </label>
         <button
           type="button"
           onClick={handleRun}
           disabled={pending}
-          className="border-border bg-card hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+          className="border-border bg-card hover:bg-accent inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
         >
           {pending ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
-            <Play className="h-3 w-3 fill-current text-green-500" />
+            <Play className="h-3 w-3 fill-current text-green-600 dark:text-green-500" />
           )}
           Chạy
         </button>

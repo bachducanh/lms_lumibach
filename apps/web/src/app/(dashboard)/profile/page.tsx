@@ -47,11 +47,15 @@ export default async function ProfilePage() {
   return (
     <div className="lb-stagger mx-auto max-w-5xl space-y-6">
       <div style={{ ['--i' as string]: 0 }}>
-        <h1 className="text-2xl font-bold">Hồ sơ của tôi</h1>
-        <p className="text-muted-foreground text-sm">{user.email}</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          Hồ sơ của tôi
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm break-all">{user.email}</p>
       </div>
       <div
-        className={portfolio ? 'grid gap-6 lg:grid-cols-[minmax(320px,420px)_1fr]' : 'max-w-lg'}
+        className={
+          portfolio ? 'grid gap-6 lg:grid-cols-[minmax(320px,420px)_1fr]' : 'w-full max-w-lg'
+        }
         style={{ ['--i' as string]: 1 }}
       >
         <div className="space-y-6">

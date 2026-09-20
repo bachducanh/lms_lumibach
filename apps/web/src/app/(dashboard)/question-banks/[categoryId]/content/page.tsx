@@ -41,9 +41,7 @@ export default async function CategoryContentBankPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-muted-foreground/70 font-mono text-[11px] tracking-[0.18em] uppercase">
-            Kho nội dung
-          </p>
+          <p className="text-muted-foreground/70 font-mono text-xs">Kho nội dung</p>
           <h1 className="mt-1 truncate text-3xl font-bold tracking-tight">{data.categoryName}</h1>
         </div>
         <Link

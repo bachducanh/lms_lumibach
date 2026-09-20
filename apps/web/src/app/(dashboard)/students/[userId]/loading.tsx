@@ -1,6 +1,6 @@
 export default function StudentDetailLoading() {
   return (
-    <div className="max-w-2xl animate-pulse space-y-6">
+    <div className="mx-auto w-full max-w-5xl animate-pulse space-y-6">
       {/* Back link */}
       <div className="bg-muted h-8 w-36 rounded-md" />
 

@@ -9,6 +9,7 @@ import { apiServerClient } from '@/lib/api-client';
 import { ArrowLeft, Layers, Zap } from 'lucide-react';
 import type { CourseDetail, ModuleWithItems } from '@lumibach/types';
 import type { UserRole, SubmissionStatus, AttemptStatus } from '@lumibach/db';
+import { PageHero } from '@/components/layouts/PageHero';
 import { ModuleListClient } from '@/components/features/courses/ModuleListClient';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -101,93 +102,53 @@ export default async function CourseModulesPage({ params }: { params: Promise<{ 
   const totalItems = modules.reduce((s, m) => s + m.items.length, 0);
 
   return (
-    <div className="space-y-6">
-      {/* ── Page hero header ────────────────────────────────── */}
-      <div className="border-border bg-card relative -mx-4 -mt-4 mb-8 overflow-hidden border-b md:-mx-6 md:-mt-6">
-        {/* Tech grid */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.03]"
-          xmlns="http://www.w3.org/2000/svg"
+    <div className="w-full space-y-6">
+      {/* ── Page header ─────────────────────────────────────── */}
+      <PageHero>
+        <Link
+          href={`/courses/${slug}`}
+          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors duration-150"
         >
-          <defs>
-            <pattern id="modules-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#modules-grid)" />
-        </svg>
+          <ArrowLeft className="h-4 w-4" />
+          <span className="min-w-0 break-words">{course.name}</span>
+        </Link>
 
-        {/* Glow accents */}
-        <div
-          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl"
-          style={{ background: 'rgb(253 8 93 / 10%)' }}
-        />
-        <div
-          className="pointer-events-none absolute -bottom-10 left-1/3 h-32 w-64 rounded-full blur-3xl"
-          style={{ background: 'oklch(0.80 0.13 210 / 0.06)' }}
-        />
-
-        {/* Top accent line */}
-        <div
-          className="absolute top-0 right-0 left-0 h-[2px]"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgb(253 8 93 / 60%), transparent)',
-          }}
-        />
-
-        <div className="relative px-4 py-6 sm:px-6 sm:py-8">
-          <Link
-            href={`/courses/${slug}`}
-            className="text-muted-foreground hover:text-primary mb-4 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase transition-colors duration-150"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            {course.name}
-          </Link>
-
-          <div className="flex items-end justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Layers
-                  className="text-primary h-3.5 w-3.5"
-                  style={{ filter: 'drop-shadow(0 0 6px #fd085d)' }}
-                />
-                <p className="text-primary text-[11px] font-bold tracking-[0.2em] uppercase">
-                  Giáo trình
-                </p>
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Nội dung khoá học</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
-                  <Zap className="h-3 w-3" /> {modules.length} chương
-                </span>
-                <span className="inline-flex items-center gap-1 rounded border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-cyan-400">
-                  {totalItems} bài học
-                </span>
-                {isStudent && completedIds.size > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-emerald-400">
-                    {completedIds.size}/{totalItems} hoàn thành
-                  </span>
-                )}
-              </div>
-            </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Layers className="text-primary h-4 w-4" />
+            <p className="text-primary text-sm font-semibold">Giáo trình</p>
+          </div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+            Nội dung khoá học
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="border-primary/20 bg-primary/10 text-primary inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold">
+              <Zap className="h-3 w-3" /> {modules.length} chương
+            </span>
+            <span className="inline-flex h-6 items-center gap-1 rounded-full border border-cyan-600/25 bg-cyan-50 px-2.5 text-xs font-semibold text-cyan-800 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-400">
+              {totalItems} bài học
+            </span>
+            {isStudent && completedIds.size > 0 && (
+              <span className="inline-flex h-6 items-center gap-1 rounded-full border border-emerald-600/25 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-400">
+                {completedIds.size}/{totalItems} hoàn thành
+              </span>
+            )}
           </div>
         </div>
-      </div>
+      </PageHero>
 
-      <div className="mx-auto w-full max-w-4xl">
-        <ModuleListClient
-          courseSlug={slug}
-          courseId={course.id}
-          modules={modules}
-          canManage={canManage}
-          modulesExpandedByDefault={course.modulesExpandedByDefault}
-          completedIds={completedIds}
-          submittedAssignmentIds={submittedAssignmentIds}
-          submittedQuizIds={submittedQuizIds}
-          submittedPracticeTestIds={submittedPracticeTestIds}
-          submittedCodeExerciseIds={submittedCodeExerciseIds}
-        />
-      </div>
+      <ModuleListClient
+        courseSlug={slug}
+        courseId={course.id}
+        modules={modules}
+        canManage={canManage}
+        modulesExpandedByDefault={course.modulesExpandedByDefault}
+        completedIds={completedIds}
+        submittedAssignmentIds={submittedAssignmentIds}
+        submittedQuizIds={submittedQuizIds}
+        submittedPracticeTestIds={submittedPracticeTestIds}
+        submittedCodeExerciseIds={submittedCodeExerciseIds}
+      />
     </div>
   );
 }

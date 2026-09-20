@@ -33,18 +33,18 @@ export default async function NewTopicPage({
   if (!course) notFound();
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <div className="flex items-center gap-2">
         <Link
           href={`/courses/${slug}/forum${forumId ? `?forumId=${forumId}` : ''}`}
-          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Diễn đàn
         </Link>
       </div>
 
-      <h1 className="text-xl font-bold">Tạo chủ đề mới</h1>
+      <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Tạo chủ đề mới</h1>
 
       <NewTopicForm
         courseId={course.id}

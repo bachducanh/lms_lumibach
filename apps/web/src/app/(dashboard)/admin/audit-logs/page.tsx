@@ -139,8 +139,10 @@ export default async function AuditLogsPage({
   return (
     <div className="lb-stagger space-y-5">
       <div style={{ ['--i' as string]: 0 }}>
-        <h1 className="text-2xl font-bold">Nhật ký hoạt động</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+          Nhật ký hoạt động
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           Theo dõi lịch sử hoạt động hệ thống và hoạt động trực tiếp.
         </p>
       </div>
@@ -157,7 +159,7 @@ export default async function AuditLogsPage({
               key={item.key}
               href={`/admin/audit-logs?tab=${item.key}`}
               className={cn(
-                'inline-flex items-center gap-2 rounded-lg border px-3.5 py-1.5 text-sm font-medium transition-colors',
+                'inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors',
                 isActive
                   ? 'border-primary bg-primary/10 text-primary'
                   : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -343,11 +345,15 @@ async function LogsPanel({
 
   return (
     <div className="space-y-5">
-      <form className="space-y-3">
+      <form className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-5">
         <input type="hidden" name="tab" value="logs" />
-        <h2 className="text-lg font-semibold">Choose which logs you want to see:</h2>
-        <div className="flex flex-wrap gap-2">
-          <Select name="scope" defaultValue={scope} className="min-w-[250px]">
+        <h2 className="text-base font-semibold">Choose which logs you want to see:</h2>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <Select
+            name="scope"
+            defaultValue={scope}
+            className="col-span-2 w-full sm:w-auto sm:min-w-[250px]"
+          >
             <option value="site">{SITE_NAME} (Site)</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
@@ -355,7 +361,11 @@ async function LogsPanel({
               </option>
             ))}
           </Select>
-          <Select name="userId" defaultValue={userId} className="min-w-[250px]">
+          <Select
+            name="userId"
+            defaultValue={userId}
+            className="col-span-2 w-full sm:w-auto sm:min-w-[250px]"
+          >
             <option value="">All participants</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
@@ -363,13 +373,21 @@ async function LogsPanel({
               </option>
             ))}
           </Select>
-          <Select name="day" defaultValue={day} className="min-w-[190px]">
+          <Select
+            name="day"
+            defaultValue={day}
+            className="col-span-2 w-full sm:w-auto sm:min-w-[190px]"
+          >
             <option value="">All days</option>
             <option value="today">Today</option>
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
           </Select>
-          <Select name="activity" defaultValue={activity} className="min-w-[140px]">
+          <Select
+            name="activity"
+            defaultValue={activity}
+            className="w-full sm:w-auto sm:min-w-[140px]"
+          >
             <option value="">All activities</option>
             {ACTIVITY_OPTIONS.map((item) => (
               <option key={item.value} value={item.value}>
@@ -377,19 +395,27 @@ async function LogsPanel({
               </option>
             ))}
           </Select>
-          <Select name="action" defaultValue={actionGroup} className="min-w-[135px]">
+          <Select
+            name="action"
+            defaultValue={actionGroup}
+            className="w-full sm:w-auto sm:min-w-[135px]"
+          >
             <option value="">All actions</option>
             <option value="view">View</option>
             <option value="submit">Submit</option>
             <option value="quiz">Quiz</option>
             <option value="login">Login</option>
           </Select>
-          <Select name="source" defaultValue={source} className="min-w-[135px]">
+          <Select name="source" defaultValue={source} className="w-full sm:w-auto sm:min-w-[135px]">
             <option value="">All sources</option>
             <option value="web">web</option>
             <option value="system">system</option>
           </Select>
-          <Select name="event" defaultValue={event} className="min-w-[145px]">
+          <Select
+            name="event"
+            defaultValue={event}
+            className="col-span-2 w-full sm:w-auto sm:min-w-[145px]"
+          >
             <option value="">All events</option>
             {ACTIVITY_ACTIONS.map((item) => (
               <option key={item} value={item}>
@@ -403,7 +429,7 @@ async function LogsPanel({
             ))}
           </Select>
           <span
-            className="text-muted-foreground inline-flex h-10 w-8 items-center justify-center"
+            className="text-muted-foreground hidden h-10 w-8 items-center justify-center sm:inline-flex"
             title="Course logs are also available in each course report."
           >
             <HelpCircle className="h-4 w-4" />
@@ -428,9 +454,9 @@ async function LogsPanel({
         {total.toLocaleString('vi-VN')} events · page {page}/{totalPages}
       </div>
 
-      <div className="border-border bg-card overflow-x-auto rounded-lg border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
         <table className="w-full min-w-[1180px] text-sm">
-          <thead className="border-border bg-muted/30 border-b text-left text-xs">
+          <thead className="border-border bg-muted/50 border-b text-left text-xs">
             <tr>
               <Th>Course</Th>
               <Th>Time</Th>
@@ -447,18 +473,18 @@ async function LogsPanel({
           <tbody>
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-muted-foreground p-8 text-center">
+                <td colSpan={10} className="text-muted-foreground p-10 text-center">
                   Không có nhật ký nào khớp bộ lọc.
                 </td>
               </tr>
             )}
             {pageRows.map((row) => (
-              <tr key={row.id} className="border-border/50 hover:bg-muted/20 border-b">
-                <Td>{row.course}</Td>
+              <tr key={row.id} className="border-border hover:bg-muted/40 border-b last:border-0">
+                <Td className="min-w-44">{row.course}</Td>
                 <Td>
                   <span className="whitespace-nowrap">{formatLogTime(row.createdAt)}</span>
                 </Td>
-                <Td>{row.userName}</Td>
+                <Td className="min-w-32">{row.userName}</Td>
                 <Td>{row.affectedUser}</Td>
                 <Td>
                   <span className="text-primary">{row.context}</span>
@@ -467,7 +493,7 @@ async function LogsPanel({
                 <Td>
                   <span className="text-primary">{row.eventName}</span>
                 </Td>
-                <Td>{row.description}</Td>
+                <Td className="min-w-72">{row.description}</Td>
                 <Td>{row.origin}</Td>
                 <Td>
                   <span className="text-primary font-mono text-xs">{row.ipAddress ?? '-'}</span>
@@ -626,12 +652,10 @@ function nhanCuaOption(children: React.ReactNode): string {
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="text-muted-foreground px-3 py-2.5 font-semibold whitespace-nowrap">
-      {children}
-    </th>
+    <th className="text-muted-foreground px-4 py-3 font-semibold whitespace-nowrap">{children}</th>
   );
 }
 
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2.5 align-top">{children}</td>;
+function Td({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <td className={cn('px-4 py-3 align-top', className)}>{children}</td>;
 }

@@ -5,6 +5,7 @@ import { auth } from '@/auth';
 import { apiServerClient } from '@/lib/api-client';
 import { CourseMembersTabs } from '@/components/features/courses/CourseMembersTabs';
 import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { hasMinRole } from '@/lib/permissions';
 import type { CourseDetail, CourseMembersResponse, CourseGroupsData } from '@lumibach/types';
 import type { UserRole } from '@lumibach/db';
@@ -43,19 +44,19 @@ export default async function CoursePeoplePage({ params }: { params: Promise<{ s
   const totalTeachers = 1 + coTeachers.length;
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
         <Link
           href={`/courses/${slug}`}
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), '-ml-3 max-w-full')}
         >
           ← {course.name}
         </Link>
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold">Thành viên</h1>
-        <p className="text-muted-foreground text-sm">
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Thành viên</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
           {totalTeachers} giáo viên · {tas.length} trợ giảng · {enrollments.length} học sinh
         </p>
       </div>

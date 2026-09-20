@@ -92,11 +92,10 @@ export function TopicControls({
           onChange={(e) => setDraftTitle(e.target.value)}
         />
         <div className="flex gap-2">
-          <Button size="sm" onClick={saveTitle} disabled={isPending}>
+          <Button onClick={saveTitle} disabled={isPending}>
             Lưu
           </Button>
           <Button
-            size="sm"
             variant="ghost"
             onClick={() => {
               setDraftTitle(title);
@@ -114,7 +113,7 @@ export function TopicControls({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="hover:bg-accent inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors outline-none disabled:opacity-50"
+        className="hover:bg-muted focus-visible:ring-ring/50 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-3 disabled:opacity-50"
         disabled={isPending}
       >
         <MoreVertical className="h-4 w-4" />

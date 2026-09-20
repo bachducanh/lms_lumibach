@@ -54,13 +54,13 @@ export function NotificationPrefsForm({ initialPrefs }: Props) {
     <div className="space-y-6">
       {/* In-app */}
       <div className="space-y-3">
-        <h2 className="text-base font-medium">Thông báo trong ứng dụng</h2>
-        <div className="border-border flex items-center justify-between rounded-lg border p-4">
-          <div>
+        <h2 className="text-lg font-bold sm:text-xl">Thông báo trong ứng dụng</h2>
+        <div className="border-border bg-card flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm">
+          <div className="min-w-0">
             <Label htmlFor="inApp" className="font-medium">
               Hiển thị thông báo
             </Label>
-            <p className="text-muted-foreground mt-0.5 text-xs">
+            <p className="text-muted-foreground mt-0.5 text-sm">
               Chuông thông báo trên thanh điều hướng
             </p>
           </div>
@@ -76,13 +76,13 @@ export function NotificationPrefsForm({ initialPrefs }: Props) {
 
       {/* Email global */}
       <div className="space-y-3">
-        <h2 className="text-base font-medium">Email thông báo</h2>
-        <div className="border-border flex items-center justify-between rounded-lg border p-4">
-          <div>
+        <h2 className="text-lg font-bold sm:text-xl">Email thông báo</h2>
+        <div className="border-border bg-card flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm">
+          <div className="min-w-0">
             <Label htmlFor="emailGlobal" className="font-medium">
               Nhận email thông báo
             </Label>
-            <p className="text-muted-foreground mt-0.5 text-xs">Bật/tắt tất cả email thông báo</p>
+            <p className="text-muted-foreground mt-0.5 text-sm">Bật/tắt tất cả email thông báo</p>
           </div>
           <Switch
             id="emailGlobal"
@@ -92,17 +92,17 @@ export function NotificationPrefsForm({ initialPrefs }: Props) {
         </div>
 
         {prefs.emailEnabled && (
-          <div className="space-y-2 pl-1">
+          <div className="space-y-2 sm:pl-2">
             {EMAIL_TOGGLES.map(({ key, label, desc }) => (
               <div
                 key={key}
-                className="border-border/60 bg-muted/20 flex items-center justify-between rounded-lg border px-4 py-3"
+                className="border-border bg-muted/40 flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
               >
-                <div>
+                <div className="min-w-0">
                   <Label htmlFor={key} className="text-sm font-medium">
                     {label}
                   </Label>
-                  <p className="text-muted-foreground text-xs">{desc}</p>
+                  <p className="text-muted-foreground text-sm">{desc}</p>
                 </div>
                 <Switch
                   id={key}

@@ -95,3 +95,6 @@ apps/web/external/scratch-gui/
 # Playwright
 apps/web/test-results/
 apps/web/playwright-report/
+
+# ảnh chụp màn hình do phiên Claude xuất ra, không thuộc mã nguồn
+Claude outputs/

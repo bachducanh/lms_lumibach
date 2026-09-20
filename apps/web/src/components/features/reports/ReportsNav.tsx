@@ -48,8 +48,8 @@ const TABS: Tab[] = [
 export function ReportsNav({ slug }: { slug: string }) {
   const pathname = usePathname();
   return (
-    <div className="border-border border-b">
-      <nav className="-mb-px flex flex-wrap gap-1">
+    <div className="-mx-3 sm:mx-0">
+      <nav className="flex gap-1 overflow-x-auto px-3 shadow-[inset_0_-1px_0_0_var(--border)] [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => {
           const href = `/courses/${slug}/reports/${t.segment}`;
           const isActive = pathname === href || pathname?.startsWith(`${href}/`);
@@ -59,7 +59,7 @@ export function ReportsNav({ slug }: { slug: string }) {
               key={t.segment}
               href={href}
               className={cn(
-                'group inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
+                'group inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors',
                 isActive
                   ? 'border-primary text-foreground'
                   : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'

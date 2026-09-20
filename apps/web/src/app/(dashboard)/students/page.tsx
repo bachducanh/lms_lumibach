@@ -7,7 +7,7 @@ import { ApiError, apiServerClient } from '@/lib/api-client';
 import { StudentListTable } from '@/components/features/students/StudentListTable';
 import { StudentFilterBar } from '@/components/features/students/StudentFilterBar';
 import { buttonVariants } from '@/components/ui/button';
-import { AlertTriangle, GraduationCap, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import type { UserRole } from '@lumibach/db';
 import type { StudentRow } from '@lumibach/types';
 
@@ -34,7 +34,7 @@ function StudentsLoadError({ message, retryHref }: { message: string; retryHref:
   return (
     <div
       role="alert"
-      className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border px-5 py-4"
+      className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border px-4 py-4 sm:px-5"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
@@ -110,19 +110,18 @@ export default async function StudentsPage({
   }
 
   return (
-    <div className="lb-stagger space-y-6">
+    <div className="lb-stagger mx-auto w-full max-w-7xl space-y-6">
       {/* Header */}
       <div
         className="flex flex-wrap items-start justify-between gap-3"
         style={{ ['--i' as string]: 0 }}
       >
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
-            <GraduationCap className="text-primary h-5 w-5" />
-          </div>
+        <div className="min-w-0">
           <div>
-            <h1 className="text-2xl font-bold">Quản lý học sinh</h1>
-            <p className="text-muted-foreground text-sm">
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+              Quản lý học sinh
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
               {studentsResult.ok ? `Tổng: ${total} học sinh` : 'Chưa tải được dữ liệu học sinh'}
             </p>
           </div>

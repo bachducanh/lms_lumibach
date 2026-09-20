@@ -44,21 +44,23 @@ export default async function CompetencyLevelsPage({
     : null;
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <Link
         href={`/courses/${slug}/competencies`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         Năng lực
       </Link>
 
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
           <GaugeCircle className="text-primary h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Cấp độ năng lực</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+            Cấp độ năng lực
+          </h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             Nhập cấp độ xuất phát/đích cho từng học sinh theo kỳ đánh giá — điểm năng lực, mức tăng
             trưởng và tiến độ học tập được tính tự động theo Chính sách đánh giá.

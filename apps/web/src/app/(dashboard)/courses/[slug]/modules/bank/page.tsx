@@ -25,16 +25,20 @@ export default async function ContentBankPage({ params }: { params: Promise<{ sl
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <Link
         href={`/courses/${slug}/modules`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         Chương của khoá học
       </Link>
 
-      <div className="flex items-center gap-2">
-        <Library className="text-primary h-5 w-5" />
-        <div>
-          <h1 className="text-2xl font-bold">Ngân hàng nội dung</h1>
+      <div className="flex items-start gap-3">
+        <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+          <Library className="text-primary h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+            Ngân hàng nội dung
+          </h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             Hoạt động được các khoá cùng nhánh danh mục chia sẻ. Chép về là có bản riêng — sửa sau
             này không ảnh hưởng lớp khác. Bản sao luôn ở dạng nháp.

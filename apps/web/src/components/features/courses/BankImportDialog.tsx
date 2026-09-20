@@ -139,7 +139,7 @@ export function BankImportDialog({
             <div className="space-y-5">
               {filtered.map((group) => (
                 <section key={group.courseId} className="space-y-1.5">
-                  <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  <h3 className="text-muted-foreground text-xs font-semibold">
                     {group.courseName}
                   </h3>
                   <ul className="divide-border border-border divide-y overflow-hidden rounded-lg border">

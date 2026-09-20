@@ -277,7 +277,7 @@ export function RubricBuilder({ ownerKind, ownerId, maxScore, initialRubric }: P
                     value={c.description}
                     onChange={(e) => updateCriterion(ci, 'description', e.target.value)}
                     placeholder="Mô tả tiêu chí (tuỳ chọn)..."
-                    className="border-input bg-background text-muted-foreground placeholder:text-muted-foreground/50 focus:ring-ring w-full rounded-md border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
+                    className="border-input bg-background text-muted-foreground placeholder:text-muted-foreground/50 focus:ring-ring w-full rounded-lg border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
                   />
 
                   {/* Levels grid */}

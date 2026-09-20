@@ -124,7 +124,7 @@ function QuestionRow({
       >
         <span
           className={cn(
-            'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+            'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',
             TYPE_BADGE[q.type]
           )}
         >
@@ -168,7 +168,7 @@ function QuestionRow({
                     key={p.id}
                     className="border-border bg-background flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs"
                   >
-                    <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
+                    <span className="bg-muted text-muted-foreground flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                       {i + 1}
                     </span>
                     <span className="font-medium">
@@ -202,7 +202,7 @@ function QuestionRow({
                           {oi + 1}
                         </span>
                       ) : opt.isCorrect ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-700 dark:text-green-400" />
                       ) : (
                         <Circle className="h-3.5 w-3.5 shrink-0 opacity-30" />
                       )}
@@ -284,14 +284,14 @@ function CategorySection({
   }
 
   return (
-    <div className="border-border overflow-hidden rounded-2xl border">
+    <div className="border-border overflow-hidden rounded-xl border">
       {/* Header */}
       <div className="bg-card hover:bg-accent/20 flex items-center gap-2 px-5 py-3.5 transition-colors">
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-400">
             <FolderOpen className="h-4 w-4" />
           </div>
           {editing ? (
@@ -332,7 +332,7 @@ function CategorySection({
                 <button
                   onClick={handleRename}
                   disabled={pending}
-                  className="hover:bg-accent rounded p-1 text-green-600"
+                  className="hover:bg-accent rounded p-1 text-green-700 dark:text-green-400"
                 >
                   <Check className="h-3.5 w-3.5" />
                 </button>
@@ -431,7 +431,7 @@ function NewCategoryForm({ courseId, onCreated }: { courseId: string; onCreated:
 
   return (
     <div className="border-primary/40 bg-accent/10 flex items-center gap-2 rounded-xl border px-4 py-3">
-      <FolderOpen className="h-4 w-4 shrink-0 text-blue-500" />
+      <FolderOpen className="h-4 w-4 shrink-0 text-blue-700 dark:text-blue-400" />
       <input
         autoFocus
         placeholder="Tên danh mục..."
@@ -500,7 +500,7 @@ export function QuestionBankList({
 
       {/* Uncategorized */}
       {uncategorized.length > 0 && (
-        <div className="border-border overflow-hidden rounded-2xl border border-dashed">
+        <div className="border-border overflow-hidden rounded-xl border border-dashed">
           <div className="bg-muted/10 px-5 py-3.5">
             <p className="text-muted-foreground text-sm font-medium">
               Chưa phân danh mục ({uncategorized.length} câu)
@@ -519,7 +519,7 @@ export function QuestionBankList({
 
       {/* Empty state */}
       {categories.length === 0 && uncategorized.length === 0 && (
-        <div className="border-border bg-muted/30 flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center">
+        <div className="border-border bg-muted/30 flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
           <HelpCircle className="text-muted-foreground/50 mb-3 h-10 w-10" />
           <p className="font-medium">Chưa có câu hỏi nào</p>
           <p className="text-muted-foreground mt-1 text-xs">

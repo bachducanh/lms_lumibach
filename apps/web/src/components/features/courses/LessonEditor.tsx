@@ -106,7 +106,7 @@ export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Pro
   return (
     <form onSubmit={handleSubmit}>
       {/* ── Sticky action bar ─────────────────────────────── */}
-      <div className="bg-muted/20 -mx-6 -mt-6 mb-8 flex h-14 items-center gap-3 border-b px-4">
+      <div className="border-border bg-card mb-6 flex min-h-14 flex-wrap items-center gap-2 rounded-xl border px-3 py-2 shadow-sm sm:gap-3 sm:px-4">
         <Link
           href={backHref}
           className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 text-sm transition-colors"
@@ -115,9 +115,9 @@ export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Pro
           Nội dung
         </Link>
 
-        <span className="bg-border mx-2 h-4 w-px" />
+        <span className="bg-border mx-1 hidden h-4 w-px sm:mx-2 sm:block" />
 
-        <p className="text-muted-foreground flex-1 truncate text-sm font-medium">
+        <p className="text-muted-foreground min-w-0 flex-1 basis-32 truncate text-sm font-medium">
           {title.trim() || (mode === 'create' ? 'Bài giảng mới' : 'Chưa có tiêu đề')}
         </p>
 
@@ -146,11 +146,11 @@ export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Pro
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Tiêu đề bài giảng..."
           required
-          className="placeholder:text-muted-foreground/30 focus:placeholder:text-muted-foreground/50 w-full bg-transparent text-3xl leading-tight font-bold tracking-tight outline-none"
+          className="placeholder:text-muted-foreground/50 focus:placeholder:text-muted-foreground/70 w-full bg-transparent text-2xl leading-tight font-bold tracking-tight outline-none sm:text-3xl"
         />
 
         {/* Duration — inline compact */}
-        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
           <Clock className="h-3.5 w-3.5 shrink-0" />
           <span>Thời gian ước tính:</span>
           <input
@@ -160,7 +160,7 @@ export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Pro
             value={estimatedMinutes}
             onChange={(e) => setEstimatedMinutes(e.target.value)}
             placeholder="—"
-            className="hover:border-border focus:border-primary focus:bg-muted/30 w-14 rounded border border-transparent bg-transparent text-center text-sm transition-colors outline-none"
+            className="border-border focus:border-primary focus:bg-muted/30 w-16 rounded-md border border-transparent bg-transparent py-1 text-center text-sm transition-colors outline-none"
           />
           <span>phút</span>
         </div>
@@ -175,7 +175,7 @@ export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Pro
 
       {/* ── Attachments (edit mode only) ──────────────────── */}
       {mode === 'edit' && lesson && (
-        <div className="border-border bg-card mt-8 rounded-xl border p-5">
+        <div className="border-border bg-card mt-8 rounded-xl border p-4 shadow-sm sm:p-5">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
             <Paperclip className="text-muted-foreground h-4 w-4" />
             File đính kèm
@@ -185,7 +185,7 @@ export function LessonEditor({ mode, owner, moduleId, lesson, attachments }: Pro
       )}
 
       {/* ── Bottom save (for extra-long pages) ───────────── */}
-      <div className="border-border mt-8 flex items-center justify-end gap-2 border-t pt-6">
+      <div className="border-border mt-8 flex flex-wrap items-center justify-end gap-2 border-t pt-6">
         <Button
           type="button"
           variant="outline"

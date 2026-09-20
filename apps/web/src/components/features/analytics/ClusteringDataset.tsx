@@ -90,7 +90,7 @@ export function ClusteringDataset({ courseSlug }: Props) {
         <button
           type="button"
           onClick={() => void load()}
-          className="border-input hover:bg-accent inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm"
+          className="border-input hover:bg-accent inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium"
         >
           <RefreshCw className="h-4 w-4" /> Thử lại
         </button>
@@ -113,32 +113,32 @@ export function ClusteringDataset({ courseSlug }: Props) {
           {data.studentCount} học sinh · {data.columns.length} cột · tạo lúc{' '}
           {new Date(data.generatedAt).toLocaleString('vi-VN')}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={exportCsv}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
           >
             <Download className="h-4 w-4" /> Xuất CSV
           </button>
           <button
             type="button"
             onClick={() => void exportXlsx()}
-            className="border-input bg-background hover:bg-accent inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors"
+            className="border-input bg-background hover:bg-accent inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors"
           >
             <Download className="h-4 w-4" /> Xuất XLSX
           </button>
         </div>
       </div>
 
-      <div className="border-border max-h-[70vh] overflow-auto rounded-xl border">
-        <table className="w-full border-collapse text-xs">
+      <div className="border-border max-h-[70vh] overflow-auto rounded-xl border shadow-sm">
+        <table className="w-full border-collapse text-sm">
           <thead className="bg-muted sticky top-0 z-10">
             <tr>
               {data.columns.map((c) => (
                 <th
                   key={c.key}
-                  className="border-border text-muted-foreground border-b px-2 py-2 text-left font-medium whitespace-nowrap"
+                  className="border-border text-muted-foreground border-b px-3 py-2.5 text-left text-xs font-semibold whitespace-nowrap"
                   title={c.group}
                 >
                   {c.label}
@@ -150,7 +150,7 @@ export function ClusteringDataset({ courseSlug }: Props) {
             {data.rows.map((row) => (
               <tr key={row.studentCode} className="hover:bg-muted/40">
                 {data.columns.map((c) => (
-                  <td key={c.key} className="px-2 py-1.5 whitespace-nowrap tabular-nums">
+                  <td key={c.key} className="px-3 py-2 whitespace-nowrap tabular-nums">
                     {fmtCell(row[c.key as keyof ClusteringStudentRow])}
                   </td>
                 ))}

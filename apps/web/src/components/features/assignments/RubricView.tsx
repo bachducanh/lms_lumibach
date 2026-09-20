@@ -28,13 +28,11 @@ export function RubricView({ rubric }: Props) {
               gridTemplateColumns: `200px repeat(${rubric.criteria[0].levels.length}, 1fr)`,
             }}
           >
-            <div className="text-muted-foreground px-4 py-2 text-xs font-semibold tracking-wide uppercase">
-              Tiêu chí
-            </div>
+            <div className="text-muted-foreground px-4 py-2 text-xs font-semibold">Tiêu chí</div>
             {rubric.criteria[0].levels.map((l, i) => (
               <div
                 key={i}
-                className="text-muted-foreground px-3 py-2 text-center text-xs font-semibold tracking-wide uppercase"
+                className="text-muted-foreground px-3 py-2 text-center text-xs font-semibold"
               >
                 {l.label}
                 <span className="block font-normal normal-case">{l.points} đ</span>

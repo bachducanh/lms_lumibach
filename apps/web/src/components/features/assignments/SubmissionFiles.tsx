@@ -41,16 +41,20 @@ function previewKind(mime: string): 'image' | 'audio' | 'pdf' | null {
 
 function FileTypeIcon({ mime }: { mime: string }) {
   const m = (mime || '').toLowerCase();
-  if (m.startsWith('image/')) return <FileImage className="h-4 w-4 text-blue-500" />;
-  if (m.startsWith('audio/')) return <FileAudio className="h-4 w-4 text-purple-500" />;
-  if (m.startsWith('video/')) return <FileVideo className="h-4 w-4 text-pink-500" />;
-  if (m === 'application/pdf') return <FileText className="h-4 w-4 text-red-500" />;
+  if (m.startsWith('image/'))
+    return <FileImage className="h-4 w-4 text-blue-700 dark:text-blue-400" />;
+  if (m.startsWith('audio/'))
+    return <FileAudio className="h-4 w-4 text-purple-700 dark:text-purple-400" />;
+  if (m.startsWith('video/'))
+    return <FileVideo className="h-4 w-4 text-pink-700 dark:text-pink-400" />;
+  if (m === 'application/pdf')
+    return <FileText className="h-4 w-4 text-red-700 dark:text-red-400" />;
   if (m.includes('zip') || m.includes('rar') || m.includes('compressed') || m.includes('7z'))
-    return <FileArchive className="h-4 w-4 text-yellow-500" />;
+    return <FileArchive className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />;
   if (m.includes('sheet') || m.includes('excel') || m === 'text/csv')
-    return <FileSpreadsheet className="h-4 w-4 text-emerald-500" />;
+    return <FileSpreadsheet className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />;
   if (m.includes('word') || m.includes('document') || m === 'text/plain')
-    return <FileText className="h-4 w-4 text-sky-500" />;
+    return <FileText className="h-4 w-4 text-sky-700 dark:text-sky-400" />;
   return <FileIcon className="text-muted-foreground h-4 w-4" />;
 }
 

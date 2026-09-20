@@ -157,14 +157,14 @@ export function ApprovalCalendar({ rooms }: { rooms: RoomListItem[] }) {
             <WeeklyReportButton roomId={roomId} roomName={phongDangChon.name} from={from} to={to} />
           )}
 
-          <div className="border-border hidden overflow-hidden rounded-lg border md:flex">
+          <div className="border-border hidden overflow-hidden rounded-full border md:flex">
             {(['week', 'day'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => setViewMode(mode)}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium transition-colors',
+                  'h-8 px-4 text-xs font-medium transition-colors',
                   viewMode === mode
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-muted text-muted-foreground'
@@ -178,7 +178,7 @@ export function ApprovalCalendar({ rooms }: { rooms: RoomListItem[] }) {
       </div>
 
       {soDonChoDuyet > 0 && (
-        <p className="flex items-center gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+        <p className="flex items-center gap-2 rounded-lg border border-amber-600/25 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
           <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
           {soDonChoDuyet} đơn trong tuần này đang chờ duyệt — bấm vào khối màu hổ phách để xử lý.
         </p>

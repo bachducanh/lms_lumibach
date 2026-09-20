@@ -250,9 +250,9 @@ export function PracticeTestRunner({ practiceTest, courseSlug, preview = false }
     <>
       {confirmDialog}
       <div className="space-y-4">
-        <div className="border-border bg-card sticky top-0 z-20 flex flex-col gap-3 rounded-lg border px-4 py-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="border-border bg-card sticky top-0 z-20 flex flex-col gap-3 rounded-xl border px-4 py-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">
               {preview ? <Eye className="h-5 w-5" /> : <FileQuestion className="h-5 w-5" />}
             </div>
             <div className="min-w-0">
@@ -266,7 +266,7 @@ export function PracticeTestRunner({ practiceTest, courseSlug, preview = false }
             {timerDisplay && (
               <span
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-mono text-sm font-semibold',
+                  'flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-sm font-semibold',
                   timeLeft !== null && timeLeft < 60
                     ? 'border-destructive/40 bg-destructive/10 text-destructive'
                     : 'border-border bg-background'
@@ -302,8 +302,8 @@ export function PracticeTestRunner({ practiceTest, courseSlug, preview = false }
         </div>
 
         {result && (
-          <div className="border-primary/30 bg-primary/5 rounded-lg border px-5 py-4">
-            <p className="text-muted-foreground text-xs font-semibold uppercase">Kết quả xem thử</p>
+          <div className="border-primary/30 bg-primary/5 rounded-xl border px-5 py-4">
+            <p className="text-muted-foreground text-sm font-semibold">Kết quả xem thử</p>
             <p className="mt-1 text-3xl font-bold">
               {result.score}
               <span className="text-muted-foreground text-lg">/{result.maxScore}</span>
@@ -319,8 +319,8 @@ export function PracticeTestRunner({ practiceTest, courseSlug, preview = false }
               : 'xl:grid-cols-[minmax(0,1fr)_64px]'
           )}
         >
-          <section className="border-border bg-card overflow-hidden rounded-lg border">
-            <div className="border-b px-4 py-3">
+          <section className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+            <div className="border-border border-b px-4 py-3">
               <p className="text-sm font-semibold">Đề bài PDF</p>
             </div>
             <iframe
@@ -330,10 +330,10 @@ export function PracticeTestRunner({ practiceTest, courseSlug, preview = false }
             />
           </section>
 
-          <section className="border-border bg-card rounded-lg border">
+          <section className="border-border bg-card rounded-xl border shadow-sm">
             {answerPanelOpen ? (
               <>
-                <div className="border-b px-4 py-3">
+                <div className="border-border border-b px-4 py-3">
                   <p className="text-sm font-semibold">Phiếu trả lời</p>
                   <p className="text-muted-foreground text-xs">
                     Chọn đáp án theo số câu trong file PDF.
@@ -394,7 +394,7 @@ export function PracticeTestRunner({ practiceTest, courseSlug, preview = false }
 function ResultIcon({ answer }: { answer?: PracticeAttemptAnswer }) {
   if (!answer) return null;
   return answer.isCorrect ? (
-    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+    <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
   ) : (
     <XCircle className="text-destructive h-4 w-4" />
   );
@@ -446,11 +446,11 @@ function McqSheet({
                     disabled={disabled || !visible}
                     onClick={() => onSelect(question.id, letter)}
                     className={cn(
-                      'mx-auto flex h-6 w-6 items-center justify-center rounded-full border',
+                      'mx-auto flex h-8 w-8 items-center justify-center rounded-full border',
                       !visible && 'opacity-0',
                       selected[question.id] === letter
                         ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-muted-foreground/40 bg-background'
+                        : 'border-muted-foreground/50 bg-background'
                     )}
                     aria-label={`Câu ${qIndex + 1} đáp án ${letter}`}
                   />
@@ -508,10 +508,10 @@ function TfSheet({
                         disabled={disabled}
                         onClick={() => onSelect(question.id, index, choice)}
                         className={cn(
-                          'mx-auto flex h-6 w-6 items-center justify-center rounded-full border',
+                          'mx-auto flex h-8 w-8 items-center justify-center rounded-full border',
                           value === choice
                             ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-muted-foreground/40 bg-background'
+                            : 'border-muted-foreground/50 bg-background'
                         )}
                         aria-label={`Câu ${qIndex + 1}${label} ${choice ? 'đúng' : 'sai'}`}
                       />
@@ -558,7 +558,7 @@ function ShortSheet({
                 value={texts[question.id] ?? ''}
                 onChange={(e) => onChange(question.id, e.target.value)}
                 disabled={disabled}
-                className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none disabled:opacity-70"
+                className="border-input bg-background focus:ring-ring w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none disabled:opacity-70"
                 placeholder="Nhập đáp án ngắn..."
               />
             </label>
@@ -570,7 +570,5 @@ function ShortSheet({
 }
 
 function SectionTitle({ title }: { title: string }) {
-  return (
-    <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">{title}</h3>
-  );
+  return <h3 className="text-muted-foreground text-xs font-bold">{title}</h3>;
 }

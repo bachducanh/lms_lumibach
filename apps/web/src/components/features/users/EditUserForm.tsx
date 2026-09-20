@@ -72,7 +72,10 @@ export function EditUserForm({ user }: { user: UserData }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="border-border bg-card space-y-4 rounded-xl border p-5 shadow-sm sm:p-6"
+      >
         <FormField
           control={form.control}
           name="fullName"
@@ -150,7 +153,7 @@ export function EditUserForm({ user }: { user: UserData }) {
             </FormItem>
           )}
         />
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2">
           <Button type="submit" disabled={pending}>
             {pending ? 'Đang lưu...' : 'Lưu thay đổi'}
           </Button>

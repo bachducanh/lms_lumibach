@@ -117,7 +117,7 @@ export function EquipmentBookingFormDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Đăng ký mượn thiết bị</DialogTitle>
           <DialogDescription>{room.name}</DialogDescription>

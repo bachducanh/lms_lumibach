@@ -58,7 +58,7 @@ export default async function ManageQuizPage({
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex min-w-0 items-center gap-2">
-          <Brain className="h-4 w-4 shrink-0 text-violet-500" />
+          <Brain className="h-4 w-4 shrink-0 text-violet-700 dark:text-violet-400" />
           <Link
             href={`/courses/${slug}/quizzes/${quizId}`}
             className="text-muted-foreground hover:text-foreground truncate text-sm transition-colors"

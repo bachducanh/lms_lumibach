@@ -53,8 +53,8 @@ export function ExerciseEditor({ courseId, courseSlug, moduleId }: Props) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Header */}
       <div className="mb-2 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-          <Code2 className="h-5 w-5 text-violet-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
+          <Code2 className="h-5 w-5 text-violet-700 dark:text-violet-400" />
         </div>
         <div>
           <h2 className="text-xl font-bold">Tạo bài tập code</h2>
@@ -73,23 +73,23 @@ export function ExerciseEditor({ courseId, courseSlug, moduleId }: Props) {
           placeholder="VD: Bài 1 – Tính tổng hai số nguyên"
           required
           autoFocus
-          className="border-input bg-background focus:ring-ring w-full rounded-xl border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+          className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
         />
       </div>
 
       {/* Language */}
       <div className="space-y-1.5">
         <label className="text-sm font-semibold">Ngôn ngữ lập trình</label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {LANGUAGES.map((l) => (
             <button
               key={l.key}
               type="button"
               onClick={() => setLanguage(l.key)}
-              className={`flex flex-col items-center gap-2 rounded-xl border p-4 text-sm font-medium transition-all duration-150 ${
+              className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all duration-150 sm:p-4 ${
                 language === l.key
-                  ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                  : 'border-border bg-card hover:bg-muted/50 text-muted-foreground hover:border-violet-500/40'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card hover:bg-muted/50 text-muted-foreground hover:border-primary/40'
               }`}
             >
               <Image

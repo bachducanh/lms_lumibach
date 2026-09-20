@@ -30,10 +30,13 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  ACTIVE: 'bg-green-500/10 text-green-700 dark:text-green-400',
-  INACTIVE: 'bg-muted text-muted-foreground',
-  SUSPENDED: 'bg-red-500/10 text-destructive',
-  PENDING: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  ACTIVE:
+    'border border-emerald-600/25 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400',
+  INACTIVE: 'border border-border bg-muted text-muted-foreground',
+  SUSPENDED:
+    'border border-red-600/25 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400',
+  PENDING:
+    'border border-amber-600/25 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400',
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ userId: string }> }) {
@@ -79,7 +82,7 @@ export default async function StudentDetailPage({
   const initials = displayName.split(' ').pop()?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       {/* Back */}
       <Link
         href="/students"
@@ -90,17 +93,16 @@ export default async function StudentDetailPage({
       </Link>
 
       {/* Student info card */}
-      <div className="border-border bg-card space-y-4 rounded-xl border p-6">
+      <div className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-6">
         <div className="flex items-start gap-4">
-          <div
-            className="bg-primary/10 text-primary flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl font-bold"
-            style={{ boxShadow: '0 0 0 2px rgb(var(--primary) / 20%)' }}
-          >
+          <div className="bg-primary/10 text-primary ring-primary/20 flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl font-bold ring-2">
             {initials}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold">{displayName}</h1>
+              <h1 className="font-heading text-xl font-bold tracking-tight break-words sm:text-2xl">
+                {displayName}
+              </h1>
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[student.status] ?? 'bg-muted text-muted-foreground'}`}
               >
@@ -125,7 +127,7 @@ export default async function StudentDetailPage({
         <div className="border-border grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-2">
           <div className="flex items-center gap-2 text-sm">
             <Mail className="text-muted-foreground h-4 w-4 shrink-0" />
-            <span className="truncate">{student.email}</span>
+            <span className="min-w-0 break-all">{student.email}</span>
           </div>
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 shrink-0" />
@@ -168,16 +170,16 @@ export default async function StudentDetailPage({
 
       {/* Activity log */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ScrollText className="text-muted-foreground h-4 w-4" />
-            <h2 className="font-semibold">Hoạt động gần đây</h2>
+            <h2 className="text-lg font-bold sm:text-xl">Hoạt động gần đây</h2>
           </div>
           {(recentLogs?.total ?? 0) > 0 && (
-            <span className="text-muted-foreground text-xs">{recentLogs!.total} bản ghi</span>
+            <span className="text-muted-foreground text-sm">{recentLogs!.total} bản ghi</span>
           )}
         </div>
-        <div className="border-border bg-card overflow-hidden rounded-xl border">
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <ActivityLogTable rows={recentLogs?.rows ?? []} showUser={false} showCourse />
         </div>
       </div>

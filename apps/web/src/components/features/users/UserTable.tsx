@@ -106,7 +106,7 @@ export function UserTable({ users }: { users: User[] }) {
 
   if (localUsers.length === 0) {
     return (
-      <div className="ring-foreground/10 text-muted-foreground rounded-xl py-16 text-center ring-1">
+      <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed py-16 text-center">
         Không có người dùng nào.
       </div>
     );
@@ -115,8 +115,8 @@ export function UserTable({ users }: { users: User[] }) {
   return (
     <>
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card ring-foreground/10 w-80 space-y-4 rounded-xl p-6 shadow-xl ring-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border-border max-h-[90dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border p-6 shadow-xl">
             <p className="font-medium">Xóa người dùng này?</p>
             <p className="text-muted-foreground text-sm">
               Tài khoản sẽ bị xoá vĩnh viễn khỏi cơ sở dữ liệu.
@@ -148,8 +148,8 @@ export function UserTable({ users }: { users: User[] }) {
       )}
 
       {newPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card ring-foreground/10 w-80 space-y-4 rounded-xl p-6 shadow-xl ring-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border-border max-h-[90dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border p-6 shadow-xl">
             <p className="font-medium">
               Mật khẩu mới của <strong>{newPassword.name}</strong>
             </p>
@@ -164,30 +164,32 @@ export function UserTable({ users }: { users: User[] }) {
         </div>
       )}
 
-      <div className="ring-foreground/10 overflow-x-auto rounded-xl ring-1">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
+        <table className="w-full min-w-[860px] text-sm">
+          <thead className="bg-muted/50 text-muted-foreground text-xs">
             <tr>
-              <th className="px-4 py-3 text-left font-medium">Họ tên</th>
-              <th className="px-4 py-3 text-left font-medium">Email</th>
-              <th className="px-4 py-3 text-left font-medium">Vai trò</th>
-              <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
-              <th className="px-4 py-3 text-left font-medium">Ngày tạo</th>
-              <th className="px-4 py-3 text-right font-medium">Thao tác</th>
+              <th className="px-4 py-3 text-left font-semibold">Họ tên</th>
+              <th className="px-4 py-3 text-left font-semibold">Email</th>
+              <th className="px-4 py-3 text-left font-semibold">Vai trò</th>
+              <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
+              <th className="px-4 py-3 text-left font-semibold">Ngày tạo</th>
+              <th className="px-4 py-3 text-right font-semibold">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-border divide-y">
             {localUsers.map((user) => {
               const displayName = user.fullName ?? `${user.firstName} ${user.lastName}`;
               return (
-                <tr key={user.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">
+                <tr key={user.id} className="hover:bg-muted/40 transition-colors">
+                  <td className="min-w-40 px-4 py-3">
                     <p className="font-medium">{displayName}</p>
                     {user.username && (
                       <p className="text-muted-foreground text-xs">@{user.username}</p>
                     )}
                   </td>
-                  <td className="text-muted-foreground px-4 py-3">{user.email}</td>
+                  <td className="text-muted-foreground px-4 py-3 whitespace-nowrap">
+                    {user.email}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>
                   </td>
@@ -196,11 +198,11 @@ export function UserTable({ users }: { users: User[] }) {
                       {STATUS_LABELS[user.status]}
                     </Badge>
                   </td>
-                  <td className="text-muted-foreground px-4 py-3">
+                  <td className="text-muted-foreground px-4 py-3 whitespace-nowrap">
                     {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-1 whitespace-nowrap">
                       {/* Chỉ hiện với tài khoản đang chờ — lối thoát khi email
                           xác thực không tới nơi (hộp thư rác, Gmail chặn,
                           máy chủ mất đường ra Internet). */}
@@ -208,7 +210,7 @@ export function UserTable({ users }: { users: User[] }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-emerald-600 hover:text-emerald-600"
+                          className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
                           disabled={pending}
                           onClick={() => handleVerify(user.id, displayName)}
                         >
@@ -283,7 +285,7 @@ function ResetPasswordDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <form
         onSubmit={submitManual}
-        className="bg-card ring-foreground/10 w-full max-w-sm space-y-4 rounded-xl p-6 shadow-xl ring-1"
+        className="bg-card border-border max-h-[90dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl border p-6 shadow-xl"
       >
         <div>
           <p className="font-medium">Đổi mật khẩu</p>
@@ -305,7 +307,7 @@ function ResetPasswordDialog({
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Tối thiểu 8 ký tự"
               autoComplete="new-password"
-              className="border-input bg-background focus:ring-ring h-9 w-full rounded-md border px-3 font-mono text-sm focus:ring-1 focus:outline-none"
+              className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full min-w-0 rounded-lg border px-3 font-mono text-sm outline-none focus-visible:ring-[3px]"
             />
             <Button
               type="button"

@@ -1,43 +1,55 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { THEME_STORAGE_KEY } from '@/lib/theme';
 
 type Theme = 'light' | 'dark';
 
 const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (t: Theme) => void;
-}>({ theme: 'dark', setTheme: () => {} });
+}>({ theme: 'light', setTheme: () => {} });
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'dark',
+  defaultTheme = 'light',
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
 }) {
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const [ready, setReady] = useState(false);
 
-  // Đọc localStorage sau khi mount (tránh hydration mismatch)
+  // Đọc localStorage sau khi mount (tránh hydration mismatch). Script trong
+  // <head> (layout.tsx) đã gắn sẵn class `dark` trước khi vẽ nên không bị nháy.
   useEffect(() => {
-    const saved = localStorage.getItem('theme') as Theme | null;
-    if (saved === 'dark' || saved === 'light') {
-      setThemeState(saved);
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'dark' || saved === 'light') setThemeState(saved);
+    } catch {
+      // localStorage bị chặn — dùng theme mặc định.
+    }
+    setReady(true);
+  }, []);
+
+  // Apply class lên <html>. Chờ `ready` để không gỡ class `dark` do script <head> đặt
+  // trước khi kịp đọc lựa chọn đã lưu.
+  useEffect(() => {
+    if (!ready) return;
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme, ready]);
+
+  // Chỉ ghi localStorage khi người dùng chủ động đổi theme.
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, t);
+    } catch {
+      // bỏ qua
     }
   }, []);
 
-  // Apply class lên <html>
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme: setThemeState }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

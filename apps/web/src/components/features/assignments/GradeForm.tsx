@@ -53,7 +53,7 @@ export function GradeForm({ submissionId, maxScore, currentScore, currentFeedbac
           step={0.5}
           value={score}
           onChange={(e) => setScore(e.target.value)}
-          className="border-input bg-background focus:ring-ring w-24 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-24 rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
         />
         <span className="text-muted-foreground text-sm">/ {maxScore}</span>
       </div>

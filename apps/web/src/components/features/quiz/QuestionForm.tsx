@@ -512,9 +512,7 @@ export function QuestionForm({
     <div className="max-w-3xl space-y-6">
       {/* Type selector */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Loại câu hỏi
-        </label>
+        <label className="text-muted-foreground text-xs font-medium">Loại câu hỏi</label>
         <QuestionTypeSelect
           value={type}
           onChange={(t) => handleTypeChange(t as QType)}
@@ -529,7 +527,7 @@ export function QuestionForm({
 
       {/* Content */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <label className="text-muted-foreground text-xs font-medium">
           {isTFMulti ? 'Nội dung / Ngữ cảnh câu hỏi' : 'Nội dung câu hỏi'}
         </label>
         <RichTextEditor
@@ -545,7 +543,7 @@ export function QuestionForm({
       {/* MCQ options */}
       {isMCQ && (
         <div className="space-y-2">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          <label className="text-muted-foreground text-xs font-medium">
             Đáp án {type === 'MULTIPLE_CHOICE_SINGLE' ? '(chọn 1 đúng)' : '(chọn nhiều đúng)'}
           </label>
           <div className="space-y-2">
@@ -556,7 +554,7 @@ export function QuestionForm({
                   className={cn(
                     'shrink-0 transition-colors',
                     o.isCorrect
-                      ? 'text-green-500'
+                      ? 'text-green-700 dark:text-green-400'
                       : 'text-muted-foreground/40 hover:text-muted-foreground'
                   )}
                   title={o.isCorrect ? 'Đáp án đúng' : 'Đánh dấu đúng'}
@@ -571,12 +569,12 @@ export function QuestionForm({
                   value={o.content}
                   onChange={(e) => updateOption(i, e.target.value)}
                   placeholder={`Đáp án ${String.fromCharCode(65 + i)}...`}
-                  className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring min-h-10 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                 />
                 {options.length > 2 && (
                   <button
                     onClick={() => removeOption(i)}
-                    className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                    className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -598,9 +596,7 @@ export function QuestionForm({
       {/* TRUE_FALSE */}
       {isTF && (
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Đáp án đúng
-          </label>
+          <label className="text-muted-foreground text-xs font-medium">Đáp án đúng</label>
           <div className="flex gap-3">
             {options.map((o, i) => (
               <button
@@ -631,7 +627,7 @@ export function QuestionForm({
       {isTFMulti && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground text-xs font-medium">
               Các phát biểu (đánh dấu phát biểu nào là Đúng)
             </label>
             <span className="text-muted-foreground text-xs">{options.length} phát biểu</span>
@@ -662,7 +658,7 @@ export function QuestionForm({
                       'rounded border px-2 py-0.5 text-xs font-medium transition-colors',
                       o.isCorrect
                         ? 'border-green-500 bg-green-500/15 text-green-700 dark:text-green-400'
-                        : 'border-border text-muted-foreground hover:border-green-400 hover:text-green-600'
+                        : 'border-border text-muted-foreground hover:border-green-400 hover:text-green-700'
                     )}
                   >
                     Đúng
@@ -685,7 +681,7 @@ export function QuestionForm({
                   {options.length > 2 && (
                     <button
                       onClick={() => removeOption(i)}
-                      className="text-muted-foreground/40 hover:text-destructive ml-1"
+                      className="text-muted-foreground hover:text-destructive ml-1 rounded-md p-1.5"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -721,7 +717,7 @@ export function QuestionForm({
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <label className="text-muted-foreground text-xs font-medium">
                 Nhập toàn bộ code đúng
               </label>
               <SimpleSelect
@@ -750,7 +746,7 @@ export function QuestionForm({
           </div>
           {options.length > 0 && (
             <div className="space-y-2">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <label className="text-muted-foreground text-xs font-medium">
                 Thứ tự đúng ({options.length} dòng)
               </label>
               <div className="space-y-1.5">
@@ -762,25 +758,25 @@ export function QuestionForm({
                     <input
                       value={o.content}
                       onChange={(e) => updateOption(i, e.target.value)}
-                      className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring flex-1 rounded-lg border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
                     />
                     <button
                       onClick={() => moveOption(i, -1)}
                       disabled={i === 0}
-                      className="text-muted-foreground/40 hover:text-foreground p-1 transition-colors disabled:opacity-20"
+                      className="text-muted-foreground hover:text-foreground rounded-md p-1.5 transition-colors disabled:opacity-20"
                     >
                       <ArrowUp className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => moveOption(i, 1)}
                       disabled={i === options.length - 1}
-                      className="text-muted-foreground/40 hover:text-foreground p-1 transition-colors disabled:opacity-20"
+                      className="text-muted-foreground hover:text-foreground rounded-md p-1.5 transition-colors disabled:opacity-20"
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => removeOption(i)}
-                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                      className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -808,7 +804,7 @@ export function QuestionForm({
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <label className="text-muted-foreground text-xs font-medium">
                 Template code (dùng ___ cho chỗ trống)
               </label>
               <SimpleSelect
@@ -833,9 +829,7 @@ export function QuestionForm({
           </div>
           {options.length > 0 && (
             <div className="space-y-2">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Đáp án từng ô
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">Đáp án từng ô</label>
               <div className="space-y-2">
                 {options.map((o, i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -846,7 +840,7 @@ export function QuestionForm({
                       value={o.content}
                       onChange={(e) => updateOption(i, e.target.value)}
                       placeholder={`Đáp án ô ${i + 1}...`}
-                      className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring flex-1 rounded-lg border px-3 py-1.5 font-mono text-sm focus:ring-1 focus:outline-none"
                     />
                   </div>
                 ))}
@@ -867,7 +861,7 @@ export function QuestionForm({
             làm bài, các mục sẽ bị xáo trộn và học sinh kéo thả để sắp xếp lại.
           </div>
           <div className="space-y-2">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground text-xs font-medium">
               Các mục (nhập theo đúng thứ tự) · {options.length} mục
             </label>
             <div className="space-y-1.5">
@@ -880,26 +874,26 @@ export function QuestionForm({
                     value={o.content}
                     onChange={(e) => updateOption(i, e.target.value)}
                     placeholder={`Mục thứ ${i + 1}...`}
-                    className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                    className="border-input bg-background focus:ring-ring min-h-10 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                   />
                   <button
                     onClick={() => moveOption(i, -1)}
                     disabled={i === 0}
-                    className="text-muted-foreground/40 hover:text-foreground p-1 transition-colors disabled:opacity-20"
+                    className="text-muted-foreground hover:text-foreground rounded-md p-1.5 transition-colors disabled:opacity-20"
                   >
                     <ArrowUp className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => moveOption(i, 1)}
                     disabled={i === options.length - 1}
-                    className="text-muted-foreground/40 hover:text-foreground p-1 transition-colors disabled:opacity-20"
+                    className="text-muted-foreground hover:text-foreground rounded-md p-1.5 transition-colors disabled:opacity-20"
                   >
                     <ArrowDown className="h-3.5 w-3.5" />
                   </button>
                   {options.length > 2 && (
                     <button
                       onClick={() => removeOption(i)}
-                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                      className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -925,7 +919,7 @@ export function QuestionForm({
             các vế phải sẽ bị xáo trộn và học sinh kéo thả để ghép cho đúng.
           </div>
           <div className="space-y-2">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground text-xs font-medium">
               Các cặp ghép nối · {options.length} cặp
             </label>
             <div className="space-y-2">
@@ -940,19 +934,19 @@ export function QuestionForm({
                       value={p.left}
                       onChange={(e) => updatePair(i, 'left', e.target.value)}
                       placeholder={`Vế trái ${i + 1}...`}
-                      className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring min-h-10 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     />
                     <ArrowRight className="text-muted-foreground/60 h-4 w-4 shrink-0" />
                     <input
                       value={p.right}
                       onChange={(e) => updatePair(i, 'right', e.target.value)}
                       placeholder={`Vế phải ${i + 1}...`}
-                      className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring min-h-10 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                     />
                     {options.length > 2 && (
                       <button
                         onClick={() => removeOption(i)}
-                        className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                        className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -982,7 +976,7 @@ export function QuestionForm({
             như nhau.
           </div>
           <div className="space-y-2">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground text-xs font-medium">
               Đáp án được chấp nhận · {options.length} cách viết
             </label>
             <div className="space-y-2">
@@ -997,12 +991,12 @@ export function QuestionForm({
                     placeholder={
                       i === 0 ? 'Đáp án chính...' : 'Cách viết khác cũng tính là đúng...'
                     }
-                    className="border-input bg-background focus:ring-ring flex-1 rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                    className="border-input bg-background focus:ring-ring min-h-10 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                   />
                   {options.length > 1 && (
                     <button
                       onClick={() => removeOption(i)}
-                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                      className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -1028,7 +1022,7 @@ export function QuestionForm({
             qua test cases.
           </div>
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground text-xs font-medium">
               Code có lỗi (hiện cho học sinh)
             </label>
             <div className="overflow-hidden rounded-xl border border-orange-500/40">
@@ -1042,7 +1036,7 @@ export function QuestionForm({
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <label className="text-muted-foreground text-xs font-medium">
                 Code đúng (để sinh expected output)
               </label>
               <button
@@ -1071,7 +1065,7 @@ export function QuestionForm({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <label className="text-muted-foreground text-xs font-medium">
                 Giới hạn thời gian (giây)
               </label>
               <input
@@ -1081,11 +1075,11 @@ export function QuestionForm({
                 step={1}
                 value={timeLimit}
                 onChange={(e) => setTimeLimit(e.target.value)}
-                className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              <label className="text-muted-foreground text-xs font-medium">
                 Giới hạn bộ nhớ (MB)
               </label>
               <input
@@ -1095,15 +1089,13 @@ export function QuestionForm({
                 step={32}
                 value={memoryLimit}
                 onChange={(e) => setMemoryLimit(e.target.value)}
-                className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
               />
             </div>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Test cases
-              </label>
+              <label className="text-muted-foreground text-xs font-medium">Test cases</label>
               <span className="text-muted-foreground text-xs">{testCases.length} test case</span>
             </div>
             {testCases.map((tc, i) => (
@@ -1131,14 +1123,14 @@ export function QuestionForm({
                   <span className="text-muted-foreground text-xs">điểm</span>
                   <button
                     onClick={() => removeTC(i)}
-                    className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                    className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-muted-foreground text-[10px] font-medium uppercase">
+                    <label className="text-muted-foreground text-xs font-medium">
                       Input (stdin)
                     </label>
                     <textarea
@@ -1146,19 +1138,19 @@ export function QuestionForm({
                       onChange={(e) => updateTC(i, 'input', e.target.value)}
                       placeholder="Dữ liệu đầu vào..."
                       rows={3}
-                      className="border-input bg-background focus:ring-ring w-full resize-y rounded-md border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring w-full resize-y rounded-lg border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-muted-foreground text-[10px] font-medium uppercase">
+                      <label className="text-muted-foreground text-xs font-medium">
                         Expected output
                       </label>
                       <button
                         type="button"
                         onClick={() => void generateExpectedOutput(i)}
                         disabled={tcGenerating[i]}
-                        className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50"
+                        className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium transition-colors disabled:opacity-50"
                       >
                         {tcGenerating[i] ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -1173,7 +1165,7 @@ export function QuestionForm({
                       onChange={(e) => updateTC(i, 'expectedOutput', e.target.value)}
                       placeholder="Kết quả mong đợi..."
                       rows={3}
-                      className="border-input bg-background focus:ring-ring w-full resize-y rounded-md border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
+                      className="border-input bg-background focus:ring-ring w-full resize-y rounded-lg border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1194,7 +1186,7 @@ export function QuestionForm({
         <div className="space-y-5">
           {/* Starter code */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <label className="text-muted-foreground text-xs font-medium">
               Code khởi đầu (hiện cho học sinh)
             </label>
             {codeEditorLang === 'WEB' ? (
@@ -1215,13 +1207,13 @@ export function QuestionForm({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
-                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                <label className="text-muted-foreground text-xs font-medium">
                   {type === 'CODE_PYTHON' || type === 'CODE_CPP'
                     ? 'Đáp án (code mẫu — dùng để sinh expected output)'
                     : 'Code mẫu (chỉ giáo viên xem)'}
                 </label>
                 {(type === 'CODE_PYTHON' || type === 'CODE_CPP') && (
-                  <p className="text-muted-foreground mt-0.5 text-[11px]">
+                  <p className="text-muted-foreground mt-0.5 text-xs">
                     Viết code đúng ở đây, rồi ấn ⚡ Sinh ở từng test case để tự sinh expected
                     output.
                   </p>
@@ -1266,7 +1258,7 @@ export function QuestionForm({
           {type !== 'CODE_WEB' && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                <label className="text-muted-foreground text-xs font-medium">
                   Giới hạn thời gian (giây)
                 </label>
                 <input
@@ -1276,11 +1268,11 @@ export function QuestionForm({
                   step={1}
                   value={timeLimit}
                   onChange={(e) => setTimeLimit(e.target.value)}
-                  className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                <label className="text-muted-foreground text-xs font-medium">
                   Giới hạn bộ nhớ (MB)
                 </label>
                 <input
@@ -1290,7 +1282,7 @@ export function QuestionForm({
                   step={32}
                   value={memoryLimit}
                   onChange={(e) => setMemoryLimit(e.target.value)}
-                  className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                  className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                 />
               </div>
             </div>
@@ -1300,7 +1292,7 @@ export function QuestionForm({
           {type !== 'CODE_WEB' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                <label className="text-muted-foreground text-xs font-medium">
                   Test cases (tự chấm điểm)
                 </label>
                 <span className="text-muted-foreground text-xs">{testCases.length} test case</span>
@@ -1333,14 +1325,14 @@ export function QuestionForm({
                     <span className="text-muted-foreground text-xs">điểm</span>
                     <button
                       onClick={() => removeTC(i)}
-                      className="text-muted-foreground/40 hover:text-destructive transition-colors"
+                      className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label className="text-muted-foreground text-[10px] font-medium uppercase">
+                      <label className="text-muted-foreground text-xs font-medium">
                         Input (stdin)
                       </label>
                       <textarea
@@ -1348,19 +1340,19 @@ export function QuestionForm({
                         onChange={(e) => updateTC(i, 'input', e.target.value)}
                         placeholder="Dữ liệu đầu vào..."
                         rows={3}
-                        className="border-input bg-background focus:ring-ring w-full resize-y rounded-md border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
+                        className="border-input bg-background focus:ring-ring w-full resize-y rounded-lg border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
                       />
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <label className="text-muted-foreground text-[10px] font-medium uppercase">
+                        <label className="text-muted-foreground text-xs font-medium">
                           Expected output
                         </label>
                         <button
                           type="button"
                           onClick={() => void generateExpectedOutput(i)}
                           disabled={tcGenerating[i]}
-                          className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50"
+                          className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium transition-colors disabled:opacity-50"
                           title="Chạy code đáp án với input này để sinh expected output"
                         >
                           {tcGenerating[i] ? (
@@ -1376,7 +1368,7 @@ export function QuestionForm({
                         onChange={(e) => updateTC(i, 'expectedOutput', e.target.value)}
                         placeholder="Kết quả mong đợi (hoặc ấn ⚡ Sinh)..."
                         rows={3}
-                        className="border-input bg-background focus:ring-ring w-full resize-y rounded-md border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
+                        className="border-input bg-background focus:ring-ring w-full resize-y rounded-lg border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1402,7 +1394,7 @@ export function QuestionForm({
       {/* Points + explanation */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          <label className="text-muted-foreground text-xs font-medium">
             {isAutoGraded && type !== 'CODE_WEB'
               ? 'Điểm (phân bổ qua test cases)'
               : 'Điểm mặc định'}
@@ -1413,13 +1405,13 @@ export function QuestionForm({
             step={0.5}
             value={points}
             onChange={(e) => setPoints(e.target.value)}
-            className="border-input bg-background focus:ring-ring w-full rounded-md border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring min-h-10 w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <label className="text-muted-foreground text-xs font-medium">
           Giải thích (hiện sau khi nộp bài — tuỳ chọn)
         </label>
         <textarea
@@ -1427,7 +1419,7 @@ export function QuestionForm({
           onChange={(e) => setExplanation(e.target.value)}
           placeholder="Giải thích đáp án đúng..."
           rows={2}
-          className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
         />
       </div>
 

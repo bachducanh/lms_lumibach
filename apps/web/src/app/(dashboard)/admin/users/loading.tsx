@@ -8,20 +8,20 @@ export default function AdminUsersLoading() {
           <div className="bg-muted h-4 w-32 rounded" />
         </div>
         <div className="flex gap-2">
-          <div className="bg-muted h-9 w-28 rounded-md" />
-          <div className="bg-muted h-9 w-28 rounded-md" />
+          <div className="bg-muted h-10 w-28 rounded-full" />
+          <div className="bg-muted h-10 w-28 rounded-full" />
         </div>
       </div>
 
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2">
-        <div className="bg-muted h-9 w-56 rounded-md" />
-        <div className="bg-muted h-9 w-32 rounded-md" />
-        <div className="bg-muted h-9 w-32 rounded-md" />
+        <div className="bg-muted h-10 w-full rounded-lg sm:w-56" />
+        <div className="bg-muted h-10 w-32 rounded-lg" />
+        <div className="bg-muted h-10 w-32 rounded-lg" />
       </div>
 
       {/* Table */}
-      <div className="ring-foreground/10 overflow-hidden rounded-xl ring-1">
+      <div className="border-border bg-card overflow-hidden rounded-xl border">
         <div className="bg-muted/50 flex gap-6 px-4 py-3">
           {[120, 160, 80, 90, 90, 80].map((w, i) => (
             <div key={i} className="bg-muted h-3.5 rounded" style={{ width: w }} />

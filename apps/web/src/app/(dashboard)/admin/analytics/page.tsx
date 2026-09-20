@@ -53,14 +53,16 @@ export default async function AdminAnalyticsPage() {
   if (!data) redirect('/dashboard');
 
   return (
-    <div className="lb-reveal lb-reveal-children max-w-[1400px] space-y-6">
+    <div className="lb-reveal lb-reveal-children w-full max-w-[1400px] space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10">
-          <BarChart3 className="h-5 w-5 text-cyan-400" />
+        <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+          <BarChart3 className="text-primary h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Phân tích hệ thống</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+            Phân tích hệ thống
+          </h1>
           <p className="text-muted-foreground text-sm">Tổng quan hoạt động và mức độ tham gia</p>
         </div>
       </div>
@@ -103,11 +105,11 @@ export default async function AdminAnalyticsPage() {
 
       {/* Activity over time */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5">
-          <div className="flex items-center justify-between">
+        <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-cyan-400" />
-              <h2 className="text-sm font-semibold">Hoạt động 30 ngày</h2>
+              <TrendingUp className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
+              <h2 className="text-base font-semibold">Hoạt động 30 ngày</h2>
             </div>
             <span className="text-muted-foreground text-xs">
               {data.dailyActivity30.reduce((a, b) => a + b.value, 0)} sự kiện
@@ -117,16 +119,16 @@ export default async function AdminAnalyticsPage() {
             data={data.dailyActivity30}
             height={180}
             showAxis
-            color="oklch(0.7 0.18 220)"
+            color="oklch(0.6 0.15 225)"
             yLabel="sự kiện / ngày"
           />
         </div>
 
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5">
-          <div className="flex items-center justify-between">
+        <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-violet-400" />
-              <h2 className="text-sm font-semibold">Người dùng hoạt động hàng ngày</h2>
+              <Users className="h-4 w-4 text-violet-700 dark:text-violet-400" />
+              <h2 className="text-base font-semibold">Người dùng hoạt động hàng ngày</h2>
             </div>
             <span className="text-muted-foreground text-xs">
               Đỉnh: {Math.max(...data.dailyActiveUsers30.map((d) => d.value))}
@@ -136,37 +138,39 @@ export default async function AdminAnalyticsPage() {
             data={data.dailyActiveUsers30}
             height={180}
             showAxis
-            color="oklch(0.68 0.21 305)"
+            color="oklch(0.58 0.2 305)"
             yLabel="người dùng / ngày"
           />
         </div>
 
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5 lg:col-span-2">
-          <div className="flex items-center justify-between">
+        <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm lg:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-emerald-400" />
-              <h2 className="text-sm font-semibold">Bài nộp hàng ngày (assignment + code)</h2>
+              <FileText className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+              <h2 className="text-base font-semibold">Bài nộp hàng ngày (assignment + code)</h2>
             </div>
             <span className="text-muted-foreground text-xs">
               {data.dailySubmissions30.reduce((a, b) => a + b.value, 0)} bài
             </span>
           </div>
-          <LineChart
-            data={data.dailySubmissions30}
-            height={180}
-            showAxis
-            color="oklch(0.7 0.18 140)"
-            yLabel="bài nộp / ngày"
-          />
+          <div className="mx-auto w-full max-w-2xl">
+            <LineChart
+              data={data.dailySubmissions30}
+              height={180}
+              showAxis
+              color="oklch(0.6 0.16 145)"
+              yLabel="bài nộp / ngày"
+            />
+          </div>
         </div>
       </div>
 
       {/* Bottom row: distributions + lists */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Action breakdown */}
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Activity className="h-4 w-4 text-amber-400" />
+        <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <Activity className="h-4 w-4 text-amber-700 dark:text-amber-400" />
             Loại hoạt động (30 ngày)
           </h2>
           {data.actionBreakdown.length > 0 ? (
@@ -176,7 +180,7 @@ export default async function AdminAnalyticsPage() {
                 value: a.count,
               }))}
               height={220}
-              color="oklch(0.78 0.16 75)"
+              color="oklch(0.68 0.16 70)"
               yLabel="số lượt"
             />
           ) : (
@@ -185,9 +189,9 @@ export default async function AdminAnalyticsPage() {
         </div>
 
         {/* By role */}
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Users className="h-4 w-4 text-rose-400" />
+        <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <Users className="h-4 w-4 text-rose-700 dark:text-rose-400" />
             Phân bổ vai trò
           </h2>
           <HorizontalBars
@@ -199,9 +203,9 @@ export default async function AdminAnalyticsPage() {
         </div>
 
         {/* Top students */}
-        <div className="border-border bg-card space-y-3 rounded-xl border p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <TrendingUp className="h-4 w-4 text-emerald-400" />
+        <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <TrendingUp className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             Học sinh năng động nhất
           </h2>
           {data.topStudents.length > 0 ? (
@@ -211,7 +215,7 @@ export default async function AdminAnalyticsPage() {
                 value: s.activity,
                 sublabel: `${s.activity} sự kiện trong 30 ngày`,
               }))}
-              color="oklch(0.7 0.18 140)"
+              color="oklch(0.6 0.16 145)"
             />
           ) : (
             <p className="text-muted-foreground text-xs">Chưa có dữ liệu.</p>
@@ -220,10 +224,10 @@ export default async function AdminAnalyticsPage() {
       </div>
 
       {/* Top courses */}
-      <div className="border-border bg-card space-y-3 rounded-xl border p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <BookOpen className="h-4 w-4 text-violet-400" />
+      <div className="border-border bg-card space-y-3 rounded-xl border p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <BookOpen className="h-4 w-4 text-violet-700 dark:text-violet-400" />
             Khoá học có tương tác cao nhất (30 ngày)
           </h2>
         </div>
@@ -235,7 +239,7 @@ export default async function AdminAnalyticsPage() {
               <Link
                 key={c.id}
                 href={`/courses/${c.slug}/analytics`}
-                className="border-border/60 bg-muted/10 hover:bg-muted/30 flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 transition-colors"
+                className="border-border hover:bg-muted/40 flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 transition-colors"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{c.name}</p>

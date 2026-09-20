@@ -52,7 +52,7 @@ export function SebSettings({ courseId, enabled, onEnabledChange, config, onConf
         <Switch checked={enabled} onCheckedChange={onEnabledChange} className="mt-0.5" />
         <span className="space-y-0.5">
           <span className="flex items-center gap-1.5 text-sm font-semibold">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            <ShieldCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             Chế độ kiểm tra Safe Exam Browser
           </span>
           <span className="text-muted-foreground block text-xs">
@@ -63,7 +63,7 @@ export function SebSettings({ courseId, enabled, onEnabledChange, config, onConf
       </label>
 
       {enabled && (
-        <div className="space-y-3 border-t border-dashed pt-3 pl-1">
+        <div className="border-border space-y-3 border-t border-dashed pt-3 pl-1">
           {config ? (
             <div className="border-border bg-background flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
               <div className="min-w-0">
@@ -73,7 +73,7 @@ export function SebSettings({ courseId, enabled, onEnabledChange, config, onConf
               <button
                 type="button"
                 onClick={() => onConfigChange(null)}
-                className="text-muted-foreground hover:text-destructive shrink-0"
+                className="text-muted-foreground hover:text-destructive shrink-0 rounded-md p-1.5"
                 aria-label="Gỡ file SEB"
               >
                 <X className="h-4 w-4" />
@@ -102,7 +102,7 @@ export function SebSettings({ courseId, enabled, onEnabledChange, config, onConf
             </label>
           )}
           {!config && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
               Chưa có file cấu hình — học sinh sẽ không có nút mở Safe Exam Browser.
             </p>
           )}

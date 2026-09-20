@@ -96,65 +96,65 @@ const ACTIVITY_DEFS: ActivityDef[] = [
     id: 'lesson',
     label: 'Bài học',
     description: 'Nội dung lý thuyết, video, tài liệu học tập',
-    icon: <BookOpen className="h-7 w-7 text-teal-400" />,
+    icon: <BookOpen className="h-6 w-6 text-teal-600 dark:text-teal-400" />,
     iconBg: 'bg-teal-500/10',
-    borderGlow: 'hover:border-teal-500/40 hover:shadow-[0_0_15px_rgba(45,212,191,0.2)]',
+    borderGlow: 'hover:border-teal-500/50',
   },
   {
     id: 'assignment',
     label: 'Bài tập',
     description: 'Giao bài tập, chấm điểm và nhận xét',
-    icon: <ClipboardList className="h-7 w-7 text-blue-400" />,
+    icon: <ClipboardList className="h-6 w-6 text-blue-600 dark:text-blue-400" />,
     iconBg: 'bg-blue-500/10',
-    borderGlow: 'hover:border-blue-500/40 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]',
+    borderGlow: 'hover:border-blue-500/50',
   },
   {
     id: 'quiz',
     label: 'Quiz',
     description: 'Kiểm tra nhanh bằng câu hỏi trắc nghiệm',
-    icon: <Brain className="h-7 w-7 text-violet-400" />,
+    icon: <Brain className="h-6 w-6 text-violet-600 dark:text-violet-400" />,
     iconBg: 'bg-violet-500/10',
-    borderGlow: 'hover:border-violet-500/40 hover:shadow-[0_0_15px_rgba(139,92,246,0.2)]',
+    borderGlow: 'hover:border-violet-500/50',
   },
   {
     id: 'practice_test',
     label: 'Đề luyện tập',
     description: 'Tải đề PDF, cấu hình phiếu trả lời và chấm tự động',
-    icon: <FileQuestion className="h-7 w-7 text-cyan-400" />,
+    icon: <FileQuestion className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />,
     iconBg: 'bg-cyan-500/10',
-    borderGlow: 'hover:border-cyan-500/40 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]',
+    borderGlow: 'hover:border-cyan-500/50',
   },
   {
     id: 'code_exercise',
     label: 'Bài tập code',
     description: 'Lập trình Python, JavaScript, C++ hoặc Web có chấm tự động',
-    icon: <Code2 className="h-7 w-7 text-fuchsia-400" />,
+    icon: <Code2 className="h-6 w-6 text-fuchsia-600 dark:text-fuchsia-400" />,
     iconBg: 'bg-fuchsia-500/10',
-    borderGlow: 'hover:border-fuchsia-500/40 hover:shadow-[0_0_15px_rgba(217,70,239,0.2)]',
+    borderGlow: 'hover:border-fuchsia-500/50',
   },
   {
     id: 'scratch',
     label: 'Bài Scratch',
     description: 'Lập trình kéo thả Scratch ngay trong LMS, học sinh nộp project .sb3',
-    icon: <Cat className="h-7 w-7 text-orange-400" />,
+    icon: <Cat className="h-6 w-6 text-orange-600 dark:text-orange-400" />,
     iconBg: 'bg-orange-500/10',
-    borderGlow: 'hover:border-orange-500/40 hover:shadow-[0_0_15px_rgba(251,146,60,0.2)]',
+    borderGlow: 'hover:border-orange-500/50',
   },
   {
     id: 'forum',
     label: 'Diễn đàn',
     description: 'Không gian thảo luận theo chủ đề cho chương này',
-    icon: <MessagesSquare className="h-7 w-7 text-sky-400" />,
+    icon: <MessagesSquare className="h-6 w-6 text-sky-600 dark:text-sky-400" />,
     iconBg: 'bg-sky-500/10',
-    borderGlow: 'hover:border-sky-500/40 hover:shadow-[0_0_15px_rgba(56,189,248,0.2)]',
+    borderGlow: 'hover:border-sky-500/50',
   },
   {
     id: 'external_url',
     label: 'Link ngoài',
     description: 'Liên kết tới tài nguyên bên ngoài',
-    icon: <ExternalLink className="h-7 w-7 text-amber-400" />,
+    icon: <ExternalLink className="h-6 w-6 text-amber-600 dark:text-amber-400" />,
     iconBg: 'bg-amber-500/10',
-    borderGlow: 'hover:border-amber-500/40 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]',
+    borderGlow: 'hover:border-amber-500/50',
   },
 ];
 
@@ -189,32 +189,21 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectInline }: Mod
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
-      <div
-        className="border-border/50 bg-card/90 relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-2xl"
-        style={{ boxShadow: '0 24px 64px oklch(0 0 0 / 0.5), 0 0 0 1px oklch(1 0 0 / 10%)' }}
-      >
-        <div
-          className="absolute top-0 right-0 left-0 h-[2px]"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent, rgb(253 8 93 / 80%), oklch(0.80 0.13 210 / 0.6), transparent)',
-          }}
-        />
-
-        <div className="border-border/50 bg-muted/20 flex shrink-0 items-center justify-between gap-3 border-b px-4 py-4 sm:px-6 sm:py-5">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="border-border bg-card relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border shadow-xl">
+        <div className="border-border bg-muted/40 flex shrink-0 items-center justify-between gap-3 border-b px-4 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <Sparkles className="text-primary h-4 w-4 shrink-0" />
               Thêm hoạt động hoặc tài nguyên
             </h2>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground mt-1 text-sm">
               Chọn loại nội dung bạn muốn thêm vào chương này
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-primary hover:bg-muted shrink-0 rounded-md p-1.5 transition-colors"
+            className="text-muted-foreground hover:text-primary hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -225,18 +214,18 @@ function AddActivityModal({ courseSlug, moduleId, onClose, onSelectInline }: Mod
             const href = navHrefs[act.id];
             const inner = (
               <div
-                className={`border-border/50 bg-card flex w-full cursor-pointer items-start gap-4 rounded-xl border p-4 transition-all duration-200 ${act.borderGlow} group hover:-translate-y-0.5`}
+                className={`border-border bg-card flex w-full cursor-pointer items-start gap-4 rounded-xl border p-4 shadow-sm transition-shadow duration-200 hover:shadow-md ${act.borderGlow} group`}
               >
                 <div
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 ${act.iconBg}`}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${act.iconBg}`}
                 >
                   {act.icon}
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="group-hover:text-foreground text-sm font-bold transition-colors">
+                  <p className="group-hover:text-foreground text-base font-semibold transition-colors">
                     {act.label}
                   </p>
-                  <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                  <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                     {act.description}
                   </p>
                 </div>
@@ -365,7 +354,7 @@ function AddModuleForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-border bg-card flex items-center gap-2 rounded-xl border p-4"
+      className="border-border bg-card flex flex-wrap items-center gap-2 rounded-xl border p-3 shadow-sm sm:p-4"
     >
       <FolderOpen className="text-muted-foreground h-5 w-5 shrink-0" />
       <input
@@ -374,9 +363,9 @@ function AddModuleForm({
         placeholder="Tên chương mới (VD: Chương 1: Giới thiệu)..."
         required
         autoFocus
-        className="placeholder:text-muted-foreground/50 flex-1 border-none bg-transparent px-2 text-sm font-semibold focus:ring-0 focus:outline-none"
+        className="placeholder:text-muted-foreground/60 h-10 min-w-0 flex-1 basis-40 border-none bg-transparent px-2 text-sm font-semibold focus:ring-0 focus:outline-none"
       />
-      <div className="flex shrink-0 gap-2">
+      <div className="ml-auto flex shrink-0 gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Hủy
         </Button>
@@ -384,7 +373,7 @@ function AddModuleForm({
           type="submit"
           size="sm"
           disabled={pending}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_15px_rgb(253_8_93_/_40%)]"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           Lưu chương
         </Button>
@@ -434,15 +423,15 @@ function AddExternalUrlForm({
       className="border-primary/30 bg-primary/5 relative mt-2 space-y-3 overflow-hidden rounded-xl border p-4"
     >
       <div className="bg-primary absolute top-0 bottom-0 left-0 w-1" />
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-primary flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-primary flex items-center gap-1.5 text-sm font-semibold">
           <ExternalLink className="h-3.5 w-3.5" />
           Thêm link ngoài
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-9 w-9 items-center justify-center rounded-full"
         >
           <X className="h-4 w-4" />
         </button>
@@ -452,7 +441,7 @@ function AddExternalUrlForm({
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Tiêu đề (VD: Tài liệu tham khảo)"
         required
-        className="border-border bg-card focus:ring-primary h-9 w-full rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
+        className="border-border bg-card focus:ring-primary h-10 w-full rounded-lg border px-3 text-sm focus:ring-1 focus:outline-none"
       />
       <input
         value={url}
@@ -460,7 +449,7 @@ function AddExternalUrlForm({
         placeholder="URL (https://...)"
         type="url"
         required
-        className="border-border bg-card focus:ring-primary h-9 w-full rounded-md border px-3 font-mono text-sm focus:ring-1 focus:outline-none"
+        className="border-border bg-card focus:ring-primary h-10 w-full rounded-lg border px-3 font-mono text-sm focus:ring-1 focus:outline-none"
       />
       <div className="flex gap-2 pt-1">
         <Button
@@ -521,15 +510,15 @@ function AddForumForm({
       className="border-primary/30 bg-primary/5 relative mt-2 space-y-3 overflow-hidden rounded-xl border p-4"
     >
       <div className="bg-primary absolute top-0 bottom-0 left-0 w-1" />
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-primary flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-primary flex items-center gap-1.5 text-sm font-semibold">
           <MessagesSquare className="h-3.5 w-3.5" />
           Thêm diễn đàn
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted flex h-9 w-9 items-center justify-center rounded-full"
         >
           <X className="h-4 w-4" />
         </button>
@@ -540,14 +529,14 @@ function AddForumForm({
         placeholder="Tên diễn đàn (VD: Hỏi đáp Bài 1)"
         required
         minLength={3}
-        className="border-border bg-card focus:ring-primary h-9 w-full rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
+        className="border-border bg-card focus:ring-primary h-10 w-full rounded-lg border px-3 text-sm focus:ring-1 focus:outline-none"
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Mô tả ngắn (tuỳ chọn) — nội dung nào được thảo luận ở đây?"
         rows={2}
-        className="border-border bg-card focus:ring-primary w-full rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+        className="border-border bg-card focus:ring-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
       />
       <div className="flex gap-2 pt-1">
         <Button
@@ -602,13 +591,13 @@ function ShareItemToggle({ itemId, initialShared }: { itemId: string; initialSha
           ? 'Đang chia sẻ vào ngân hàng nội dung — bấm để gỡ'
           : 'Chia sẻ hoạt động này cho khoá khác cùng danh mục'
       }
-      className={`rounded-md p-1.5 transition-colors disabled:opacity-50 ${
+      className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
         shared
           ? 'text-primary hover:bg-primary/10'
-          : 'text-muted-foreground/40 hover:text-foreground hover:bg-muted'
+          : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted'
       }`}
     >
-      <Share2 className="h-3.5 w-3.5" />
+      <Share2 className="h-4 w-4" />
     </button>
   );
 }
@@ -677,70 +666,62 @@ function SortableItemRow({
   // Left border + icon + badge colors by type
   const typeColors: Record<
     string,
-    { border: string; bg: string; icon: string; text: string; glowColor: string; bgRgba: string }
+    { border: string; bg: string; icon: string; text: string; bgRgba: string }
   > = {
     lesson: {
       border: 'border-l-teal-500',
       bg: 'bg-teal-500/15',
-      icon: 'text-teal-500',
+      icon: 'text-teal-600 dark:text-teal-400',
       text: 'Bài học',
-      glowColor: 'rgb(20, 184, 166)',
       bgRgba: 'rgba(20, 184, 166, 0.15)',
     },
     assignment: {
       border: 'border-l-blue-500',
       bg: 'bg-blue-500/15',
-      icon: 'text-blue-500',
+      icon: 'text-blue-600 dark:text-blue-400',
       text: 'Bài tập',
-      glowColor: 'rgb(59, 130, 246)',
       bgRgba: 'rgba(59, 130, 246, 0.15)',
     },
     quiz: {
       border: 'border-l-violet-500',
       bg: 'bg-violet-500/15',
-      icon: 'text-violet-500',
+      icon: 'text-violet-600 dark:text-violet-400',
       text: 'Quiz',
-      glowColor: 'rgb(139, 92, 246)',
       bgRgba: 'rgba(139, 92, 246, 0.15)',
     },
     practice: {
       border: 'border-l-cyan-500',
       bg: 'bg-cyan-500/15',
-      icon: 'text-cyan-500',
+      icon: 'text-cyan-600 dark:text-cyan-400',
       text: 'Đề luyện tập',
-      glowColor: 'rgb(6, 182, 212)',
       bgRgba: 'rgba(6, 182, 212, 0.15)',
     },
     code: {
       border: 'border-l-fuchsia-500',
       bg: 'bg-fuchsia-500/15',
-      icon: 'text-fuchsia-500',
+      icon: 'text-fuchsia-600 dark:text-fuchsia-400',
       text: 'Bài tập code',
-      glowColor: 'rgb(217, 70, 239)',
       bgRgba: 'rgba(217, 70, 239, 0.15)',
     },
     scratch: {
       border: 'border-l-orange-500',
       bg: 'bg-orange-500/15',
-      icon: 'text-orange-500',
+      icon: 'text-orange-600 dark:text-orange-400',
       text: 'Bài Scratch',
-      glowColor: 'rgb(251, 146, 60)',
       bgRgba: 'rgba(251, 146, 60, 0.15)',
     },
     forum: {
       border: 'border-l-sky-500',
       bg: 'bg-sky-500/15',
-      icon: 'text-sky-500',
+      icon: 'text-sky-600 dark:text-sky-400',
       text: 'Diễn đàn',
-      glowColor: 'rgb(14, 165, 233)',
       bgRgba: 'rgba(14, 165, 233, 0.15)',
     },
     external: {
       border: 'border-l-amber-500',
       bg: 'bg-amber-500/15',
-      icon: 'text-amber-500',
+      icon: 'text-amber-600 dark:text-amber-400',
       text: 'Link ngoài',
-      glowColor: 'rgb(245, 158, 11)',
       bgRgba: 'rgba(245, 158, 11, 0.15)',
     },
   };
@@ -781,17 +762,16 @@ function SortableItemRow({
         ...(isHovered &&
           !isDragging && {
             backgroundColor: colors.bgRgba,
-            boxShadow: `0 0 0 1.5px ${colors.glowColor}40, inset 0 0 0 0.5px ${colors.glowColor}30, 0 0 25px ${colors.glowColor}15`,
           }),
       }}
-      className={`relative flex items-center gap-2.5 border-l-4 ${colors.border} bg-card group/item overflow-hidden rounded-r-lg px-3 py-3 transition-all duration-200 sm:gap-3 sm:px-4 sm:py-3.5 ${isDragging ? 'ring-primary/30 z-50 scale-95 opacity-40 shadow-xl ring-2' : 'hover:-translate-x-0.5 hover:shadow-md'}`}
+      className={`border-border relative flex items-center gap-2 border border-l-4 ${colors.border} bg-card group/item overflow-hidden rounded-lg px-2 py-2.5 transition-colors duration-200 sm:gap-3 sm:px-3 sm:py-3 ${isDragging ? 'ring-primary/30 z-50 scale-95 opacity-40 shadow-xl ring-2' : 'hover:shadow-sm'}`}
     >
       {/* Drag handle */}
       {canManage && (
         <button
           {...attributes}
           {...listeners}
-          className="text-muted-foreground/40 hover:text-muted-foreground/70 flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center transition-colors active:cursor-grabbing sm:w-6"
+          className="text-muted-foreground/60 hover:text-muted-foreground flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center transition-colors active:cursor-grabbing sm:w-6"
           tabIndex={-1}
           aria-label="Kéo để sắp xếp"
         >
@@ -801,7 +781,7 @@ function SortableItemRow({
 
       {/* Icon with colored background */}
       <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 ${colors.bg} border border-current/10 shadow-sm transition-transform group-hover/item:scale-110`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:h-11 sm:w-11 ${colors.bg}`}
       >
         {isExternalUrl ? (
           <Link2 className={`h-5 w-5 ${colors.icon}`} />
@@ -837,35 +817,35 @@ function SortableItemRow({
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </a>
         ) : isForum && forumId ? (
           <Link href={`/courses/${courseSlug}/forum?forumId=${forumId}`} className="block">
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </Link>
         ) : isAssignment && item.assignmentId ? (
           <Link href={`/courses/${courseSlug}/assignments/${item.assignmentId}`} className="block">
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </Link>
         ) : isQuiz && quizId ? (
           <Link href={`/courses/${courseSlug}/quizzes/${quizId}`} className="block">
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </Link>
         ) : isPracticeTest && practiceTestId ? (
           <Link href={`/courses/${courseSlug}/practice-tests/${practiceTestId}`} className="block">
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </Link>
         ) : isCodeExercise && codeExId ? (
           <Link
@@ -879,7 +859,7 @@ function SortableItemRow({
             <p className="group-hover/item:text-primary line-clamp-2 text-sm font-semibold transition-colors">
               {item.title}
             </p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </Link>
         ) : item.lessonId ? (
           <Link href={`/courses/${courseSlug}/lessons/${item.lessonId}`} className="block">
@@ -887,37 +867,32 @@ function SortableItemRow({
               {item.title}
             </p>
             {item.lesson?.estimatedMinutes && (
-              <p className="text-muted-foreground/70 text-xs">
-                ⏱ {item.lesson.estimatedMinutes} phút
-              </p>
+              <p className="text-muted-foreground text-xs">⏱ {item.lesson.estimatedMinutes} phút</p>
             )}
           </Link>
         ) : (
           <div className="block">
             <p className="line-clamp-2 text-sm font-semibold">{item.title}</p>
-            <p className="text-muted-foreground/70 text-xs">{colors.text}</p>
+            <p className="text-muted-foreground text-xs">{colors.text}</p>
           </div>
         )}
       </div>
 
       {/* Right side - Status badges and actions */}
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
         {canManage && (
           <ShareItemToggle itemId={item.id} initialShared={item.sharedToCategory ?? false} />
         )}
         {isDone && (
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/20"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-600/30 bg-emerald-500/15 dark:border-emerald-500/40 dark:bg-emerald-500/20"
             title="Đã hoàn thành"
           >
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
         )}
         {!item.isPublished && (
-          <Badge
-            variant="outline"
-            className="bg-muted/70 text-[9px] font-bold tracking-widest uppercase"
-          >
+          <Badge variant="outline" className="bg-muted text-muted-foreground text-xs">
             Ẩn
           </Badge>
         )}
@@ -929,7 +904,7 @@ function SortableItemRow({
               <DropdownMenuTrigger
                 type="button"
                 aria-label="Mở menu thao tác"
-                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-9 w-9 items-center justify-center rounded-full transition-colors outline-none"
               >
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -1078,23 +1053,22 @@ function SortableModuleRow({
   const outerStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-    boxShadow: '0 4px 20px oklch(0 0 0 / 0.2)',
   };
 
   return (
     <div
       ref={setNodeRef}
       style={outerStyle}
-      className={`border-border bg-card group/module overflow-hidden rounded-lg border transition-all duration-200 ${isDragging ? 'ring-primary/20 opacity-40 shadow-xl ring-2' : 'hover:border-primary/30 hover:shadow-md'}`}
+      className={`border-border bg-card group/module overflow-hidden rounded-xl border shadow-sm transition-shadow duration-200 ${isDragging ? 'ring-primary/20 opacity-40 shadow-xl ring-2' : 'hover:shadow-md'}`}
     >
       {/* Module Header */}
-      <div className="bg-card border-border/50 hover:bg-muted/20 flex items-center gap-2 border-b px-3 py-3.5 transition-colors sm:gap-3 sm:px-5 sm:py-5">
+      <div className="bg-muted/40 border-border flex items-center gap-1 border-b px-2 py-3 sm:gap-3 sm:px-4 sm:py-4">
         {/* Drag handle */}
         {canManage && (
           <button
             {...attributes}
             {...listeners}
-            className="text-muted-foreground/40 hover:text-muted-foreground/70 flex h-8 w-5 cursor-grab touch-none items-center justify-center transition-colors active:cursor-grabbing"
+            className="text-muted-foreground/60 hover:text-muted-foreground flex h-8 w-5 cursor-grab touch-none items-center justify-center transition-colors active:cursor-grabbing"
             tabIndex={-1}
             aria-label="Kéo để sắp xếp chương"
           >
@@ -1105,7 +1079,7 @@ function SortableModuleRow({
         {/* Collapse button */}
         <button
           onClick={onToggleCollapse}
-          className="hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+          className="hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
           title={isCollapsed ? 'Mở rộng chương' : 'Thu gọn chương'}
         >
           <ChevronDown
@@ -1129,7 +1103,7 @@ function SortableModuleRow({
         </div>
 
         {/* Item count */}
-        <div className="bg-primary/10 border-primary/20 flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1 sm:px-3 sm:py-1.5">
+        <div className="bg-primary/10 border-primary/20 flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 sm:px-3 sm:py-1">
           <span className="text-primary text-xs font-semibold sm:text-sm">{mod.items.length}</span>
         </div>
 
@@ -1140,7 +1114,7 @@ function SortableModuleRow({
               <DropdownMenuTrigger
                 type="button"
                 aria-label="Mở menu thao tác chương"
-                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors outline-none"
+                className="hover:bg-muted text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors outline-none"
               >
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
@@ -1202,9 +1176,9 @@ function SortableModuleRow({
       >
         <div className="space-y-2 p-3">
           {localItems.length === 0 ? (
-            <div className="border-border/40 bg-muted/10 rounded-lg border border-dashed px-4 py-8 text-center">
-              <FolderOpen className="text-muted-foreground/30 mx-auto mb-2 h-8 w-8" />
-              <p className="text-muted-foreground/70 text-sm font-medium">
+            <div className="border-border bg-muted/30 rounded-lg border border-dashed px-4 py-8 text-center">
+              <FolderOpen className="text-muted-foreground/60 mx-auto mb-2 h-8 w-8" />
+              <p className="text-muted-foreground text-sm font-medium">
                 Chưa có nội dung nào trong chương này.
               </p>
             </div>
@@ -1275,7 +1249,7 @@ function SortableModuleRow({
                 <button
                   type="button"
                   onClick={() => onAddActivity(mod.id)}
-                  className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-3 text-sm font-semibold transition-all"
+                  className="border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-dashed py-3 text-sm font-semibold transition-colors"
                 >
                   <Plus className="h-4 w-4" />
                   Thêm bài học / bài tập
@@ -1461,29 +1435,29 @@ export function ModuleList({
           <div className="flex justify-end">
             <Link
               href={`/courses/${courseSlug}/modules/bank`}
-              className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+              className="text-muted-foreground hover:text-primary inline-flex min-h-9 items-center gap-1.5 text-sm transition-colors"
             >
-              <Library className="h-3.5 w-3.5" />
+              <Library className="h-4 w-4" />
               Ngân hàng nội dung
             </Link>
           </div>
         )}
 
         {localModules.length > 0 && (
-          <div className="flex items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
             <button
               onClick={() => setCollapsedIds(new Set())}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
+              className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-sm transition-colors"
             >
-              <ChevronsUpDown className="h-3.5 w-3.5" />
+              <ChevronsUpDown className="h-4 w-4" />
               Mở rộng tất cả
             </button>
             <span className="text-border">|</span>
             <button
               onClick={() => setCollapsedIds(new Set(localModules.map((m) => m.id)))}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
+              className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-sm transition-colors"
             >
-              <ChevronsUpDown className="h-3.5 w-3.5" />
+              <ChevronsUpDown className="h-4 w-4" />
               Thu gọn tất cả
             </button>
           </div>
@@ -1500,9 +1474,9 @@ export function ModuleList({
               onCancel={() => setShowAddModule(false)}
             />
           ) : (
-            <div className="border-border/60 bg-card/30 flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 backdrop-blur-sm">
-              <div className="bg-muted/50 border-border/50 mb-4 flex h-16 w-16 items-center justify-center rounded-full border">
-                <FolderOpen className="text-muted-foreground/50 h-8 w-8" />
+            <div className="border-border bg-card flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-16 text-center">
+              <div className="bg-primary/10 text-primary mb-4 flex h-14 w-14 items-center justify-center rounded-lg">
+                <FolderOpen className="h-7 w-7" />
               </div>
               <p className="text-base font-semibold">Khoá học chưa có nội dung</p>
               <p className="text-muted-foreground mt-1 mb-6 text-sm">
@@ -1510,7 +1484,7 @@ export function ModuleList({
               </p>
               {canManage && (
                 <Button
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgb(253_8_93_/_40%)]"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={() => setShowAddModule(true)}
                 >
                   <Plus className="mr-2 h-4 w-4" /> Thêm chương đầu tiên
@@ -1572,7 +1546,7 @@ export function ModuleList({
             ) : (
               <Button
                 variant="outline"
-                className="border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 w-full border-dashed py-6 transition-colors"
+                className="border-border text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 h-12 w-full border-dashed transition-colors"
                 onClick={() => setShowAddModule(true)}
               >
                 <Plus className="mr-2 h-4 w-4" />

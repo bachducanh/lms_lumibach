@@ -38,11 +38,11 @@ export function LearningPortfolioOverview({
     <section className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-400/10">
-            <FolderKanban className="h-5 w-5 text-cyan-400" />
+          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+            <FolderKanban className="text-primary h-5 w-5" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold">{title}</h2>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold sm:text-xl">{title}</h2>
             <p className="text-muted-foreground mt-1 text-sm">
               {showStudentName ? `${overview.student.name} · ` : ''}
               {description}
@@ -68,7 +68,7 @@ export function LearningPortfolioOverview({
       </div>
 
       {overview.courses.length === 0 ? (
-        <div className="border-border bg-card/60 rounded-lg border border-dashed px-5 py-8 text-center">
+        <div className="border-border bg-card rounded-xl border border-dashed px-5 py-8 text-center">
           <p className="text-muted-foreground text-sm">Chưa có khoá học nào trong hồ sơ.</p>
         </div>
       ) : (
@@ -77,11 +77,11 @@ export function LearningPortfolioOverview({
             <Link
               key={course.courseId}
               href={`/courses/${course.courseSlug}/portfolio/${overview.student.id}`}
-              className="border-border bg-card/70 group rounded-lg border p-4 transition-all hover:-translate-y-0.5 hover:border-cyan-400/40 hover:shadow-[0_16px_40px_oklch(0_0_0_/_0.18)]"
+              className="border-border bg-card group hover:border-primary/40 rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-semibold group-hover:text-cyan-400">
+                  <p className="group-hover:text-primary line-clamp-2 text-sm font-semibold">
                     {course.courseName}
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs">
@@ -89,7 +89,7 @@ export function LearningPortfolioOverview({
                     {fmtDate(course.enrolledAt)}
                   </p>
                 </div>
-                <span className="border-primary/20 bg-primary/10 text-primary rounded-md border px-2 py-1 text-xs font-bold tabular-nums">
+                <span className="border-primary/20 bg-primary/10 text-primary rounded-full border px-2.5 py-0.5 text-xs font-bold tabular-nums">
                   {Math.round(course.progress)}%
                 </span>
               </div>
@@ -97,7 +97,7 @@ export function LearningPortfolioOverview({
               <div className="mt-4 space-y-2">
                 <div className="bg-muted h-2 overflow-hidden rounded-full">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#fd085d] via-cyan-400 to-emerald-400"
+                    className="bg-primary h-full rounded-full"
                     style={{ width: `${Math.max(0, Math.min(100, Math.round(course.progress)))}%` }}
                   />
                 </div>
@@ -125,9 +125,9 @@ function Metric({
   icon: typeof BookOpenCheck;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border px-4 py-3">
-      <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold tracking-wide uppercase">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="border-border bg-card rounded-xl border px-4 py-3 shadow-sm">
+      <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+        <Icon className="h-4 w-4" />
         {label}
       </div>
       <p className="mt-2 text-2xl font-bold">{value}</p>

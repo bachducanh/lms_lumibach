@@ -44,7 +44,7 @@ function SortableLine({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         'border-border bg-background flex items-center gap-2 rounded-lg border px-3 py-2 select-none',
-        isDragging && 'border-primary/50 z-50 opacity-50 shadow-lg'
+        isDragging && 'border-primary/50 z-50 opacity-50 shadow-sm'
       )}
     >
       <span className="text-muted-foreground w-5 shrink-0 text-right text-xs tabular-nums">

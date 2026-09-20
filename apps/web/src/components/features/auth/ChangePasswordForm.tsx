@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, KeyRound } from 'lucide-react';
@@ -78,8 +78,8 @@ export function ChangePasswordForm() {
     <>
       {/* Confirm dialog */}
       {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-card ring-foreground/10 w-80 space-y-4 rounded-xl p-6 shadow-xl ring-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card ring-foreground/10 max-h-[90dvh] w-full max-w-sm space-y-4 overflow-y-auto rounded-xl p-6 shadow-xl ring-1">
             <p className="font-semibold">Xác nhận đổi mật khẩu?</p>
             <p className="text-muted-foreground text-sm">
               Bạn sẽ cần đăng nhập lại bằng mật khẩu mới sau khi thay đổi.
@@ -97,7 +97,10 @@ export function ChangePasswordForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(() => setConfirm(true))} className="max-w-sm space-y-4">
+      <form
+        onSubmit={handleSubmit(() => setConfirm(true))}
+        className="border-border bg-card w-full max-w-md space-y-4 rounded-xl border p-4 shadow-sm sm:p-6"
+      >
         {error && (
           <Alert className="border-destructive/50 text-destructive px-3 py-2 text-sm">
             {error}
@@ -106,9 +109,8 @@ export function ChangePasswordForm() {
 
         <div className="space-y-1.5">
           <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
-          <Input
+          <PasswordInput
             id="currentPassword"
-            type="password"
             autoComplete="current-password"
             {...register('currentPassword')}
           />
@@ -119,9 +121,8 @@ export function ChangePasswordForm() {
 
         <div className="space-y-1.5">
           <Label htmlFor="newPassword">Mật khẩu mới</Label>
-          <Input
+          <PasswordInput
             id="newPassword"
-            type="password"
             autoComplete="new-password"
             {...register('newPassword')}
           />
@@ -134,9 +135,8 @@ export function ChangePasswordForm() {
 
         <div className="space-y-1.5">
           <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             autoComplete="new-password"
             {...register('confirmPassword')}
           />
@@ -145,7 +145,7 @@ export function ChangePasswordForm() {
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="submit">Tiếp tục</Button>
           <Button type="button" variant="outline" onClick={handleCancel}>
             Hủy

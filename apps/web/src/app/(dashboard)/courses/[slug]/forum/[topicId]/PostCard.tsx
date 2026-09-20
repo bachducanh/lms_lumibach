@@ -92,19 +92,21 @@ export function PostCard({
 
   return (
     <div
-      className={`bg-card overflow-hidden rounded-xl border ${post.isAnswer ? 'border-emerald-500/40' : 'border-border'}`}
+      className={`bg-card overflow-hidden rounded-xl border shadow-sm ${post.isAnswer ? 'border-emerald-600/40 dark:border-emerald-500/40' : 'border-border'}`}
     >
       {post.isAnswer && (
-        <div className="flex items-center gap-1.5 border-b border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="text-xs font-medium text-emerald-400">Câu trả lời được chấp nhận</span>
+        <div className="flex items-center gap-1.5 border-b border-emerald-600/20 bg-emerald-50 px-4 py-2 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+          <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+          <span className="text-sm font-medium text-emerald-800 dark:text-emerald-400">
+            Câu trả lời được chấp nhận
+          </span>
         </div>
       )}
 
-      <div className="flex gap-4 p-5">
+      <div className="flex gap-3 p-4 sm:gap-4 sm:p-5">
         {/* Avatar */}
         <div className="flex shrink-0 flex-col items-center gap-1">
-          <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold">
+          <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold">
             {post.author.avatar ? (
               <img
                 src={post.author.avatar}
@@ -116,7 +118,7 @@ export function PostCard({
             )}
           </div>
           {roleLabel(post.author.role) && (
-            <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] whitespace-nowrap">
+            <span className="text-muted-foreground bg-muted rounded-full px-2 py-0.5 text-xs whitespace-nowrap">
               {roleLabel(post.author.role)}
             </span>
           )}
@@ -124,7 +126,7 @@ export function PostCard({
 
         {/* Content */}
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
             <p className="text-sm font-semibold">{authorName(post.author)}</p>
             <span className="text-muted-foreground text-xs">{timeAgo(post.createdAt)}</span>
           </div>
@@ -137,15 +139,18 @@ export function PostCard({
               onDone={() => setEditing(false)}
             />
           ) : (
-            <RichTextView html={toRichHtml(post.content)} className="text-foreground/90 text-sm" />
+            <RichTextView
+              html={toRichHtml(post.content)}
+              className="text-foreground/90 text-sm [overflow-wrap:anywhere]"
+            />
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-1 pt-1">
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-foreground h-7 text-xs"
+              className="text-muted-foreground hover:text-foreground h-9 text-sm"
               onClick={() => setShowReply(!showReply)}
             >
               <Reply className="mr-1 h-3.5 w-3.5" />
@@ -155,7 +160,7 @@ export function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-foreground h-7 text-xs"
+                className="text-muted-foreground hover:text-foreground h-9 text-sm"
                 onClick={() => setEditing(true)}
               >
                 <Pencil className="mr-1 h-3.5 w-3.5" />
@@ -166,7 +171,7 @@ export function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-7 text-xs ${post.isAnswer ? 'text-emerald-400 hover:text-emerald-300' : 'text-muted-foreground hover:text-emerald-400'}`}
+                className={`h-9 text-sm ${post.isAnswer ? 'text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300' : 'text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400'}`}
                 onClick={handleMarkAnswer}
                 disabled={isPending}
               >
@@ -178,11 +183,11 @@ export function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-destructive ml-auto h-7 text-xs"
+                className="text-muted-foreground hover:text-destructive ml-auto h-9 w-9 px-0"
                 onClick={handleDelete}
                 disabled={isPending}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -202,7 +207,7 @@ export function PostCard({
 
           {/* Nested replies */}
           {post.replies.length > 0 && (
-            <div className="border-border mt-3 space-y-3 border-l-2 pl-3">
+            <div className="border-border mt-3 space-y-4 border-l-2 pl-3">
               {post.replies.map((reply) => (
                 <ReplyRow
                   key={reply.id}
@@ -236,22 +241,24 @@ function ReplyRow({
     <div className="flex gap-3">
       <CornerDownRight className="text-muted-foreground/40 mt-1 h-3.5 w-3.5 shrink-0" />
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold">{authorName(reply.author)}</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="text-sm font-semibold">{authorName(reply.author)}</span>
           {roleLabel(reply.author.role) && (
-            <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px]">
+            <span className="text-muted-foreground bg-muted rounded-full px-2 py-0.5 text-xs">
               {roleLabel(reply.author.role)}
             </span>
           )}
-          <span className="text-muted-foreground ml-auto text-xs">{timeAgo(reply.createdAt)}</span>
+          <span className="text-muted-foreground ml-auto text-xs sm:text-sm">
+            {timeAgo(reply.createdAt)}
+          </span>
           {canEdit && !editing && (
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted -my-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors"
               title="Sửa trả lời"
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
@@ -263,7 +270,10 @@ function ReplyRow({
             onDone={() => setEditing(false)}
           />
         ) : (
-          <RichTextView html={toRichHtml(reply.content)} className="text-foreground/80 text-sm" />
+          <RichTextView
+            html={toRichHtml(reply.content)}
+            className="text-foreground/90 text-sm [overflow-wrap:anywhere]"
+          />
         )}
       </div>
     </div>

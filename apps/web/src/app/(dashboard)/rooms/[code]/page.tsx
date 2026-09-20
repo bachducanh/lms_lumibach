@@ -55,7 +55,9 @@ export default async function RoomDetailPage({ params }: { params: Promise<{ cod
         </Link>
 
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold">{room.name}</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight break-words sm:text-3xl">
+            {room.name}
+          </h1>
           {!room.isActive && <Badge variant="secondary">Đang ẩn</Badge>}
         </div>
 

@@ -26,11 +26,11 @@ export function UserFilterBar({ q, role, status }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-2 sm:gap-3">
       <Input
         placeholder="Tìm kiếm tên, email..."
         defaultValue={q}
-        className="max-w-xs"
+        className="w-full sm:max-w-xs"
         onChange={(e) => {
           const val = e.target.value;
           clearTimeout((window as unknown as { __st?: ReturnType<typeof setTimeout> }).__st);
@@ -41,7 +41,6 @@ export function UserFilterBar({ q, role, status }: Props) {
         }}
       />
       <SimpleSelect
-        size="sm"
         aria-label="Lọc theo vai trò"
         value={role}
         onValueChange={(v) => navigate({ role: v })}
@@ -54,7 +53,6 @@ export function UserFilterBar({ q, role, status }: Props) {
         ]}
       />
       <SimpleSelect
-        size="sm"
         aria-label="Lọc theo trạng thái"
         value={status}
         onValueChange={(v) => navigate({ status: v })}

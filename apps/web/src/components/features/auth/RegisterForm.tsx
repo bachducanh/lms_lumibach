@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, CheckCircle } from 'lucide-react';
@@ -125,12 +126,7 @@ export function RegisterForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="password">Mật khẩu</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          {...register('password')}
-        />
+        <PasswordInput id="password" autoComplete="new-password" {...register('password')} />
         {errors.password ? (
           <p className="text-destructive text-xs">{errors.password.message}</p>
         ) : (
@@ -140,9 +136,8 @@ export function RegisterForm() {
 
       <div className="space-y-1.5">
         <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-        <Input
+        <PasswordInput
           id="confirmPassword"
-          type="password"
           autoComplete="new-password"
           {...register('confirmPassword')}
         />

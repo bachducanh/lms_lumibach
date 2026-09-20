@@ -34,22 +34,22 @@ export default async function CompetenciesPage({ params }: { params: Promise<{ s
   );
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <Link
         href={`/courses/${slug}`}
-        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-xs transition-colors"
+        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
+        <ArrowLeft className="h-4 w-4" />
         {course.name}
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
             <Target className="text-primary h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Năng lực</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Năng lực</h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
               {catalog.categories.length} danh mục · {totalIndicators} chỉ báo · {course.name}
             </p>
@@ -57,14 +57,14 @@ export default async function CompetenciesPage({ params }: { params: Promise<{ s
         </div>
         <Link
           href={`/courses/${slug}/competencies/levels`}
-          className="border-border bg-card hover:bg-muted/40 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors"
+          className="border-border bg-card hover:bg-muted inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors"
         >
-          <GaugeCircle className="h-3.5 w-3.5" />
+          <GaugeCircle className="h-4 w-4" />
           Cấp độ năng lực theo kỳ
         </Link>
       </div>
 
-      <div className="border-border bg-muted/20 text-muted-foreground rounded-lg border p-4 text-sm leading-relaxed">
+      <div className="border-border bg-card text-muted-foreground rounded-xl border p-4 text-sm leading-relaxed shadow-sm">
         Tạo <span className="text-foreground font-medium">danh mục năng lực</span> và thêm các{' '}
         <span className="text-foreground font-medium">chỉ báo năng lực</span> cho khoá học. Sau đó,
         ở mỗi hoạt động học tập (bài tập, quiz, bài code, đề luyện tập) bạn có thể gán chỉ báo và

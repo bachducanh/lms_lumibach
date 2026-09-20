@@ -17,8 +17,8 @@ export default async function RoomReportsPage() {
   return (
     <div className="lb-stagger w-full space-y-5">
       <div style={{ ['--i' as string]: 0 }}>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <BarChart3 className="h-6 w-6" />
+        <h1 className="font-heading flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          <BarChart3 className="text-primary h-6 w-6 shrink-0" />
           Báo cáo phòng chức năng
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">

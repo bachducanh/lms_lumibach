@@ -178,9 +178,7 @@ function GradeForm({
 
   return (
     <div className="border-border bg-muted/20 space-y-3 rounded-xl border p-4">
-      <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-        Chấm điểm
-      </p>
+      <p className="text-muted-foreground text-xs font-semibold">Chấm điểm</p>
       <div className="flex items-center gap-3">
         <div className="space-y-1">
           <label className="text-muted-foreground text-xs">Điểm</label>
@@ -190,7 +188,7 @@ function GradeForm({
             step={0.5}
             value={score}
             onChange={(e) => setScore(e.target.value)}
-            className="border-input bg-background focus:ring-ring w-20 rounded-md border px-2.5 py-1 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-20 rounded-lg border px-2.5 py-1 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
         <span className="text-muted-foreground mt-4">/</span>
@@ -202,7 +200,7 @@ function GradeForm({
             step={0.5}
             value={maxScore}
             onChange={(e) => setMaxScore(e.target.value)}
-            className="border-input bg-background focus:ring-ring w-20 rounded-md border px-2.5 py-1 text-sm focus:ring-1 focus:outline-none"
+            className="border-input bg-background focus:ring-ring w-20 rounded-lg border px-2.5 py-1 text-sm focus:ring-1 focus:outline-none"
           />
         </div>
         <Button size="sm" className="mt-4 gap-1.5" onClick={handleSave} disabled={saving}>
@@ -221,7 +219,7 @@ function GradeForm({
           onChange={(e) => setFeedback(e.target.value)}
           placeholder="Nhận xét cho học sinh..."
           rows={2}
-          className="border-input bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+          className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
         />
       </div>
     </div>
@@ -311,7 +309,7 @@ function SubmissionDialog({
       >
         {/* Header */}
         <DialogHeader>
-          <div className="flex items-start justify-between gap-3 pr-2">
+          <div className="flex flex-wrap items-start justify-between gap-3 pr-2">
             <div className="space-y-0.5">
               <DialogTitle>
                 {studentName} — Lần {row.attemptNumber}
@@ -332,7 +330,7 @@ function SubmissionDialog({
               </span>
               <button
                 onClick={onClose}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md p-1 transition-colors"
+                className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md p-2 transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -380,7 +378,7 @@ function SubmissionDialog({
 
                 {/* Quick run */}
                 <div className="border-border overflow-hidden rounded-xl border">
-                  <div className="border-border bg-muted/30 flex items-center gap-3 border-b px-4 py-2">
+                  <div className="border-border bg-muted/30 flex flex-wrap items-center gap-3 border-b px-4 py-2">
                     <Terminal className="text-muted-foreground h-3.5 w-3.5" />
                     <span className="text-muted-foreground flex-1 text-xs font-semibold">
                       Chạy thử
@@ -388,12 +386,12 @@ function SubmissionDialog({
                     <button
                       onClick={handleRun}
                       disabled={running}
-                      className="border-border bg-card hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+                      className="border-border bg-card hover:bg-accent inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                     >
                       {running ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Play className="h-3 w-3 fill-current text-green-500" />
+                        <Play className="h-3 w-3 fill-current text-green-700 dark:text-green-500" />
                       )}
                       Chạy
                     </button>
@@ -446,7 +444,7 @@ function SubmissionDialog({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="border-destructive/40 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition-colors disabled:opacity-50"
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 flex items-center gap-1.5 rounded-full border px-4 py-2 text-xs font-medium transition-colors disabled:opacity-50"
           >
             {deleting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -481,7 +479,7 @@ export function TeacherSubmissionsPanel({ exerciseId, initialSubs, rubric }: Pro
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">Bài nộp của học sinh</h2>
         <span className="text-muted-foreground text-xs">{subs.length} bài nộp</span>
       </div>
@@ -505,7 +503,7 @@ export function TeacherSubmissionsPanel({ exerciseId, initialSubs, rubric }: Pro
       )}
 
       {subs.length > 0 && (
-        <div className="border-border overflow-x-auto rounded-xl border">
+        <div className="border-border bg-card overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[700px] text-sm">
             <thead>
               <tr className="border-border bg-muted/40 border-b">
@@ -534,7 +532,7 @@ export function TeacherSubmissionsPanel({ exerciseId, initialSubs, rubric }: Pro
                     `${sub.student.firstName} ${sub.student.lastName}`.trim()) ||
                   sub.student.email;
                 return (
-                  <tr key={sub.id} className="hover:bg-muted/20 transition-colors">
+                  <tr key={sub.id} className="hover:bg-muted/40 transition-colors">
                     <td className="px-4 py-3">
                       <p className="max-w-[180px] truncate font-medium">{name}</p>
                       <p className="text-muted-foreground truncate text-xs">{sub.student.email}</p>
@@ -566,7 +564,7 @@ export function TeacherSubmissionsPanel({ exerciseId, initialSubs, rubric }: Pro
                       <Button
                         size="sm"
                         variant={openRow?.id === sub.id ? 'default' : 'outline'}
-                        className="h-7 gap-1.5 px-2.5 text-xs"
+                        className="h-8 gap-1.5 px-3 text-xs"
                         onClick={() => setOpenRow(sub)}
                       >
                         <Eye className="h-3.5 w-3.5" />

@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { Loader2, CheckCircle } from 'lucide-react';
@@ -55,7 +55,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   if (done) {
     return (
       <div className="flex flex-col items-center gap-3 py-2 text-center">
-        <CheckCircle className="h-10 w-10 text-green-500" />
+        <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-500" />
         <p className="text-muted-foreground text-sm">Mật khẩu đã được đặt lại thành công.</p>
         <Link href="/login" className="text-primary text-sm font-medium hover:underline">
           Đăng nhập ngay
@@ -72,12 +72,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
       <div className="space-y-1.5">
         <Label htmlFor="password">Mật khẩu mới</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          {...register('password')}
-        />
+        <PasswordInput id="password" autoComplete="new-password" {...register('password')} />
         {errors.password ? (
           <p className="text-destructive text-xs">{errors.password.message}</p>
         ) : (
@@ -87,9 +82,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
       <div className="space-y-1.5">
         <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-        <Input
+        <PasswordInput
           id="confirmPassword"
-          type="password"
           autoComplete="new-password"
           {...register('confirmPassword')}
         />

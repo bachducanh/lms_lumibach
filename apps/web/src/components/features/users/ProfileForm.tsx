@@ -127,7 +127,7 @@ export function ProfileForm({ user }: { user: UserData }) {
     <div className="space-y-6">
       {/* Avatar + info card */}
       <Card>
-        <CardContent className="flex items-center gap-5 pt-6">
+        <CardContent className="flex items-center gap-4 pt-6 sm:gap-5">
           {/* Avatar với nút upload */}
           <div className="relative shrink-0">
             <button
@@ -169,12 +169,12 @@ export function ProfileForm({ user }: { user: UserData }) {
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{ROLE_LABELS[user.role]}</Badge>
               {user.lastLoginAt && (
-                <span className="text-muted-foreground text-xs">
+                <span className="text-muted-foreground text-sm">
                   Đăng nhập lần cuối: {new Date(user.lastLoginAt).toLocaleDateString('vi-VN')}
                 </span>
               )}
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-sm">
               Nhấn vào ảnh để thay đổi (JPG, PNG, WebP · tối đa 5 MB)
             </p>
           </div>
@@ -183,7 +183,10 @@ export function ProfileForm({ user }: { user: UserData }) {
 
       {/* Profile fields */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="border-border bg-card space-y-4 rounded-xl border p-4 shadow-sm sm:p-6"
+        >
           <FormField
             control={form.control}
             name="fullName"
@@ -223,7 +226,7 @@ export function ProfileForm({ user }: { user: UserData }) {
               </FormItem>
             )}
           />
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-wrap gap-2 pt-1">
             <Button type="submit" disabled={pending}>
               {pending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
               Cập nhật hồ sơ

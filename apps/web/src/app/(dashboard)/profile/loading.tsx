@@ -1,6 +1,6 @@
 export default function ProfileLoading() {
   return (
-    <div className="max-w-2xl animate-pulse space-y-6">
+    <div className="mx-auto w-full max-w-5xl animate-pulse space-y-6">
       {/* Header */}
       <div className="space-y-1.5">
         <div className="bg-muted h-7 w-32 rounded" />
@@ -25,11 +25,11 @@ export default function ProfileLoading() {
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="space-y-1.5">
             <div className="bg-muted h-3.5 w-24 rounded" />
-            <div className="bg-muted h-9 w-full rounded-md" />
+            <div className="bg-muted h-10 w-full rounded-lg" />
           </div>
         ))}
         <div className="flex justify-end">
-          <div className="bg-muted h-9 w-24 rounded-md" />
+          <div className="bg-muted h-10 w-28 rounded-full" />
         </div>
       </div>
     </div>

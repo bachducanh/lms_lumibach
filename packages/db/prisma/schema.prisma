@@ -402,6 +402,8 @@ model Course {
   slug           String       @unique
   description    String?      @db.Text
   thumbnail      String?
+  // Ô logo đè lên ảnh bìa ở thẻ khoá học. Trống thì thẻ dùng logo LumiBach.
+  logo           String?
   subject        String?
   status         CourseStatus @default(DRAFT)
   isPublic       Boolean      @default(false)

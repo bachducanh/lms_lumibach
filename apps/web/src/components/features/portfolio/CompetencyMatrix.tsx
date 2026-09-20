@@ -91,20 +91,20 @@ export function CompetencyMatrix({ matrix, evidence = [], courseSlug }: Props) {
 
   return (
     <>
-      <div className="border-border bg-card overflow-hidden rounded-lg border">
+      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-sm">
             <thead>
               <tr className="bg-[#202765] text-white">
                 <th
                   rowSpan={2}
-                  className="w-[92px] border-r border-white/25 px-3 py-4 text-center font-bold uppercase"
+                  className="w-[92px] border-r border-white/25 px-3 py-4 text-center font-bold"
                 >
                   Năng lực
                 </th>
                 <th
                   rowSpan={2}
-                  className="min-w-[360px] border-r border-white/25 px-3 py-4 text-left font-bold uppercase"
+                  className="min-w-[360px] border-r border-white/25 px-3 py-4 text-left font-bold"
                 >
                   Chỉ báo
                 </th>
@@ -123,7 +123,7 @@ export function CompetencyMatrix({ matrix, evidence = [], courseSlug }: Props) {
                     title={m.name}
                   >
                     <span>U{index + 1}</span>
-                    <span className="mx-auto mt-1 block max-w-[140px] truncate text-[10px] font-medium opacity-75">
+                    <span className="mx-auto mt-1 block max-w-[140px] truncate text-xs font-medium opacity-80">
                       {m.name}
                     </span>
                   </th>
@@ -240,10 +240,7 @@ function CategoryBlock({
   return (
     <>
       <tr className="bg-sky-500/20">
-        <td
-          colSpan={totalCols}
-          className="border-border/70 px-3 py-2 text-xs font-bold tracking-wide uppercase"
-        >
+        <td colSpan={totalCols} className="border-border/70 px-3 py-2 text-sm font-bold">
           {category.name}
         </td>
       </tr>

@@ -67,7 +67,7 @@ export default async function ManageBankQuizPage({
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex min-w-0 items-center gap-2">
-          <Brain className="h-4 w-4 shrink-0 text-violet-500" />
+          <Brain className="h-4 w-4 shrink-0 text-violet-700 dark:text-violet-400" />
           <span className="text-muted-foreground truncate text-sm">{quiz.title}</span>
           <span className="text-muted-foreground/40">/</span>
           <span className="text-sm font-medium">Quản lý câu hỏi</span>

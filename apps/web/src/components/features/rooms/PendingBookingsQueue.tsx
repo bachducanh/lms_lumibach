@@ -63,8 +63,10 @@ export function PendingBookingsQueue({ bookings }: { bookings: PendingBookingIte
 
   if (bookings.length === 0) {
     return (
-      <div className="border-border text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center">
-        <ClipboardCheck className="mx-auto mb-3 h-10 w-10 opacity-40" />
+      <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center">
+        <span className="bg-primary/10 text-primary mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg">
+          <ClipboardCheck className="h-6 w-6" />
+        </span>
         <p className="font-medium">Không có đơn nào chờ duyệt</p>
         <p className="mt-1 text-sm">Mọi đơn đăng ký đã được xử lý.</p>
       </div>
@@ -99,7 +101,7 @@ export function PendingBookingsQueue({ bookings }: { bookings: PendingBookingIte
       {coXungDotTrongLuaChon && (
         <p
           role="alert"
-          className="flex items-start gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+          className="flex items-start gap-2 rounded-lg border border-amber-600/25 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           Trong số đơn đã chọn có đơn trùng giờ với đơn khác. Duyệt được đơn nào thì hệ thống chỉ
@@ -107,7 +109,7 @@ export function PendingBookingsQueue({ bookings }: { bookings: PendingBookingIte
         </p>
       )}
 
-      <ul className="border-border divide-border divide-y rounded-xl border">
+      <ul className="border-border bg-card divide-border divide-y rounded-xl border shadow-sm">
         {bookings.map((booking) => (
           <li key={booking.id} className="flex items-start gap-3 px-4 py-3">
             <input
@@ -143,7 +145,7 @@ export function PendingBookingsQueue({ bookings }: { bookings: PendingBookingIte
                 <span
                   className={cn(
                     'mt-1.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                    'border-amber-400/60 bg-amber-500/15 text-amber-900 dark:text-amber-200'
+                    'border-amber-600/25 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400'
                   )}
                 >
                   <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />

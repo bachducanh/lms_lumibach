@@ -28,14 +28,14 @@ export function StudentFilterBar({ q, courseId, courses }: Props) {
   return (
     <div className="flex flex-wrap gap-2">
       {/* Search */}
-      <div className="relative max-w-sm min-w-[200px] flex-1">
+      <div className="relative w-full min-w-0 sm:max-w-sm sm:flex-1">
         <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <input
           type="search"
           defaultValue={q}
           onChange={(e) => update('q', e.target.value)}
           placeholder="Tìm theo tên, email..."
-          className="border-input bg-background focus:ring-ring h-9 w-full rounded-md border pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
+          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 w-full rounded-lg border pr-3 pl-9 text-sm outline-none focus-visible:ring-3"
         />
       </div>
 

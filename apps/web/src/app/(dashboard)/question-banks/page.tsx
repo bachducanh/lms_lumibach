@@ -27,16 +27,14 @@ export default async function QuestionBanksPage() {
   return (
     <div className="max-w-3xl space-y-8">
       <header className="space-y-3">
-        <p className="text-muted-foreground/70 font-mono text-[11px] tracking-[0.18em] uppercase">
-          Ngân hàng chung
-        </p>
+        <p className="text-muted-foreground/70 font-mono text-xs">Ngân hàng chung</p>
         <h1 className="text-3xl font-bold tracking-tight">Soạn một lần, mọi lớp dùng lại</h1>
         <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
           Nội dung ở đây không thuộc lớp nào. Nó gắn vào một tầng của cây danh mục và mọi lớp bên
           dưới tầng đó đều chép về được — kể cả những lớp mở ở năm học sau.
         </p>
         {categories.length > 0 && (
-          <p className="text-muted-foreground/70 font-mono text-[11px]">
+          <p className="text-muted-foreground/70 font-mono text-xs">
             {categories.length} danh mục · {tongCauHoi} câu hỏi · {tongChuong} chương
           </p>
         )}

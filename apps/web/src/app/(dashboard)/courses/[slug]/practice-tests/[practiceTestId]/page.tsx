@@ -4,6 +4,7 @@ import { cookies, headers } from 'next/headers';
 import { auth } from '@/auth';
 import { apiServerClient, orNotFound } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
+import { PageHero } from '@/components/layouts/PageHero';
 import { hasMinRole } from '@/lib/permissions';
 import { PracticeTestRunner } from '@/components/features/practice-tests/PracticeTestRunner';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
@@ -62,7 +63,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_CLASS: Record<string, string> = {
   DRAFT: 'border-border bg-muted text-muted-foreground',
-  PUBLISHED: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
+  PUBLISHED: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   CLOSED: 'border-destructive/30 bg-destructive/10 text-destructive',
 };
 
@@ -191,168 +192,133 @@ export default async function PracticeTestPage({
 
   return (
     <div className="space-y-6">
-      <div className="border-border bg-card relative -mx-6 -mt-6 overflow-hidden border-b">
-        {/* Tech grid */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.03]"
-          xmlns="http://www.w3.org/2000/svg"
+      <PageHero
+        footer={
+          allNavItems.length > 1 && currentNavIndex >= 0 ? (
+            <div className="bg-muted h-1">
+              <div
+                className="bg-primary h-full transition-all duration-500"
+                style={{ width: `${((currentNavIndex + 1) / allNavItems.length) * 100}%` }}
+              />
+            </div>
+          ) : null
+        }
+      >
+        <Link
+          href={`/courses/${slug}/modules`}
+          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
         >
-          <defs>
-            <pattern id="pt-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#pt-grid)" />
-        </svg>
+          <ChevronLeft className="h-4 w-4" />
+          Nội dung khoá học
+        </Link>
 
-        {/* Glow accents */}
-        <div
-          className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl"
-          style={{ background: 'oklch(0.80 0.13 210 / 0.10)' }}
-        />
-        <div
-          className="pointer-events-none absolute -bottom-10 left-1/3 h-32 w-64 rounded-full blur-3xl"
-          style={{ background: 'oklch(0.80 0.13 210 / 0.06)' }}
-        />
-
-        {/* Top accent line */}
-        <div
-          className="absolute top-0 right-0 left-0 h-[2px]"
-          style={{
-            background: 'linear-gradient(90deg, transparent, rgb(6 182 212 / 70%), transparent)',
-          }}
-        />
-
-        <div className="relative px-6 py-8">
-          <Link
-            href={`/courses/${slug}/modules`}
-            className="text-muted-foreground hover:text-primary mb-4 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase transition-colors duration-150"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            Nội dung khoá học
-          </Link>
-
-          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
-                <FileQuestion
-                  className="h-3.5 w-3.5 text-cyan-500"
-                  style={{ filter: 'drop-shadow(0 0 6px #06b6d4)' }}
-                />
-                <p className="text-[11px] font-bold tracking-[0.2em] text-cyan-500 uppercase">
-                  Đề luyện tập PDF
-                </p>
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight">{practiceTest.title}</h1>
-              {practiceTest.description && (
-                <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-                  {practiceTest.description}
-                </p>
-              )}
-
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {canManage && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide',
-                      STATUS_CLASS[practiceTest.status]
-                    )}
-                  >
-                    {STATUS_LABEL[practiceTest.status]}
-                  </span>
-                )}
-                {allNavItems.length > 1 && currentNavIndex >= 0 && (
-                  <span className="inline-flex items-center gap-1 rounded border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-cyan-400">
-                    Mục {currentNavIndex + 1}/{allNavItems.length}
-                  </span>
-                )}
-                <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
-                  <FileQuestion className="h-3 w-3" /> {practiceTest.questions.length} câu
-                </span>
-                <span className="inline-flex items-center gap-1 rounded border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-cyan-400">
-                  <Target className="h-3 w-3" /> {totalPoints(practiceTest.questions)} điểm
-                </span>
-                {practiceTest.timeLimit && (
-                  <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-amber-500">
-                    <Clock className="h-3 w-3" /> {practiceTest.timeLimit} phút
-                  </span>
-                )}
-                {practiceTest.maxAttempts && (
-                  <span className="border-muted-foreground/20 bg-muted/30 text-muted-foreground inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
-                    <RotateCcw className="h-3 w-3" /> Tối đa {practiceTest.maxAttempts} lần
-                  </span>
-                )}
-                {practiceTest.dueDate && (
-                  <span className="border-destructive/20 bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded border px-2.5 py-0.5 text-xs font-semibold tracking-wide">
-                    <CalendarDays className="h-3 w-3" /> Hạn: {fmt(practiceTest.dueDate)}
-                  </span>
-                )}
-              </div>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <FileQuestion className="text-primary h-4 w-4" />
+              <p className="text-primary text-sm font-semibold">Đề luyện tập PDF</p>
             </div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight break-words sm:text-3xl">
+              {practiceTest.title}
+            </h1>
+            {practiceTest.description && (
+              <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
+                {practiceTest.description}
+              </p>
+            )}
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Link
-                href={`/courses/${slug}/practice-tests/${practiceTestId}/preview`}
-                className={buttonVariants({ variant: 'outline', size: 'sm' })}
-              >
-                <Eye className="mr-1.5 h-4 w-4" />
-                Xem thử
-              </Link>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               {canManage && (
-                <>
-                  <PracticeTestStatusButton
-                    practiceTestId={practiceTestId}
-                    isPublished={practiceTest.status === 'PUBLISHED'}
-                  />
-                  <Link
-                    href={`/courses/${slug}/practice-tests/${practiceTestId}/edit`}
-                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                  >
-                    <Edit3 className="mr-1.5 h-4 w-4" />
-                    Chỉnh sửa
-                  </Link>
-                  <Link
-                    href={`/courses/${slug}/practice-tests/${practiceTestId}/attempts`}
-                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                  >
-                    <Users className="mr-1.5 h-4 w-4" />
-                    Bài làm
-                  </Link>
-                  <DeletePracticeTestButton practiceTestId={practiceTestId} courseSlug={slug} />
-                </>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold',
+                    STATUS_CLASS[practiceTest.status]
+                  )}
+                >
+                  {STATUS_LABEL[practiceTest.status]}
+                </span>
+              )}
+              {allNavItems.length > 1 && currentNavIndex >= 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-600/25 bg-cyan-50 px-2.5 py-0.5 text-xs font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-400">
+                  Mục {currentNavIndex + 1}/{allNavItems.length}
+                </span>
+              )}
+              <span className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold">
+                <FileQuestion className="h-3 w-3" /> {practiceTest.questions.length} câu
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-600/25 bg-cyan-50 px-2.5 py-0.5 text-xs font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-400">
+                <Target className="h-3 w-3" /> {totalPoints(practiceTest.questions)} điểm
+              </span>
+              {practiceTest.timeLimit && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-600/25 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                  <Clock className="h-3 w-3" /> {practiceTest.timeLimit} phút
+                </span>
+              )}
+              {practiceTest.maxAttempts && (
+                <span className="border-muted-foreground/20 bg-muted/30 text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold">
+                  <RotateCcw className="h-3 w-3" /> Tối đa {practiceTest.maxAttempts} lần
+                </span>
+              )}
+              {practiceTest.dueDate && (
+                <span className="border-destructive/20 bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold">
+                  <CalendarDays className="h-3 w-3" /> Hạn: {fmt(practiceTest.dueDate)}
+                </span>
               )}
             </div>
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Link
+              href={`/courses/${slug}/practice-tests/${practiceTestId}/preview`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <Eye className="mr-1.5 h-4 w-4" />
+              Xem thử
+            </Link>
+            {canManage && (
+              <>
+                <PracticeTestStatusButton
+                  practiceTestId={practiceTestId}
+                  isPublished={practiceTest.status === 'PUBLISHED'}
+                />
+                <Link
+                  href={`/courses/${slug}/practice-tests/${practiceTestId}/edit`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  <Edit3 className="mr-1.5 h-4 w-4" />
+                  Chỉnh sửa
+                </Link>
+                <Link
+                  href={`/courses/${slug}/practice-tests/${practiceTestId}/attempts`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                >
+                  <Users className="mr-1.5 h-4 w-4" />
+                  Bài làm
+                </Link>
+                <DeletePracticeTestButton practiceTestId={practiceTestId} courseSlug={slug} />
+              </>
+            )}
           </div>
         </div>
-
-        {/* Progress bar — vị trí trong khoá học */}
-        {allNavItems.length > 1 && currentNavIndex >= 0 && (
-          <div className="bg-muted h-1">
-            <div
-              className="h-full bg-cyan-500 transition-all duration-500"
-              style={{ width: `${((currentNavIndex + 1) / allNavItems.length) * 100}%` }}
-            />
-          </div>
-        )}
-      </div>
+      </PageHero>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="border-border bg-card overflow-hidden rounded-lg border">
+        <section className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <div className="border-b px-4 py-3">
             <p className="text-sm font-semibold">PDF đề bài</p>
           </div>
           <iframe
             title={practiceTest.pdfName}
             src={practiceTest.pdfUrl}
-            className="h-[640px] w-full bg-white"
+            className="h-[65dvh] min-h-[420px] w-full bg-white xl:h-[640px]"
           />
         </section>
 
         <aside className="space-y-5">
           <AnswerKeySummary questions={practiceTest.questions} />
-          <section className="border-border bg-card rounded-lg border">
+          <section className="border-border bg-card rounded-xl border shadow-sm">
             <div className="flex items-center gap-2 border-b px-4 py-3">
-              <History className="h-4 w-4 text-cyan-500" />
+              <History className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
               <p className="text-sm font-semibold">Bài làm gần đây</p>
             </div>
             <div className="divide-y">
@@ -400,9 +366,7 @@ export default async function PracticeTestPage({
               >
                 <ChevronLeft className="text-muted-foreground group-hover:text-primary h-5 w-5 shrink-0 transition-all group-hover:-translate-x-1" />
                 <div className="min-w-0">
-                  <p className="text-muted-foreground mb-0.5 text-[10px] font-bold tracking-wider uppercase">
-                    Bài trước
-                  </p>
+                  <p className="text-muted-foreground mb-0.5 text-xs font-semibold">Bài trước</p>
                   <p className="max-w-[100px] truncate text-sm font-semibold sm:max-w-xs">
                     {prevNavItem.title}
                   </p>
@@ -426,7 +390,7 @@ export default async function PracticeTestPage({
               >
                 <ChevronRight className="text-muted-foreground group-hover:text-primary h-5 w-5 shrink-0 transition-all group-hover:translate-x-1" />
                 <div className="min-w-0">
-                  <p className="text-muted-foreground mb-0.5 text-[10px] font-bold tracking-wider uppercase">
+                  <p className="text-muted-foreground mb-0.5 text-xs font-semibold">
                     Bài tiếp theo
                   </p>
                   <p className="max-w-[100px] truncate text-sm font-semibold sm:max-w-xs">
@@ -447,7 +411,7 @@ function ActivityProgress({ currentIndex, total }: { currentIndex: number; total
   return (
     <div className="bg-muted h-1 overflow-hidden rounded-full">
       <div
-        className="h-full bg-cyan-500 transition-all duration-500"
+        className="bg-primary h-full transition-all duration-500"
         style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
       />
     </div>
@@ -474,13 +438,15 @@ function StudentBlockedView({
         <ArrowLeft className="h-4 w-4" />
         Nội dung khoá học
       </Link>
-      <div className="border-border bg-card rounded-lg border p-6">
-        <FileQuestion className="mb-3 h-8 w-8 text-cyan-500" />
-        <h1 className="text-2xl font-bold">{practiceTest.title}</h1>
+      <div className="border-border bg-card rounded-xl border p-4 shadow-sm sm:p-6">
+        <FileQuestion className="mb-3 h-8 w-8 text-cyan-700 dark:text-cyan-400" />
+        <h1 className="font-heading text-2xl font-bold tracking-tight break-words">
+          {practiceTest.title}
+        </h1>
         <p className="text-muted-foreground mt-2 text-sm">{reason}</p>
       </div>
       {myAttempts.length > 0 && (
-        <div className="border-border bg-card rounded-lg border">
+        <div className="border-border bg-card rounded-xl border shadow-sm">
           <div className="border-b px-4 py-3 text-sm font-semibold">Bài làm của bạn</div>
           <div className="divide-y">
             {myAttempts.map((attempt) => (
@@ -505,18 +471,16 @@ function StudentBlockedView({
 function AnswerKeySummary({ questions }: { questions: PracticeTestQuestion[] }) {
   const sections = groupBySection(questions);
   return (
-    <section className="border-border bg-card rounded-lg border">
+    <section className="border-border bg-card rounded-xl border shadow-sm">
       <div className="border-b px-4 py-3">
         <p className="text-sm font-semibold">Đáp án đã cấu hình</p>
       </div>
       <div className="max-h-[520px] space-y-4 overflow-y-auto p-3">
         {sections.map((section) => (
           <div key={section.type} className="space-y-2">
-            <p className="text-muted-foreground text-[11px] font-bold tracking-wide uppercase">
-              {section.label}
-            </p>
+            <p className="text-muted-foreground text-xs font-semibold">{section.label}</p>
             {section.questions.map((question, index) => (
-              <div key={question.id} className="border-border rounded-md border px-3 py-2 text-sm">
+              <div key={question.id} className="border-border rounded-lg border px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold">Câu {index + 1}</span>
                   <span className="text-muted-foreground text-xs">{question.points} điểm</span>

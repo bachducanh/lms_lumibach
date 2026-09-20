@@ -55,7 +55,7 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
       >
         <span
           className={cn(
-            'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+            'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',
             TYPE_BADGE[q.type]
           )}
         >
@@ -95,7 +95,7 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
                   key={o.id}
                   className={cn(
                     'text-sm',
-                    o.isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                    o.isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'
                   )}
                 >
                   {o.isCorrect ? '✓' : '·'} <MathText text={stripHtml(o.content)} />
@@ -186,13 +186,13 @@ function FolderBlock({
                   setEditing(false);
                 }
               }}
-              className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+              className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
             />
             <button
               type="button"
               onClick={luuTen}
               disabled={pending}
-              className="text-emerald-600 disabled:opacity-50"
+              className="text-emerald-700 disabled:opacity-50 dark:text-emerald-400"
               aria-label="Lưu tên"
             >
               <Check className="h-4 w-4" />
@@ -324,7 +324,7 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
               if (e.key === 'Escape') setAdding(false);
             }}
             placeholder="Tên thư mục, ví dụ “Chương 1 — Thuật toán”"
-            className="border-input bg-background h-9 flex-1 rounded-md border px-3 text-sm"
+            className="border-input bg-background h-9 flex-1 rounded-lg border px-3 text-sm"
           />
           <button
             type="button"

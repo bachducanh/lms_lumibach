@@ -59,7 +59,7 @@ export function WebCodeEditor({ value, onChange, readOnly = false, height = 420 
   return (
     <div className="border-border overflow-hidden rounded-xl border">
       {/* Header labels */}
-      <div className="divide-border border-border bg-muted/30 grid grid-cols-2 divide-x border-b">
+      <div className="divide-border border-border bg-muted/30 grid grid-cols-1 divide-y border-b md:grid-cols-2 md:divide-x md:divide-y-0">
         <div className="text-muted-foreground flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold">
           <Code2 className="h-3 w-3" />
           Code HTML / CSS / JS
@@ -71,7 +71,7 @@ export function WebCodeEditor({ value, onChange, readOnly = false, height = 420 
       </div>
 
       {/* Split pane */}
-      <div className="divide-border grid grid-cols-2 divide-x">
+      <div className="divide-border grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
         <Editor
           height={height}
           language="html"

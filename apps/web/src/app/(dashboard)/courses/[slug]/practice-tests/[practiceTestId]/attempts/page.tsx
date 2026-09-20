@@ -45,7 +45,7 @@ export default async function PracticeAttemptsPage({
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="text-muted-foreground flex items-center gap-2 text-sm">
-        <FileQuestion className="h-4 w-4 shrink-0 text-cyan-500" />
+        <FileQuestion className="h-4 w-4 shrink-0 text-cyan-700 dark:text-cyan-400" />
         <Link
           href={`/courses/${slug}/practice-tests/${practiceTestId}`}
           className="hover:text-foreground max-w-60 truncate transition-colors"

@@ -256,7 +256,7 @@ export function PracticeAttemptsTable({
           type="button"
           onClick={() => toggleSort(col)}
           className={cn(
-            'flex items-center gap-1 text-xs font-semibold tracking-wide uppercase transition-colors',
+            'flex items-center gap-1 text-xs font-semibold transition-colors',
             sortKey === col ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -284,17 +284,17 @@ export function PracticeAttemptsTable({
         </button>
       </div>
 
-      <div className="border-border overflow-x-auto rounded-xl border">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-border bg-muted/50 border-b">
-              <th className="text-muted-foreground min-w-48 px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+              <th className="text-muted-foreground min-w-48 px-3 py-2.5 text-left text-xs font-semibold">
                 Họ và tên
               </th>
-              <th className="text-muted-foreground min-w-44 px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+              <th className="text-muted-foreground min-w-44 px-3 py-2.5 text-left text-xs font-semibold">
                 Email
               </th>
-              <th className="text-muted-foreground min-w-36 px-3 py-2.5 text-left text-xs font-semibold tracking-wide uppercase">
+              <th className="text-muted-foreground min-w-36 px-3 py-2.5 text-left text-xs font-semibold">
                 Trạng thái
               </th>
 
@@ -306,7 +306,7 @@ export function PracticeAttemptsTable({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className="text-muted-foreground min-w-14 px-3 py-2.5 text-center text-xs font-semibold tracking-wide whitespace-nowrap uppercase"
+                  className="text-muted-foreground min-w-14 px-3 py-2.5 text-center text-xs font-semibold whitespace-nowrap"
                 >
                   {column.label}
                 </th>
@@ -322,7 +322,7 @@ export function PracticeAttemptsTable({
               const score10 = normalizeScore(attempt.score, attempt.maxScore);
 
               return (
-                <tr key={attempt.id} className="hover:bg-muted/30 transition-colors">
+                <tr key={attempt.id} className="hover:bg-muted/40 transition-colors">
                   <td className="px-3 py-3">
                     <p className="leading-snug font-medium">{studentName(attempt.student)}</p>
                     <Link
@@ -368,7 +368,7 @@ export function PracticeAttemptsTable({
                           <span
                             className={cn(
                               'text-xs font-medium',
-                              answer?.isCorrect === true && 'text-green-600 dark:text-green-400',
+                              answer?.isCorrect === true && 'text-green-700 dark:text-green-400',
                               answer?.isCorrect === false && 'text-destructive'
                             )}
                           >
@@ -387,7 +387,7 @@ export function PracticeAttemptsTable({
                           <span
                             className={cn(
                               'text-xs font-semibold',
-                              result ? 'text-green-600 dark:text-green-400' : 'text-destructive'
+                              result ? 'text-green-700 dark:text-green-400' : 'text-destructive'
                             )}
                           >
                             {result ? 'Đúng' : 'Sai'}

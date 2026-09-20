@@ -15,10 +15,13 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  ACTIVE: 'bg-green-500/10 text-green-700 dark:text-green-400',
-  INACTIVE: 'bg-muted text-muted-foreground',
-  SUSPENDED: 'bg-red-500/10 text-destructive',
-  PENDING: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  ACTIVE:
+    'border border-emerald-600/25 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400',
+  INACTIVE: 'border border-border bg-muted text-muted-foreground',
+  SUSPENDED:
+    'border border-red-600/25 bg-red-50 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400',
+  PENDING:
+    'border border-amber-600/25 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400',
 };
 
 function displayName(s: StudentRow) {
@@ -39,8 +42,10 @@ type Props = {
 export function StudentListTable({ students, emptyTitle, emptyDescription }: Props) {
   if (students.length === 0) {
     return (
-      <div className="border-border bg-card flex flex-col items-center justify-center gap-3 rounded-xl border px-5 py-16 text-center">
-        <UserX className="text-muted-foreground/40 h-10 w-10" />
+      <div className="border-border bg-card flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-5 py-16 text-center">
+        <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-lg">
+          <UserX className="h-6 w-6" />
+        </div>
         <div>
           <p className="font-medium">{emptyTitle ?? 'Không tìm thấy học sinh nào'}</p>
           {emptyDescription && (
@@ -52,56 +57,62 @@ export function StudentListTable({ students, emptyTitle, emptyDescription }: Pro
   }
 
   return (
-    <div className="ring-foreground/10 overflow-x-auto rounded-xl ring-1">
+    <div className="border-border bg-card overflow-x-auto rounded-xl border shadow-sm">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted/50 border-border border-b">
-            <th className="text-muted-foreground px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+            <th className="text-muted-foreground px-4 py-3 text-left text-xs font-semibold">
               Học sinh
             </th>
-            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase md:table-cell">
+            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold md:table-cell">
               Email
             </th>
-            <th className="text-muted-foreground px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold sm:table-cell">
               Trạng thái
             </th>
-            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase sm:table-cell">
+            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold sm:table-cell">
               <span className="flex items-center gap-1">
                 <BookOpen className="h-3.5 w-3.5" /> Lớp
               </span>
             </th>
-            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase lg:table-cell">
+            <th className="text-muted-foreground hidden px-4 py-3 text-left text-xs font-semibold lg:table-cell">
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" /> Đăng nhập gần nhất
               </span>
             </th>
-            <th className="text-muted-foreground px-4 py-3 text-right text-xs font-semibold tracking-wide uppercase">
+            <th className="text-muted-foreground px-4 py-3 text-right text-xs font-semibold">
               Thao tác
             </th>
           </tr>
         </thead>
         <tbody className="divide-border divide-y">
           {students.map((s) => (
-            <tr key={s.id} className="hover:bg-muted/20 transition-colors">
+            <tr key={s.id} className="hover:bg-muted/40 transition-colors">
               <td className="px-4 py-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                  <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
                     {displayName(s).split(' ').pop()?.[0]?.toUpperCase() ?? '?'}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="leading-tight font-medium">{displayName(s)}</p>
-                    {s.username && (
-                      <p className="text-muted-foreground text-[11px]">@{s.username}</p>
-                    )}
-                    <p className="text-muted-foreground text-[11px] md:hidden">{s.email}</p>
+                    {s.username && <p className="text-muted-foreground text-xs">@{s.username}</p>}
+                    <p className="text-muted-foreground text-xs break-all md:hidden">{s.email}</p>
+                    <span
+                      className={cn(
+                        'mt-1.5 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap sm:hidden',
+                        STATUS_CLASS[s.status] ?? 'bg-muted text-muted-foreground'
+                      )}
+                    >
+                      {STATUS_LABEL[s.status] ?? s.status}
+                    </span>
                   </div>
                 </div>
               </td>
               <td className="text-muted-foreground hidden px-4 py-3.5 md:table-cell">{s.email}</td>
-              <td className="px-4 py-3.5">
+              <td className="hidden px-4 py-3.5 sm:table-cell">
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
                     STATUS_CLASS[s.status] ?? 'bg-muted text-muted-foreground'
                   )}
                 >
@@ -123,7 +134,7 @@ export function StudentListTable({ students, emptyTitle, emptyDescription }: Pro
               <td className="px-4 py-3.5 text-right">
                 <Link
                   href={`/students/${s.id}`}
-                  className="border-border bg-card hover:bg-accent inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+                  className="border-border bg-card hover:bg-accent inline-flex h-9 items-center rounded-full border px-4 text-sm font-medium whitespace-nowrap transition-colors"
                 >
                   Chi tiết
                 </Link>

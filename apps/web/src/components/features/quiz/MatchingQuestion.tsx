@@ -171,7 +171,7 @@ export function MatchingQuestion({ pairs, value, onChange, shuffleSeed = '' }: P
           {pairs.map((p, i) => (
             <div key={p.id} className="flex items-stretch gap-2">
               <div className="border-border bg-muted/20 flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-                <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
+                <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1 break-words">
@@ -212,7 +212,7 @@ export function MatchingQuestion({ pairs, value, onChange, shuffleSeed = '' }: P
 
       <DragOverlay>
         {activeId ? (
-          <div className="border-primary bg-card flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg">
+          <div className="border-primary bg-card flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-sm">
             <GripVertical className="text-muted-foreground/40 h-4 w-4 shrink-0" />
             <span className="flex-1">
               <MathText text={rightText(activeId)} />

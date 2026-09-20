@@ -35,8 +35,8 @@ export default async function AdminRoomBookingsPage() {
   return (
     <div className="lb-stagger w-full space-y-5">
       <div style={{ ['--i' as string]: 0 }}>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <ClipboardCheck className="h-6 w-6" />
+        <h1 className="font-heading flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          <ClipboardCheck className="text-primary h-6 w-6 shrink-0" />
           Hàng chờ duyệt phòng
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -66,9 +66,9 @@ export default async function AdminRoomBookingsPage() {
               lưới lịch làm không tiện. */}
           <section className="space-y-3" style={{ ['--i' as string]: 2 }}>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">Duyệt nhiều đơn</h2>
+              <h2 className="text-lg font-bold sm:text-xl">Duyệt nhiều đơn</h2>
               {pending.length > 0 && (
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-amber-600/25 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
                   {pending.length} đơn chờ
                 </span>
               )}

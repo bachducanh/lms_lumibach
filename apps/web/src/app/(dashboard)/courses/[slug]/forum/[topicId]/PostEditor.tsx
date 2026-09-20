@@ -61,11 +61,11 @@ export function PostEditor({
         allowImages={canUploadImages}
         compact
       />
-      <div className="flex items-center gap-2">
-        <Button size="sm" onClick={handleSave} disabled={isPending}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={handleSave} disabled={isPending}>
           {isPending ? 'Đang lưu...' : 'Lưu'}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDone} disabled={isPending}>
+        <Button variant="ghost" onClick={onDone} disabled={isPending}>
           Huỷ
         </Button>
       </div>

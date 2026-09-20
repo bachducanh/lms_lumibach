@@ -84,8 +84,8 @@ export function RubricGradePanel({ rubric, codeSubmissionId, maxScore = 10, onGr
   }
 
   return (
-    <div className="border-border/60 bg-card/40 space-y-4 rounded-xl border p-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="border-border bg-card space-y-4 rounded-xl border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Sparkles className="text-primary h-4 w-4" />
           <h3 className="text-sm font-semibold">Chấm theo rubric</h3>
@@ -107,12 +107,16 @@ export function RubricGradePanel({ rubric, codeSubmissionId, maxScore = 10, onGr
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium">{c.name}</p>
-                <span className="text-muted-foreground shrink-0 text-[11px]">tối đa {max} đ</span>
+                <span className="text-muted-foreground shrink-0 text-xs">tối đa {max} đ</span>
               </div>
               {c.description && <p className="text-muted-foreground text-xs">{c.description}</p>}
               <div
-                className="grid gap-1.5"
-                style={{ gridTemplateColumns: `repeat(${Math.min(c.levels.length, 4)}, 1fr)` }}
+                className="grid grid-cols-2 gap-1.5 sm:grid-cols-(--rubric-cols)"
+                style={
+                  {
+                    '--rubric-cols': `repeat(${Math.min(c.levels.length, 4)}, 1fr)`,
+                  } as React.CSSProperties
+                }
               >
                 {c.levels.map((l) => {
                   const active = chosen === l.id;
@@ -132,7 +136,7 @@ export function RubricGradePanel({ rubric, codeSubmissionId, maxScore = 10, onGr
                         <p className="truncate text-xs font-semibold">{l.label}</p>
                         <span
                           className={cn(
-                            'shrink-0 text-[11px] tabular-nums',
+                            'shrink-0 text-xs tabular-nums',
                             active ? 'text-primary font-bold' : 'text-muted-foreground'
                           )}
                         >
@@ -140,7 +144,7 @@ export function RubricGradePanel({ rubric, codeSubmissionId, maxScore = 10, onGr
                         </span>
                       </div>
                       {l.description && (
-                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[10px] leading-snug">
+                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-snug">
                           {l.description}
                         </p>
                       )}

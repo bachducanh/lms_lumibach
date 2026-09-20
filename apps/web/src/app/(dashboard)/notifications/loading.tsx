@@ -1,6 +1,6 @@
 export default function NotificationsLoading() {
   return (
-    <div className="max-w-2xl animate-pulse space-y-5">
+    <div className="mx-auto w-full max-w-3xl animate-pulse space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
