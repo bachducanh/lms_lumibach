@@ -94,7 +94,8 @@ test('nhập đề Word có công thức vào kho của danh mục', async ({ pa
 
   const docx = await dungDocx(
     [
-      doan(chu(`Thư mục: ${nhan}`)),
+      // Thư mục ghi trong tệp phải bị bỏ qua: thư mục đích do người dùng chọn.
+      doan(chu('Thư mục: Thư mục ghi trong tệp')),
       doan(chu(`Câu 1. [TN1] ${nhan} Giá trị của `) + phanSo('1', '2') + chu(' bằng bao nhiêu?')),
       doan(chu('A. 0,5')),
       doan(chu('B. 0,25')),
@@ -110,8 +111,18 @@ test('nhập đề Word có công thức vào kho của danh mục', async ({ pa
   );
 
   await dangNhap(page);
+  const tao = await page.request.post(`/api/v1/questions/bank-categories/${CATEGORY}/folders`, {
+    data: { name: nhan },
+  });
+  expect(tao.ok(), `tạo thư mục thất bại: ${await tao.text()}`).toBe(true);
+
   await page.goto(`/question-banks/${CATEGORY}/questions/import`);
   await expect(page.getByRole('heading', { name: 'Nhập đề từ Word' })).toBeVisible();
+
+  // Phải chọn thư mục đích trước, chưa chọn thì chưa được chọn tệp.
+  await expect(page.getByRole('button', { name: /Chọn tệp \.docx/ })).toBeDisabled();
+  await page.getByLabel('1. Chọn thư mục nhận câu hỏi').selectOption({ label: nhan });
+  await expect(page.getByRole('button', { name: /Chọn tệp \.docx/ })).toBeEnabled();
 
   // Tệp mẫu phải tải được ngay từ màn hình này; giáo viên chép từ đó ra đề thật.
   const mau = await page.request.get('/api/word-import/mau');
@@ -139,7 +150,7 @@ test('nhập đề Word có công thức vào kho của danh mục', async ({ pa
   await page.getByRole('button', { name: /Nhập 2 câu/ }).click();
   await page.waitForURL(`**/question-banks/${CATEGORY}`, { timeout: 30_000 });
 
-  // Về tới kho: thư mục khai trong tệp đã được tạo và hai câu nằm trong đó.
+  // Về tới kho: hai câu nằm trong thư mục đã chọn.
   await expect(page.getByText(nhan).first()).toBeVisible({ timeout: 30_000 });
 
   const trongKho = await page.request.get(`/api/v1/questions/bank-categories/${CATEGORY}`);
@@ -149,7 +160,8 @@ test('nhập đề Word có công thức vào kho của danh mục', async ({ pa
     data: { folders: { name: string; questions: { content: string; type: string }[] }[] };
   };
   const thuMuc = data.folders.find((f) => f.name === nhan);
-  expect(thuMuc, 'thư mục khai trong tệp phải được tạo').toBeTruthy();
+  expect(thuMuc, 'thư mục đã chọn phải nhận câu hỏi').toBeTruthy();
+  expect(data.folders.some((f) => f.name === 'Thư mục ghi trong tệp')).toBe(false);
   expect(thuMuc!.questions).toHaveLength(2);
   expect(thuMuc!.questions.map((q) => q.type).sort()).toEqual([
     'MULTIPLE_CHOICE_SINGLE',

@@ -15,10 +15,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function ImportBankQuestionsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ categoryId: string }>;
+  searchParams: Promise<{ folder?: string }>;
 }) {
   const { categoryId } = await params;
+  const { folder } = await searchParams;
 
   const session = await auth();
   const role = session?.user?.role as UserRole | undefined;
@@ -50,6 +53,8 @@ export default async function ImportBankQuestionsPage({
         bankCategoryId={categoryId}
         returnTo={backHref}
         tenNoiNhan={`kho của ${data.categoryName}`}
+        thuMuc={data.folders.map((f) => ({ id: f.id, name: f.name }))}
+        thuMucMacDinh={folder}
       />
     </div>
   );

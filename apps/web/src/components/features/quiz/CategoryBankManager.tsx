@@ -8,9 +8,11 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  FileUp,
   FolderOpen,
   FolderPlus,
   HelpCircle,
+  ListTree,
   Pencil,
   Plus,
   Trash2,
@@ -23,6 +25,12 @@ import type {
 } from '@lumibach/types';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { buttonVariants } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { MathText } from '@/components/ui/editor/MathText';
 import { DeleteQuestionButton } from '@/components/features/quiz/DeleteQuestionButton';
@@ -36,6 +44,8 @@ import {
 
 const XOA_CAU_HOI =
   'Xoá câu hỏi này khỏi ngân hàng? Các bản đã chép về khoá học vẫn giữ nguyên — chúng là bản sao riêng.';
+
+const CHUA_XEP = '__chua-xep__';
 
 function loiCua(err: unknown, mac_dinh: string) {
   return err instanceof ApiError ? err.message : mac_dinh;
@@ -114,9 +124,13 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
 function FolderBlock({
   folder,
   categoryId,
+  open,
+  onToggle,
 }: {
   folder: CategoryWithQuestions;
   categoryId: string;
+  open: boolean;
+  onToggle: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -172,6 +186,15 @@ function FolderBlock({
     <section className="space-y-2">
       {confirmDialog}
       <header className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={open ? `Thu gọn ${folder.name}` : `Mở rộng ${folder.name}`}
+          className="text-muted-foreground hover:text-foreground hover:bg-muted -ml-1 shrink-0 rounded-md p-1 transition-colors"
+        >
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
         <FolderOpen className="text-primary h-4 w-4 shrink-0" />
         {editing ? (
           <div className="flex items-center gap-1">
@@ -211,7 +234,11 @@ function FolderBlock({
           </div>
         ) : (
           <>
-            <h2 className="text-sm font-semibold">{folder.name}</h2>
+            <h2 className="text-sm font-semibold">
+              <button type="button" onClick={onToggle} className="cursor-pointer text-left">
+                {folder.name}
+              </button>
+            </h2>
             <span className="text-muted-foreground text-xs">{folder.questions.length} câu hỏi</span>
             <button
               type="button"
@@ -232,16 +259,25 @@ function FolderBlock({
             </button>
           </>
         )}
-        <Link
-          href={`/question-banks/${categoryId}/questions/new?folder=${folder.id}`}
-          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'ml-auto text-xs')}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Thêm câu hỏi
-        </Link>
+        <div className="ml-auto flex items-center gap-1">
+          <Link
+            href={`/question-banks/${categoryId}/questions/import?folder=${folder.id}`}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}
+          >
+            <FileUp className="mr-1 h-3.5 w-3.5" />
+            Nhập từ Word
+          </Link>
+          <Link
+            href={`/question-banks/${categoryId}/questions/new?folder=${folder.id}`}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Thêm câu hỏi
+          </Link>
+        </div>
       </header>
 
-      {folder.questions.length === 0 ? (
+      {!open ? null : folder.questions.length === 0 ? (
         <p className="border-border text-muted-foreground rounded-lg border border-dashed px-4 py-4 text-xs">
           Thư mục trống.
         </p>
@@ -263,6 +299,23 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
   const [pending, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  // Mặc định đóng hết: kho lớn có hàng chục thư mục, bấm vào mới hiện câu hỏi.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const allIds = [
+    ...data.folders.map((f) => f.id),
+    ...(data.uncategorized.length > 0 ? [CHUA_XEP] : []),
+  ];
+  const allOpen = allIds.length > 0 && allIds.every((id) => expanded.has(id));
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const tongCau =
     data.folders.reduce((s, f) => s + f.questions.length, 0) + data.uncategorized.length;
@@ -344,24 +397,64 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
         </div>
       )}
 
+      {allIds.length > 0 && (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="border-border hover:border-primary/40 hover:text-foreground text-muted-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors outline-none focus-visible:ring-3">
+              <ListTree className="h-3.5 w-3.5" />
+              {allOpen ? 'Đang mở tất cả' : 'Mở rộng'}
+              <ChevronDown className="h-3.5 w-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => setExpanded(new Set(allIds))}>
+                Mở tất cả
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setExpanded(new Set())}>
+                Đóng tất cả
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       {data.folders.map((f) => (
-        <FolderBlock key={f.id} folder={f} categoryId={data.categoryId} />
+        <FolderBlock
+          key={f.id}
+          folder={f}
+          categoryId={data.categoryId}
+          open={expanded.has(f.id)}
+          onToggle={() => toggle(f.id)}
+        />
       ))}
 
       {data.uncategorized.length > 0 && (
         <section className="space-y-2">
           <header className="flex items-center gap-2">
-            <FolderOpen className="text-muted-foreground h-4 w-4" />
-            <h2 className="text-sm font-semibold">Chưa xếp thư mục</h2>
+            <button
+              type="button"
+              onClick={() => toggle(CHUA_XEP)}
+              aria-expanded={expanded.has(CHUA_XEP)}
+              className="flex items-center gap-2"
+            >
+              {expanded.has(CHUA_XEP) ? (
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
+              ) : (
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
+              )}
+              <FolderOpen className="text-muted-foreground h-4 w-4" />
+              <h2 className="text-sm font-semibold">Chưa xếp thư mục</h2>
+            </button>
             <span className="text-muted-foreground text-xs">
               {data.uncategorized.length} câu hỏi
             </span>
           </header>
-          <div className="space-y-2">
-            {data.uncategorized.map((q) => (
-              <QuestionRow key={q.id} q={q} categoryId={data.categoryId} />
-            ))}
-          </div>
+          {expanded.has(CHUA_XEP) && (
+            <div className="space-y-2">
+              {data.uncategorized.map((q) => (
+                <QuestionRow key={q.id} q={q} categoryId={data.categoryId} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

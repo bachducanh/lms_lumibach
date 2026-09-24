@@ -83,6 +83,9 @@ test('soạn câu trả lời ngắn có công thức rồi xem lại trong kho'
 
   // Mở lại trong kho và bung câu hỏi ra.
   await page.goto(`/question-banks/${CATEGORY}`);
+  // Thư mục đóng sẵn: mở hết ra mới thấy câu hỏi.
+  await page.getByRole('button', { name: 'Mở rộng' }).click();
+  await page.getByRole('menuitem', { name: 'Mở tất cả' }).click();
   const the = page.getByText(nhan).first();
   await expect(the).toBeVisible({ timeout: 30_000 });
   await the.click();

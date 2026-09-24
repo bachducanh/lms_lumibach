@@ -36,6 +36,13 @@ type Props = {
   /** Nơi quay về sau khi nhập xong. */
   returnTo: string;
   tenNoiNhan: string;
+  /**
+   * Chỉ dùng cho kho danh mục: các thư mục đang có. Có truyền vào thì giáo viên
+   * phải chọn thư mục đích TRƯỚC khi chọn tệp, và mọi câu đều vào đúng thư mục đó
+   * (bỏ qua thư mục ghi trong tệp Word).
+   */
+  thuMuc?: { id: string; name: string }[];
+  thuMucMacDinh?: string;
 };
 
 type KetQuaDoc = {
@@ -46,7 +53,16 @@ type KetQuaDoc = {
   anhLoi: number;
 };
 
-export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoiNhan }: Props) {
+const KHONG_THU_MUC = '__none__';
+
+export function WordImportWorkspace({
+  courseId,
+  bankCategoryId,
+  returnTo,
+  tenNoiNhan,
+  thuMuc,
+  thuMucMacDinh,
+}: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +73,17 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
   const [cauHoi, setCauHoi] = useState<ParsedQuestion[]>([]);
   const [loiChung, setLoiChung] = useState<string[]>([]);
   const [boQua, setBoQua] = useState<Set<number>>(new Set());
+
+  const [thuMucDich, setThuMucDich] = useState(
+    thuMuc?.some((f) => f.id === thuMucMacDinh) ? (thuMucMacDinh as string) : ''
+  );
+  const daChonDich = !thuMuc || thuMucDich !== '';
+  /** Tên thư mục đích; null = để ngoài thư mục; undefined = theo tệp Word. */
+  const tenThuMucDich = !thuMuc
+    ? undefined
+    : thuMucDich === KHONG_THU_MUC
+      ? null
+      : thuMuc.find((f) => f.id === thuMucDich)?.name;
 
   const hopLe = useMemo(
     () => cauHoi.map((q, i) => ({ q, i })).filter(({ q }) => q.loi.length === 0),
@@ -103,7 +130,7 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
           content: q.content,
           explanation: q.explanation,
           points: q.points,
-          folder: q.folder,
+          folder: tenThuMucDich === undefined ? q.folder : tenThuMucDich,
           options: q.options,
           testCases: q.testCases,
           starterCode: q.starterCode,
@@ -144,6 +171,33 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
           </p>
         </div>
 
+        {thuMuc && (
+          <div className="space-y-1.5">
+            <label htmlFor="thu-muc-dich" className="text-sm font-medium">
+              1. Chọn thư mục nhận câu hỏi
+            </label>
+            <select
+              id="thu-muc-dich"
+              value={thuMucDich}
+              onChange={(e) => setThuMucDich(e.target.value)}
+              className="border-input bg-background h-9 w-full max-w-sm rounded-lg border px-3 text-sm"
+            >
+              <option value="" disabled>
+                — Chọn thư mục —
+              </option>
+              {thuMuc.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+              <option value={KHONG_THU_MUC}>Chưa xếp thư mục</option>
+            </select>
+            <p className="text-muted-foreground text-xs">
+              Muốn thư mục mới? Quay lại kho, bấm “Thêm thư mục” rồi nhập.
+            </p>
+          </div>
+        )}
+
         <input
           ref={inputRef}
           type="file"
@@ -156,13 +210,17 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
           }}
         />
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={dangDoc}>
+          <Button
+            variant="outline"
+            onClick={() => inputRef.current?.click()}
+            disabled={dangDoc || !daChonDich}
+          >
             {dangDoc ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <FileUp className="mr-2 h-4 w-4" />
             )}
-            {dangDoc ? 'Đang đọc tệp...' : 'Chọn tệp .docx'}
+            {dangDoc ? 'Đang đọc tệp...' : thuMuc ? '2. Chọn tệp .docx' : 'Chọn tệp .docx'}
           </Button>
           <a
             href="/api/word-import/mau"
@@ -256,8 +314,10 @@ export function WordImportWorkspace({ courseId, bankCategoryId, returnTo, tenNoi
                       {QUESTION_TYPE_LABEL[q.type] ?? q.type}
                     </span>
                     <span className="text-muted-foreground text-xs">{q.points} điểm</span>
-                    {q.folder && (
-                      <span className="text-muted-foreground text-xs">· {q.folder}</span>
+                    {(tenThuMucDich === undefined ? q.folder : tenThuMucDich) && (
+                      <span className="text-muted-foreground text-xs">
+                        · {tenThuMucDich === undefined ? q.folder : tenThuMucDich}
+                      </span>
                     )}
                     {!coLoi && (
                       <button
