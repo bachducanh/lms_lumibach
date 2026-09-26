@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { cn, stripHtml } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { MathText } from '@/components/ui/editor/MathText';
+import { OptionContent } from '@/components/features/quiz/OptionContent';
 import { buttonVariants } from '@/components/ui/button';
 import { DeleteQuestionButton } from '@/components/features/quiz/DeleteQuestionButton';
 import { toast } from 'sonner';
@@ -206,7 +207,7 @@ function QuestionRow({
                       ) : (
                         <Circle className="h-3.5 w-3.5 shrink-0 opacity-30" />
                       )}
-                      <MathText text={opt.content} />
+                      <OptionContent type={q.type} content={opt.content} className="flex-1" />
                       {!isOrdering && opt.isCorrect && (
                         <span className="ml-auto font-medium">Đúng</span>
                       )}
@@ -217,8 +218,8 @@ function QuestionRow({
             ))}
           {q.explanation && (
             <div className="bg-muted/40 text-muted-foreground rounded-lg px-3 py-2 text-xs">
-              <span className="font-medium">Giải thích: </span>
-              {q.explanation}
+              <span className="font-medium">Giải thích</span>
+              <RichTextView html={q.explanation} className="rich-inherit mt-1 text-xs" />
             </div>
           )}
         </div>

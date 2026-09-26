@@ -20,13 +20,37 @@ describe('tệp Word mẫu', () => {
     );
     const kq = parseQuestions(lines);
 
-    expect(kq.questions.length, 'mẫu phải có đủ 12 câu ví dụ').toBe(12);
+    expect(kq.questions.length, 'mẫu phải có đủ 14 câu ví dụ').toBe(14);
 
     const hong = kq.questions.filter((q) => q.loi.length > 0);
     expect(
       hong.map((q) => `${q.nhan}: ${q.loi.join('; ')}`),
       'không câu ví dụ nào được phép lỗi'
     ).toEqual([]);
+  });
+
+  it('ví dụ chèn mã vào đề dựng ra đúng khối mã, thẻ HTML còn nguyên là chữ', async () => {
+    const buf = await taoTepMau();
+    const { lines } = await docDocx(
+      buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer,
+      async () => 'http://khong-dung-toi'
+    );
+    const cau = parseQuestions(lines).questions.find((q) => q.nhan === 'Câu 13')!;
+    expect(cau.content).toContain(
+      '<pre><code>&lt;ul&gt;\n    &lt;li&gt;Bật máy&lt;/li&gt;\n    &lt;li&gt;Mở trình duyệt&lt;/li&gt;\n&lt;/ul&gt;</code></pre>'
+    );
+    expect(cau.explanation).toContain('Mỗi thẻ &lt;li&gt; tạo một mục');
+
+    // Phương án là cả đoạn mã: "A." đứng riêng, mã dán ở dưới.
+    const cau14 = parseQuestions(lines).questions.find((q) => q.nhan === 'Câu 14')!;
+    expect(cau14.options.map((o) => o.content)).toEqual([
+      '<pre><code>for i in range(3):\n    print(i)</code></pre>',
+      '<pre><code>for i in range(1, 3):\n    print(i)</code></pre>',
+    ]);
+
+    // Các câu còn lại không có dòng Consolas nào trong đề nên không được sinh khối mã.
+    const cau8 = parseQuestions(lines).questions.find((q) => q.nhan === 'Câu 8')!;
+    expect(cau8.content).not.toContain('<pre>');
   });
 
   it('phủ hết các nhóm loại câu hỏi', async () => {

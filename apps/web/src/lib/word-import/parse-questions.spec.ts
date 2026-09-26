@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseQuestions, chuanHoaCode } from './parse-questions';
+import { parseQuestions, chuanHoaCode, catDauHtml } from './parse-questions';
 import type { DocLine } from './types';
 
 /**
@@ -8,10 +8,35 @@ import type { DocLine } from './types';
  * Mỗi khối dưới đây mô phỏng đúng thứ mà tầng đọc tệp giao xuống: một danh sách
  * đoạn văn (kèm cờ "nằm trong danh sách tự đánh số") và bảng. Sai hợp đồng này
  * là giáo viên nhập cả trăm câu rồi phát hiện đề lệch.
+ *
+ * `html` là RUỘT của đoạn, đã escape, không có thẻ <p> bọc ngoài — đúng như
+ * docx-to-lines giao. Trước đây bản giả ở đây tự bọc <p> nên lỗi các đoạn dính
+ * vào nhau thành một dòng lọt qua mà không test nào bắt được.
  */
 
+function escape(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function p(text: string, isListItem = false): DocLine {
-  return { kind: 'para', html: `<p>${text}</p>`, text, isListItem };
+  return { kind: 'para', html: escape(text), text, isListItem };
+}
+
+/** Đoạn có định dạng: tự viết HTML, `text` là phần chữ của nó. */
+function ph(html: string, extra: { isCode?: boolean } = {}): DocLine {
+  const text = html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return { kind: 'para', html, text, isListItem: false, ...extra };
+}
+
+/** Một dòng gõ bằng phông đều nét (Consolas…). */
+function pm(text: string): DocLine {
+  return { kind: 'para', html: escape(text), text: text.trim(), isListItem: false, isCode: true };
 }
 
 function bang(rows: string[][]): DocLine {
@@ -54,7 +79,7 @@ describe('trắc nghiệm', () => {
 
   it('đánh dấu đúng phương án', () => {
     expect(c.options.map((o) => o.isCorrect)).toEqual([true, false, false]);
-    expect(c.options[0]!.content).toBe('Hà Nội');
+    expect(c.options[0]!.content).toBe('<p>Hà Nội</p>');
   });
 
   it('điểm mặc định là 1 khi bỏ trống', () => {
@@ -337,7 +362,11 @@ describe('cách trình bày của Word', () => {
       p('Đáp án: A'),
     ];
     const c = parseQuestions(lines).questions[0]!;
-    expect(c.options.map((o) => o.content)).toEqual(['Hà Nội', 'Huế', 'Đà Nẵng']);
+    expect(c.options.map((o) => o.content)).toEqual([
+      '<p>Hà Nội</p>',
+      '<p>Huế</p>',
+      '<p>Đà Nẵng</p>',
+    ]);
     expect(c.options[0]!.isCorrect).toBe(true);
   });
 
@@ -351,8 +380,255 @@ describe('cách trình bày của Word', () => {
       p('Đáp án: C'),
     ];
     const c = parseQuestions(lines).questions[0]!;
-    expect(c.options.map((o) => o.content)).toEqual(['một', 'hai', 'ba', 'bốn']);
+    expect(c.options.map((o) => o.content)).toEqual([
+      '<p>một</p>',
+      '<p>hai</p>',
+      '<p>ba</p>',
+      '<p>bốn</p>',
+    ]);
     expect(c.options.map((o) => o.isCorrect)).toEqual([false, false, true, false]);
+  });
+
+  it('bảng dữ liệu trong đề (không có mốc nào) được giữ nguyên là bảng', () => {
+    const c = parseQuestions([
+      p('Câu 1. [DSN] Cho bảng HocSinh sau:'),
+      bang([
+        ['<p><strong>STT</strong></p>', '<p><strong>HO VA TEN</strong></p>'],
+        ['<p>1</p>', '<p>NGUYEN AN</p>'],
+      ]),
+      p('a) Trường STT là khoá chính.'),
+      p('b) Bảng có hai bản ghi.'),
+      p('Đáp án: Đ, S'),
+    ]).questions[0]!;
+    expect(c.loi).toEqual([]);
+    expect(c.content).toBe(
+      '<p>Cho bảng HocSinh sau:</p>' +
+        '<table><tbody>' +
+        '<tr><td><p><strong>STT</strong></p></td><td><p><strong>HO VA TEN</strong></p></td></tr>' +
+        '<tr><td><p>1</p></td><td><p>NGUYEN AN</p></td></tr>' +
+        '</tbody></table>'
+    );
+    expect(c.options).toHaveLength(2);
+  });
+
+  it('một ô bảng chứa hai đoạn thì tách thành hai phương án', () => {
+    const lines: DocLine[] = [
+      p('Câu 1. [TN1] Chọn đáp án đúng.'),
+      bang([['<p>A. một</p><p>B. hai</p>', '<p>C. ba</p>']]),
+      p('Đáp án: B'),
+    ];
+    const c = parseQuestions(lines).questions[0]!;
+    expect(c.options.map((o) => o.content)).toEqual(['<p>một</p>', '<p>hai</p>', '<p>ba</p>']);
+  });
+
+  it('ô bảng test gõ nhiều dòng giữ nguyên dấu xuống dòng', () => {
+    const c = parseQuestions([
+      p('Câu 1. [PY] Tìm số lớn nhất.'),
+      p('Test:'),
+      bang([
+        ['<p>Đầu vào</p>', '<p>Kết quả</p>'],
+        ['<p>3</p><p>1 5 3</p>', '<p>5</p>'],
+      ]),
+    ]).questions[0]!;
+    expect(c.testCases[0]!.input).toBe('3\n1 5 3');
+  });
+});
+
+describe('giữ định dạng của đề', () => {
+  it('thẻ HTML viết trong đề là chữ, không thành thẻ thật', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Thẻ <p> dùng để làm gì?'),
+      p('A. Tạo đoạn văn <p>'),
+      p('B. Xuống dòng <br>'),
+      p('Đáp án: A'),
+      p('Giải thích: Thẻ <p> bao một đoạn văn.'),
+    ]).questions[0]!;
+    expect(c.content).toBe('<p>Thẻ &lt;p&gt; dùng để làm gì?</p>');
+    expect(c.options[1]!.content).toBe('<p>Xuống dòng &lt;br&gt;</p>');
+    expect(c.explanation).toBe('<p>Thẻ &lt;p&gt; bao một đoạn văn.</p>');
+  });
+
+  it('mỗi đoạn của đề và giải thích là một đoạn riêng, không dính thành một dòng', () => {
+    const c = parseQuestions(
+      doc(`
+        Câu 1. [TL] Dòng một
+        Dòng hai
+        Giải thích: Ý một
+        Ý hai
+      `)
+    ).questions[0]!;
+    expect(c.content).toBe('<p>Dòng một</p><p>Dòng hai</p>');
+    expect(c.explanation).toBe('<p>Ý một</p><p>Ý hai</p>');
+  });
+
+  it('dòng đầu giữ in đậm và xuống dòng mềm, bỏ đúng phần "Câu 1."', () => {
+    const c = parseQuestions([
+      ph('<strong>Câu 1.</strong> [TL] Cho <em>đoạn</em> mã:<br />&lt;ul&gt;'),
+    ]).questions[0]!;
+    expect(c.content).toBe('<p>Cho <em>đoạn</em> mã:<br />&lt;ul&gt;</p>');
+  });
+
+  it('phương án giữ định dạng và xuống dòng', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Hỏi?'),
+      ph('A. Dùng thẻ <code>&lt;li&gt;</code><br />trong danh sách'),
+      p('B. Không'),
+      p('Đáp án: A'),
+    ]).questions[0]!;
+    expect(c.options[0]!.content).toBe(
+      '<p>Dùng thẻ <code>&lt;li&gt;</code><br />trong danh sách</p>'
+    );
+  });
+
+  it('thụt lề bằng dấu cách và tab không bị HTML gộp mất', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TL] Cho đoạn mã:'),
+      p('<body>'),
+      p('    <h1>Xin chào</h1>'),
+      ph('\t&lt;p&gt;'),
+    ]).questions[0]!;
+    expect(c.content).toContain('<p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;h1&gt;Xin chào&lt;/h1&gt;</p>');
+    expect(c.content).toContain('<p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;p&gt;</p>');
+  });
+
+  it('các dòng gõ phông đều nét trong đề gom thành một khối mã', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Đoạn mã sau hiển thị gì?'),
+      pm('<ul>'),
+      pm('    <li>Một</li>'),
+      pm('</ul>'),
+      p('Chọn đáp án đúng.'),
+      p('A. Một danh sách'),
+      p('B. Một bảng'),
+      p('Đáp án: A'),
+    ]).questions[0]!;
+    expect(c.content).toBe(
+      '<p>Đoạn mã sau hiển thị gì?</p>' +
+        '<pre><code>&lt;ul&gt;\n    &lt;li&gt;Một&lt;/li&gt;\n&lt;/ul&gt;</code></pre>' +
+        '<p>Chọn đáp án đúng.</p>'
+    );
+    expect(c.options).toHaveLength(2);
+  });
+
+  it('cả câu gõ phông đều nét (như tệp mẫu) thì không đoán là mã', () => {
+    const c = parseQuestions([
+      pm('Câu 1. [TL] Cho hàm số y = x^3. Tìm m để đồ thị có hai điểm'),
+      pm('cực trị nằm về hai phía trục hoành.'),
+    ]).questions[0]!;
+    expect(c.content).not.toContain('<pre>');
+    expect(c.content).toContain('<p>cực trị nằm về hai phía trục hoành.</p>');
+  });
+
+  it('khối mã sau nhãn Code mẫu giữ nguyên các dấu cách liền nhau', () => {
+    const c = parseQuestions([p('Câu 1. [WEB] Tạo trang.'), ph('Code mẫu: &lt;p  class="a"&gt;')])
+      .questions[0]!;
+    expect(c.starterCode).toBe('<p  class="a">');
+  });
+});
+
+describe('đề có mã Python và C++', () => {
+  it('đoạn Python dán vào đề giữ thụt lề, nháy cong trong mã được trả lại nháy thẳng', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Chương trình sau in ra gì?'),
+      pm('s = 0'),
+      pm('for i in range(1, 4):'),
+      pm('    s += i  # cộng dồn'),
+      pm('print(“Tổng:”, s)'),
+      p('A. 6'),
+      p('B. 10'),
+      p('Đáp án: A'),
+    ]).questions[0]!;
+    expect(c.loi).toEqual([]);
+    expect(c.content).toContain(
+      '<pre><code>s = 0\nfor i in range(1, 4):\n    s += i  # cộng dồn\nprint("Tổng:", s)</code></pre>'
+    );
+  });
+
+  it('biến tên cau1 trong mã không bị hiểu là "Câu 1"', () => {
+    const r = parseQuestions([
+      p('Câu 1. [TN1] Chương trình Python sau in gì?'),
+      pm('cau1 = [1, 2]'),
+      pm('cau1.append(3)'),
+      pm('print(len(cau1))'),
+      p('A. 3'),
+      p('B. 2'),
+      p('Đáp án: A'),
+    ]);
+    expect(r.questions).toHaveLength(1);
+    expect(r.questions[0]!.loi).toEqual([]);
+    expect(r.questions[0]!.content).toContain('cau1.append(3)');
+  });
+
+  it('"Câu1." viết liền vẫn là mốc câu hỏi', () => {
+    const r = parseQuestions(doc(`Câu1. [TL] Đề một\nCâu2 [TL] Đề hai\nCâu3: Đề ba`));
+    expect(r.questions.map((q) => q.nhan)).toEqual(['Câu 1', 'Câu 2', 'Câu 3']);
+  });
+
+  it('phương án là cả đoạn mã nhiều dòng, "A." đứng riêng một dòng', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Đoạn nào đúng cú pháp?'),
+      p('A.'),
+      pm('for i in range(3):'),
+      pm('    print(i)'),
+      p('B.'),
+      pm('for i in range(3)'),
+      pm('    print(i)'),
+      p('Đáp án: A'),
+    ]).questions[0]!;
+    expect(c.loi).toEqual([]);
+    expect(c.options.map((o) => o.content)).toEqual([
+      '<pre><code>for i in range(3):\n    print(i)</code></pre>',
+      '<pre><code>for i in range(3)\n    print(i)</code></pre>',
+    ]);
+  });
+
+  it('"A." đứng riêng mà không có gì bên dưới thì báo lỗi', () => {
+    const c = parseQuestions(doc(`Câu 1. [TN1] Hỏi?\nA.\nB. hai\nĐáp án: B`)).questions[0]!;
+    expect(c.loi.join(' ')).toContain('Phương án A không có nội dung');
+  });
+
+  it('phương án C++ gõ Consolas hiện như mã trong dòng', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Lệnh nào in ra màn hình?'),
+      pm('A. cout << x;'),
+      pm('B. cin >> x;'),
+      p('Đáp án: A'),
+    ]).questions[0]!;
+    expect(c.options.map((o) => o.content)).toEqual([
+      '<p><code>cout &lt;&lt; x;</code></p>',
+      '<p><code>cin &gt;&gt; x;</code></p>',
+    ]);
+  });
+
+  it('câu văn bị Word giữ phông Consolas sau khi dán mã không bị nuốt vào khối mã', () => {
+    const c = parseQuestions([
+      p('Câu 1. [TN1] Cho đoạn mã:'),
+      pm('#include <iostream>'),
+      pm('int main() { std::cout << 3 - 1; }'),
+      pm('Kết quả in ra màn hình là gì?'),
+      pm('A. 2'),
+      pm('B. 3'),
+      p('Đáp án: A'),
+    ]).questions[0]!;
+    expect(c.content).toBe(
+      '<p>Cho đoạn mã:</p>' +
+        '<pre><code>#include &lt;iostream&gt;\nint main() { std::cout &lt;&lt; 3 - 1; }</code></pre>' +
+        '<p>Kết quả in ra màn hình là gì?</p>'
+    );
+    // "2", "3" không có ký hiệu lệnh nào: giữ là chữ thường, không bọc mã.
+    expect(c.options.map((o) => o.content)).toEqual(['<p>2</p>', '<p>3</p>']);
+  });
+});
+
+describe('cắt tiền tố khỏi HTML', () => {
+  it('giữ thẻ bọc ngoài, bỏ thẻ rỗng ruột', () => {
+    expect(catDauHtml('<strong>Câu 1.</strong> Nội <em>dung</em>', 5)).toBe('Nội <em>dung</em>');
+    expect(catDauHtml('<strong>A. Hà</strong> Nội', 2)).toBe('<strong>Hà</strong> Nội');
+  });
+
+  it('thực thể tính là một ký tự', () => {
+    expect(catDauHtml('A. &lt;p&gt; thẻ', 2)).toBe('&lt;p&gt; thẻ');
+    expect(catDauHtml('&lt;b&gt;: đậm', 4)).toBe('đậm');
   });
 });
 

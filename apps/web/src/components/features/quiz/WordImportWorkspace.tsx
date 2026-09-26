@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
-import { MathText } from '@/components/ui/editor/MathText';
+import { OptionContent } from '@/components/features/quiz/OptionContent';
 import { apiClient } from '@/lib/api-client';
 import { parseQuestions } from '@/lib/word-import/parse-questions';
 import type { DocLine, ParsedQuestion } from '@/lib/word-import/types';
@@ -352,16 +352,28 @@ export function WordImportWorkspace({
                         <li
                           key={oi}
                           className={cn(
-                            'text-sm',
+                            'flex items-start gap-1.5 text-sm',
                             o.isCorrect
                               ? 'text-emerald-700 dark:text-emerald-400'
                               : 'text-muted-foreground'
                           )}
                         >
-                          {o.isCorrect ? '✓' : '·'} <MathText text={moTaMuc(q.type, o.content)} />
+                          <span className="shrink-0">{o.isCorrect ? '✓' : '·'}</span>
+                          <OptionContent
+                            type={q.type}
+                            content={moTaMuc(q.type, o.content)}
+                            className="flex-1"
+                          />
                         </li>
                       ))}
                     </ul>
+                  )}
+
+                  {q.explanation && (
+                    <div className="bg-muted/40 text-muted-foreground rounded-lg px-3 py-2 text-xs">
+                      <span className="font-medium">Giải thích</span>
+                      <RichTextView html={q.explanation} className="rich-inherit mt-1 text-xs" />
+                    </div>
                   )}
 
                   {q.starterCode && (

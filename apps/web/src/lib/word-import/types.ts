@@ -16,6 +16,10 @@ export type DocPara = {
   /** Đoạn nằm trong danh sách tự đánh số của Word — chữ cái A/B/C không nằm
    *  trong văn bản mà là định dạng, nên bộ phân tích phải tự gán. */
   isListItem: boolean;
+  /** Cả đoạn gõ bằng phông chữ đều nét (Consolas, Courier…) — thường là mã
+   *  nguồn dán từ trình soạn code. Bộ phân tích quyết định có dựng thành khối
+   *  mã hay không, vì có người gõ CẢ tệp bằng phông đều nét. */
+  isCode?: boolean;
 };
 
 /** Một bảng. Mỗi ô là HTML; bảng phương án sẽ được trải phẳng theo thứ tự đọc. */

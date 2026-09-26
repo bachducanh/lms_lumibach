@@ -10,6 +10,7 @@ import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
 import { MathText } from '@/components/ui/editor/MathText';
+import { OptionContent } from '@/components/features/quiz/OptionContent';
 import { toRichHtml } from '@/lib/utils';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { hasMinRole } from '@/lib/permissions';
@@ -342,7 +343,7 @@ export default async function AttemptPage({
                           ) : (
                             <Circle className="h-3.5 w-3.5 shrink-0 opacity-40" />
                           )}
-                          <MathText text={opt.content} />
+                          <OptionContent type={qType} content={opt.content} className="flex-1" />
                           {isSelected && !isCorrect && (
                             <span className="ml-auto text-xs opacity-60">Bạn chọn</span>
                           )}
@@ -457,9 +458,11 @@ export default async function AttemptPage({
                           <span className="bg-muted flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                             {String.fromCharCode(97 + oi)}
                           </span>
-                          <span className="min-w-0 flex-1 basis-40">
-                            <MathText text={opt.content} />
-                          </span>
+                          <OptionContent
+                            type={qType}
+                            content={opt.content}
+                            className="flex-1 basis-40"
+                          />
                           <span className="shrink-0 font-medium">
                             {studentDong ? 'Đúng' : 'Sai'}
                             {correct ? ' ✓' : ' ✗'}
@@ -850,8 +853,11 @@ export default async function AttemptPage({
                   !isCodeAuto &&
                   !(isParsons || isCodeFill) && (
                     <div className="bg-muted/30 text-muted-foreground rounded-lg px-4 py-3 text-sm sm:pl-9">
-                      <span className="font-medium">Giải thích: </span>
-                      {q.question.explanation}
+                      <span className="font-medium">Giải thích</span>
+                      <RichTextView
+                        html={q.question.explanation}
+                        className="rich-inherit mt-1 text-sm"
+                      />
                     </div>
                   )}
               </div>

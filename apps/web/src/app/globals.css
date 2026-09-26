@@ -396,6 +396,12 @@
 :is(.ProseMirror, .rich-content) :is(h1, h2, h3, h4, h5, h6) {
   color: var(--foreground);
 }
+/* Nội dung nằm trong một khung đã tô màu — phương án trong nút chọn (xanh khi
+   đúng, đỏ khi sai), lời giải thích trong ô chữ mờ — thì theo màu của khung. */
+.rich-content.rich-inherit,
+.rich-content.rich-inherit :is(h1, h2, h3, h4, h5, h6) {
+  color: inherit;
+}
 
 /* KHÔNG ép màu cho <strong>. Extension TextStyle của TipTap có priority 101,
    cao hơn Bold, nên chữ vừa đậm vừa đổi màu được serialize thành
@@ -547,7 +553,11 @@
   font-family: var(--font-mono), monospace;
   font-size: 0.875rem;
   margin: 0.75rem 0;
+  /* Mã dán từ Word hay giữ ký tự tab; mặc định 8 ô thì thụt lề quá sâu. */
+  tab-size: 4;
 }
+:is(.ProseMirror, .rich-content) pre:first-child { margin-top: 0; }
+:is(.ProseMirror, .rich-content) pre:last-child  { margin-bottom: 0; }
 
 :is(.ProseMirror, .rich-content) .youtube-embed,
 :is(.ProseMirror, .rich-content) iframe[src*="youtube"] {

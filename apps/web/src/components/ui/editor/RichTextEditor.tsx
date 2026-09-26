@@ -403,6 +403,12 @@ type Props = {
   editable?: boolean;
   compact?: boolean;
   /**
+   * Ô soạn một dòng cho phương án trả lời, phát biểu, lời giải thích. Đủ công
+   * cụ như ô soạn đề, nhưng thanh công cụ chỉ hiện khi đang gõ vào ô đó — một
+   * câu trắc nghiệm có tới 4-8 ô, ô nào cũng bày hai hàng nút thì rối mắt.
+   */
+  inline?: boolean;
+  /**
    * Cho phép chèn / dán ảnh. Tắt ở những ô mà người viết là học sinh —
    * endpoint upload chỉ mở cho GV trở lên nên nút sẽ luôn báo lỗi.
    */
@@ -416,10 +422,12 @@ export function RichTextEditor({
   className,
   editable = true,
   compact = false,
+  inline = false,
   allowImages = true,
 }: Props) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [promptDialog, openPrompt] = usePromptDialog();
 
   /** Upload một file ảnh, trả về URL public hoặc null nếu hỏng. */
@@ -495,13 +503,17 @@ export function RichTextEditor({
     onUpdate: ({ editor }) => {
       onChange?.(editor.getHTML());
     },
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
     editorProps: {
       attributes: {
         class: !editable
           ? 'max-w-none focus:outline-none px-0 py-0 text-sm leading-relaxed'
-          : compact
-            ? 'max-w-none focus:outline-none min-h-[160px] px-4 py-3 text-sm leading-relaxed'
-            : 'max-w-none focus:outline-none min-h-[460px] px-6 py-5 text-[15px] leading-relaxed',
+          : inline
+            ? 'max-w-none focus:outline-none min-h-10 px-3 py-2 text-sm leading-relaxed'
+            : compact
+              ? 'max-w-none focus:outline-none min-h-[160px] px-4 py-3 text-sm leading-relaxed'
+              : 'max-w-none focus:outline-none min-h-[460px] px-6 py-5 text-[15px] leading-relaxed',
       },
       handlePaste(view, event) {
         if (!allowImages || !editable) return false;
@@ -595,10 +607,26 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn('border-input bg-background rounded-xl border shadow-sm', className)}>
+    <div
+      className={cn(
+        'border-input bg-background border shadow-sm',
+        inline ? 'rounded-lg' : 'rounded-xl',
+        inline && focused && 'border-ring ring-ring/30 ring-2',
+        className
+      )}
+    >
       {promptDialog}
       {/* ── Toolbar ─────────────────────────────────────────── */}
-      <div className="border-input bg-background rounded-t-xl border-b">
+      <div
+        className={cn(
+          'border-input bg-background border-b',
+          inline ? 'rounded-t-lg' : 'rounded-t-xl',
+          inline && !focused && 'hidden'
+        )}
+        // Ô gọn: nhấn nút trên thanh công cụ không được lấy mất tiêu điểm của ô
+        // soạn, nếu không thanh công cụ ẩn đi ngay giữa cú nhấn và nút không ăn.
+        onMouseDown={inline ? (e) => e.preventDefault() : undefined}
+      >
         {/* Row 1 */}
         <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5">
           {/* Undo / Redo */}
@@ -893,7 +921,12 @@ export function RichTextEditor({
       <EditorContent editor={editor} />
 
       {/* ── Status bar ───────────────────────────────────────── */}
-      <div className="border-input bg-muted/20 flex items-center justify-between rounded-b-xl border-t px-4 py-1.5">
+      <div
+        className={cn(
+          'border-input bg-muted/20 flex items-center justify-between rounded-b-xl border-t px-4 py-1.5',
+          inline && 'hidden'
+        )}
+      >
         <span className="text-muted-foreground text-xs">
           {editor.isActive('table') ? 'Đang chỉnh bảng — dùng Tab để di chuyển ô' : ''}
         </span>

@@ -36,10 +36,16 @@ function chuanHoa(raw: string): string {
 
 const THE_HTML = /<[^>]+>/g;
 
-/** Bóc thẻ, đổi thực thể cơ bản. Dùng cho khối mã nguồn và các ô chữ thuần. */
+/**
+ * Bóc thẻ, đổi thực thể cơ bản. Dùng cho khối mã nguồn và các ô chữ thuần.
+ *
+ * Ranh giới đoạn văn thành dấu xuống dòng: ô bảng test gõ hai dòng trong Word là
+ * hai đoạn `<p>`, bóc thẻ trơn thì "3" và "1 5 3" dính thành "31 5 3".
+ */
 function sangChuThuan(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|pre)>\s*(?=\S)/gi, '\n')
     .replace(THE_HTML, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
@@ -47,6 +53,149 @@ function sangChuThuan(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;/g, "'")
     .replace(/&amp;/g, '&');
+}
+
+function escapeHtml(raw: string): string {
+  return raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── Giữ nguyên HTML của từng đoạn ────────────────────────────────
+//
+// `text` của một đoạn là chữ ĐÃ GIẢI MÃ: "Thẻ &lt;p&gt;" trong HTML thành
+// "Thẻ <p>" trong text. Chỉ được dùng text để dò nhãn và mốc, tuyệt đối không
+// ghép nó lại vào HTML — làm thế thì đề bài về HTML biến thẻ trong đề thành thẻ
+// thật, còn in đậm, xuống dòng mềm và ảnh ở dòng đầu thì mất sạch.
+
+const THUC_THE = /^&(#\d+|#x[0-9a-f]+|[a-z]+\d*);/i;
+const THUC_THE_CACH = /^&(nbsp|#160|#xa0);$/i;
+
+/** Số ký tự hiển thị không tính khoảng trắng — đơn vị để khớp text với HTML. */
+function demKyTu(text: string): number {
+  return text.replace(/\s/g, '').length;
+}
+
+/**
+ * Bỏ `soKyTu` ký tự hiển thị (không tính khoảng trắng) ở đầu một đoạn HTML,
+ * cùng khoảng trắng liền sau, mà vẫn giữ mọi thẻ. Dùng để cắt "Câu 3. [TN1]",
+ * "Giải thích:" hay "A." khỏi đoạn văn mà không đụng tới định dạng phía sau.
+ *
+ * Đếm theo ký tự không phải khoảng trắng vì `text` đã được gộp khoảng trắng còn
+ * HTML thì chưa; phần chữ còn lại thì hai bên luôn khớp nhau từng ký tự.
+ */
+export function catDauHtml(html: string, soKyTu: number): string {
+  let conLai = soKyTu;
+  let i = 0;
+  let giu = '';
+  while (i < html.length) {
+    const c = html[i]!;
+    if (c === '<') {
+      const het = html.indexOf('>', i);
+      if (het < 0) break;
+      giu += html.slice(i, het + 1);
+      i = het + 1;
+      continue;
+    }
+    let doDai = 1;
+    // \s của JavaScript đã gồm cả dấu cách không ngắt (U+00A0).
+    let laCach = /\s/.test(c);
+    if (c === '&') {
+      const m = THUC_THE.exec(html.slice(i));
+      if (m) {
+        doDai = m[0].length;
+        laCach = THUC_THE_CACH.test(m[0]);
+      }
+    }
+    if (!laCach) {
+      if (conLai === 0) break;
+      conLai--;
+    }
+    i += doDai;
+  }
+  // Thẻ định dạng bọc đúng phần tiền tố (hay gặp: "Câu 1." in đậm) giờ rỗng ruột.
+  return (giu + html.slice(i)).replace(
+    /<(strong|b|em|i|u|s|code|sup|sub|span)\b[^>]*>\s*<\/\1>/gi,
+    ''
+  );
+}
+
+/**
+ * Giữ khoảng trắng mà HTML sẽ gộp mất: tab, thụt lề đầu dòng và các chuỗi nhiều
+ * dấu cách. Đoạn mã gõ bằng phông thường trong đề bài nhờ vậy vẫn thẳng hàng.
+ */
+function giuKhoangTrang(html: string): string {
+  let dauDong = true;
+  return html.replace(/<[^>]+>|[^<]+/g, (manh) => {
+    if (manh.startsWith('<')) {
+      if (/^<br\b/i.test(manh)) dauDong = true;
+      return manh;
+    }
+    let s = manh.replace(/\t/g, '    ');
+    if (dauDong) {
+      s = s.replace(/^ +/, (m) => '&nbsp;'.repeat(m.length));
+      if (manh.trim() !== '') dauDong = false;
+    }
+    return s.replace(/ {2,}/g, (m) => '&nbsp;'.repeat(m.length));
+  });
+}
+
+/**
+ * Một mảnh của phần rich-text (đề bài, giải thích, phương án): hoặc một đoạn
+ * HTML, hoặc một dòng mã. Các dòng mã liền nhau được gom thành một khối `<pre>`.
+ */
+type Manh =
+  | { code: false; html: string }
+  /** `trongDong`: phần mã nằm ngay sau "A." — đứng một mình thì hiện mã trong dòng. */
+  | { code: true; dong: string; trongDong?: boolean };
+
+/** Ký hiệu mà dòng lệnh gần như luôn có, còn câu văn thì hầu như không. */
+const KY_HIEU_MA = /[(){}[\]<>=;#"'`]|::|->/;
+
+/**
+ * Dòng gõ phông đều nét nhưng thật ra là câu văn: có chữ có dấu mà không có ký
+ * hiệu lệnh nào. Hay gặp nhất là dòng gõ ngay sau đoạn mã vừa dán — Enter xong
+ * Word giữ luôn phông Consolas — kiểu "Kết quả in ra là gì?". Không có bước này
+ * thì câu hỏi bị nuốt vào khối mã.
+ */
+function laVanXuoi(text: string): boolean {
+  return /[À-ỹ]/.test(text) && !KY_HIEU_MA.test(text);
+}
+
+function manhDoan(html: string): Manh {
+  // Ô bảng lấy nguyên cả ô thì đã có sẵn thẻ khối, bọc thêm <p> là lồng sai.
+  if (/<(p|ul|ol|table|h[1-6]|pre|blockquote|div)\b/i.test(html)) return { code: false, html };
+  // Chỉ cắt khoảng trắng cuối: khoảng trắng đầu đoạn là thụt lề, phải giữ.
+  return { code: false, html: `<p>${giuKhoangTrang(html.replace(/\s+$/, ''))}</p>` };
+}
+
+function manhCode(html: string, trongDong = false): Manh {
+  return { code: true, dong: chuanHoaCode(sangChuThuan(html)).replace(/\s+$/, ''), trongDong };
+}
+
+function dungHtml(manhs: Manh[]): string {
+  const ra: string[] = [];
+  let code: Extract<Manh, { code: true }>[] = [];
+  const dongKhoiMa = () => {
+    if (code.length === 0) return;
+    // "A. cout << x;" gõ Consolas: một dòng mã ngắn làm phương án thì hiện như
+    // mã trong dòng, bọc cả khối <pre> cho nó thì nặng nề.
+    const [dau] = code;
+    if (code.length === 1 && dau?.trongDong) {
+      ra.push(`<p><code>${escapeHtml(dau.dong.trim())}</code></p>`);
+    } else {
+      ra.push(`<pre><code>${escapeHtml(code.map((c) => c.dong).join('\n'))}</code></pre>`);
+    }
+    code = [];
+  };
+  for (const m of manhs) {
+    if (m.code) {
+      code.push(m);
+    } else {
+      dongKhoiMa();
+      ra.push(m.html);
+    }
+  }
+  dongKhoiMa();
+  return ra.join('');
 }
 
 /**
@@ -156,17 +305,81 @@ const LOAI_CAN_TEST = new Set(['CODE_PYTHON', 'CODE_CPP', 'CODE_DEBUG_PYTHON', '
 
 const RE_CAU = /^\s*c[âa]u\s*(\d+)\s*[.:)]?\s*(.*)$/i;
 const RE_MA_LOAI = /^\s*\[([^\]]{1,40})\]\s*/;
-const RE_MUC = /^\s*([A-Ha-h])\s*[.):]\s+(.*)$/;
+// Phần sau "A." được phép trống: phương án là cả đoạn mã nhiều dòng thì người
+// soạn để "A." một dòng riêng rồi dán mã xuống dưới.
+const RE_MUC = /^\s*([A-Ha-h])\s*[.):](?:\s+(.*))?$/;
+
+/**
+ * Dòng code dùng biến tên `cau1` — `cau1 = [1, 2]`, `cau1.append(3)` — chứ không
+ * phải "Câu 1". Tên biến không có dấu cách, nên chỉ cần xét lúc "câu" dính liền
+ * con số: còn là mốc câu hỏi khi theo sau là dấu chấm/hai chấm/ngoặc rồi khoảng
+ * trắng, mã loại trong ngoặc vuông, hay chữ hoa mở đầu đề bài.
+ */
+function laBienTenCau(text: string): boolean {
+  const m = /^\s*c[âa]u\d+(.*)$/i.exec(text);
+  if (!m) return false;
+  return !/^(\s*[.:)](\s|$)|\s+\[|\s+\p{Lu}|\s*$)/u.test(m[1] ?? '');
+}
+
+function khopCau(text: string): RegExpExecArray | null {
+  return laBienTenCau(text) ? null : RE_CAU.exec(text);
+}
 
 /** Dòng nhãn dạng `Tên: phần còn lại`. Trả null nếu không phải nhãn đã biết. */
-function doNhan(text: string): { khoi: TenKhoi; phanConLai: string } | null {
+function doNhan(text: string): { khoi: TenKhoi; tienTo: string; phanConLai: string } | null {
   const vt = text.indexOf(':');
   if (vt < 0 || vt > 24) return null;
   const ten = chuanHoa(text.slice(0, vt));
   for (const { khoa, khoi } of NHAN) {
-    if (ten === khoa) return { khoi, phanConLai: text.slice(vt + 1).trim() };
+    if (ten === khoa) {
+      return { khoi, tienTo: text.slice(0, vt + 1), phanConLai: text.slice(vt + 1).trim() };
+    }
   }
   return null;
+}
+
+/** Dòng mở câu, mở mục hay là một nhãn — tức là một mốc cắt của mẫu. */
+function laMoc(text: string): boolean {
+  return khopCau(text) !== null || RE_MUC.test(text) || doNhan(text) !== null;
+}
+
+/** Dựng lại bảng Word thành bảng HTML mà trình soạn thảo đọc được. */
+function dungBang(rows: string[][]): string {
+  const o = (html: string) =>
+    /<(p|ul|ol|table|pre)\b/i.test(html) ? html : `<p>${html.trim()}</p>`;
+  const hang = rows.map((r) => `<tr>${r.map((c) => `<td>${o(c)}</td>`).join('')}</tr>`);
+  return `<table><tbody>${hang.join('')}</tbody></table>`;
+}
+
+const RE_DOAN_TRONG_O = /<p\b([^>]*)>([\s\S]*?)<\/p>/gi;
+
+function docParaTuHtml(html: string, thuocTinh = ''): DocPara {
+  return {
+    kind: 'para',
+    html,
+    text: sangChuThuan(html).replace(/\s+/g, ' ').trim(),
+    isListItem: false,
+    isCode: /\bclass="[^"]*\blb-code\b/.test(thuocTinh),
+  };
+}
+
+/**
+ * Tách một ô bảng thành từng đoạn. Một ô hay chứa nhiều đoạn — hai phương án
+ * xếp chồng trong một ô, hay phương án kèm một dòng mã — và mỗi đoạn phải được
+ * xét mốc riêng như ngoài bảng.
+ */
+function tachDoanTrongO(o: string): DocPara[] {
+  const ra: DocPara[] = [];
+  const ngoaiDoan = o.replace(RE_DOAN_TRONG_O, (_all, thuocTinh: string, trong: string) => {
+    ra.push(docParaTuHtml(trong, thuocTinh));
+    return '';
+  });
+  // Còn chữ hay ảnh nằm ngoài mọi đoạn (danh sách, ô gõ tay) thì lấy cả ô cho
+  // chắc, thà thừa định dạng còn hơn mất nội dung.
+  if (ra.length === 0 || sangChuThuan(ngoaiDoan).trim() !== '' || /<img/i.test(ngoaiDoan)) {
+    return [docParaTuHtml(o)];
+  }
+  return ra;
 }
 
 function doSo(raw: string): number | null {
@@ -178,15 +391,19 @@ function doSo(raw: string): number | null {
 
 // ── Câu đang dựng ────────────────────────────────────────────────
 
-type Muc = { html: string; text: string };
+/** `manh` dựng phương án rich-text, `text` cho các loại so khớp chữ thuần. */
+type Muc = { manh: Manh[]; text: string };
 
 type Dang = {
   nhan: string;
   maLoaiTho: string | null;
-  deHtml: string[];
+  /** Dòng "Câu N." gõ bằng phông đều nét thì cả câu không dựa vào phông để
+   *  đoán đâu là mã được — tệp mẫu cũ và nhiều người gõ cả đề bằng Consolas. */
+  cauLaCode: boolean;
+  de: Manh[];
   mucs: Muc[];
   dapAn: string;
-  giaiThich: string[];
+  giaiThich: Manh[];
   diem: string;
   codeMau: string[];
   dapAnCode: string[];
@@ -198,11 +415,17 @@ type Dang = {
   khoi: TenKhoi | 'muc';
 };
 
-function dangMoi(nhan: string, maLoaiTho: string | null, folder: string | null): Dang {
+function dangMoi(
+  nhan: string,
+  maLoaiTho: string | null,
+  folder: string | null,
+  cauLaCode: boolean
+): Dang {
   return {
     nhan,
     maLoaiTho,
-    deHtml: [],
+    cauLaCode,
+    de: [],
     mucs: [],
     dapAn: '',
     giaiThich: [],
@@ -240,6 +463,13 @@ const LOAI_KHONG_CO_MUC = new Set([
   'CODE_DEBUG_PYTHON',
   'CODE_DEBUG_CPP',
 ]);
+
+/** HTML của một phương án; báo lỗi nếu trống — "A." đứng riêng mà quên dán mã. */
+function noiDungMuc(m: Muc, i: number, loi: string[]): string {
+  const html = dungHtml(m.manh);
+  if (!html) loi.push(`Phương án ${String.fromCharCode(65 + i)} không có nội dung.`);
+  return html;
+}
 
 function dungOptions(d: Dang, loai: string, loi: string[]): ParsedOption[] {
   if (LOAI_KHONG_CO_MUC.has(loai)) return [];
@@ -318,7 +548,7 @@ function dungOptions(d: Dang, loai: string, loi: string[]): ParsedOption[] {
       loi.push(`Dòng "Đáp án:" có ${cacY.length} giá trị nhưng câu có ${mucs.length} phát biểu.`);
     }
     return mucs.map((m, i) => ({
-      content: m.text.trim(),
+      content: noiDungMuc(m, i, loi),
       isCorrect: laDung(cacY[i] ?? '') === true,
     }));
   }
@@ -341,7 +571,7 @@ function dungOptions(d: Dang, loai: string, loi: string[]): ParsedOption[] {
   if (loai === 'MULTIPLE_CHOICE_SINGLE' && chiSoDung.size > 1) {
     loi.push('Trắc nghiệm một đáp án nhưng dòng "Đáp án:" ghi nhiều chữ cái.');
   }
-  return mucs.map((m, i) => ({ content: m.text.trim(), isCorrect: chiSoDung.has(i) }));
+  return mucs.map((m, i) => ({ content: noiDungMuc(m, i, loi), isCorrect: chiSoDung.has(i) }));
 }
 
 function layCodeMau(d: Dang): string {
@@ -430,7 +660,7 @@ function chot(d: Dang): ParsedQuestion {
   }
   const loaiThat = loai ?? 'MULTIPLE_CHOICE_SINGLE';
 
-  const content = d.deHtml.join('\n').trim();
+  const content = dungHtml(d.de);
   if (!content) loi.push('Câu này không có đề bài.');
 
   const options = loi.length > 0 && !loai ? [] : dungOptions(d, loaiThat, loi);
@@ -464,7 +694,7 @@ function chot(d: Dang): ParsedQuestion {
   return {
     type: loaiThat,
     content,
-    explanation: d.giaiThich.length > 0 ? d.giaiThich.join('\n').trim() : null,
+    explanation: d.giaiThich.length > 0 ? dungHtml(d.giaiThich) : null,
     points: diem,
     folder: d.folder,
     // Parsons dựng mục từ khối mã nên không giữ lại khối đó nữa.
@@ -503,8 +733,15 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
     const text = para.text.trim();
     if (!text && !/<img/i.test(para.html)) return;
 
+    /** HTML của đoạn sau khi bỏ phần chữ `tienTo` ở đầu (tiền tố lấy từ `text`). */
+    const htmlSau = (tienTo: string) => catDauHtml(para.html, demKyTu(tienTo));
+    const coNoiDung = (html: string) => sangChuThuan(html).trim() !== '' || /<img/i.test(html);
+
+    // Đoạn gõ phông đều nét trong một câu gõ phông thường — tức là mã dán vào.
+    const laMa = para.isCode === true && dang !== null && !dang.cauLaCode;
+
     // 1. Mốc "Câu N."
-    const mCau = RE_CAU.exec(text);
+    const mCau = khopCau(text);
     if (mCau) {
       dongLai();
       let conLai = mCau[2] ?? '';
@@ -514,8 +751,9 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
         maLoai = mMa[1] ?? null;
         conLai = conLai.slice(mMa[0].length);
       }
-      dang = dangMoi(`Câu ${mCau[1]}`, maLoai, folder);
-      if (conLai.trim()) dang.deHtml.push(`<p>${conLai.trim()}</p>`);
+      dang = dangMoi(`Câu ${mCau[1]}`, maLoai, folder, para.isCode === true);
+      const phanDe = htmlSau(text.slice(0, text.length - conLai.length));
+      if (coNoiDung(phanDe)) dang.de.push(manhDoan(phanDe));
       return;
     }
 
@@ -535,15 +773,16 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
       }
       dang.khoi = nhan.khoi;
       const v = nhan.phanConLai;
+      const vHtml = htmlSau(nhan.tienTo);
       switch (nhan.khoi) {
         case 'de':
-          if (v) dang.deHtml.push(`<p>${v}</p>`);
+          if (coNoiDung(vHtml)) dang.de.push(manhDoan(vHtml));
           break;
         case 'dapAn':
           dang.dapAn = v;
           break;
         case 'giaiThich':
-          if (v) dang.giaiThich.push(`<p>${v}</p>`);
+          if (coNoiDung(vHtml)) dang.giaiThich.push(manhDoan(vHtml));
           break;
         case 'diem':
           dang.diem = v;
@@ -554,11 +793,12 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
         case 'boNho':
           dang.boNho = v;
           break;
+        // Mã lấy từ HTML chứ không từ `v`: `text` đã gộp các dấu cách liền nhau.
         case 'codeMau':
-          if (v) dang.codeMau.push(v);
+          if (v) dang.codeMau.push(sangChuThuan(vHtml));
           break;
         case 'dapAnCode':
-          if (v) dang.dapAnCode.push(v);
+          if (v) dang.dapAnCode.push(sangChuThuan(vHtml));
           break;
         case 'test': {
           const t = v ? docTestMotDong(v) : null;
@@ -573,14 +813,22 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
     if (dang) {
       const mMuc = RE_MUC.exec(text);
       if (mMuc) {
-        dang.mucs.push({ html: para.html, text: mMuc[2] ?? '' });
+        const conLai = mMuc[2] ?? '';
+        const phan = htmlSau(text.slice(0, text.length - conLai.length));
+        // "A." đứng riêng: nội dung phương án nằm ở các đoạn phía dưới.
+        const manh: Manh[] = !conLai.trim()
+          ? []
+          : laMa && KY_HIEU_MA.test(conLai)
+            ? [manhCode(phan, true)]
+            : [manhDoan(phan)];
+        dang.mucs.push({ manh, text: conLai });
         dang.khoi = 'muc';
         return;
       }
       // Word đánh số tự động: chữ cái nằm ở định dạng chứ không ở văn bản. Chỉ
       // nhận khi câu đã có đề bài, để không nuốt nhầm danh sách trong đề.
-      if (para.isListItem && dang.deHtml.length > 0 && dang.khoi !== 'codeMau') {
-        dang.mucs.push({ html: para.html, text });
+      if (para.isListItem && dang.de.length > 0 && dang.khoi !== 'codeMau') {
+        dang.mucs.push({ manh: [manhDoan(para.html)], text });
         dang.khoi = 'muc';
         return;
       }
@@ -588,17 +836,20 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
 
     // 4. Không phải mốc nào → nối vào khối đang mở
     if (!dang) return;
+    // Đoạn mã dán vào đề phải giữ nguyên dòng và thụt lề trong một khối <pre>
+    // — trừ câu văn bị Word giữ phông Consolas sau khi dán mã.
+    const manh = laMa && !laVanXuoi(text) ? manhCode(para.html) : manhDoan(para.html);
     switch (dang.khoi) {
       case 'muc': {
         const cuoi = dang.mucs[dang.mucs.length - 1];
         if (cuoi) {
-          cuoi.html += para.html;
+          cuoi.manh.push(manh);
           cuoi.text = `${cuoi.text} ${text}`.trim();
         }
         break;
       }
       case 'giaiThich':
-        dang.giaiThich.push(para.html);
+        dang.giaiThich.push(manh);
         break;
       case 'codeMau':
         dang.codeMau.push(sangChuThuan(para.html));
@@ -615,7 +866,7 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
         dang.dapAn = `${dang.dapAn} ${text}`.trim();
         break;
       default:
-        dang.deHtml.push(para.html);
+        dang.de.push(manh);
     }
   };
 
@@ -625,19 +876,31 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
       continue;
     }
 
-    // Bảng ngay dưới nhãn Test là bảng test case. Bảng ở chỗ khác là cách trình
-    // bày cho gọn giấy (rất hay gặp: bốn phương án xếp hai cột), nên trải phẳng
-    // theo thứ tự đọc rồi xử lý từng ô như một đoạn.
+    // Bảng ngay dưới nhãn Test là bảng test case.
     const hienTai = layDang();
     if (hienTai && hienTai.khoi === 'test') {
       hienTai.test.push(...docBangTest(line.rows));
       continue;
     }
-    for (const row of line.rows) {
+
+    // Bảng có chứa mốc (Câu, A., nhãn) là cách trình bày cho gọn giấy — rất hay
+    // gặp: bốn phương án xếp hai cột — nên trải phẳng theo thứ tự đọc rồi xử lý
+    // từng ô như một đoạn. Bảng không có mốc nào là bảng dữ liệu của đề (bảng
+    // HocSinh của câu CSDL, bảng giá trị…): trải phẳng thì mỗi ô thành một dòng,
+    // nên giữ nguyên là bảng.
+    const cacO = line.rows.map((row) => row.map(tachDoanTrongO));
+    const coMoc = cacO.some((row) => row.some((o) => o.some((d) => laMoc(d.text))));
+    if (!coMoc && hienTai && hienTai.khoi !== 'codeMau' && hienTai.khoi !== 'dapAnCode') {
+      const bang: Manh = { code: false, html: dungBang(line.rows) };
+      const cuoi = hienTai.mucs[hienTai.mucs.length - 1];
+      if (hienTai.khoi === 'muc' && cuoi) cuoi.manh.push(bang);
+      else if (hienTai.khoi === 'giaiThich') hienTai.giaiThich.push(bang);
+      else hienTai.de.push(bang);
+      continue;
+    }
+    for (const row of cacO) {
       for (const o of row) {
-        const text = sangChuThuan(o).trim();
-        if (!text && !/<img/i.test(o)) continue;
-        xuLyDoan({ kind: 'para', html: o, text, isListItem: false });
+        for (const doan of o) xuLyDoan(doan);
       }
     }
   }

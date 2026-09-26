@@ -36,7 +36,7 @@ const MatchingQuestion = nextDynamic(
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn, richTextIsEmpty, toRichHtml } from '@/lib/utils';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
-import { MathText } from '@/components/ui/editor/MathText';
+import { OptionContent } from '@/components/features/quiz/OptionContent';
 import type { CodeLanguage } from '@lumibach/db';
 
 // ── Seeded shuffle ─────────────────────────────────────────────
@@ -468,7 +468,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         ) : (
                           <Circle className="text-muted-foreground/40 h-4 w-4 shrink-0" />
                         )}
-                        <MathText text={opt.content} />
+                        <OptionContent type={qType} content={opt.content} className="flex-1" />
                       </button>
                     );
                   })}
@@ -501,7 +501,7 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         >
                           {isChosen && <CheckCircle2 className="text-primary-foreground h-3 w-3" />}
                         </span>
-                        <MathText text={opt.content} />
+                        <OptionContent type={qType} content={opt.content} className="flex-1" />
                       </button>
                     );
                   })}
@@ -555,9 +555,11 @@ export function QuizTaker({ attempt, courseSlug }: Props) {
                         <span className="bg-muted text-muted-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                           {String.fromCharCode(97 + oi)}
                         </span>
-                        <p className="min-w-0 flex-1 basis-40 text-sm">
-                          <MathText text={opt.content} />
-                        </p>
+                        <OptionContent
+                          type={qType}
+                          content={opt.content}
+                          className="flex-1 basis-40 text-sm"
+                        />
                         <div className="flex shrink-0 items-center gap-2">
                           <button
                             onClick={() => handleTFMulti(q.questionId, opt.id, true)}

@@ -32,8 +32,22 @@ function tieuDe(text: string): Paragraph {
   });
 }
 
-/** Dòng thuộc phần ví dụ: font đều để giáo viên thấy rõ đâu là nhãn. */
+/**
+ * Dòng thuộc phần ví dụ, gõ bằng phông thường như một tệp đề thật.
+ *
+ * KHÔNG dùng phông đều nét ở đây: bộ đọc coi dòng gõ Consolas giữa một câu gõ
+ * phông thường là đoạn mã. Ví dụ mà gõ Consolas thì giáo viên chép ra sẽ không
+ * dùng được cách chèn mã vào đề.
+ */
 function viDu(text: string): Paragraph {
+  return new Paragraph({
+    children: [new TextRun({ text, size: 22 })],
+    spacing: { after: 40 },
+  });
+}
+
+/** Dòng mã trong ví dụ: phông đều nét, đúng như khi dán từ VS Code sang. */
+function viDuMa(text: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({ text, font: FONT_MA, size: 20 })],
     spacing: { after: 40 },
@@ -135,6 +149,20 @@ export async function taoTepMau(): Promise<Buffer> {
     ),
     chu('Ảnh cứ dán thẳng vào ngay dưới dòng đề, hệ thống tự tải lên và gắn vào câu hỏi.'),
 
+    tieuDe('Chèn đoạn mã vào đề bài hay phương án'),
+    chu(
+      'Áp dụng cho mọi ngôn ngữ: Python, C++, HTML… Gõ các dòng mã bằng phông Consolas hoặc Courier New — dán từ VS Code, Dev-C++ sang Word là tự có sẵn phông này. Hệ thống giữ nguyên từng dòng, thụt lề, và các ký hiệu như <p>, #include <iostream> hiện đúng là chữ.'
+    ),
+    chu(
+      'Phần chữ còn lại của câu hỏi phải gõ phông thường. Câu nào gõ toàn bộ bằng Consolas thì hệ thống không phân biệt được đâu là mã.'
+    ),
+    chu(
+      'Phương án là cả một đoạn mã nhiều dòng: viết "A." một dòng riêng rồi dán mã xuống dưới, tương tự cho B., C., D. Phương án chỉ một dòng lệnh thì viết luôn sau "A." bằng phông Consolas.'
+    ),
+    chu(
+      'Vài chữ đều nét nằm lẫn trong câu văn, ví dụ tên một thẻ hay một lệnh, sẽ hiện thành mã nhỏ ngay trong dòng.'
+    ),
+
     tieuDe('Ví dụ — xoá hết phần này trước khi nộp tệp'),
     chu(
       'Dòng Thư mục đứng riêng, áp cho mọi câu phía sau cho tới lần khai kế tiếp. Thư mục chưa có sẽ được tạo mới.'
@@ -186,36 +214,36 @@ export async function taoTepMau(): Promise<Buffer> {
     viDu(''),
     viDu('Câu 9. [PARSONS] Sắp xếp các dòng lệnh để in tổng các số chẵn từ 1 đến n.'),
     viDu('Code mẫu:'),
-    viDu('n = int(input())'),
-    viDu('s = 0'),
-    viDu('for i in range(1, n + 1):'),
-    viDu('    if i % 2 == 0:'),
-    viDu('        s = s + i'),
-    viDu('print(s)'),
+    viDuMa('n = int(input())'),
+    viDuMa('s = 0'),
+    viDuMa('for i in range(1, n + 1):'),
+    viDuMa('    if i % 2 == 0:'),
+    viDuMa('        s = s + i'),
+    viDuMa('print(s)'),
     viDu(''),
     viDu('Câu 10. [DK] Điền vào chỗ trống để hàm đếm số lần xuất hiện của ký tự.'),
     viDu('Code mẫu:'),
-    viDu('def dem(s, c):'),
-    viDu('    d = ___'),
-    viDu('    for ch in s:'),
-    viDu('        if ch == c:'),
-    viDu('            d = ___'),
-    viDu('    return d'),
+    viDuMa('def dem(s, c):'),
+    viDuMa('    d = ___'),
+    viDuMa('    for ch in s:'),
+    viDuMa('        if ch == c:'),
+    viDuMa('            d = ___'),
+    viDuMa('    return d'),
     viDu('Đáp án: 0 | d + 1'),
     viDu(''),
     viDu('Câu 11. [PY] Đọc số nguyên dương n rồi in n số Fibonacci đầu tiên,'),
     viDu('các số cách nhau một dấu cách trên cùng một dòng.'),
     viDu('Code mẫu:'),
-    viDu('n = int(input())'),
-    viDu('# viết code của em ở đây'),
+    viDuMa('n = int(input())'),
+    viDuMa('# viết code của em ở đây'),
     viDu('Đáp án code:'),
-    viDu('n = int(input())'),
-    viDu('a, b = 0, 1'),
-    viDu('kq = []'),
-    viDu('for i in range(n):'),
-    viDu('    kq.append(str(a))'),
-    viDu('    a, b = b, a + b'),
-    viDu("print(' '.join(kq))"),
+    viDuMa('n = int(input())'),
+    viDuMa('a, b = 0, 1'),
+    viDuMa('kq = []'),
+    viDuMa('for i in range(n):'),
+    viDuMa('    kq.append(str(a))'),
+    viDuMa('    a, b = b, a + b'),
+    viDuMa("print(' '.join(kq))"),
     viDu('Test: 1 => 0'),
     viDu('Test: 5 => 0 1 1 2 3'),
     viDu('Test: 8 => 0 1 1 2 3 5 8 13 [ẩn] [2đ]'),
@@ -224,14 +252,14 @@ export async function taoTepMau(): Promise<Buffer> {
     viDu(''),
     viDu('Câu 12. [CPP] In ra giá trị lớn nhất của dãy số.'),
     viDu('Đáp án code:'),
-    viDu('#include <iostream>'),
-    viDu('using namespace std;'),
-    viDu('int main() {'),
-    viDu('    int n; cin >> n;'),
-    viDu('    int mx; cin >> mx;'),
-    viDu('    for (int i = 1; i < n; i++) { int x; cin >> x; if (x > mx) mx = x; }'),
-    viDu('    cout << mx;'),
-    viDu('}'),
+    viDuMa('#include <iostream>'),
+    viDuMa('using namespace std;'),
+    viDuMa('int main() {'),
+    viDuMa('    int n; cin >> n;'),
+    viDuMa('    int mx; cin >> mx;'),
+    viDuMa('    for (int i = 1; i < n; i++) { int x; cin >> x; if (x > mx) mx = x; }'),
+    viDuMa('    cout << mx;'),
+    viDuMa('}'),
     viDu('Test:'),
     bang(
       [
@@ -241,6 +269,26 @@ export async function taoTepMau(): Promise<Buffer> {
       ],
       true
     ),
+    viDu(''),
+    viDu('Câu 13. [TN1] Đoạn mã HTML sau hiển thị mấy mục trong danh sách?'),
+    viDuMa('<ul>'),
+    viDuMa('    <li>Bật máy</li>'),
+    viDuMa('    <li>Mở trình duyệt</li>'),
+    viDuMa('</ul>'),
+    viDu('A. 1'),
+    viDu('B. 2'),
+    viDu('C. 4'),
+    viDu('Đáp án: B'),
+    viDu('Giải thích: Mỗi thẻ <li> tạo một mục; <ul> chỉ là khung bao ngoài.'),
+    viDu(''),
+    viDu('Câu 14. [TN1] Đoạn chương trình Python nào in ra các số 0, 1, 2?'),
+    viDu('A.'),
+    viDuMa('for i in range(3):'),
+    viDuMa('    print(i)'),
+    viDu('B.'),
+    viDuMa('for i in range(1, 3):'),
+    viDuMa('    print(i)'),
+    viDu('Đáp án: A'),
   ];
 
   const doc = new Document({ sections: [{ children: noiDung }] });

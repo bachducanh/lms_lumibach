@@ -133,7 +133,50 @@ describe('đọc tệp .docx', () => {
     expect(lines.some((l) => l.kind === 'table')).toBe(true);
 
     const c = parseQuestions(lines).questions[0]!;
-    expect(c.options.map((o2) => o2.content)).toEqual(['một', 'hai', 'ba', 'bốn']);
+    expect(c.options.map((o2) => o2.content)).toEqual([
+      '<p>một</p>',
+      '<p>hai</p>',
+      '<p>ba</p>',
+      '<p>bốn</p>',
+    ]);
     expect(c.options.map((o2) => o2.isCorrect)).toEqual([false, false, true, false]);
+  });
+
+  it('đoạn gõ toàn phông đều nét được đánh dấu là mã, chữ lẻ thì bọc <code>', async () => {
+    const ma = (t: string) =>
+      `<w:r><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/></w:rPr>` +
+      `<w:t xml:space="preserve">${t}</w:t></w:r>`;
+    const docx = await dungDocx(
+      [
+        doan(chu('Câu 1. [TN1] Đoạn mã sau hiển thị gì?')),
+        doan(ma('&lt;ul&gt;')),
+        // Tab đầu dòng mang phông mặc định — không được làm hỏng nhận dạng.
+        doan(`<w:r><w:tab/></w:r>${ma('&lt;li&gt;Một&lt;/li&gt;')}`),
+        doan(ma('&lt;/ul&gt;')),
+        doan(chu('A. Thẻ ') + ma('&lt;li&gt;') + chu(' tạo một mục')),
+        doan(chu('B. Không gì')),
+        doan(chu('Đáp án: A')),
+      ].join('')
+    );
+
+    const { lines } = await docDocx(docx, khongLuuAnh);
+    const doanVan = lines.filter((l) => l.kind === 'para');
+    expect(doanVan.map((l) => l.kind === 'para' && l.isCode)).toEqual([
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+    ]);
+
+    const c = parseQuestions(lines).questions[0]!;
+    expect(c.loi).toEqual([]);
+    expect(c.content).toBe(
+      '<p>Đoạn mã sau hiển thị gì?</p>' +
+        '<pre><code>&lt;ul&gt;\n\t&lt;li&gt;Một&lt;/li&gt;\n&lt;/ul&gt;</code></pre>'
+    );
+    expect(c.options[0]!.content).toBe('<p>Thẻ <code>&lt;li&gt;</code> tạo một mục</p>');
   });
 });

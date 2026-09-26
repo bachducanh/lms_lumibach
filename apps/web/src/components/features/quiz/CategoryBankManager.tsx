@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { RichTextView } from '@/components/ui/editor/RichTextView';
-import { MathText } from '@/components/ui/editor/MathText';
+import { OptionContent } from '@/components/features/quiz/OptionContent';
 import { DeleteQuestionButton } from '@/components/features/quiz/DeleteQuestionButton';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { cn, stripHtml } from '@/lib/utils';
@@ -104,11 +104,12 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
                 <li
                   key={o.id}
                   className={cn(
-                    'text-sm',
+                    'flex items-start gap-1.5 text-sm',
                     o.isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'
                   )}
                 >
-                  {o.isCorrect ? '✓' : '·'} <MathText text={stripHtml(o.content)} />
+                  <span className="shrink-0">{o.isCorrect ? '✓' : '·'}</span>
+                  <OptionContent type={q.type} content={o.content} className="flex-1" />
                 </li>
               ))}
             </ul>

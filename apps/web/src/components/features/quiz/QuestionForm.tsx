@@ -80,13 +80,25 @@ const CODE_LANG_MAP: Partial<Record<QType, 'PYTHON3' | 'CPP17' | 'WEB'>> = {
   CODE_DEBUG_CPP: 'CPP17',
 };
 
-type Option = { content: string; isCorrect: boolean };
+/**
+ * `key` chỉ sống trên form, không gửi lên máy chủ. Phương án trắc nghiệm giờ là
+ * một trình soạn thảo, mà trình soạn thảo chỉ đọc nội dung lúc dựng — nếu lấy
+ * chỉ số làm key thì xoá phương án B xong, ô của B vẫn hiện chữ của B trong khi
+ * dữ liệu đã là của C.
+ */
+type Option = { key: string; content: string; isCorrect: boolean };
 type TCInput = { input: string; expectedOutput: string; isHidden: boolean; points: number };
+
+let soKhoa = 0;
+function opt(content: string, isCorrect: boolean): Option {
+  soKhoa += 1;
+  return { key: `opt-${soKhoa}`, content, isCorrect };
+}
 
 // MATCHING stores each pair in one option as JSON {left,right}; position = order.
 type Pair = { left: string; right: string };
 function emptyPair(): Option {
-  return { content: JSON.stringify({ left: '', right: '' }), isCorrect: true };
+  return opt(JSON.stringify({ left: '', right: '' }), true);
 }
 function parsePair(content: string): Pair {
   try {
@@ -98,29 +110,17 @@ function parsePair(content: string): Pair {
 }
 
 function defaultOptions(type: QType): Option[] {
-  if (type === 'TRUE_FALSE')
-    return [
-      { content: 'Đúng', isCorrect: true },
-      { content: 'Sai', isCorrect: false },
-    ];
+  if (type === 'TRUE_FALSE') return [opt('Đúng', true), opt('Sai', false)];
+  // Phát biểu để trống, gợi ý nằm ở placeholder: trong trình soạn thảo, chữ mẫu
+  // điền sẵn phải bôi đen xoá đi mới gõ được.
   if (type === 'TRUE_FALSE_MULTI')
-    return [
-      { content: 'Phát biểu 1', isCorrect: true },
-      { content: 'Phát biểu 2', isCorrect: false },
-      { content: 'Phát biểu 3', isCorrect: true },
-      { content: 'Phát biểu 4', isCorrect: false },
-    ];
+    return [opt('', true), opt('', false), opt('', true), opt('', false)];
   // General ordering — items entered in the correct order (position = order).
-  if (type === 'ORDERING')
-    return [
-      { content: '', isCorrect: false },
-      { content: '', isCorrect: false },
-      { content: '', isCorrect: false },
-    ];
+  if (type === 'ORDERING') return [opt('', false), opt('', false), opt('', false)];
   // Matching — pairs of left ↔ right.
   if (type === 'MATCHING') return [emptyPair(), emptyPair(), emptyPair()];
   // Trả lời ngắn — mỗi option là một cách viết được chấp nhận, tất cả đều đúng.
-  if (type === 'SHORT_ANSWER') return [{ content: '', isCorrect: true }];
+  if (type === 'SHORT_ANSWER') return [opt('', true)];
   const noOpts: QType[] = [
     'ESSAY',
     'CODE_PYTHON',
@@ -132,12 +132,7 @@ function defaultOptions(type: QType): Option[] {
     'CODE_FILL',
   ];
   if (noOpts.includes(type)) return [];
-  return [
-    { content: '', isCorrect: true },
-    { content: '', isCorrect: false },
-    { content: '', isCorrect: false },
-    { content: '', isCorrect: false },
-  ];
+  return [opt('', true), opt('', false), opt('', false), opt('', false)];
 }
 
 type Props = {
@@ -191,8 +186,7 @@ export function QuestionForm({
   const [fillLang, setFillLang] = useState<'PYTHON3' | 'JAVASCRIPT' | 'CPP17'>('PYTHON3');
 
   const [options, setOptions] = useState<Option[]>(() => {
-    if (question)
-      return question.options.map((o) => ({ content: o.content, isCorrect: o.isCorrect }));
+    if (question) return question.options.map((o) => opt(o.content, o.isCorrect));
     return defaultOptions(initType);
   });
 
@@ -238,13 +232,18 @@ export function QuestionForm({
     setOptions((prev) => prev.map((o, j) => (j === i ? { ...o, content: val } : o)));
   }
 
+  /** Cho ô soạn rich-text: tìm theo khoá, vì thứ tự có thể đổi sau khi ô đã dựng. */
+  function updateOptionByKey(key: string, html: string) {
+    setOptions((prev) => prev.map((o) => (o.key === key ? { ...o, content: html } : o)));
+  }
+
   function addOption() {
-    setOptions((prev) => [...prev, { content: '', isCorrect: false }]);
+    setOptions((prev) => [...prev, opt('', false)]);
   }
 
   /** Cách viết được chấp nhận của câu trả lời ngắn — luôn tính là đáp án đúng. */
   function addShortAnswer() {
-    setOptions((prev) => [...prev, { content: '', isCorrect: true }]);
+    setOptions((prev) => [...prev, opt('', true)]);
   }
 
   function removeOption(i: number) {
@@ -285,7 +284,7 @@ export function QuestionForm({
       toast.error('Cần ít nhất 2 dòng code.');
       return;
     }
-    setOptions(lines.map((l) => ({ content: l, isCorrect: false })));
+    setOptions(lines.map((l) => opt(l, false)));
     toast.success(`Đã phân tách thành ${lines.length} dòng.`);
   }
 
@@ -297,10 +296,7 @@ export function QuestionForm({
     setOptions((prev) => {
       if (prev.length === blanks) return prev;
       if (prev.length < blanks)
-        return [
-          ...prev,
-          ...Array.from({ length: blanks - prev.length }, () => ({ content: '', isCorrect: true })),
-        ];
+        return [...prev, ...Array.from({ length: blanks - prev.length }, () => opt('', true))];
       return prev.slice(0, blanks);
     });
   }
@@ -356,14 +352,15 @@ export function QuestionForm({
   function validate(): string | null {
     if (richTextIsEmpty(content)) return 'Nội dung câu hỏi không được để trống.';
     if (type === 'MULTIPLE_CHOICE_SINGLE' || type === 'MULTIPLE_CHOICE_MULTIPLE') {
-      if (options.some((o) => !o.content.trim())) return 'Tất cả đáp án phải có nội dung.';
+      if (options.some((o) => richTextIsEmpty(o.content))) return 'Tất cả đáp án phải có nội dung.';
       if (!options.some((o) => o.isCorrect)) return 'Phải có ít nhất 1 đáp án đúng.';
       if (type === 'MULTIPLE_CHOICE_SINGLE' && options.filter((o) => o.isCorrect).length > 1) {
         return 'Trắc nghiệm 1 đáp án chỉ được có 1 đáp án đúng.';
       }
     }
     if (type === 'TRUE_FALSE_MULTI') {
-      if (options.some((o) => !o.content.trim())) return 'Tất cả phát biểu phải có nội dung.';
+      if (options.some((o) => richTextIsEmpty(o.content)))
+        return 'Tất cả phát biểu phải có nội dung.';
       if (options.length < 2) return 'Phải có ít nhất 2 phát biểu.';
     }
     if (type === 'SHORT_ANSWER') {
@@ -414,16 +411,18 @@ export function QuestionForm({
     const baseVals = {
       type,
       content: content.trim(),
-      explanation: explanation.trim() || null,
+      explanation: richTextIsEmpty(explanation) ? null : explanation,
       points: Number(points) || 1,
       categoryId: question?.categoryId ?? defaultCategoryId ?? null,
     };
+    // Bỏ khoá nội bộ của form trước khi gửi.
+    const optionValues = options.map((o) => ({ content: o.content, isCorrect: o.isCorrect }));
 
     let values: QuestionFormValues;
     if (type === 'PARSONS') {
       values = {
         ...baseVals,
-        options,
+        options: optionValues,
         testCases: [],
         starterCode: null,
         solutionCode: null,
@@ -433,7 +432,7 @@ export function QuestionForm({
     } else if (type === 'CODE_FILL') {
       values = {
         ...baseVals,
-        options,
+        options: optionValues,
         testCases: [],
         starterCode: starterCode || null,
         solutionCode: null,
@@ -464,7 +463,7 @@ export function QuestionForm({
     } else {
       values = {
         ...baseVals,
-        options: isCode ? [] : options,
+        options: isCode ? [] : optionValues,
         testCases: isCode ? testCases.map((tc, i) => ({ ...tc, position: i })) : [],
         starterCode: isCode ? starterCode || null : null,
         solutionCode: isCode ? solutionCode || null : null,
@@ -548,11 +547,12 @@ export function QuestionForm({
           </label>
           <div className="space-y-2">
             {options.map((o, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={o.key} className="flex items-start gap-2">
                 <button
+                  type="button"
                   onClick={() => toggleCorrect(i)}
                   className={cn(
-                    'shrink-0 transition-colors',
+                    'mt-2.5 shrink-0 transition-colors',
                     o.isCorrect
                       ? 'text-green-700 dark:text-green-400'
                       : 'text-muted-foreground/40 hover:text-muted-foreground'
@@ -565,16 +565,19 @@ export function QuestionForm({
                     <Circle className="h-5 w-5" />
                   )}
                 </button>
-                <input
-                  value={o.content}
-                  onChange={(e) => updateOption(i, e.target.value)}
+                <RichTextEditor
+                  inline
+                  content={o.content}
+                  onChange={(html) => updateOptionByKey(o.key, html)}
                   placeholder={`Đáp án ${String.fromCharCode(65 + i)}...`}
-                  className="border-input bg-background focus:ring-ring min-h-10 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
+                  className="min-w-0 flex-1"
                 />
                 {options.length > 2 && (
                   <button
+                    type="button"
                     onClick={() => removeOption(i)}
-                    className="text-muted-foreground hover:text-destructive rounded-md p-1.5 transition-colors"
+                    title="Xoá đáp án"
+                    className="text-muted-foreground hover:text-destructive mt-1.5 rounded-md p-1.5 transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -600,10 +603,8 @@ export function QuestionForm({
           <div className="flex gap-3">
             {options.map((o, i) => (
               <button
-                key={i}
-                onClick={() =>
-                  setOptions(options.map((opt, j) => ({ ...opt, isCorrect: j === i })))
-                }
+                key={o.key}
+                onClick={() => setOptions(options.map((x, j) => ({ ...x, isCorrect: j === i })))}
                 className={cn(
                   'flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
                   o.isCorrect
@@ -634,25 +635,21 @@ export function QuestionForm({
           </div>
           <div className="space-y-2">
             {options.map((o, i) => (
-              <div
-                key={i}
-                className="border-border bg-background flex items-start gap-3 rounded-lg border px-3 py-2.5"
-              >
-                <span className="bg-muted text-muted-foreground mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+              <div key={o.key} className="flex flex-wrap items-start gap-x-3 gap-y-2">
+                <span className="bg-muted text-muted-foreground mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                   {String.fromCharCode(97 + i)}
                 </span>
-                <input
-                  value={o.content}
-                  onChange={(e) => updateOption(i, e.target.value)}
+                <RichTextEditor
+                  inline
+                  content={o.content}
+                  onChange={(html) => updateOptionByKey(o.key, html)}
                   placeholder={`Phát biểu ${String.fromCharCode(97 + i)}...`}
-                  className="placeholder:text-muted-foreground/50 flex-1 bg-transparent text-sm focus:outline-none"
+                  className="min-w-0 flex-1 basis-60"
                 />
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="mt-1.5 flex shrink-0 items-center gap-1.5">
                   <button
                     onClick={() =>
-                      setOptions(
-                        options.map((opt, j) => (j === i ? { ...opt, isCorrect: true } : opt))
-                      )
+                      setOptions(options.map((x, j) => (j === i ? { ...x, isCorrect: true } : x)))
                     }
                     className={cn(
                       'rounded border px-2 py-0.5 text-xs font-medium transition-colors',
@@ -665,9 +662,7 @@ export function QuestionForm({
                   </button>
                   <button
                     onClick={() =>
-                      setOptions(
-                        options.map((opt, j) => (j === i ? { ...opt, isCorrect: false } : opt))
-                      )
+                      setOptions(options.map((x, j) => (j === i ? { ...x, isCorrect: false } : x)))
                     }
                     className={cn(
                       'rounded border px-2 py-0.5 text-xs font-medium transition-colors',
@@ -692,7 +687,7 @@ export function QuestionForm({
           </div>
           {options.length < 8 && (
             <button
-              onClick={() => setOptions((prev) => [...prev, { content: '', isCorrect: true }])}
+              onClick={() => setOptions((prev) => [...prev, opt('', true)])}
               className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Thêm phát biểu
@@ -751,7 +746,7 @@ export function QuestionForm({
               </label>
               <div className="space-y-1.5">
                 {options.map((o, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div key={o.key} className="flex items-center gap-2">
                     <span className="text-muted-foreground w-5 shrink-0 text-right text-xs tabular-nums">
                       {i + 1}
                     </span>
@@ -832,7 +827,7 @@ export function QuestionForm({
               <label className="text-muted-foreground text-xs font-medium">Đáp án từng ô</label>
               <div className="space-y-2">
                 {options.map((o, i) => (
-                  <div key={i} className="flex items-center gap-3">
+                  <div key={o.key} className="flex items-center gap-3">
                     <span className="shrink-0 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-xs font-bold text-violet-700 dark:text-violet-400">
                       [{i + 1}]
                     </span>
@@ -866,7 +861,7 @@ export function QuestionForm({
             </label>
             <div className="space-y-1.5">
               {options.map((o, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={o.key} className="flex items-center gap-2">
                   <span className="text-muted-foreground w-5 shrink-0 text-right text-xs tabular-nums">
                     {i + 1}
                   </span>
@@ -926,7 +921,7 @@ export function QuestionForm({
               {options.map((o, i) => {
                 const p = parsePair(o.content);
                 return (
-                  <div key={i} className="flex items-center gap-2">
+                  <div key={o.key} className="flex items-center gap-2">
                     <span className="bg-muted text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                       {i + 1}
                     </span>
@@ -981,7 +976,7 @@ export function QuestionForm({
             </label>
             <div className="space-y-2">
               {options.map((o, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={o.key} className="flex items-center gap-2">
                   <span className="bg-muted text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
                     {i + 1}
                   </span>
@@ -1414,12 +1409,11 @@ export function QuestionForm({
         <label className="text-muted-foreground text-xs font-medium">
           Giải thích (hiện sau khi nộp bài — tuỳ chọn)
         </label>
-        <textarea
-          value={explanation}
-          onChange={(e) => setExplanation(e.target.value)}
+        <RichTextEditor
+          inline
+          content={explanation}
+          onChange={setExplanation}
           placeholder="Giải thích đáp án đúng..."
-          rows={2}
-          className="border-input bg-background focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
         />
       </div>
 

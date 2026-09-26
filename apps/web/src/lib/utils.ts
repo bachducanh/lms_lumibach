@@ -21,6 +21,9 @@ export function stripHtml(html: string): string {
 export function richTextIsEmpty(html: string): boolean {
   if (!html) return true;
   if (/<(img|iframe|video|table|hr)\b/i.test(html)) return false;
+  // Node công thức rỗng ruột, LaTeX nằm trong thuộc tính — phương án chỉ gồm
+  // một công thức vẫn là phương án có nội dung.
+  if (/data-type="(inline|block)-math"/i.test(html)) return false;
   return stripHtml(html) === '';
 }
 
