@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
+import type { BulkDeleteQuestionsResult } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
@@ -524,6 +525,43 @@ export class QuestionsService {
       data: { deletedAt: new Date() },
     });
     return { message: 'Đã xoá câu hỏi.' };
+  }
+
+  /**
+   * Xoá nhiều câu một lượt — xoá mềm, cùng luật quyền với xoá từng câu.
+   *
+   * Thiếu quyền ở bất kỳ câu nào thì không xoá câu nào: xoá được một nửa rồi
+   * báo lỗi thì người dùng không biết những câu nào đã mất. Quyền quản lý kho hay
+   * khoá chỉ hỏi một lần cho mỗi nơi; quyền sở hữu câu của kho thì xét từng câu.
+   */
+  async deleteMany(user: AuthUser, ids: string[]): Promise<BulkDeleteQuestionsResult> {
+    const unique = [...new Set(ids)];
+    const found = await this.prisma.question.findMany({
+      where: { id: { in: unique }, deletedAt: null },
+      select: { id: true, courseId: true, bankCategoryId: true, createdBy: true },
+    });
+    if (found.length !== unique.length) {
+      throw new NotFoundException(
+        'Có câu hỏi đã bị xoá hoặc không còn tồn tại. Tải lại trang rồi chọn lại.'
+      );
+    }
+
+    const daKiem = new Set<string>();
+    for (const q of found) {
+      const noi = q.bankCategoryId ? `bank:${q.bankCategoryId}` : `course:${q.courseId}`;
+      if (!daKiem.has(noi)) {
+        await this.assertCanEditQuestion(user, q);
+        daKiem.add(noi);
+      } else if (q.bankCategoryId) {
+        this.bank.assertCanEditBankQuestion(user, q.createdBy);
+      }
+    }
+
+    const { count } = await this.prisma.question.updateMany({
+      where: { id: { in: unique }, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    return { deleted: count, message: `Đã xoá ${count} câu hỏi.` };
   }
 
   // ── Judge0 helpers ────────────────────────────────────────────

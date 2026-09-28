@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
 import type {
   BankFolderBody,
@@ -11,7 +11,16 @@ import { CategoryBankAccessService } from '../categories/category-bank-access.se
 const QUESTION_INCLUDE = {
   options: { orderBy: { position: 'asc' } },
   testCases: { orderBy: { position: 'asc' } },
+  // Quiz mẫu của ngân hàng nội dung trỏ thẳng vào câu của kho (lớp học thì nhận
+  // bản sao). Màn hình cần con số này để báo trước khi xoá.
+  _count: { select: { quizzes: { where: { quiz: { deletedAt: null } } } } },
 } as const;
+
+/** Đổi `_count` của Prisma thành trường `quizCount` mà DTO khai báo. */
+function kemSoQuiz<T extends { _count: { quizzes: number } }>(q: T) {
+  const { _count, ...rest } = q;
+  return { ...rest, quizCount: _count.quizzes };
+}
 
 /**
  * Kho câu hỏi soạn THẲNG trong danh mục khoá học.
@@ -107,8 +116,13 @@ export class CategoryQuestionBankService {
       // Prisma trả `createdAt` kiểu Date còn DTO khai string: JSON.stringify của
       // tầng HTTP đổi sang chuỗi ISO, nên dây truyền đúng kiểu. Giống hệt cách
       // endpoint /questions của khoá học vẫn trả từ trước.
-      folders: folders as unknown as CategoryQuestionBankData['folders'],
-      uncategorized: uncategorized as unknown as CategoryQuestionBankData['uncategorized'],
+      folders: folders.map((f) => ({
+        ...f,
+        questions: f.questions.map(kemSoQuiz),
+      })) as unknown as CategoryQuestionBankData['folders'],
+      uncategorized: uncategorized.map(
+        kemSoQuiz
+      ) as unknown as CategoryQuestionBankData['uncategorized'],
     };
   }
 
@@ -170,24 +184,41 @@ export class CategoryQuestionBankService {
   }
 
   /**
-   * Xoá thư mục, GIỮ LẠI câu hỏi bên trong.
+   * Xoá thư mục CÙNG các câu hỏi bên trong (xoá mềm, như xoá từng câu).
    *
-   * Quan hệ Question.category là `onDelete: SetNull`, nên câu hỏi rơi về nhóm
-   * "chưa xếp thư mục" của đúng kho đó chứ không biến mất. Xoá một thư mục là
-   * thao tác sắp xếp, không phải thao tác huỷ nội dung.
+   * Trước đây câu hỏi được giữ lại và rơi về nhóm "chưa xếp thư mục". Giáo viên
+   * xoá thư mục là để dọn cả nội dung, để lại một đống câu lạc chỗ thì lại phải
+   * đi xoá tay từng câu. Bản đã chép về khoá học là bản sao riêng, không bị đụng.
+   *
+   * Giáo viên chỉ xoá được câu do chính mình thêm (luật chung của kho). Thư mục
+   * lẫn câu của người khác thì dừng hẳn và nói rõ, không xoá dở dang.
    */
   async deleteFolder(user: AuthUser, folderId: string): Promise<{ message: string }> {
     await this.loadFolderForEdit(user, folderId);
 
-    const moved = await this.prisma.question.count({
+    const questions = await this.prisma.question.findMany({
       where: { categoryId: folderId, deletedAt: null },
+      select: { id: true, createdBy: true },
     });
-    await this.prisma.questionCategory.delete({ where: { id: folderId } });
+    const cuaNguoiKhac = questions.filter((q) => !this.access.ownsRecord(user, q.createdBy));
+    if (cuaNguoiKhac.length > 0) {
+      throw new ForbiddenException(
+        `Thư mục có ${cuaNguoiKhac.length} câu hỏi do người khác thêm vào — bạn chỉ xoá được câu của mình. Nhờ quản trị viên xoá thư mục này.`
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.question.updateMany({
+        where: { id: { in: questions.map((q) => q.id) } },
+        data: { deletedAt: new Date() },
+      }),
+      this.prisma.questionCategory.delete({ where: { id: folderId } }),
+    ]);
 
     return {
       message:
-        moved > 0
-          ? `Đã xoá thư mục. ${moved} câu hỏi chuyển về nhóm chưa xếp thư mục.`
+        questions.length > 0
+          ? `Đã xoá thư mục và ${questions.length} câu hỏi bên trong.`
           : 'Đã xoá thư mục.',
     };
   }

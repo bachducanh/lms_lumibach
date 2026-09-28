@@ -53,12 +53,16 @@ export class CategoryBankAccessService {
    * `createdBy` null là dữ liệu không rõ nguồn — chỉ ADMIN đụng tới.
    */
   assertOwnsRecord(user: AuthUser, createdBy: string | null): void {
-    if (user.role === 'ADMIN') return;
-    if (createdBy !== user.id) {
+    if (!this.ownsRecord(user, createdBy)) {
       throw new ForbiddenException(
         'Bạn chỉ sửa hoặc xoá được nội dung do chính mình thêm vào kho.'
       );
     }
+  }
+
+  /** Cùng luật với assertOwnsRecord, cho chỗ cần đếm thay vì dừng ở bản ghi đầu tiên. */
+  ownsRecord(user: AuthUser, createdBy: string | null): boolean {
+    return user.role === 'ADMIN' || createdBy === user.id;
   }
 
   /** Đường dẫn đầy đủ của danh mục, ví dụ "Tin học / Khối 10". */

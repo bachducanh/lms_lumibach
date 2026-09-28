@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import type {
+  BulkDeleteQuestionsResult,
   CategoryQuestionBankData,
   CategoryWithQuestions,
   QuestionItem,
@@ -42,8 +43,7 @@ import {
   QUESTION_TYPE_ICON as TYPE_ICON,
 } from '@/lib/question-type-labels';
 
-const XOA_CAU_HOI =
-  'Xoá câu hỏi này khỏi ngân hàng? Các bản đã chép về khoá học vẫn giữ nguyên — chúng là bản sao riêng.';
+const BAN_SAO_GIU_NGUYEN = 'Các bản đã chép về khoá học vẫn giữ nguyên — chúng là bản sao riêng.';
 
 const CHUA_XEP = '__chua-xep__';
 
@@ -51,18 +51,104 @@ function loiCua(err: unknown, mac_dinh: string) {
   return err instanceof ApiError ? err.message : mac_dinh;
 }
 
-// ── Một câu hỏi ───────────────────────────────────────────────
+/**
+ * Quiz mẫu của ngân hàng nội dung trỏ thẳng vào câu của kho (lớp học thì nhận
+ * bản sao, không bị ảnh hưởng). Xoá câu là quiz mẫu mất câu đó — phải nói trước.
+ */
+function canhBaoQuizMau(cacCau: QuestionItem[]): string {
+  const n = cacCau.filter((q) => (q.quizCount ?? 0) > 0).length;
+  if (n === 0) return '';
+  if (cacCau.length === 1) {
+    return ' Lưu ý: câu này đang nằm trong quiz mẫu của ngân hàng nội dung — xoá đi thì quiz mẫu mất câu này.';
+  }
+  return n === 1
+    ? ' Lưu ý: có 1 câu đang nằm trong quiz mẫu của ngân hàng nội dung — xoá đi thì quiz mẫu mất câu đó.'
+    : ` Lưu ý: ${n} câu đang nằm trong quiz mẫu của ngân hàng nội dung — xoá đi thì các quiz mẫu đó mất những câu này.`;
+}
 
-function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const Icon = TYPE_ICON[q.type];
+// ── Chọn nhiều câu ────────────────────────────────────────────
+
+type BoChon = {
+  daChon: (id: string) => boolean;
+  dao: (id: string) => void;
+  datNhieu: (ids: string[], chon: boolean) => void;
+};
+
+function HopChon({
+  checked,
+  indeterminate = false,
+  disabled,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  // `indeterminate` không có thuộc tính HTML tương ứng, chỉ đặt được qua DOM.
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
 
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border">
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      // Dòng câu hỏi bấm vào là mở/đóng — tick ô chọn không được kéo theo.
+      onClick={(e) => e.stopPropagation()}
+      aria-label={label}
+      className="border-input accent-primary h-4 w-4 shrink-0 cursor-pointer rounded disabled:cursor-not-allowed disabled:opacity-40"
+    />
+  );
+}
+
+/** Ô chọn cả nhóm: tick khi đã chọn hết, gạch ngang khi mới chọn một phần. */
+function HopChonNhom({ ids, chon, label }: { ids: string[]; chon: BoChon; label: string }) {
+  const soDaChon = ids.filter(chon.daChon).length;
+  return (
+    <HopChon
+      checked={ids.length > 0 && soDaChon === ids.length}
+      indeterminate={soDaChon > 0 && soDaChon < ids.length}
+      disabled={ids.length === 0}
+      onChange={() => chon.datNhieu(ids, soDaChon < ids.length)}
+      label={label}
+    />
+  );
+}
+
+// ── Một câu hỏi ───────────────────────────────────────────────
+
+function QuestionRow({
+  q,
+  categoryId,
+  chon,
+}: {
+  q: QuestionItem;
+  categoryId: string;
+  chon: BoChon;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = TYPE_ICON[q.type];
+  const daChon = chon.daChon(q.id);
+
+  return (
+    <div
+      className={cn(
+        'border-border bg-card overflow-hidden rounded-xl border',
+        daChon && 'border-primary/50 ring-primary/20 ring-1'
+      )}
+    >
       <div
         className="hover:bg-accent/30 flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
+        <HopChon checked={daChon} onChange={() => chon.dao(q.id)} label="Chọn câu hỏi này" />
         <span
           className={cn(
             'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',
@@ -74,6 +160,14 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
         </span>
         <p className="line-clamp-1 min-w-0 flex-1 text-sm">{stripHtml(q.content)}</p>
         <div className="flex shrink-0 items-center gap-2">
+          {(q.quizCount ?? 0) > 0 && (
+            <span
+              className="text-muted-foreground hidden text-xs sm:inline"
+              title="Quiz mẫu trong ngân hàng nội dung đang dùng câu này"
+            >
+              {q.quizCount} quiz mẫu ·
+            </span>
+          )}
           <span className="text-muted-foreground text-xs">{q.points}đ</span>
           <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             <Link
@@ -85,7 +179,10 @@ function QuestionRow({ q, categoryId }: { q: QuestionItem; categoryId: string })
             >
               <Pencil className="h-3.5 w-3.5" />
             </Link>
-            <DeleteQuestionButton questionId={q.id} confirmMessage={XOA_CAU_HOI} />
+            <DeleteQuestionButton
+              questionId={q.id}
+              confirmMessage={`Xoá câu hỏi này khỏi ngân hàng? ${BAN_SAO_GIU_NGUYEN}${canhBaoQuizMau([q])}`}
+            />
           </div>
           {expanded ? (
             <ChevronDown className="text-muted-foreground/40 h-3.5 w-3.5" />
@@ -127,11 +224,13 @@ function FolderBlock({
   categoryId,
   open,
   onToggle,
+  chon,
 }: {
   folder: CategoryWithQuestions;
   categoryId: string;
   open: boolean;
   onToggle: () => void;
+  chon: BoChon;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -166,8 +265,11 @@ function FolderBlock({
    * phản hồi, không có lỗi nào để lần ra.
    */
   async function xoa() {
+    const n = folder.questions.length;
     const ok = await openConfirm(
-      `Xoá thư mục “${folder.name}”? ${folder.questions.length} câu hỏi bên trong sẽ chuyển về nhóm chưa xếp thư mục, không bị xoá.`
+      n === 0
+        ? `Xoá thư mục “${folder.name}”?`
+        : `Xoá thư mục “${folder.name}” cùng ${n} câu hỏi bên trong? ${BAN_SAO_GIU_NGUYEN}${canhBaoQuizMau(folder.questions)}`
     );
     if (!ok) return;
     startTransition(async () => {
@@ -187,6 +289,11 @@ function FolderBlock({
     <section className="space-y-2">
       {confirmDialog}
       <header className="flex flex-wrap items-center gap-2">
+        <HopChonNhom
+          ids={folder.questions.map((q) => q.id)}
+          chon={chon}
+          label={`Chọn mọi câu hỏi trong ${folder.name}`}
+        />
         <button
           type="button"
           onClick={onToggle}
@@ -285,7 +392,7 @@ function FolderBlock({
       ) : (
         <div className="space-y-2">
           {folder.questions.map((q) => (
-            <QuestionRow key={q.id} q={q} categoryId={categoryId} />
+            <QuestionRow key={q.id} q={q} categoryId={categoryId} chon={chon} />
           ))}
         </div>
       )}
@@ -302,6 +409,54 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
   const [newName, setNewName] = useState('');
   // Mặc định đóng hết: kho lớn có hàng chục thư mục, bấm vào mới hiện câu hỏi.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [daChonIds, setDaChonIds] = useState<Set<string>>(new Set());
+  const [confirmDialog, openConfirm] = useConfirmDialog();
+
+  const tatCaCau = [...data.folders.flatMap((f) => f.questions), ...data.uncategorized];
+  // Lọc theo dữ liệu đang hiện: câu vừa bị xoá ở chỗ khác (xoá lẻ, xoá cả thư
+  // mục) biến khỏi danh sách nhưng id của nó có thể còn nằm trong bộ chọn.
+  const dangChon = tatCaCau.filter((q) => daChonIds.has(q.id));
+
+  const chon: BoChon = {
+    daChon: (id) => daChonIds.has(id),
+    dao: (id) =>
+      setDaChonIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }),
+    datNhieu: (ids, bat) =>
+      setDaChonIds((prev) => {
+        const next = new Set(prev);
+        for (const id of ids) {
+          if (bat) next.add(id);
+          else next.delete(id);
+        }
+        return next;
+      }),
+  };
+
+  /** Hỏi xác nhận NGOÀI startTransition — xem ghi chú ở FolderBlock.xoa. */
+  async function xoaDaChon() {
+    const cacCau = dangChon;
+    const ok = await openConfirm(
+      `Xoá ${cacCau.length} câu hỏi đã chọn? ${BAN_SAO_GIU_NGUYEN}${canhBaoQuizMau(cacCau)}`
+    );
+    if (!ok) return;
+    startTransition(async () => {
+      try {
+        const res = await apiClient.post<BulkDeleteQuestionsResult>('/questions/bulk-delete', {
+          ids: cacCau.map((q) => q.id),
+        });
+        toast.success(res.message);
+        setDaChonIds(new Set());
+        router.refresh();
+      } catch (err) {
+        toast.error(loiCua(err, 'Không xoá được các câu hỏi đã chọn.'));
+      }
+    });
+  }
 
   const allIds = [
     ...data.folders.map((f) => f.id),
@@ -341,6 +496,7 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
 
   return (
     <div className="space-y-8">
+      {confirmDialog}
       <div className="border-border bg-muted/20 flex flex-wrap items-center gap-3 rounded-xl border p-4">
         <HelpCircle className="text-muted-foreground h-4 w-4 shrink-0" />
         <p className="text-muted-foreground min-w-0 flex-1 text-sm">
@@ -425,12 +581,18 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
           categoryId={data.categoryId}
           open={expanded.has(f.id)}
           onToggle={() => toggle(f.id)}
+          chon={chon}
         />
       ))}
 
       {data.uncategorized.length > 0 && (
         <section className="space-y-2">
           <header className="flex items-center gap-2">
+            <HopChonNhom
+              ids={data.uncategorized.map((q) => q.id)}
+              chon={chon}
+              label="Chọn mọi câu hỏi chưa xếp thư mục"
+            />
             <button
               type="button"
               onClick={() => toggle(CHUA_XEP)}
@@ -452,11 +614,53 @@ export function CategoryBankManager({ data }: { data: CategoryQuestionBankData }
           {expanded.has(CHUA_XEP) && (
             <div className="space-y-2">
               {data.uncategorized.map((q) => (
-                <QuestionRow key={q.id} q={q} categoryId={data.categoryId} />
+                <QuestionRow key={q.id} q={q} categoryId={data.categoryId} chon={chon} />
               ))}
             </div>
           )}
         </section>
+      )}
+
+      {/* Thanh thao tác bám đáy màn hình khi đang chọn — kho dài hàng trăm câu,
+          chọn xong ở cuối trang thì không phải cuộn ngược lên tìm nút xoá. */}
+      {dangChon.length > 0 && (
+        <div
+          role="region"
+          aria-label="Thao tác với các câu hỏi đã chọn"
+          className="border-border bg-card sticky bottom-4 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-4 py-3 shadow-lg"
+        >
+          <span className="text-sm font-medium">Đã chọn {dangChon.length} câu hỏi</span>
+          {dangChon.length < tatCaCau.length && (
+            <button
+              type="button"
+              onClick={() =>
+                chon.datNhieu(
+                  tatCaCau.map((q) => q.id),
+                  true
+                )
+              }
+              className="text-primary text-xs hover:underline"
+            >
+              Chọn cả {tatCaCau.length} câu
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDaChonIds(new Set())}
+            className="text-muted-foreground hover:text-foreground text-xs"
+          >
+            Bỏ chọn
+          </button>
+          <button
+            type="button"
+            onClick={() => void xoaDaChon()}
+            disabled={pending}
+            className={cn(buttonVariants({ variant: 'destructive', size: 'sm' }), 'ml-auto')}
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            {pending ? 'Đang xoá...' : `Xoá ${dangChon.length} câu hỏi`}
+          </button>
+        </div>
       )}
 
       {tongCau === 0 && data.folders.length === 0 && (

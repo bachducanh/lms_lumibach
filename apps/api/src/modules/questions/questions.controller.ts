@@ -2,11 +2,13 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } fr
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import {
   BankFolderBodySchema,
+  BulkDeleteQuestionsBodySchema,
   CopyQuestionBodySchema,
   ImportQuestionsBodySchema,
   QuestionBankQuerySchema,
   ShareQuestionBodySchema,
   type BankFolderBody,
+  type BulkDeleteQuestionsBody,
   type CopyQuestionBody,
   type ImportQuestionsBody,
   type QuestionBankQuery,
@@ -159,6 +161,16 @@ export class QuestionsController {
   ) {
     const { courseId, bankCategoryId, questions } = body;
     return this.service.importMany(user, { courseId, bankCategoryId }, questions);
+  }
+
+  @Post('bulk-delete')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Xoá nhiều câu hỏi một lượt (soft delete)' })
+  deleteMany(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(BulkDeleteQuestionsBodySchema)) body: BulkDeleteQuestionsBody
+  ) {
+    return this.service.deleteMany(user, body.ids);
   }
 
   @Post()

@@ -32,6 +32,12 @@ export type QuestionItem = {
   createdAt: string;
   /** Đã đưa vào ngân hàng chung của danh mục khoá học chưa. */
   sharedToCategory?: boolean;
+  /**
+   * Số quiz (chưa xoá) đang dùng thẳng câu hỏi này. Chỉ kho của ngân hàng chung
+   * trả về — quiz mẫu trong ngân hàng nội dung trỏ thẳng vào câu của kho, nên
+   * xoá câu là quiz mẫu mất câu đó, phải báo trước khi xoá.
+   */
+  quizCount?: number;
 };
 
 export type QuestionCategory = {
@@ -200,5 +206,20 @@ export type ImportQuestionsResult = {
   created: number;
   /** Số thư mục được tạo thêm trong lần nhập này. */
   foldersCreated: number;
+  message: string;
+};
+
+// ── Xoá nhiều câu một lượt ─────────────────────────────────────
+
+export const BulkDeleteQuestionsBodySchema = z.object({
+  ids: z
+    .array(z.string().min(1))
+    .min(1, 'Chưa chọn câu hỏi nào.')
+    .max(500, 'Mỗi lần xoá tối đa 500 câu hỏi.'),
+});
+export type BulkDeleteQuestionsBody = z.infer<typeof BulkDeleteQuestionsBodySchema>;
+
+export type BulkDeleteQuestionsResult = {
+  deleted: number;
   message: string;
 };
