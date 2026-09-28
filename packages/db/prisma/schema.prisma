@@ -525,17 +525,25 @@ model Module {
   unlockAt       DateTime?
   /// Chỉ ghi cho chương của ngân hàng — giáo viên chỉ sửa/xoá được thứ mình tạo.
   createdBy      String?
+  /// Thư mục cha — CHỈ dùng ở ngân hàng nội dung, lồng bao nhiêu cấp cũng được.
+  /// Chương của khoá học luôn để null: lớp học chép từng hoạt động từ kho về,
+  /// không chép cây thư mục. Xoá thư mục cha thì CSDL xoá theo thư mục con (và
+  /// ModuleItem của chúng); nội dung bên trong được API dọn trước đó.
+  parentId       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   course       Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   bankCategory CourseCategory? @relation("CategoryContentBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  parent       Module?         @relation("ModuleTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Module[]        @relation("ModuleTree")
   items        ModuleItem[]
 
   @@index([courseId])
   @@index([courseId, position])
   @@index([bankCategoryId])
+  @@index([parentId])
 }
 
 model ModuleItem {
@@ -659,9 +667,9 @@ model Assignment {
   courseId       String?
   bankCategoryId String?
   title          String
-  instructions String           @db.Text
-  type         AssignmentType   @default(TEXT)
-  status       AssignmentStatus @default(DRAFT)
+  instructions   String           @db.Text
+  type           AssignmentType   @default(TEXT)
+  status         AssignmentStatus @default(DRAFT)
 
   maxScore Float @default(100)
   weight   Float @default(1)
@@ -882,15 +890,23 @@ model QuestionCategory {
   /// thư mục do chính mình tạo. Thư mục của khoá học để null: ở đó ai quản lý
   /// khoá cũng sắp xếp được, và đó là hành vi có từ trước.
   createdBy      String?
+  /// Thư mục cha — chỉ dùng ở ngân hàng danh mục, lồng bao nhiêu cấp cũng được.
+  /// Thư mục cha và con luôn cùng một kho; tầng API chặn việc tạo vòng lặp.
+  /// Xoá thư mục cha thì CSDL xoá theo các thư mục con; câu hỏi bên trong được
+  /// API xoá mềm trước đó (xem CategoryQuestionBankService.deleteFolder).
+  parentId       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  course       Course?         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  bankCategory CourseCategory? @relation("CategoryQuestionBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  course       Course?            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bankCategory CourseCategory?    @relation("CategoryQuestionBank", fields: [bankCategoryId], references: [id], onDelete: Cascade)
+  parent       QuestionCategory?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children     QuestionCategory[] @relation("FolderTree")
   questions    Question[]
 
   @@index([courseId])
   @@index([bankCategoryId])
+  @@index([parentId])
 }
 
 /// Câu hỏi thuộc về ĐÚNG MỘT trong hai nơi, giống QuestionCategory:
@@ -906,10 +922,10 @@ model Question {
   courseId       String?
   bankCategoryId String?
   categoryId     String?
-  type        QuestionType
-  content     String       @db.Text
-  explanation String?      @db.Text
-  points      Float        @default(1)
+  type           QuestionType
+  content        String       @db.Text
+  explanation    String?      @db.Text
+  points         Float        @default(1)
 
   // Đưa câu hỏi vào ngân hàng chung của danh mục khoá học: khoá khác cùng nhánh
   // danh mục xem được và sao chép về kho riêng. Chỉ là cờ hiển thị — câu hỏi
@@ -1401,13 +1417,13 @@ model CompetencyCategory {
 // khía cạnh (vd "MATH.1.1 — Đặt câu hỏi"). Cấp độ xuất phát/đích và điểm
 // năng lực (Chính sách H.A.S) được chấm ở cấp này rồi mới gộp lên danh mục.
 model CompetencyComponent {
-  id          String   @id @default(cuid())
-  categoryId  String
-  code        String? // mã thành phần (tuỳ chọn), vd "MATH.1.1"
-  name        String // nội dung thành phần, vd "Đặt câu hỏi"
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  categoryId String
+  code       String? // mã thành phần (tuỳ chọn), vd "MATH.1.1"
+  name       String // nội dung thành phần, vd "Đặt câu hỏi"
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   category     CompetencyCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   indicators   CompetencyIndicator[]

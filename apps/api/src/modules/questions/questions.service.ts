@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
-import type { BulkDeleteQuestionsResult } from '@lumibach/types';
+import type { BulkDeleteQuestionsResult, BulkMoveQuestionsResult } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
@@ -285,6 +285,7 @@ export class QuestionsService {
       explanation?: string | null;
       points?: number;
       folder?: string | null;
+      folderId?: string | null;
       options?: { content: string; isCorrect: boolean }[];
       testCases?: {
         input: string;
@@ -311,18 +312,39 @@ export class QuestionsService {
       throw new ForbiddenException('Không có quyền.');
     }
 
+    const where = bankCategoryId ? { bankCategoryId } : { courseId };
+
+    // Thư mục chỉ rõ bằng mã (giáo viên chọn trên màn hình) phải nằm đúng kho
+    // đang nhập vào — không thì câu hỏi lọt sang thư mục của kho khác.
+    const maThuMuc = [
+      ...new Set(questions.map((q) => q.folderId).filter((id): id is string => !!id)),
+    ];
+    if (maThuMuc.length > 0) {
+      const hopLe = await this.prisma.questionCategory.count({
+        where: { ...where, id: { in: maThuMuc } } as never,
+      });
+      if (hopLe !== maThuMuc.length) {
+        throw new NotFoundException('Không tìm thấy thư mục đích trong kho này.');
+      }
+    }
+
     // Thư mục nằm NGOÀI giao dịch: tạo trước để mọi câu đều có sẵn chỗ đứng, và
     // để hai tệp nhập liên tiếp vào cùng một chương không tạo hai thư mục.
     const tenThuMuc = [
-      ...new Set(questions.map((q) => (q.folder ?? '').trim()).filter((t) => t !== '')),
+      ...new Set(
+        questions
+          .filter((q) => !q.folderId)
+          .map((q) => (q.folder ?? '').trim())
+          .filter((t) => t !== '')
+      ),
     ];
     const idTheoTen = new Map<string, string>();
     let foldersCreated = 0;
 
     if (tenThuMuc.length > 0) {
-      const where = bankCategoryId ? { bankCategoryId } : { courseId };
+      // Tìm theo tên chỉ ở cấp ngoài cùng: tên thư mục con không duy nhất.
       const daCo = await this.prisma.questionCategory.findMany({
-        where: where as never,
+        where: { ...where, parentId: null } as never,
         select: { id: true, name: true, position: true },
       });
       for (const c of daCo) idTheoTen.set(c.name.trim(), c.id);
@@ -356,7 +378,7 @@ export class QuestionsService {
           data: {
             courseId,
             bankCategoryId,
-            categoryId: ten ? (idTheoTen.get(ten) ?? null) : null,
+            categoryId: q.folderId ?? (ten ? (idTheoTen.get(ten) ?? null) : null),
             type: q.type,
             content: q.content,
             explanation: q.explanation ?? null,
@@ -562,6 +584,66 @@ export class QuestionsService {
       data: { deletedAt: new Date() },
     });
     return { deleted: count, message: `Đã xoá ${count} câu hỏi.` };
+  }
+
+  /**
+   * Chuyển nhiều câu vào một thư mục, hoặc về nhóm chưa xếp thư mục khi
+   * `categoryId` null. Dùng chung cho kéo thả và cho "Chuyển tới…".
+   *
+   * Chỉ sắp xếp trong CÙNG một kho: mọi câu đã chọn và thư mục đích phải cùng
+   * chủ. Đưa câu sang kho khác là việc của "chép về khoá", không phải ở đây.
+   * Quyền như sửa câu (giáo viên chỉ động được câu của mình); thiếu quyền một
+   * câu thì không chuyển câu nào.
+   */
+  async moveMany(
+    user: AuthUser,
+    ids: string[],
+    categoryId: string | null
+  ): Promise<BulkMoveQuestionsResult> {
+    const unique = [...new Set(ids)];
+    const found = await this.prisma.question.findMany({
+      where: { id: { in: unique }, deletedAt: null },
+      select: { id: true, courseId: true, bankCategoryId: true, createdBy: true },
+    });
+    if (found.length !== unique.length) {
+      throw new NotFoundException(
+        'Có câu hỏi đã bị xoá hoặc không còn tồn tại. Tải lại trang rồi chọn lại.'
+      );
+    }
+
+    const mau = found[0]!;
+    const cungKho = (q: { courseId: string | null; bankCategoryId: string | null }) =>
+      mau.bankCategoryId
+        ? q.bankCategoryId === mau.bankCategoryId
+        : !q.bankCategoryId && q.courseId === mau.courseId;
+    if (!found.every(cungKho)) {
+      throw new ForbiddenException('Các câu đã chọn thuộc nhiều kho khác nhau.');
+    }
+    if (categoryId) {
+      const dich = await this.prisma.questionCategory.findUnique({
+        where: { id: categoryId },
+        select: { courseId: true, bankCategoryId: true },
+      });
+      if (!dich || !cungKho(dich)) {
+        throw new NotFoundException('Không tìm thấy thư mục đích trong kho này.');
+      }
+    }
+
+    await this.assertCanEditQuestion(user, mau);
+    if (mau.bankCategoryId) {
+      for (const q of found) this.bank.assertCanEditBankQuestion(user, q.createdBy);
+    }
+
+    const { count } = await this.prisma.question.updateMany({
+      where: { id: { in: unique }, deletedAt: null },
+      data: { categoryId },
+    });
+    return {
+      moved: count,
+      message: categoryId
+        ? `Đã chuyển ${count} câu hỏi.`
+        : `Đã chuyển ${count} câu hỏi về nhóm chưa xếp thư mục.`,
+    };
   }
 
   // ── Judge0 helpers ────────────────────────────────────────────

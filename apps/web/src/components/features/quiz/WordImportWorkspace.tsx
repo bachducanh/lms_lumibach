@@ -39,7 +39,8 @@ type Props = {
   /**
    * Chỉ dùng cho kho danh mục: các thư mục đang có. Có truyền vào thì giáo viên
    * phải chọn thư mục đích TRƯỚC khi chọn tệp, và mọi câu đều vào đúng thư mục đó
-   * (bỏ qua thư mục ghi trong tệp Word).
+   * (bỏ qua thư mục ghi trong tệp Word). `name` nên là đường dẫn đầy đủ
+   * ("Chương 1 / Bài 2"), vì thư mục con ở các nhánh khác nhau hay trùng tên.
    */
   thuMuc?: { id: string; name: string }[];
   thuMucMacDinh?: string;
@@ -131,6 +132,9 @@ export function WordImportWorkspace({
           explanation: q.explanation,
           points: q.points,
           folder: tenThuMucDich === undefined ? q.folder : tenThuMucDich,
+          // Đã chọn thư mục trên màn hình thì gửi mã: thư mục con có thể trùng
+          // tên nhau, tìm theo tên là vào nhầm chỗ.
+          ...(thuMuc && { folderId: thuMucDich === KHONG_THU_MUC ? null : thuMucDich }),
           options: q.options,
           testCases: q.testCases,
           starterCode: q.starterCode,
@@ -180,7 +184,7 @@ export function WordImportWorkspace({
               id="thu-muc-dich"
               value={thuMucDich}
               onChange={(e) => setThuMucDich(e.target.value)}
-              className="border-input bg-background h-9 w-full max-w-sm rounded-lg border px-3 text-sm"
+              className="border-input bg-background h-9 w-full max-w-md rounded-lg border px-3 text-sm"
             >
               <option value="" disabled>
                 — Chọn thư mục —

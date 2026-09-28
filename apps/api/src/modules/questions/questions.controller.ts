@@ -3,14 +3,20 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import {
   BankFolderBodySchema,
   BulkDeleteQuestionsBodySchema,
+  BulkMoveQuestionsBodySchema,
   CopyQuestionBodySchema,
+  CreateBankFolderBodySchema,
   ImportQuestionsBodySchema,
+  MoveBankFolderBodySchema,
   QuestionBankQuerySchema,
   ShareQuestionBodySchema,
   type BankFolderBody,
   type BulkDeleteQuestionsBody,
+  type BulkMoveQuestionsBody,
   type CopyQuestionBody,
+  type CreateBankFolderBody,
   type ImportQuestionsBody,
+  type MoveBankFolderBody,
   type QuestionBankQuery,
   type ShareQuestionBody,
 } from '@lumibach/types';
@@ -46,13 +52,26 @@ export class QuestionsController {
   }
 
   @Post('bank-categories/:categoryId/folders')
-  @ApiOperation({ summary: 'Thêm thư mục vào kho của danh mục' })
+  @ApiOperation({ summary: 'Thêm thư mục (hoặc thư mục con) vào kho của danh mục' })
   createBankFolder(
     @CurrentUser() user: AuthUser,
     @Param('categoryId') categoryId: string,
-    @Body(zodBody(BankFolderBodySchema)) body: BankFolderBody
+    @Body(zodBody(CreateBankFolderBodySchema)) body: CreateBankFolderBody
   ) {
     return this.categoryBank.createFolder(user, categoryId, body);
+  }
+
+  // Khai TRƯỚC @Patch('bank-folders/:id') cho dễ đọc; hai đường khác số đoạn nên
+  // không bắt nhầm nhau.
+  @Patch('bank-folders/:id/move')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Chuyển thư mục vào thư mục khác hoặc ra cấp ngoài cùng' })
+  moveBankFolder(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(MoveBankFolderBodySchema)) body: MoveBankFolderBody
+  ) {
+    return this.categoryBank.moveFolder(user, id, body);
   }
 
   @Patch('bank-folders/:id')
@@ -68,7 +87,7 @@ export class QuestionsController {
 
   @Delete('bank-folders/:id')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Xoá thư mục trong kho (giữ nguyên câu hỏi bên trong)' })
+  @ApiOperation({ summary: 'Xoá thư mục trong kho cùng thư mục con và câu hỏi bên trong' })
   deleteBankFolder(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.categoryBank.deleteFolder(user, id);
   }
@@ -171,6 +190,16 @@ export class QuestionsController {
     @Body(zodBody(BulkDeleteQuestionsBodySchema)) body: BulkDeleteQuestionsBody
   ) {
     return this.service.deleteMany(user, body.ids);
+  }
+
+  @Post('bulk-move')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Chuyển nhiều câu hỏi vào một thư mục của cùng kho' })
+  moveMany(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(BulkMoveQuestionsBodySchema)) body: BulkMoveQuestionsBody
+  ) {
+    return this.service.moveMany(user, body.ids, body.categoryId);
   }
 
   @Post()

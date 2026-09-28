@@ -2,6 +2,7 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nest
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
+import { sapTheoCay } from '@lumibach/types';
 import type {
   ContentBankItem,
   ContentBankQuery,
@@ -137,6 +138,7 @@ export class ContentBankService {
         practiceTest: { select: { _count: { select: { questions: true } } } },
         module: {
           select: {
+            id: true,
             name: true,
             bankCategoryId: true,
             course: { select: { id: true, name: true, categoryId: true } },
@@ -144,6 +146,22 @@ export class ContentBankService {
         },
       },
     });
+
+    // Thư mục trong kho lồng nhau: hiện đường dẫn đầy đủ, vì hai chương khác nhau
+    // cùng có thư mục con "Bài tập" là chuyện thường.
+    const khoCoMat = [
+      ...new Set(rows.map((r) => r.module.bankCategoryId).filter((id): id is string => !!id)),
+    ];
+    const duongDanThuMuc = new Map(
+      sapTheoCay(
+        khoCoMat.length > 0
+          ? await this.prisma.module.findMany({
+              where: { bankCategoryId: { in: khoCoMat } },
+              select: { id: true, name: true, position: true, parentId: true },
+            })
+          : []
+      ).map((m) => [m.id, m.path])
+    );
 
     const pathCache = new Map<string, string>();
     const needed = new Set<string>();
@@ -166,7 +184,7 @@ export class ContentBankService {
         sourceKind: r.module.bankCategoryId ? ('BANK' as const) : ('COURSE' as const),
         sourceCourseId: r.module.bankCategoryId ? null : (r.module.course?.id ?? null),
         sourceCourseName: r.module.bankCategoryId ? null : (r.module.course?.name ?? null),
-        sourceModuleName: r.module.name,
+        sourceModuleName: duongDanThuMuc.get(r.module.id) ?? r.module.name,
         sourceCategoryPath: categoryId ? (pathCache.get(categoryId) ?? '') : '',
         detail: this.describe(r),
       };

@@ -13,6 +13,9 @@ import {
   CopyContentBodySchema,
   ShareContentBodySchema,
   BankModuleBodySchema,
+  CreateBankModuleBodySchema,
+  MoveBankModuleBodySchema,
+  MoveBankItemsBodySchema,
   CreateBankLessonBodySchema,
   CreateBankActivityBodySchema,
   ImportToBankBodySchema,
@@ -28,6 +31,9 @@ import {
   type CopyContentBody,
   type ShareContentBody,
   type BankModuleBody,
+  type CreateBankModuleBody,
+  type MoveBankModuleBody,
+  type MoveBankItemsBody,
   type CreateBankLessonBody,
   type CreateBankActivityBody,
   type ImportToBankBody,
@@ -58,13 +64,34 @@ export class ModulesController {
   }
 
   @Post('bank-categories/:categoryId/modules')
-  @ApiOperation({ summary: 'Thêm chương vào kho của danh mục' })
+  @ApiOperation({ summary: 'Thêm thư mục (hoặc thư mục con) vào kho nội dung của danh mục' })
   createBankModule(
     @CurrentUser() user: AuthUser,
     @Param('categoryId') categoryId: string,
-    @Body(zodBody(BankModuleBodySchema)) body: BankModuleBody
+    @Body(zodBody(CreateBankModuleBodySchema)) body: CreateBankModuleBody
   ) {
     return this.categoryBank.createModule(user, categoryId, body);
+  }
+
+  @Patch('bank-modules/:id/move')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Chuyển thư mục của kho vào thư mục khác hoặc ra cấp ngoài cùng' })
+  moveBankModule(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(MoveBankModuleBodySchema)) body: MoveBankModuleBody
+  ) {
+    return this.categoryBank.moveModule(user, id, body);
+  }
+
+  @Post('bank-items/move')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Chuyển nhiều hoạt động sang một thư mục của cùng kho' })
+  moveBankItems(
+    @CurrentUser() user: AuthUser,
+    @Body(zodBody(MoveBankItemsBodySchema)) body: MoveBankItemsBody
+  ) {
+    return this.categoryBank.moveItems(user, body.ids, body.moduleId);
   }
 
   @Patch('bank-modules/:id')
@@ -80,7 +107,7 @@ export class ModulesController {
 
   @Delete('bank-modules/:id')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Xoá chương trong kho, kèm hoạt động bên trong' })
+  @ApiOperation({ summary: 'Xoá thư mục trong kho cùng thư mục con và hoạt động bên trong' })
   deleteBankModule(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.categoryBank.deleteModule(user, id);
   }

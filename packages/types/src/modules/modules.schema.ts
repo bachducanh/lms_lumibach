@@ -220,6 +220,11 @@ export type CategoryBankModule = {
   id: string;
   name: string;
   position: number;
+  /**
+   * Thư mục cha trong kho — lồng bao nhiêu cấp cũng được. Danh sách vẫn trả
+   * PHẲNG; nơi cần cây tự dựng (xem `@lumibach/types/folder-tree`).
+   */
+  parentId: string | null;
   items: CategoryBankItem[];
 };
 
@@ -231,9 +236,35 @@ export type CategoryContentBankData = {
 };
 
 export const BankModuleBodySchema = z.object({
-  name: z.string().trim().min(1, 'Tên chương không được để trống').max(200),
+  name: z.string().trim().min(1, 'Tên thư mục không được để trống').max(200),
 });
 export type BankModuleBody = z.infer<typeof BankModuleBodySchema>;
+
+/** Tạo thư mục trong kho nội dung; có `parentId` là tạo thư mục con. */
+export const CreateBankModuleBodySchema = BankModuleBodySchema.extend({
+  parentId: z.string().min(1).nullable().optional(),
+});
+export type CreateBankModuleBody = z.infer<typeof CreateBankModuleBodySchema>;
+
+/** Chuyển thư mục của kho nội dung; `null` là đưa ra cấp ngoài cùng. */
+export const MoveBankModuleBodySchema = z.object({
+  parentId: z.string().min(1).nullable(),
+});
+export type MoveBankModuleBody = z.infer<typeof MoveBankModuleBodySchema>;
+
+/**
+ * Chuyển nhiều hoạt động sang một thư mục khác của cùng kho. Khác câu hỏi: hoạt
+ * động luôn phải nằm trong một thư mục (không có nhóm "chưa xếp"), nên bắt buộc
+ * có thư mục đích.
+ */
+export const MoveBankItemsBodySchema = z.object({
+  ids: z
+    .array(z.string().min(1))
+    .min(1, 'Chưa chọn hoạt động nào.')
+    .max(500, 'Mỗi lần chuyển tối đa 500 hoạt động.'),
+  moduleId: z.string().min(1),
+});
+export type MoveBankItemsBody = z.infer<typeof MoveBankItemsBodySchema>;
 
 export const CreateBankLessonBodySchema = z.object({
   title: z.string().trim().min(1, 'Tiêu đề không được để trống').max(200),

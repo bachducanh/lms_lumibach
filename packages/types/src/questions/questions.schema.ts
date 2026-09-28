@@ -51,6 +51,12 @@ export type CategoryWithQuestions = {
   id: string;
   name: string;
   position: number;
+  /**
+   * Thư mục cha, chỉ có ở ngân hàng của danh mục. Danh sách thư mục vẫn trả
+   * PHẲNG — nơi cần cây tự dựng từ trường này; nơi chỉ cần liệt kê thì dùng
+   * nguyên như trước.
+   */
+  parentId?: string | null;
   questions: QuestionItem[];
 };
 
@@ -160,6 +166,33 @@ export const BankFolderBodySchema = z.object({
 });
 export type BankFolderBody = z.infer<typeof BankFolderBodySchema>;
 
+/** Tạo thư mục; có `parentId` là tạo thư mục con ngay bên trong thư mục đó. */
+export const CreateBankFolderBodySchema = BankFolderBodySchema.extend({
+  parentId: z.string().min(1).nullable().optional(),
+});
+export type CreateBankFolderBody = z.infer<typeof CreateBankFolderBodySchema>;
+
+/** Chuyển thư mục vào một thư mục khác; `null` là đưa ra cấp ngoài cùng. */
+export const MoveBankFolderBodySchema = z.object({
+  parentId: z.string().min(1).nullable(),
+});
+export type MoveBankFolderBody = z.infer<typeof MoveBankFolderBodySchema>;
+
+/** Chuyển nhiều câu vào một thư mục; `null` là về nhóm chưa xếp thư mục. */
+export const BulkMoveQuestionsBodySchema = z.object({
+  ids: z
+    .array(z.string().min(1))
+    .min(1, 'Chưa chọn câu hỏi nào.')
+    .max(500, 'Mỗi lần chuyển tối đa 500 câu hỏi.'),
+  categoryId: z.string().min(1).nullable(),
+});
+export type BulkMoveQuestionsBody = z.infer<typeof BulkMoveQuestionsBodySchema>;
+
+export type BulkMoveQuestionsResult = {
+  moved: number;
+  message: string;
+};
+
 // ── Nhập hàng loạt từ tệp Word ─────────────────────────────────
 
 export const ImportOptionSchema = z.object({
@@ -181,6 +214,12 @@ export const ImportQuestionSchema = z.object({
   points: z.number().positive().max(100).optional(),
   /** Tên thư mục trong kho; tạo mới nếu chưa có. */
   folder: z.string().trim().max(120).nullable().optional(),
+  /**
+   * Thư mục đích chỉ rõ bằng mã, thắng `folder`. Dùng khi giáo viên chọn sẵn
+   * thư mục trên màn hình: có thư mục con thì tên không còn là duy nhất — hai
+   * chương cùng có "Bài tập" — nên tìm theo tên là vào nhầm chỗ.
+   */
+  folderId: z.string().min(1).nullable().optional(),
   options: z.array(ImportOptionSchema).max(50).optional(),
   testCases: z.array(ImportTestCaseSchema).max(100).optional(),
   starterCode: z.string().nullable().optional(),

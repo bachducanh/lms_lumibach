@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./folder-tree": {
+      "types": "./dist/questions/folder-tree.d.ts",
+      "default": "./dist/questions/folder-tree.js"
     }
   },
   "scripts": {

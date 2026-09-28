@@ -2,6 +2,7 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nest
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
+import { sapTheoCay } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { assertCourseScoped, canManageActivity } from '../../common/bank/course-scoped';
 import { regradeQuizAttempts } from '../../common/grading/quiz-grading';
@@ -144,6 +145,8 @@ export class QuizzesService {
       select: {
         id: true,
         name: true,
+        position: true,
+        parentId: true,
         questions: {
           where: { deletedAt: null },
           select: { id: true, type: true, content: true, points: true },
@@ -156,9 +159,11 @@ export class QuizzesService {
       select: { id: true, type: true, content: true, points: true },
     });
 
-    const result = (cats as any[])
+    // Ngân hàng danh mục có thư mục lồng nhau: xếp theo cây và đặt tên theo
+    // đường dẫn đầy đủ, vì hai chương cùng có "Bài tập" là chuyện thường.
+    const result = sapTheoCay(cats as any[])
       .filter((c: any) => c.questions.length > 0)
-      .map((c: any) => ({ id: c.id, title: c.name, questions: c.questions }));
+      .map((c: any) => ({ id: c.id, title: c.path, questions: c.questions }));
 
     if (uncategorized.length > 0) {
       result.push({ id: '__none', title: 'Chưa phân danh mục', questions: uncategorized });

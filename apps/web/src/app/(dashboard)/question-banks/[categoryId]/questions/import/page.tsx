@@ -7,6 +7,7 @@ import { hasMinRole } from '@/lib/permissions';
 import { WordImportWorkspace } from '@/components/features/quiz/WordImportWorkspace';
 import { buttonVariants } from '@/components/ui/button';
 import type { CategoryQuestionBankData } from '@lumibach/types';
+import { sapTheoCay } from '@lumibach/types/folder-tree';
 import type { UserRole } from '@lumibach/db';
 import { ArrowLeft } from 'lucide-react';
 
@@ -53,7 +54,7 @@ export default async function ImportBankQuestionsPage({
         bankCategoryId={categoryId}
         returnTo={backHref}
         tenNoiNhan={`kho của ${data.categoryName}`}
-        thuMuc={data.folders.map((f) => ({ id: f.id, name: f.name }))}
+        thuMuc={sapTheoCay(data.folders).map((f) => ({ id: f.id, name: f.path }))}
         thuMucMacDinh={folder}
       />
     </div>

@@ -1,11 +1,19 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
+import { thuMucTrongNhanh } from '@lumibach/types';
 import type {
   BankModuleBody,
   CategoryContentBankData,
   CourseActivityPickGroup,
   CreateBankActivityBody,
   CreateBankLessonBody,
+  CreateBankModuleBody,
+  MoveBankModuleBody,
 } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { CategoryBankAccessService } from '../categories/category-bank-access.service';
@@ -51,6 +59,7 @@ export class CategoryContentBankService {
           id: true,
           name: true,
           position: true,
+          parentId: true,
           items: {
             orderBy: { position: 'asc' },
             select: {
@@ -85,6 +94,7 @@ export class CategoryContentBankService {
         id: m.id,
         name: m.name,
         position: m.position,
+        parentId: m.parentId,
         items: m.items.map((i) => ({
           id: i.id,
           type: i.type as string,
@@ -125,31 +135,95 @@ export class CategoryContentBankService {
     return '';
   }
 
-  // ── Chương trong kho ────────────────────────────────────────
+  // ── Thư mục (chương) trong kho ──────────────────────────────
+  //
+  // Thư mục lồng nhau bao nhiêu cấp cũng được. Lớp học chép TỪNG hoạt động từ
+  // kho về (ContentBankService.copy), không chép cả cây, nên cây thư mục chỉ là
+  // cách giáo viên sắp xếp kho — chương của khoá học vẫn phẳng như cũ.
+
+  /** Vị trí kế tiếp trong nhóm anh em (cùng kho, cùng thư mục cha). */
+  private async viTriCuoi(bankCategoryId: string, parentId: string | null): Promise<number> {
+    const last = await this.prisma.module.findFirst({
+      where: { bankCategoryId, parentId },
+      orderBy: { position: 'desc' },
+      select: { position: true },
+    });
+    return (last?.position ?? -1) + 1;
+  }
+
+  /** Mọi thư mục của một kho, đủ để dò nhánh con. */
+  private lienKetThuMuc(bankCategoryId: string) {
+    return this.prisma.module.findMany({
+      where: { bankCategoryId },
+      select: { id: true, parentId: true, createdBy: true },
+    });
+  }
+
+  /** Thư mục phải có thật và nằm trong ĐÚNG kho này. */
+  private async assertThuMucCuaKho(bankCategoryId: string, moduleId: string): Promise<void> {
+    const mod = await this.prisma.module.findFirst({
+      where: { id: moduleId, bankCategoryId },
+      select: { id: true },
+    });
+    if (!mod) throw new NotFoundException('Không tìm thấy thư mục trong kho này.');
+  }
 
   async createModule(
     user: AuthUser,
     categoryId: string,
-    body: BankModuleBody
+    body: CreateBankModuleBody
   ): Promise<{ id: string }> {
     await this.access.assertCanManage(user, categoryId);
-
-    const last = await this.prisma.module.findFirst({
-      where: { bankCategoryId: categoryId },
-      orderBy: { position: 'desc' },
-      select: { position: true },
-    });
+    const parentId = body.parentId ?? null;
+    if (parentId) await this.assertThuMucCuaKho(categoryId, parentId);
 
     return this.prisma.module.create({
       // courseId để trống: CHECK ở CSDL bắt buộc đúng một chủ sở hữu.
       data: {
         bankCategoryId: categoryId,
+        parentId,
         name: body.name,
-        position: (last?.position ?? -1) + 1,
+        position: await this.viTriCuoi(categoryId, parentId),
         createdBy: user.id,
       },
       select: { id: true },
     });
+  }
+
+  /**
+   * Chuyển thư mục (kèm mọi thứ bên trong) vào thư mục khác, hoặc ra cấp ngoài
+   * cùng khi `parentId` null. Chặn chuyển vào chính nó hay vào nhánh con của nó
+   * — làm thế cả nhánh tách khỏi cây, không còn đường nào đi tới nữa.
+   */
+  async moveModule(
+    user: AuthUser,
+    moduleId: string,
+    body: MoveBankModuleBody
+  ): Promise<{ message: string }> {
+    const mod = await this.loadModuleForEdit(user, moduleId);
+    const parentId = body.parentId;
+
+    const hienTai = await this.prisma.module.findUnique({
+      where: { id: moduleId },
+      select: { parentId: true },
+    });
+    if ((hienTai?.parentId ?? null) === parentId) return { message: 'Thư mục đã ở đúng chỗ.' };
+
+    if (parentId) {
+      await this.assertThuMucCuaKho(mod.bankCategoryId, parentId);
+      const nhanh = thuMucTrongNhanh(await this.lienKetThuMuc(mod.bankCategoryId), moduleId);
+      if (nhanh.includes(parentId)) {
+        throw new ForbiddenException(
+          'Không chuyển được thư mục vào chính nó hay vào một thư mục con của nó.'
+        );
+      }
+    }
+
+    await this.prisma.module.update({
+      where: { id: moduleId },
+      data: { parentId, position: await this.viTriCuoi(mod.bankCategoryId, parentId) },
+    });
+    return { message: parentId ? 'Đã chuyển thư mục.' : 'Đã đưa thư mục ra cấp ngoài cùng.' };
   }
 
   /** Chương của kho kèm chủ sở hữu; kiểm cả hai bậc quyền tại một chỗ. */
@@ -173,21 +247,38 @@ export class CategoryContentBankService {
   ): Promise<{ message: string }> {
     await this.loadModuleForEdit(user, moduleId);
     await this.prisma.module.update({ where: { id: moduleId }, data: { name: body.name } });
-    return { message: 'Đã đổi tên chương.' };
+    return { message: 'Đã đổi tên thư mục.' };
   }
 
   /**
-   * Xoá chương của kho VÀ toàn bộ hoạt động bên trong.
+   * Xoá thư mục của kho CÙNG cả nhánh: thư mục con ở mọi cấp và mọi hoạt động
+   * bên trong. Hoạt động chỉ tồn tại thông qua ModuleItem, không có chỗ nào khác
+   * để rơi về. Dùng lại ModuleItemCleanupService nên bài giảng, file đính kèm và
+   * object trên MinIO đều được dọn thay vì thành rác mồ côi; dòng thư mục con và
+   * ModuleItem thì CSDL xoá dây chuyền theo thư mục gốc.
    *
-   * Khác thư mục của ngân hàng câu hỏi (xoá thư mục thì câu hỏi rơi về nhóm
-   * "chưa xếp"): hoạt động chỉ tồn tại thông qua ModuleItem, không có chỗ nào
-   * khác để rơi về. Dùng lại ModuleItemCleanupService nên bài giảng, file đính
-   * kèm và object trên MinIO đều được dọn thay vì thành rác mồ côi.
+   * Giáo viên chỉ xoá được thứ mình tạo (luật chung của kho). Nhánh lẫn thư mục
+   * con của người khác thì dừng hẳn và nói rõ, không xoá dở dang.
    */
   async deleteModule(user: AuthUser, moduleId: string): Promise<{ message: string }> {
-    await this.loadModuleForEdit(user, moduleId);
+    const mod = await this.loadModuleForEdit(user, moduleId);
 
-    const itemIds = await this.cleanup.moduleItemIdsOfModule(moduleId);
+    const lienKet = await this.lienKetThuMuc(mod.bankCategoryId);
+    const nhanh = thuMucTrongNhanh(lienKet, moduleId);
+    const thuMucCon = lienKet.filter((m) => m.id !== moduleId && nhanh.includes(m.id));
+    const cuaNguoiKhac = thuMucCon.filter((m) => !this.access.ownsRecord(user, m.createdBy));
+    if (cuaNguoiKhac.length > 0) {
+      throw new ForbiddenException(
+        `Thư mục có ${cuaNguoiKhac.length} thư mục con do người khác thêm vào — bạn chỉ xoá được nội dung của mình. Nhờ quản trị viên xoá thư mục này.`
+      );
+    }
+
+    const itemIds = (
+      await this.prisma.moduleItem.findMany({
+        where: { moduleId: { in: nhanh } },
+        select: { id: true },
+      })
+    ).map((r) => r.id);
     const plan = await this.cleanup.planPurge(itemIds);
 
     await this.prisma.$transaction([
@@ -196,12 +287,80 @@ export class CategoryContentBankService {
     ]);
     await this.storage.removeByUrls(plan.fileUrls);
 
+    const kemTheo = [
+      thuMucCon.length > 0 ? `${thuMucCon.length} thư mục con` : '',
+      itemIds.length > 0 ? `${itemIds.length} hoạt động` : '',
+    ].filter(Boolean);
     return {
       message:
-        itemIds.length > 0
-          ? `Đã xoá chương và ${itemIds.length} hoạt động bên trong.`
-          : 'Đã xoá chương.',
+        kemTheo.length > 0 ? `Đã xoá thư mục cùng ${kemTheo.join(' và ')}.` : 'Đã xoá thư mục.',
     };
+  }
+
+  /**
+   * Chuyển nhiều hoạt động sang một thư mục của cùng kho — dùng chung cho kéo thả
+   * và "Chuyển tới…". Hoạt động được xếp nối vào cuối thư mục đích, giữ thứ tự
+   * như lúc chọn.
+   *
+   * Quyền theo thư mục chứa (hoạt động trong kho không mang người tạo riêng):
+   * giáo viên phải là chủ cả thư mục nguồn lẫn thư mục đích — chuyển vào thư mục
+   * của người khác là trao luôn quyền sửa cho người đó. Thiếu quyền ở một hoạt
+   * động thì không chuyển cái nào.
+   */
+  async moveItems(
+    user: AuthUser,
+    ids: string[],
+    targetModuleId: string
+  ): Promise<{ moved: number; message: string }> {
+    const dich = await this.prisma.module.findUnique({
+      where: { id: targetModuleId },
+      select: { id: true, bankCategoryId: true, createdBy: true },
+    });
+    if (!dich?.bankCategoryId) {
+      throw new NotFoundException('Không tìm thấy thư mục đích trong kho của danh mục.');
+    }
+    await this.access.assertCanManage(user, dich.bankCategoryId);
+    this.access.assertOwnsRecord(user, dich.createdBy);
+
+    const unique = [...new Set(ids)];
+    const items = await this.prisma.moduleItem.findMany({
+      where: { id: { in: unique } },
+      select: {
+        id: true,
+        moduleId: true,
+        module: { select: { bankCategoryId: true, createdBy: true } },
+      },
+    });
+    if (items.length !== unique.length) {
+      throw new NotFoundException(
+        'Có hoạt động đã bị xoá hoặc không còn tồn tại. Tải lại trang rồi chọn lại.'
+      );
+    }
+    if (items.some((i) => i.module.bankCategoryId !== dich.bankCategoryId)) {
+      throw new ForbiddenException('Chỉ chuyển được hoạt động giữa các thư mục của cùng một kho.');
+    }
+    for (const i of items) this.access.assertOwnsRecord(user, i.module.createdBy);
+
+    // Hoạt động đã nằm sẵn ở thư mục đích thì để yên, khỏi đẩy xuống cuối.
+    const canChuyen = unique.filter((id) => items.find((i) => i.id === id)?.moduleId !== dich.id);
+    let viTri =
+      (
+        await this.prisma.moduleItem.findFirst({
+          where: { moduleId: dich.id },
+          orderBy: { position: 'desc' },
+          select: { position: true },
+        })
+      )?.position ?? -1;
+    await this.prisma.$transaction(
+      canChuyen.map((id) =>
+        this.prisma.moduleItem.update({
+          where: { id },
+          data: { moduleId: dich.id, position: (viTri += 1) },
+        })
+      )
+    );
+
+    return { moved: canChuyen.length, message: `Đã chuyển ${canChuyen.length} hoạt động.` };
   }
 
   // ── Hoạt động trong kho ─────────────────────────────────────
