@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
+import { ProctorSettings } from '@/components/features/proctor/ProctorSettings';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
@@ -24,6 +25,9 @@ type QuizFormValues = {
   sebEnabled: boolean;
   sebConfigUrl: string | null;
   sebConfigName: string | null;
+  proctorEnabled: boolean;
+  proctorScreenshot: boolean;
+  proctorMaxLeaves: number | null;
 };
 import type { QuizStatus } from '@lumibach/db';
 
@@ -43,6 +47,10 @@ type ExistingQuiz = {
   sebEnabled: boolean;
   sebConfigUrl: string | null;
   sebConfigName: string | null;
+  /** Bản mẫu trong kho không có hai trường này — giám sát chỉ có ở quiz của lớp. */
+  proctorEnabled?: boolean;
+  proctorScreenshot?: boolean;
+  proctorMaxLeaves?: number | null;
 };
 
 type Props = {
@@ -76,6 +84,11 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
   const [sebConfig, setSebConfig] = useState<SebConfig>(
     quiz?.sebConfigUrl ? { url: quiz.sebConfigUrl, name: quiz.sebConfigName ?? 'config.seb' } : null
   );
+  const [proctorEnabled, setProctorEnabled] = useState(quiz?.proctorEnabled ?? false);
+  const [proctorScreenshot, setProctorScreenshot] = useState(quiz?.proctorScreenshot ?? true);
+  const [proctorMaxLeaves, setProctorMaxLeaves] = useState(
+    quiz?.proctorMaxLeaves != null ? String(quiz.proctorMaxLeaves) : ''
+  );
 
   function buildValues(): QuizFormValues {
     return {
@@ -92,6 +105,9 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
       sebEnabled,
       sebConfigUrl: sebEnabled ? (sebConfig?.url ?? null) : null,
       sebConfigName: sebEnabled ? (sebConfig?.name ?? null) : null,
+      proctorEnabled: !isBank && proctorEnabled,
+      proctorScreenshot,
+      proctorMaxLeaves: proctorMaxLeaves.trim() === '' ? null : Number(proctorMaxLeaves),
     };
   }
 
@@ -99,6 +115,13 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
     if (!title.trim()) {
       toast.error('Tiêu đề không được để trống.');
       return;
+    }
+    if (proctorEnabled && proctorMaxLeaves.trim() !== '') {
+      const n = Number(proctorMaxLeaves);
+      if (!Number.isInteger(n) || n < 0 || n > 100) {
+        toast.error('Số lần rời bài tối đa phải là số nguyên từ 0 đến 100.');
+        return;
+      }
     }
     if (pending) return;
     setPending(true);
@@ -244,6 +267,18 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
           onEnabledChange={setSebEnabled}
           config={sebConfig}
           onConfigChange={setSebConfig}
+        />
+      )}
+
+      {/* Giám sát rời bài — cũng chỉ có nghĩa trong buổi kiểm tra thật của lớp. */}
+      {owner.kind === 'course' && (
+        <ProctorSettings
+          enabled={proctorEnabled}
+          onEnabledChange={setProctorEnabled}
+          screenshot={proctorScreenshot}
+          onScreenshotChange={setProctorScreenshot}
+          maxLeaves={proctorMaxLeaves}
+          onMaxLeavesChange={setProctorMaxLeaves}
         />
       )}
 

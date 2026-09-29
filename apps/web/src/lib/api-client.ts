@@ -45,6 +45,8 @@ type RequestOptions = {
   next?: { revalidate?: number | false; tags?: string[] };
   /** Pass-through cache option. */
   cache?: RequestCache;
+  /** Cho request sống sót khi trang đang đóng (báo sự kiện lúc học sinh tắt tab). */
+  keepalive?: boolean;
 };
 
 function getBaseUrl(): string {
@@ -101,6 +103,7 @@ async function request<T>(method: Method, path: string, opts: RequestOptions = {
     credentials: 'include',
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     cache: opts.cache,
+    keepalive: opts.keepalive,
   };
   if (opts.next) init.next = opts.next;
 

@@ -5,6 +5,8 @@ import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, AttemptData, QuizDetail } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
+import { ExamProctor } from '@/components/features/proctor/ExamProctor';
+import { ProctorReportView } from '@/components/features/proctor/ProctorReportView';
 import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
 import { CodeEditor } from '@/components/ui/editor/CodeEditor';
@@ -14,7 +16,7 @@ import { OptionContent } from '@/components/features/quiz/OptionContent';
 import { toRichHtml } from '@/lib/utils';
 import { WebCodeEditor } from '@/components/features/quiz/WebCodeEditor';
 import { hasMinRole } from '@/lib/permissions';
-import { CheckCircle2, XCircle, Minus, Brain, Code, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Minus, Brain, Code, ArrowRight, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
@@ -98,7 +100,8 @@ export default async function AttemptPage({
     // Chế độ kiểm tra Safe Exam Browser: học sinh phải mở bài bằng SEB.
     const quizSeb = await api.get<QuizDetail>(`/quizzes/${quizId}`).catch(() => null);
     const reqHeaders = await headers();
-    if (quizSeb?.sebEnabled && !isSafeExamBrowser(reqHeaders)) {
+    const inSeb = isSafeExamBrowser(reqHeaders);
+    if (quizSeb?.sebEnabled && !inSeb) {
       return (
         <div className="mx-auto max-w-5xl">
           <SebLockScreen
@@ -106,6 +109,23 @@ export default async function AttemptPage({
             launchUrl={sebLaunchUrl(reqHeaders, 'quiz', quizId)}
             downloadUrl={sebConfigPath('quiz', quizId)}
           />
+        </div>
+      );
+    }
+
+    if (attempt.quiz.proctorEnabled) {
+      return (
+        <div className="mx-auto max-w-5xl">
+          {/* Trong Safe Exam Browser không chia sẻ màn hình được (SEB chặn), mà SEB
+              đã khoá máy rồi — chỉ còn đếm số lần rời. */}
+          <ExamProctor
+            attemptId={attempt.id}
+            requireScreen={attempt.quiz.proctorScreenshot && !inSeb}
+            initialLeaveCount={attempt.proctorLeaveCount}
+            maxLeaves={attempt.quiz.proctorMaxLeaves}
+          >
+            <QuizTaker attempt={attempt} courseSlug={slug} />
+          </ExamProctor>
         </div>
       );
     }
@@ -167,6 +187,16 @@ export default async function AttemptPage({
         <span className="text-muted-foreground/40">/</span>
         <span className="text-sm font-medium">Kết quả</span>
       </div>
+
+      {attempt.proctorAutoSubmitted && (
+        <div className="border-destructive/25 bg-destructive/5 text-destructive flex items-start gap-2 rounded-xl border px-4 py-3 text-sm">
+          <Eye className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Bài này đã được hệ thống <strong>tự động nộp</strong> vì rời khỏi trang làm bài quá{' '}
+            {attempt.quiz.proctorMaxLeaves ?? 0} lần (đã rời {attempt.proctorLeaveCount} lần).
+          </span>
+        </div>
+      )}
 
       {/* Score card */}
       <div
@@ -248,6 +278,17 @@ export default async function AttemptPage({
           </p>
         </div>
       </div>
+
+      {/* Giám sát rời bài — chỉ người chấm thấy nhật ký và ảnh chụp màn hình. */}
+      {isStaff && (attempt.quiz.proctorEnabled || attempt.proctorLeaveCount > 0) && (
+        <div className="border-border bg-card space-y-4 rounded-xl border p-4 sm:p-6">
+          <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
+            <Eye className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+            Giám sát rời bài
+          </h2>
+          <ProctorReportView attemptId={attempt.id} />
+        </div>
+      )}
 
       {/* Per-question breakdown (if showResults) */}
       {(quiz.showResults || isStaff) && (

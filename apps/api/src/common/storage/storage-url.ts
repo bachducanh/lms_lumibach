@@ -8,6 +8,9 @@ const APP_BASE = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
 
 const TRUSTED_BASES = [MEDIA_BASE, APP_BASE].filter(Boolean);
 
+/** Bucket ảnh giám sát rời bài. Phải khớp BUCKET_PROCTORING ở apps/web/src/lib/storage.ts. */
+export const PROCTORING_BUCKET = process.env.MINIO_BUCKET_PROCTORING ?? 'lumibach-proctoring';
+
 // Cấu hình phải khớp apps/web/src/lib/storage.ts — cùng trỏ vào một MinIO.
 // Chỉ 2 bucket này thuộc hệ thống; máy MinIO có thể còn bucket của dự án khác.
 export const KNOWN_BUCKETS = new Set([
@@ -17,6 +20,9 @@ export const KNOWN_BUCKETS = new Set([
   // job xoá ảnh cũ chạy — KHÔNG có nghĩa là bucket này được phục vụ công khai;
   // nó chỉ ra ngoài qua endpoint /handover-photos/:id/file có kiểm quyền.
   process.env.MINIO_BUCKET_HANDOVERS ?? 'lumibach-handovers',
+  // Ảnh chụp màn hình giám sát rời bài — cũng RIÊNG TƯ như ảnh bàn giao, chỉ
+  // ra ngoài qua /attempts/proctor-snapshots/:id/file có kiểm quyền.
+  PROCTORING_BUCKET,
 ]);
 
 /**

@@ -23,6 +23,13 @@ export const BUCKET_FILES = process.env.MINIO_BUCKET_FILES ?? 'lumibach-files';
  */
 export const BUCKET_HANDOVERS = process.env.MINIO_BUCKET_HANDOVERS ?? 'lumibach-handovers';
 
+/**
+ * Ảnh chụp màn hình giám sát rời bài khi làm quiz — RIÊNG TƯ như ảnh bàn giao.
+ * Màn hình học sinh có thể lộ tin nhắn, tài khoản cá nhân… nên tuyệt đối không
+ * phục vụ công khai; chỉ ra ngoài qua `/api/v1/attempts/proctor-snapshots/:id/file`.
+ */
+export const BUCKET_PROCTORING = process.env.MINIO_BUCKET_PROCTORING ?? 'lumibach-proctoring';
+
 export const minioClient = new Minio.Client({
   endPoint: internalEndpoint,
   port: internalPort,

@@ -11,12 +11,16 @@ import {
   Trash2,
   Download,
   Search,
+  Camera,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import { exportRowsToExcel, safeExcelFileName } from '@/lib/export-excel';
 import type { AttemptDetailRow, QuizQuestionBrief } from '@lumibach/types';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ProctorReportView, fmtAway } from '@/components/features/proctor/ProctorReportView';
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -71,7 +75,8 @@ function normalizeScore(score: number | null, maxScore: number | null): string {
 async function exportExcel(
   rows: AttemptDetailRow[],
   questions: QuizQuestionBrief[],
-  quizTitle: string
+  quizTitle: string,
+  showProctor: boolean
 ) {
   const headers = [
     'Họ và tên',
@@ -80,6 +85,7 @@ async function exportExcel(
     'Bắt đầu vào lúc',
     'Được hoàn thành',
     'Thời gian thực hiện',
+    ...(showProctor ? ['Số lần rời bài', 'Thời gian rời bài', 'Tự nộp do rời bài'] : []),
     'Điểm/10',
     ...questions.map((q, i) => `Q${i + 1}/${q.points}`),
   ];
@@ -97,6 +103,13 @@ async function exportExcel(
       fmt(a.startedAt),
       fmt(a.submittedAt),
       fmtDuration(a.startedAt, a.submittedAt),
+      ...(showProctor
+        ? [
+            String(a.proctorLeaveCount),
+            a.proctorAwayMs > 0 ? fmtAway(a.proctorAwayMs) : '',
+            a._count.proctorEvents > 0 ? 'Có' : '',
+          ]
+        : []),
       normalizeScore(a.score, a.maxScore),
       ...questions.map((q) => {
         const ans = ansMap.get(q.questionId);
@@ -114,7 +127,7 @@ async function exportExcel(
 
 // ── Types ─────────────────────────────────────────────────────
 
-type SortKey = 'startedAt' | 'submittedAt' | 'duration' | 'score';
+type SortKey = 'startedAt' | 'submittedAt' | 'duration' | 'leave' | 'score';
 type SortDir = 'asc' | 'desc';
 
 /** Học sinh của lớp chưa có lượt làm nào. */
@@ -142,6 +155,8 @@ type Props = {
   quizId: string;
   quizTitle: string;
   courseSlug: string;
+  /** Quiz có bật giám sát rời bài → hiện cột "Rời bài". */
+  proctorEnabled: boolean;
 };
 
 // ── Component ─────────────────────────────────────────────────
@@ -153,6 +168,7 @@ export function AttemptsTable({
   quizId,
   quizTitle,
   courseSlug,
+  proctorEnabled,
 }: Props) {
   const router = useRouter();
   const [deletePending, startDelete] = useTransition();
@@ -161,6 +177,9 @@ export function AttemptsTable({
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [loc, setLoc] = useState<'tat-ca' | 'da-nop' | 'dang-lam' | 'chua-lam'>('tat-ca');
   const [tuKhoa, setTuKhoa] = useState('');
+  const [giamSat, setGiamSat] = useState<{ id: string; name: string } | null>(null);
+  // Quiz đã tắt giám sát nhưng còn lượt làm cũ có dữ liệu thì vẫn hiện cột.
+  const showProctor = proctorEnabled || attempts.some((a) => a.proctorLeaveCount > 0);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -183,6 +202,9 @@ export function AttemptsTable({
       } else if (sortKey === 'duration') {
         va = durSecs(a);
         vb = durSecs(b);
+      } else if (sortKey === 'leave') {
+        va = a.proctorLeaveCount;
+        vb = b.proctorLeaveCount;
       } else {
         va = a.score ?? -1;
         vb = b.score ?? -1;
@@ -337,7 +359,7 @@ export function AttemptsTable({
         <button
           type="button"
           onClick={() => {
-            void exportExcel(hienThi, questions, quizTitle).catch((error) => {
+            void exportExcel(hienThi, questions, quizTitle, showProctor).catch((error) => {
               toast.error(error instanceof Error ? error.message : 'Không thể xuất Excel.');
             });
           }}
@@ -375,6 +397,7 @@ export function AttemptsTable({
               {sortTh('startedAt', 'Bắt đầu vào lúc')}
               {sortTh('submittedAt', 'Được hoàn thành')}
               {sortTh('duration', 'Thời gian thực hiện')}
+              {showProctor && sortTh('leave', 'Rời bài')}
               {sortTh('score', 'Điểm/10,00')}
 
               {questions.map((q, idx) => (
@@ -450,6 +473,36 @@ export function AttemptsTable({
                     {fmtDuration(a.startedAt, a.submittedAt)}
                   </td>
 
+                  {showProctor && (
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setGiamSat({ id: a.id, name })}
+                        title="Xem nhật ký giám sát và ảnh chụp màn hình"
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors',
+                          a.proctorLeaveCount > 0
+                            ? 'bg-amber-500/10 text-amber-800 hover:bg-amber-500/20 dark:text-amber-400'
+                            : 'text-muted-foreground hover:bg-muted'
+                        )}
+                      >
+                        {a.proctorLeaveCount} lần
+                        {a.proctorAwayMs > 0 && (
+                          <span className="opacity-75">· {fmtAway(a.proctorAwayMs)}</span>
+                        )}
+                        {a._count.proctorEvents > 0 && (
+                          <span className="text-destructive font-semibold">· tự nộp</span>
+                        )}
+                        {a._count.proctorSnapshots > 0 && (
+                          <span className="inline-flex items-center gap-0.5 opacity-75">
+                            · <Camera className="h-3 w-3" />
+                            {a._count.proctorSnapshots}
+                          </span>
+                        )}
+                      </button>
+                    </td>
+                  )}
+
                   {/* Score normalized to /10 */}
                   <td className="px-3 py-3 text-center font-semibold tabular-nums">{score10}</td>
 
@@ -495,7 +548,7 @@ export function AttemptsTable({
                   </span>
                 </td>
                 <td
-                  colSpan={4 + questions.length}
+                  colSpan={4 + (showProctor ? 1 : 0) + questions.length}
                   className="text-muted-foreground/40 px-3 py-3 text-xs"
                 >
                   —
@@ -511,6 +564,16 @@ export function AttemptsTable({
           </div>
         )}
       </div>
+
+      <Dialog open={!!giamSat} onOpenChange={(open) => !open && setGiamSat(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
+          <DialogTitle className="flex items-center gap-2 pr-8">
+            <Eye className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+            Giám sát rời bài · {giamSat?.name}
+          </DialogTitle>
+          {giamSat && <ProctorReportView attemptId={giamSat.id} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -223,6 +223,13 @@ export default async function QuizDetailPage({
                   <Calendar className="h-3 w-3" /> Hạn: {fmt(quiz.dueDate)}
                 </span>
               )}
+              {quiz.proctorEnabled && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-600/25 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                  <Eye className="h-3 w-3" /> Giám sát rời bài
+                  {quiz.proctorScreenshot ? ' · chụp màn hình' : ''}
+                  {quiz.proctorMaxLeaves != null ? ` · tối đa ${quiz.proctorMaxLeaves} lần` : ''}
+                </span>
+              )}
             </div>
           </div>
 
@@ -282,6 +289,19 @@ export default async function QuizDetailPage({
                   )}
                 </div>
               </div>
+
+              {quiz.proctorEnabled && (
+                <p className="max-w-md rounded-lg border border-amber-600/25 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                  Bài kiểm tra có giám sát: mỗi lần rời khỏi trang làm bài (chuyển tab, chuyển cửa
+                  sổ, mở trang khác) đều được ghi lại
+                  {quiz.proctorMaxLeaves != null
+                    ? `; rời quá ${quiz.proctorMaxLeaves} lần bài sẽ tự động nộp.`
+                    : '.'}
+                  {quiz.proctorScreenshot && !isSeb
+                    ? ' Bạn sẽ cần chia sẻ toàn bộ màn hình trước khi làm — hãy dùng máy tính với Chrome, Edge hoặc Firefox.'
+                    : ''}
+                </p>
+              )}
 
               <div className="mt-2">
                 {quiz.questions.length > 0 ? (

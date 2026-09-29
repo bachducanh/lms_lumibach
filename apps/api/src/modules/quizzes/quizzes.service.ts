@@ -32,6 +32,17 @@ function normalizeSeb(body: {
   };
 }
 
+/**
+ * Số lần rời bài tối đa trước khi tự nộp: số nguyên 0–100. Để trống hoặc giá trị
+ * không hợp lệ = không tự nộp (chỉ ghi nhận).
+ */
+function normalizeMaxLeaves(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, Math.floor(n)));
+}
+
 @Injectable()
 export class QuizzesService {
   constructor(
@@ -248,6 +259,9 @@ export class QuizzesService {
       sebEnabled?: boolean;
       sebConfigUrl?: string | null;
       sebConfigName?: string | null;
+      proctorEnabled?: boolean;
+      proctorScreenshot?: boolean;
+      proctorMaxLeaves?: number | null;
       availableFrom?: string | null;
       dueDate?: string | null;
       moduleId?: string | null;
@@ -274,6 +288,9 @@ export class QuizzesService {
         sebEnabled: seb.sebEnabled,
         sebConfigUrl: seb.sebConfigUrl,
         sebConfigName: seb.sebConfigName,
+        proctorEnabled: body.proctorEnabled === true,
+        proctorScreenshot: body.proctorScreenshot ?? true,
+        proctorMaxLeaves: normalizeMaxLeaves(body.proctorMaxLeaves),
         availableFrom: toDate(body.availableFrom),
         dueDate: toDate(body.dueDate),
         createdBy: user.id,
@@ -319,6 +336,9 @@ export class QuizzesService {
       sebEnabled?: boolean;
       sebConfigUrl?: string | null;
       sebConfigName?: string | null;
+      proctorEnabled?: boolean;
+      proctorScreenshot?: boolean;
+      proctorMaxLeaves?: number | null;
       availableFrom?: string | null;
       dueDate?: string | null;
       publish?: boolean;
@@ -353,6 +373,17 @@ export class QuizzesService {
         sebEnabled: seb.sebEnabled,
         sebConfigUrl: seb.sebConfigUrl,
         sebConfigName: seb.sebConfigName,
+        // Giám sát gắn với một buổi kiểm tra thật của lớp, như SEB — bản mẫu
+        // trong kho không bao giờ bật.
+        ...(body.proctorEnabled !== undefined && {
+          proctorEnabled: !!existing.courseId && body.proctorEnabled === true,
+        }),
+        ...(body.proctorScreenshot !== undefined && {
+          proctorScreenshot: body.proctorScreenshot,
+        }),
+        ...(body.proctorMaxLeaves !== undefined && {
+          proctorMaxLeaves: normalizeMaxLeaves(body.proctorMaxLeaves),
+        }),
         ...(body.shuffleQuestions !== undefined && { shuffleQuestions: body.shuffleQuestions }),
         ...(body.shuffleAnswers !== undefined && { shuffleAnswers: body.shuffleAnswers }),
         ...(body.showResults !== undefined && { showResults: body.showResults }),

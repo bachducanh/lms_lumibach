@@ -120,6 +120,7 @@ export default async function AttemptsPage({
         quizId={quizId}
         quizTitle={quiz.title}
         courseSlug={slug}
+        proctorEnabled={quiz.proctorEnabled}
       />
     </div>
   );

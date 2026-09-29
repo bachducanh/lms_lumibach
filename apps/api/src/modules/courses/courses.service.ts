@@ -184,8 +184,8 @@ export class CoursesService {
     thumbnail: string | null,
     logo: string | null
   ): Promise<string[]> {
-    const [submissionFiles, quizzes, practiceTests, exercises, codeSubmissions] = await Promise.all(
-      [
+    const [submissionFiles, quizzes, practiceTests, exercises, codeSubmissions, proctorSnapshots] =
+      await Promise.all([
         this.prisma.submissionFile.findMany({
           where: { submission: { assignment: { courseId } } },
           select: { url: true },
@@ -206,8 +206,12 @@ export class CoursesService {
           where: { codeExercise: { courseId }, language: 'SCRATCH' },
           select: { code: true },
         }),
-      ]
-    );
+        // Ảnh chụp màn hình giám sát rời bài (bucket riêng tư).
+        this.prisma.quizProctorSnapshot.findMany({
+          where: { attempt: { quiz: { courseId } } },
+          select: { bucket: true, objectName: true },
+        }),
+      ]);
 
     const urls: (string | null)[] = [
       thumbnail,
@@ -216,6 +220,7 @@ export class CoursesService {
       ...quizzes.map((q) => q.sebConfigUrl),
       ...practiceTests.flatMap((p) => [p.pdfUrl, p.sebConfigUrl]),
       ...exercises.map((e) => e.starterFileUrl),
+      ...proctorSnapshots.map((p) => `/storage/${p.bucket}/${p.objectName}`),
       // Bài nộp Scratch lưu code dạng JSON {"sb3Url": "/storage/..."}.
       ...codeSubmissions.map((s) => {
         try {

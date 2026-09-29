@@ -38,6 +38,10 @@ export type QuizDetail = {
   sebEnabled: boolean;
   sebConfigUrl: string | null;
   sebConfigName: string | null;
+  proctorEnabled: boolean;
+  proctorScreenshot: boolean;
+  /** Rời quá số lần này thì máy chủ tự nộp bài. null = không tự nộp. */
+  proctorMaxLeaves: number | null;
   availableFrom: string | null;
   dueDate: string | null;
   publishedAt: string | null;

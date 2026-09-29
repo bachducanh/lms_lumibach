@@ -3,6 +3,7 @@ import { PrismaClient } from '@lumibach/db';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
 import { Judge0Service, LANGUAGE_ID } from '../../common/judge0/judge0.service';
+import { StorageService } from '../../common/storage/storage.service';
 import {
   gradeOptionAnswer,
   isCodeAutoQuestionType,
@@ -34,7 +35,8 @@ function logActivity(
 export class AttemptsService {
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly judge0: Judge0Service
+    private readonly judge0: Judge0Service,
+    private readonly storage: StorageService
   ) {}
 
   private async canManageCourse(userId: string, role: string, courseId: string | null) {
@@ -105,9 +107,13 @@ export class AttemptsService {
             shuffleAnswers: true,
             showResults: true,
             passingScore: true,
+            proctorEnabled: true,
+            proctorScreenshot: true,
+            proctorMaxLeaves: true,
           },
         },
         answers: true,
+        _count: { select: { proctorEvents: { where: { type: 'AUTO_SUBMITTED' } } } },
       },
     });
     if (!attempt) throw new NotFoundException('Không tìm thấy.');
@@ -157,7 +163,13 @@ export class AttemptsService {
       feedback: a.feedback,
     }));
 
-    return { ...attempt, questions, answers };
+    const { _count, ...rest } = attempt;
+    return {
+      ...rest,
+      proctorAutoSubmitted: _count.proctorEvents > 0,
+      questions,
+      answers,
+    };
   }
 
   // ── Save answer ───────────────────────────────────────────────
@@ -455,6 +467,14 @@ export class AttemptsService {
             select: { id: true, fullName: true, firstName: true, lastName: true, email: true },
           },
           answers: { select: { questionId: true, score: true, isCorrect: true } },
+          proctorLeaveCount: true,
+          proctorAwayMs: true,
+          _count: {
+            select: {
+              proctorSnapshots: true,
+              proctorEvents: { where: { type: 'AUTO_SUBMITTED' } },
+            },
+          },
         },
       }),
       this.prisma.quizQuestion.findMany({
@@ -475,7 +495,16 @@ export class AttemptsService {
   async deleteMany(user: AuthUser, ids: string[]) {
     if (!ids.length) throw new ForbiddenException('Không có bài nào được chọn.');
     if (!hasMinRole(user.role, 'TEACHER')) throw new ForbiddenException('Không có quyền.');
+    // Ảnh giám sát nằm trên MinIO: CSDL xoá theo lượt làm nhưng file thì không,
+    // nên gom tên file trước, xoá bản ghi rồi mới gỡ file (thứ tự StorageService yêu cầu).
+    const snapshots = await this.prisma.quizProctorSnapshot.findMany({
+      where: { attemptId: { in: ids } },
+      select: { bucket: true, objectName: true },
+    });
     await this.prisma.quizAttempt.deleteMany({ where: { id: { in: ids } } });
+    if (snapshots.length > 0) {
+      await this.storage.removeByUrls(snapshots.map((p) => `/storage/${p.bucket}/${p.objectName}`));
+    }
     return { message: `Đã xoá ${ids.length} bài làm.` };
   }
 

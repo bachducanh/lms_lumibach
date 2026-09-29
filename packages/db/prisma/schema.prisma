@@ -151,6 +151,16 @@ enum AttemptStatus {
   GRADED
 }
 
+/// Sự kiện giám sát rời bài trong lúc làm quiz (xem QuizProctorEvent).
+enum ProctorEventType {
+  SESSION_START // vào bài hoặc mở lại trang bài làm
+  TAB_HIDDEN // chuyển tab, thu nhỏ hoặc đóng trình duyệt
+  WINDOW_BLUR // chuyển sang cửa sổ / ứng dụng khác
+  PAGE_LEFT // bấm sang trang khác ngay trong hệ thống (bài giảng, diễn đàn…)
+  SHARE_STOPPED // dừng chia sẻ màn hình giữa chừng
+  AUTO_SUBMITTED // hệ thống tự nộp bài vì rời bài quá số lần cho phép
+}
+
 enum NotificationType {
   QUIZ_GRADED
   ASSIGNMENT_GRADED
@@ -851,6 +861,16 @@ model Quiz {
   sebConfigUrl  String?
   sebConfigName String?
 
+  // Giám sát rời bài: ghi lại mỗi lần học sinh rời trang làm bài (chuyển tab,
+  // chuyển cửa sổ, thu nhỏ trình duyệt). `proctorScreenshot` bắt học sinh chia
+  // sẻ toàn bộ màn hình lúc vào bài để hệ thống chụp màn hình minh chứng mỗi
+  // lần rời; tắt đi thì chỉ đếm số lần và thời gian rời.
+  // `proctorMaxLeaves`: số lần rời tối đa được phép — rời lần thứ N+1 thì máy chủ
+  // tự nộp bài. null = không tự nộp, chỉ ghi nhận.
+  proctorEnabled    Boolean @default(false)
+  proctorScreenshot Boolean @default(true)
+  proctorMaxLeaves  Int?
+
   availableFrom DateTime?
   dueDate       DateTime?
 
@@ -1011,12 +1031,66 @@ model QuizAttempt {
   score       Float?
   maxScore    Float?
 
-  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  student User     @relation(fields: [studentId], references: [id])
-  answers Answer[]
+  // Tổng hợp giám sát rời bài, cộng dồn theo QuizProctorEvent để bảng lượt làm
+  // không phải đếm lại từng sự kiện.
+  proctorLeaveCount Int @default(0)
+  proctorAwayMs     Int @default(0)
+
+  quiz             Quiz                  @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student          User                  @relation(fields: [studentId], references: [id])
+  answers          Answer[]
+  proctorEvents    QuizProctorEvent[]
+  proctorSnapshots QuizProctorSnapshot[]
 
   @@index([quizId])
   @@index([studentId])
+}
+
+/// Nhật ký giám sát của một lượt làm quiz. Mỗi lượt rời bài (TAB_HIDDEN /
+/// WINDOW_BLUR) là một dòng; `durationMs` được ghi khi học sinh quay lại.
+model QuizProctorEvent {
+  id         String           @id @default(cuid())
+  attemptId  String
+  type       ProctorEventType
+  // Giờ máy chủ nhận sự kiện — mốc nghiệp vụ. Giờ client chỉ để đối chiếu.
+  occurredAt DateTime         @default(now())
+  clientAt   DateTime?
+  // Thời gian ở ngoài bài, tính bằng giờ máy chủ. null = chưa thấy quay lại.
+  durationMs Int?
+  // Môi trường lúc vào bài: loại bề mặt chia sẻ, máy có nhiều màn hình không…
+  meta       Json?
+
+  attempt   QuizAttempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  snapshots QuizProctorSnapshot[]
+
+  @@index([attemptId, occurredAt])
+}
+
+/// Ảnh chụp màn hình minh chứng khi học sinh rời bài. Nằm ở bucket RIÊNG TƯ
+/// (lumibach-proctoring), chỉ ra ngoài qua endpoint có kiểm quyền
+/// `/api/v1/attempts/proctor-snapshots/:id/file`.
+model QuizProctorSnapshot {
+  id        String  @id @default(cuid())
+  attemptId String
+  eventId   String?
+
+  bucket     String
+  objectName String
+  mime       String
+  size       Int
+  sha256     String // tính trên ảnh đã lưu, để về sau phát hiện ảnh bị thay
+  width      Int
+  height     Int
+
+  // Giờ client tự khai — CHỈ để đối chiếu, mốc nghiệp vụ là giờ máy chủ.
+  capturedAtClient DateTime?
+  serverReceivedAt DateTime  @default(now())
+
+  attempt QuizAttempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  event   QuizProctorEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([attemptId])
+  @@index([eventId])
 }
 
 // ── Code Exercise Module ─────────────────────────────────────

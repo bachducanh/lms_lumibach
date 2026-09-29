@@ -9,6 +9,7 @@ import { CategoriesService } from '@/modules/categories/categories.service';
 import { CategoryBankAccessService } from '@/modules/categories/category-bank-access.service';
 import { AttemptsService } from '@/modules/attempts/attempts.service';
 import type { Judge0Service } from '@/common/judge0/judge0.service';
+import { StorageService } from '@/common/storage/storage.service';
 import type { AuthUser } from '@/common/auth/auth.types';
 
 /**
@@ -167,7 +168,7 @@ describe('Sửa câu hỏi quiz khi đã có bài làm', () => {
 
   beforeEach(() => {
     questions = new QuestionsService(testPrisma, noopJudge0, makeCategoryBank());
-    attempts = new AttemptsService(testPrisma, noopJudge0);
+    attempts = new AttemptsService(testPrisma, noopJudge0, new StorageService());
   });
 
   it('giữ id đáp án, giữ lựa chọn của học sinh và chấm lại khi sửa đáp án đúng', async () => {
