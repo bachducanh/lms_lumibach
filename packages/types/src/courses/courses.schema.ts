@@ -26,6 +26,12 @@ export type CreateCourseBody = z.infer<typeof CreateCourseBodySchema>;
 export const UpdateCourseBodySchema = CreateCourseBodySchema.partial();
 export type UpdateCourseBody = z.infer<typeof UpdateCourseBodySchema>;
 
+/** Chuyển quyền chủ khoá học cho một giáo viên khác. */
+export const TransferCourseOwnershipBodySchema = z.object({
+  userId: z.string().min(1),
+});
+export type TransferCourseOwnershipBody = z.infer<typeof TransferCourseOwnershipBodySchema>;
+
 export const CoursesQuerySchema = z.object({
   q: z.string().optional(),
   status: CourseStatusSchema.optional(),

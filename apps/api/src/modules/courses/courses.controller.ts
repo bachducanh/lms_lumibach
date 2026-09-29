@@ -16,8 +16,10 @@ import {
   CreateCourseBodySchema,
   UpdateCourseBodySchema,
   CoursesQuerySchema,
+  TransferCourseOwnershipBodySchema,
   type CreateCourseBody,
   type UpdateCourseBody,
+  type TransferCourseOwnershipBody,
   type CoursesQuery,
   type TrashedActivityKind,
 } from '@lumibach/types';
@@ -107,23 +109,34 @@ export class CoursesController {
     return this.service.updateCourse(user, id, body);
   }
 
+  @Post(':id/transfer-ownership')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Chuyển quyền chủ khoá học cho giáo viên khác (owner/ADMIN)' })
+  transferOwnership(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(zodBody(TransferCourseOwnershipBodySchema)) body: TransferCourseOwnershipBody
+  ) {
+    return this.service.transferOwnership(user, id, body.userId);
+  }
+
   @Delete(':id')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Chuyển khoá học vào thùng rác (owner/ADMIN)' })
+  @ApiOperation({ summary: 'Chuyển khoá học vào thùng rác (ADMIN)' })
   deleteCourse(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.deleteCourse(user, id);
   }
 
   @Post(':id/restore')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Khôi phục khoá học từ thùng rác (owner/ADMIN)' })
+  @ApiOperation({ summary: 'Khôi phục khoá học từ thùng rác (ADMIN)' })
   restoreCourse(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.restoreCourse(user, id);
   }
 
   @Delete(':id/purge')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Xoá vĩnh viễn khoá học trong thùng rác (owner/ADMIN)' })
+  @ApiOperation({ summary: 'Xoá vĩnh viễn khoá học trong thùng rác (ADMIN)' })
   purgeCourse(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.purgeCourse(user, id);
   }

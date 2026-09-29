@@ -272,8 +272,8 @@ describe('Courses API — category-aware behavior', () => {
   });
 
   describe('DELETE /api/v1/courses/:id', () => {
-    it('200 — owner xoá được course của mình', async () => {
-      const { user: owner, cookie } = await tokenFor('TEACHER');
+    it('200 — admin xoá được khoá học', async () => {
+      const { user: owner, cookie } = await tokenFor('ADMIN');
       const course = await createTestCourse({ ownerId: owner.id });
 
       const res = await request(app.getHttpServer())
@@ -283,10 +283,41 @@ describe('Courses API — category-aware behavior', () => {
       expect(res.status).toBe(200);
     });
 
+    // Admin có thể giao quyền chủ khoá cho giáo viên; giáo viên làm chủ quản lý
+    // lớp được nhưng không được xoá, khôi phục hay xoá vĩnh viễn khoá học.
+    it('403 — giáo viên là chủ khoá không xoá, khôi phục, xoá vĩnh viễn được', async () => {
+      const { user: teacher, cookie } = await tokenFor('TEACHER');
+      const course = await createTestCourse({ ownerId: teacher.id });
+
+      const del = await request(app.getHttpServer())
+        .delete(`/api/v1/courses/${course.id}`)
+        .set('Cookie', cookie);
+      expect(del.status).toBe(403);
+      expect(
+        (await testPrisma.course.findUnique({ where: { id: course.id } }))?.deletedAt
+      ).toBeNull();
+
+      // Admin đã đưa vào thùng rác: giáo viên cũng không khôi phục / xoá hẳn được.
+      await testPrisma.course.update({ where: { id: course.id }, data: { deletedAt: new Date() } });
+      const [restore, purge, trash] = await Promise.all([
+        request(app.getHttpServer())
+          .post(`/api/v1/courses/${course.id}/restore`)
+          .set('Cookie', cookie),
+        request(app.getHttpServer())
+          .delete(`/api/v1/courses/${course.id}/purge`)
+          .set('Cookie', cookie),
+        request(app.getHttpServer()).get('/api/v1/courses/trash').set('Cookie', cookie),
+      ]);
+      expect(restore.status).toBe(403);
+      expect(purge.status).toBe(403);
+      expect(trash.status).toBe(403);
+      expect(await testPrisma.course.findUnique({ where: { id: course.id } })).not.toBeNull();
+    });
+
     // Xoá = chuyển vào thùng rác. Nội dung con PHẢI còn nguyên, nếu không thì
     // nút "Khôi phục" ở thùng rác trả về một khoá học rỗng.
     it('200 — xoá chỉ đưa vào thùng rác, giữ nguyên nội dung để khôi phục', async () => {
-      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { user: owner, cookie } = await tokenFor('ADMIN');
       const { course, mod, lesson, assignment } = await seedCourseWithContent(owner.id);
 
       const res = await request(app.getHttpServer())
@@ -314,7 +345,7 @@ describe('Courses API — category-aware behavior', () => {
 
   describe('Thùng rác', () => {
     it('200 — khôi phục đưa khoá học trở lại danh sách', async () => {
-      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { user: owner, cookie } = await tokenFor('ADMIN');
       const course = await createTestCourse({ ownerId: owner.id });
 
       await request(app.getHttpServer())
@@ -339,7 +370,7 @@ describe('Courses API — category-aware behavior', () => {
     });
 
     it('403 — không xoá vĩnh viễn được khoá chưa nằm trong thùng rác', async () => {
-      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { user: owner, cookie } = await tokenFor('ADMIN');
       const course = await createTestCourse({ ownerId: owner.id });
 
       const res = await request(app.getHttpServer())
@@ -354,7 +385,7 @@ describe('Courses API — category-aware behavior', () => {
     // Đây mới là chỗ xoá thật — gồm cả Lesson, thứ mà cascade không chạm tới
     // vì ModuleItem.lessonId khai onDelete SetNull.
     it('200 — xoá vĩnh viễn dọn sạch nội dung con, không để lại bản ghi mồ côi', async () => {
-      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { user: owner, cookie } = await tokenFor('ADMIN');
       const { course, mod, item, lesson, assignment } = await seedCourseWithContent(owner.id);
 
       await request(app.getHttpServer())
@@ -388,7 +419,7 @@ describe('Courses API — category-aware behavior', () => {
     // P2003 (Invalid reference) vì Answer/TestCaseResult/PracticeTestAnswer/
     // RubricGrade trỏ tới phần định nghĩa đề bằng RESTRICT.
     it('200 — xoá vĩnh viễn được khoá học đã có bài làm của học sinh', async () => {
-      const { user: owner, cookie } = await tokenFor('TEACHER');
+      const { user: owner, cookie } = await tokenFor('ADMIN');
       const { course, assignment, student } = await seedCourseWithContent(owner.id);
       const { question, exercise } = await seedStudentActivity(course.id, owner.id, student.id);
       await seedRubricGrade(assignment.id, owner.id, student.id);

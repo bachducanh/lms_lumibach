@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { UserPlus, Trash2, RefreshCw } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, Crown } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
 import type {
   CourseMember,
@@ -402,6 +402,28 @@ export function PeoplePanel({
     });
   }
 
+  async function handleMakeOwner(userId: string, name: string) {
+    const ok = await openConfirm(
+      `Chuyển quyền chủ khoá học cho ${name}? ${name} sẽ hiện tên trên thẻ khoá học, quản lý ` +
+        'được thành viên, mã ghi danh và sửa thông tin khoá học (không xoá được khoá học). Admin ' +
+        'vẫn toàn quyền như cũ; chủ khoá hiện tại nếu là giáo viên sẽ được giữ lại làm giáo viên ' +
+        'cùng dạy.'
+    );
+    if (!ok) return;
+    startTransition(async () => {
+      try {
+        const data = await apiClient.post<{ message: string }>(
+          `/courses/${courseId}/transfer-ownership`,
+          { userId }
+        );
+        toast.success(data.message);
+        router.refresh();
+      } catch (err) {
+        toast.error(err instanceof ApiError ? err.message : 'Lỗi chuyển quyền chủ khoá học');
+      }
+    });
+  }
+
   async function handleRemoveCoTeacher(coTeacherId: string, name: string) {
     const ok = await openConfirm(`Xoá ${name} khỏi danh sách giáo viên?`);
     if (!ok) return;
@@ -471,12 +493,25 @@ export function PeoplePanel({
                   </div>
                 </div>
                 {canManage && (
-                  <button
-                    onClick={() => handleRemoveCoTeacher(ct.id, userDisplayName(ct.user))}
-                    className="text-muted-foreground hover:text-destructive p-1 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleMakeOwner(ct.userId, userDisplayName(ct.user))}
+                      title="Đặt làm chủ khoá học"
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                    >
+                      <Crown className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Đặt làm chủ khoá</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCoTeacher(ct.id, userDisplayName(ct.user))}
+                      title="Xoá khỏi danh sách giáo viên"
+                      className="text-muted-foreground hover:text-destructive p-1 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </li>
             ))}

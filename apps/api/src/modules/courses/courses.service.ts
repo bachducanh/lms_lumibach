@@ -1,4 +1,10 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaClient } from '@lumibach/db';
@@ -234,13 +240,95 @@ export class CoursesService {
     return urls.filter((u): u is string => !!u);
   }
 
+  /**
+   * Xoá / khôi phục / xoá vĩnh viễn khoá học: CHỈ ADMIN. Khoá học do admin tạo
+   * và có thể giao quyền chủ khoá cho giáo viên (transferOwnership) — giáo viên
+   * làm chủ quản lý lớp được, nhưng không được bỏ cả lớp đi.
+   */
   private async assertCanDelete(actor: AuthUser, courseId: string) {
     const existing = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!existing) throw new NotFoundException('Khoá học không tồn tại');
-    if (actor.role !== 'ADMIN' && existing.ownerId !== actor.id) {
-      throw new ForbiddenException('Bạn không có quyền xoá khoá học này');
+    if (actor.role !== 'ADMIN') {
+      throw new ForbiddenException('Chỉ admin mới được xoá khoá học');
     }
     return existing;
+  }
+
+  /**
+   * Trao quyền chủ khoá học cho một giáo viên khác.
+   *
+   * ADMIN tạo khoá nên mặc định là chủ; nhưng tên hiện trên thẻ khoá học là tên
+   * chủ khoá, nên admin cần chuyển quyền cho giáo viên thật sự dạy lớp. ADMIN vẫn
+   * thao tác được mọi thứ sau khi chuyển (resolveCourseAccess cho ADMIN đi thẳng).
+   *
+   * - Người nhận thôi là đồng giảng (chủ khoá đã có mọi quyền của đồng giảng).
+   * - Chủ cũ là GIÁO VIÊN thì được giữ lại làm đồng giảng để không mất lớp đang
+   *   dạy; chủ cũ là ADMIN thì không cần — admin vốn có toàn quyền.
+   */
+  async transferOwnership(
+    actor: AuthUser,
+    courseId: string,
+    newOwnerId: string
+  ): Promise<{ message: string }> {
+    const course = await this.prisma.course.findUnique({
+      where: { id: courseId },
+      select: {
+        id: true,
+        slug: true,
+        ownerId: true,
+        deletedAt: true,
+        owner: { select: { role: true } },
+      },
+    });
+    if (!course || course.deletedAt) throw new NotFoundException('Khoá học không tồn tại');
+    if (actor.role !== 'ADMIN' && course.ownerId !== actor.id) {
+      throw new ForbiddenException('Chỉ admin hoặc chủ khoá học mới chuyển được quyền chủ khoá');
+    }
+    if (newOwnerId === course.ownerId) {
+      throw new ConflictException('Người này đã là chủ khoá học');
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: newOwnerId },
+      select: { id: true, role: true, status: true, fullName: true, email: true },
+    });
+    if (!target) throw new NotFoundException('Tài khoản không tồn tại');
+    if (target.role !== 'TEACHER' && target.role !== 'ADMIN') {
+      throw new ForbiddenException('Chỉ chuyển được quyền chủ khoá cho tài khoản Giáo viên');
+    }
+    if (target.status !== 'ACTIVE') {
+      throw new ForbiddenException('Tài khoản này chưa hoạt động nên không nhận được khoá học');
+    }
+
+    const keepOldOwner = course.owner.role !== 'ADMIN';
+    await this.prisma.$transaction([
+      this.prisma.course.update({ where: { id: courseId }, data: { ownerId: target.id } }),
+      this.prisma.courseCoTeacher.deleteMany({ where: { courseId, userId: target.id } }),
+      ...(keepOldOwner
+        ? [
+            this.prisma.courseCoTeacher.upsert({
+              where: { userId_courseId: { userId: course.ownerId, courseId } },
+              create: { userId: course.ownerId, courseId, assignedBy: actor.id },
+              update: {},
+            }),
+          ]
+        : []),
+    ]);
+
+    // Chi tiết khoá (kèm tên chủ khoá) được cache — xoá để thẻ và trang khoá
+    // hiện chủ mới ngay.
+    await this.cache.del(`courses:detail:slug:${course.slug}`);
+
+    this.audit.log({
+      userId: actor.id,
+      userRole: actor.role,
+      action: 'COURSE_TRANSFER_OWNERSHIP',
+      resource: 'Course',
+      resourceId: courseId,
+      changes: { fromOwnerId: course.ownerId, toOwnerId: target.id, keepOldOwner },
+    });
+
+    return { message: `Đã chuyển quyền chủ khoá học cho ${target.fullName ?? target.email}` };
   }
 
   /**
@@ -356,17 +444,14 @@ export class CoursesService {
   }
 
   async listTrash(actor: AuthUser): Promise<TrashedCourseItem[]> {
-    if (actor.role !== 'ADMIN' && actor.role !== 'TEACHER') {
+    // Khớp với assertCanDelete: chỉ admin xoá/khôi phục khoá học nên chỉ admin
+    // cần xem khoá học trong thùng rác.
+    if (actor.role !== 'ADMIN') {
       throw new ForbiddenException('Không có quyền xem thùng rác');
     }
 
     const courses = await this.prisma.course.findMany({
-      // ADMIN thấy toàn bộ; giáo viên chỉ thấy khoá mình sở hữu — khớp với
-      // quyền xoá ở assertCanDelete.
-      where: {
-        deletedAt: { not: null },
-        ...(actor.role === 'ADMIN' ? {} : { ownerId: actor.id }),
-      },
+      where: { deletedAt: { not: null } },
       orderBy: { deletedAt: 'desc' },
       select: {
         id: true,
