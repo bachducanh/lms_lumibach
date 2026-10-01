@@ -262,6 +262,9 @@ export class QuizzesService {
       proctorEnabled?: boolean;
       proctorScreenshot?: boolean;
       proctorMaxLeaves?: number | null;
+      antiCopyEnabled?: boolean;
+      antiCopyBlockPaste?: boolean;
+      antiCopyWatermark?: boolean;
       availableFrom?: string | null;
       dueDate?: string | null;
       moduleId?: string | null;
@@ -291,6 +294,9 @@ export class QuizzesService {
         proctorEnabled: body.proctorEnabled === true,
         proctorScreenshot: body.proctorScreenshot ?? true,
         proctorMaxLeaves: normalizeMaxLeaves(body.proctorMaxLeaves),
+        antiCopyEnabled: body.antiCopyEnabled === true,
+        antiCopyBlockPaste: body.antiCopyBlockPaste === true,
+        antiCopyWatermark: body.antiCopyWatermark ?? true,
         availableFrom: toDate(body.availableFrom),
         dueDate: toDate(body.dueDate),
         createdBy: user.id,
@@ -339,6 +345,9 @@ export class QuizzesService {
       proctorEnabled?: boolean;
       proctorScreenshot?: boolean;
       proctorMaxLeaves?: number | null;
+      antiCopyEnabled?: boolean;
+      antiCopyBlockPaste?: boolean;
+      antiCopyWatermark?: boolean;
       availableFrom?: string | null;
       dueDate?: string | null;
       publish?: boolean;
@@ -383,6 +392,16 @@ export class QuizzesService {
         }),
         ...(body.proctorMaxLeaves !== undefined && {
           proctorMaxLeaves: normalizeMaxLeaves(body.proctorMaxLeaves),
+        }),
+        // Chống sao chép cũng chỉ có nghĩa với quiz của lớp, như giám sát.
+        ...(body.antiCopyEnabled !== undefined && {
+          antiCopyEnabled: !!existing.courseId && body.antiCopyEnabled === true,
+        }),
+        ...(body.antiCopyBlockPaste !== undefined && {
+          antiCopyBlockPaste: body.antiCopyBlockPaste === true,
+        }),
+        ...(body.antiCopyWatermark !== undefined && {
+          antiCopyWatermark: body.antiCopyWatermark === true,
         }),
         ...(body.shuffleQuestions !== undefined && { shuffleQuestions: body.shuffleQuestions }),
         ...(body.shuffleAnswers !== undefined && { shuffleAnswers: body.shuffleAnswers }),

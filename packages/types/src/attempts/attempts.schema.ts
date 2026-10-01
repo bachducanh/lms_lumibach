@@ -46,7 +46,12 @@ export type AttemptData = {
     proctorEnabled: boolean;
     proctorScreenshot: boolean;
     proctorMaxLeaves: number | null;
+    antiCopyEnabled: boolean;
+    antiCopyBlockPaste: boolean;
+    antiCopyWatermark: boolean;
   };
+  /** Người làm bài — để in chìm tên lên đề khi quiz bật chống sao chép. */
+  student: { fullName: string | null; username: string | null; email: string };
   questions: AttemptQuestion[];
   answers: AttemptAnswer[];
 };

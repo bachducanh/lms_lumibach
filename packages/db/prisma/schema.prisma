@@ -871,6 +871,15 @@ model Quiz {
   proctorScreenshot Boolean @default(true)
   proctorMaxLeaves  Int?
 
+  // Chống sao chép khi làm bài: chặn bôi đen / sao chép / chuột phải / in đề.
+  // `antiCopyBlockPaste` chặn dán nội dung từ NGOÀI vào ô trả lời (dán lại thứ
+  // vừa chép trong chính bài làm vẫn được). `antiCopyWatermark` in chìm tên học
+  // sinh lên đề — trang web KHÔNG chặn được việc chụp màn hình, nên dấu chìm là
+  // cách răn đe thay thế: ảnh lọt ra ngoài là biết của ai.
+  antiCopyEnabled    Boolean @default(false)
+  antiCopyBlockPaste Boolean @default(false)
+  antiCopyWatermark  Boolean @default(true)
+
   availableFrom DateTime?
   dueDate       DateTime?
 

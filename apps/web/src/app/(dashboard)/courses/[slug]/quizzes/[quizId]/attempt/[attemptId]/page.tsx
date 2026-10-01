@@ -7,6 +7,7 @@ import { matchingPairCorrect } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
 import { ExamProctor } from '@/components/features/proctor/ExamProctor';
+import { ExamShield } from '@/components/features/proctor/ExamShield';
 import { ProctorReportView } from '@/components/features/proctor/ProctorReportView';
 import { isSafeExamBrowser, sebConfigPath, sebLaunchUrl } from '@/lib/seb';
 import { EssayGrader } from '@/components/features/quiz/EssayGrader';
@@ -114,28 +115,40 @@ export default async function AttemptPage({
       );
     }
 
+    let exam = <QuizTaker attempt={attempt} courseSlug={slug} />;
+
     if (attempt.quiz.proctorEnabled) {
-      return (
-        <div className="mx-auto max-w-5xl">
-          {/* Trong Safe Exam Browser không chia sẻ màn hình được (SEB chặn), mà SEB
-              đã khoá máy rồi — chỉ còn đếm số lần rời. */}
-          <ExamProctor
-            attemptId={attempt.id}
-            requireScreen={attempt.quiz.proctorScreenshot && !inSeb}
-            initialLeaveCount={attempt.proctorLeaveCount}
-            maxLeaves={attempt.quiz.proctorMaxLeaves}
-          >
-            <QuizTaker attempt={attempt} courseSlug={slug} />
-          </ExamProctor>
-        </div>
+      exam = (
+        // Trong Safe Exam Browser không chia sẻ màn hình được (SEB chặn), mà SEB
+        // đã khoá máy rồi — chỉ còn đếm số lần rời.
+        <ExamProctor
+          attemptId={attempt.id}
+          requireScreen={attempt.quiz.proctorScreenshot && !inSeb}
+          initialLeaveCount={attempt.proctorLeaveCount}
+          maxLeaves={attempt.quiz.proctorMaxLeaves}
+        >
+          {exam}
+        </ExamProctor>
       );
     }
 
-    return (
-      <div className="mx-auto max-w-5xl">
-        <QuizTaker attempt={attempt} courseSlug={slug} />
-      </div>
-    );
+    // Chống sao chép bọc ngoài cùng: chạy song song với giám sát rời bài, hoặc một
+    // mình (lớp làm bằng điện thoại không chia sẻ màn hình được).
+    if (attempt.quiz.antiCopyEnabled) {
+      const who = attempt.student;
+      const name = who.fullName?.trim() || who.email;
+      const id = who.username || who.email.split('@')[0];
+      exam = (
+        <ExamShield
+          blockPaste={attempt.quiz.antiCopyBlockPaste}
+          watermark={attempt.quiz.antiCopyWatermark ? `${name} · ${id}` : null}
+        >
+          {exam}
+        </ExamShield>
+      );
+    }
+
+    return <div className="mx-auto max-w-5xl">{exam}</div>;
   }
 
   // ── Results view ───────────────────────────────────────────────

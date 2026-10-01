@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SebSettings, type SebConfig } from '@/components/features/seb/SebSettings';
 import { ProctorSettings } from '@/components/features/proctor/ProctorSettings';
+import { AntiCopySettings } from '@/components/features/proctor/AntiCopySettings';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
 import { localInputToIso, toLocalInputValue } from '@/lib/datetime';
@@ -28,6 +29,9 @@ type QuizFormValues = {
   proctorEnabled: boolean;
   proctorScreenshot: boolean;
   proctorMaxLeaves: number | null;
+  antiCopyEnabled: boolean;
+  antiCopyBlockPaste: boolean;
+  antiCopyWatermark: boolean;
 };
 import type { QuizStatus } from '@lumibach/db';
 
@@ -51,6 +55,9 @@ type ExistingQuiz = {
   proctorEnabled?: boolean;
   proctorScreenshot?: boolean;
   proctorMaxLeaves?: number | null;
+  antiCopyEnabled?: boolean;
+  antiCopyBlockPaste?: boolean;
+  antiCopyWatermark?: boolean;
 };
 
 type Props = {
@@ -86,6 +93,9 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
   );
   const [proctorEnabled, setProctorEnabled] = useState(quiz?.proctorEnabled ?? false);
   const [proctorScreenshot, setProctorScreenshot] = useState(quiz?.proctorScreenshot ?? true);
+  const [antiCopyEnabled, setAntiCopyEnabled] = useState(quiz?.antiCopyEnabled ?? false);
+  const [antiCopyBlockPaste, setAntiCopyBlockPaste] = useState(quiz?.antiCopyBlockPaste ?? false);
+  const [antiCopyWatermark, setAntiCopyWatermark] = useState(quiz?.antiCopyWatermark ?? true);
   const [proctorMaxLeaves, setProctorMaxLeaves] = useState(
     quiz?.proctorMaxLeaves != null ? String(quiz.proctorMaxLeaves) : ''
   );
@@ -108,6 +118,9 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
       proctorEnabled: !isBank && proctorEnabled,
       proctorScreenshot,
       proctorMaxLeaves: proctorMaxLeaves.trim() === '' ? null : Number(proctorMaxLeaves),
+      antiCopyEnabled: !isBank && antiCopyEnabled,
+      antiCopyBlockPaste,
+      antiCopyWatermark,
     };
   }
 
@@ -279,6 +292,18 @@ export function QuizForm({ owner, quiz, moduleId }: Props) {
           onScreenshotChange={setProctorScreenshot}
           maxLeaves={proctorMaxLeaves}
           onMaxLeavesChange={setProctorMaxLeaves}
+        />
+      )}
+
+      {/* Chống sao chép — độc lập với giám sát, bật cùng lúc được. */}
+      {owner.kind === 'course' && (
+        <AntiCopySettings
+          enabled={antiCopyEnabled}
+          onEnabledChange={setAntiCopyEnabled}
+          blockPaste={antiCopyBlockPaste}
+          onBlockPasteChange={setAntiCopyBlockPaste}
+          watermark={antiCopyWatermark}
+          onWatermarkChange={setAntiCopyWatermark}
         />
       )}
 

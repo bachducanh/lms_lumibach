@@ -42,6 +42,10 @@ export type QuizDetail = {
   proctorScreenshot: boolean;
   /** Rời quá số lần này thì máy chủ tự nộp bài. null = không tự nộp. */
   proctorMaxLeaves: number | null;
+  /** Chống sao chép khi làm bài (xem model Quiz). */
+  antiCopyEnabled: boolean;
+  antiCopyBlockPaste: boolean;
+  antiCopyWatermark: boolean;
   availableFrom: string | null;
   dueDate: string | null;
   publishedAt: string | null;

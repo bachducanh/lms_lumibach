@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Target,
   Eye,
+  CopyX,
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import type { UserRole } from '@lumibach/db';
@@ -230,6 +231,11 @@ export default async function QuizDetailPage({
                   {quiz.proctorMaxLeaves != null ? ` · tối đa ${quiz.proctorMaxLeaves} lần` : ''}
                 </span>
               )}
+              {quiz.antiCopyEnabled && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-600/25 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                  <CopyX className="h-3 w-3" /> Chống sao chép
+                </span>
+              )}
             </div>
           </div>
 
@@ -300,6 +306,14 @@ export default async function QuizDetailPage({
                   {quiz.proctorScreenshot && !isSeb
                     ? ' Bạn sẽ cần chia sẻ toàn bộ màn hình trước khi làm — hãy làm trên máy tính (Chrome, Edge, Firefox hoặc Safari), không làm được trên điện thoại hay máy tính bảng.'
                     : ''}
+                </p>
+              )}
+
+              {quiz.antiCopyEnabled && (
+                <p className="max-w-md rounded-lg border border-amber-600/25 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                  Bài kiểm tra không cho sao chép nội dung đề
+                  {quiz.antiCopyBlockPaste ? ' và không cho dán nội dung từ ngoài vào bài làm' : ''}
+                  {quiz.antiCopyWatermark ? '; tên của bạn được in chìm trên đề.' : '.'}
                 </p>
               )}
 
