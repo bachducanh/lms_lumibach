@@ -61,7 +61,8 @@ export function ProctorSettings({
                 <span className="text-muted-foreground block text-xs">
                   Học sinh phải chia sẻ <strong>toàn bộ màn hình</strong> trước khi vào bài; mỗi lần
                   rời bài hệ thống chụp vài ảnh màn hình. Chỉ làm được trên máy tính (Chrome, Edge,
-                  Firefox) — điện thoại và máy tính bảng sẽ không vào được bài.
+                  Firefox, Safari) — điện thoại và máy tính bảng sẽ không vào được bài. Máy Mac cần
+                  cấp quyền Ghi màn hình cho trình duyệt ở lần đầu.
                 </span>
               </span>
             </label>

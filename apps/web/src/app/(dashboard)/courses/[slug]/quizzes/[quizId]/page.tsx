@@ -298,7 +298,7 @@ export default async function QuizDetailPage({
                     ? `; rời quá ${quiz.proctorMaxLeaves} lần bài sẽ tự động nộp.`
                     : '.'}
                   {quiz.proctorScreenshot && !isSeb
-                    ? ' Bạn sẽ cần chia sẻ toàn bộ màn hình trước khi làm — hãy dùng máy tính với Chrome, Edge hoặc Firefox.'
+                    ? ' Bạn sẽ cần chia sẻ toàn bộ màn hình trước khi làm — hãy làm trên máy tính (Chrome, Edge, Firefox hoặc Safari), không làm được trên điện thoại hay máy tính bảng.'
                     : ''}
                 </p>
               )}

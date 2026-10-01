@@ -197,6 +197,12 @@ export function ProctorReportView({ attemptId }: Props) {
                         : '· chưa thấy quay lại'}
                     </span>
                   )}
+                  {Number(e.meta?.captureFailures) > 0 && (
+                    <span className="text-xs text-amber-700 dark:text-amber-400">
+                      · {String(e.meta?.captureFailures)} lần không lấy được ảnh (trình duyệt chặn
+                      chụp khi đang ở tab khác)
+                    </span>
+                  )}
                 </div>
 
                 {e.snapshots.length > 0 && (

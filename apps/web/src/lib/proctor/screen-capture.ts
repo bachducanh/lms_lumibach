@@ -3,6 +3,10 @@
 // Trình duyệt KHÔNG cho trang web tự chụp màn hình. Cách duy nhất là học sinh
 // cho phép chia sẻ màn hình (Screen Capture API — giống lúc chia sẻ màn hình
 // trong Google Meet); sau đó mỗi lần rời bài ta lấy một khung hình từ luồng đó.
+//
+// Hỗ trợ: Chrome, Edge, Firefox và Safari 13+ trên máy tính (Windows, macOS).
+// Điện thoại / máy tính bảng không có API này (iOS cấm hẳn, kể cả Chrome trên iOS
+// vì cũng chạy lõi Safari).
 
 type ImageCaptureLike = { grabFrame(): Promise<ImageBitmap> };
 type ImageCaptureCtor = new (track: MediaStreamTrack) => ImageCaptureLike;
@@ -11,6 +15,74 @@ export function screenCaptureSupported(): boolean {
   return (
     typeof navigator !== 'undefined' &&
     typeof navigator.mediaDevices?.getDisplayMedia === 'function'
+  );
+}
+
+/** iPad ở chế độ "trang web cho máy tính" khai User-Agent là Macintosh — phân biệt bằng cảm ứng. */
+function isTouchTablet(): boolean {
+  return /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
+}
+
+export function isMacComputer(): boolean {
+  return (
+    typeof navigator !== 'undefined' && /Macintosh/.test(navigator.userAgent) && !isTouchTablet()
+  );
+}
+
+function isPhoneOrTablet(): boolean {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || isTouchTablet();
+}
+
+/** "Safari 17.4 · macOS" — để học sinh/giáo viên báo lỗi đúng trình duyệt đang dùng. */
+export function describeBrowser(): string {
+  const ua = navigator.userAgent;
+  const pick = (re: RegExp) => ua.match(re)?.[1];
+  const browser =
+    (pick(/Edg\/([\d.]+)/) && `Edge ${pick(/Edg\/(\d+)/)}`) ||
+    (pick(/OPR\/([\d.]+)/) && `Opera ${pick(/OPR\/(\d+)/)}`) ||
+    (pick(/Firefox\/([\d.]+)/) && `Firefox ${pick(/Firefox\/(\d+)/)}`) ||
+    (pick(/CriOS\/([\d.]+)/) && `Chrome ${pick(/CriOS\/(\d+)/)} (iOS)`) ||
+    (pick(/Chrome\/([\d.]+)/) && `Chrome ${pick(/Chrome\/(\d+)/)}`) ||
+    (pick(/Version\/([\d.]+).*Safari/) && `Safari ${pick(/Version\/([\d.]+)/)}`) ||
+    'trình duyệt không rõ';
+  const os = isTouchTablet()
+    ? 'iPad'
+    : /iPhone|iPad|iPod/.test(ua)
+      ? 'iOS'
+      : /Android/.test(ua)
+        ? 'Android'
+        : /Macintosh/.test(ua)
+          ? 'macOS'
+          : /Windows/.test(ua)
+            ? 'Windows'
+            : /Linux/.test(ua)
+              ? 'Linux'
+              : 'hệ điều hành không rõ';
+  return `${browser} · ${os}`;
+}
+
+const MAC_PERMISSION_HINT =
+  'Trên máy Mac: mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Ghi màn hình (và âm thanh ' +
+  'hệ thống), bật cho trình duyệt đang dùng, rồi thoát hẳn trình duyệt (⌘Q) và mở lại.';
+
+/** Lý do không chia sẻ được màn hình, kèm trình duyệt đang dùng để dễ xử lý. */
+export function unsupportedMessage(): string {
+  const env = describeBrowser();
+  if (!window.isSecureContext) {
+    return (
+      `Trang đang mở qua kết nối không an toàn (http) nên trình duyệt tắt tính năng chia sẻ ` +
+      `màn hình. Hãy mở bài qua địa chỉ https://. (${env})`
+    );
+  }
+  if (isPhoneOrTablet()) {
+    return (
+      `Bài kiểm tra này phải làm trên máy tính (Windows hoặc Mac) — điện thoại và máy tính ` +
+      `bảng không chia sẻ được màn hình. (${env})`
+    );
+  }
+  return (
+    `Trình duyệt này không hỗ trợ chia sẻ màn hình. Hãy cập nhật trình duyệt, hoặc dùng ` +
+    `Chrome, Edge, Firefox hay Safari bản mới trên máy tính. (${env})`
   );
 }
 
@@ -23,16 +95,13 @@ export type ScreenShareResult =
  * sinh chuyển sang tab khác, ảnh chụp vẫn chỉ là trang bài làm — vô dụng làm
  * minh chứng, nên từ chối và yêu cầu chọn lại.
  *
- * Phải gọi trong trình xử lý một cú bấm của người dùng (trình duyệt yêu cầu).
+ * Phải gọi trong trình xử lý một cú bấm của người dùng (trình duyệt yêu cầu),
+ * và không được `await` gì trước lời gọi getDisplayMedia — Safari coi đó là đã
+ * hết "cú bấm" và từ chối.
  */
 export async function requestEntireScreen(): Promise<ScreenShareResult> {
   if (!screenCaptureSupported()) {
-    return {
-      ok: false,
-      reason: 'unsupported',
-      message:
-        'Trình duyệt hoặc thiết bị này không hỗ trợ chia sẻ màn hình. Hãy làm bài trên máy tính bằng Chrome, Edge hoặc Firefox.',
-    };
+    return { ok: false, reason: 'unsupported', message: unsupportedMessage() };
   }
 
   let stream: MediaStream;
@@ -41,22 +110,29 @@ export async function requestEntireScreen(): Promise<ScreenShareResult> {
       video: { displaySurface: 'monitor', frameRate: { ideal: 5, max: 10 } },
       audio: false,
       // Gợi ý riêng của Chromium: mở sẵn mục "Toàn bộ màn hình", không cho đổi
-      // nguồn chia sẻ giữa chừng. Trình duyệt khác bỏ qua các khoá lạ.
+      // nguồn chia sẻ giữa chừng. Firefox/Safari bỏ qua các khoá lạ.
       monitorTypeSurfaces: 'include',
       surfaceSwitching: 'exclude',
       selfBrowserSurface: 'exclude',
       preferCurrentTab: false,
     } as DisplayMediaStreamOptions);
   } catch (err) {
-    const name = err instanceof DOMException ? err.name : '';
+    const name = err instanceof DOMException ? err.name : err instanceof Error ? err.name : '';
     if (name === 'NotAllowedError' || name === 'AbortError') {
+      // macOS chưa cấp quyền Ghi màn hình cho trình duyệt cũng rơi vào đây.
       return {
         ok: false,
         reason: 'denied',
-        message: 'Bạn chưa cho phép chia sẻ màn hình nên chưa thể vào bài.',
+        message:
+          'Bạn chưa cho phép chia sẻ màn hình nên chưa thể vào bài.' +
+          (isMacComputer() ? ` ${MAC_PERMISSION_HINT}` : ''),
       };
     }
-    return { ok: false, reason: 'error', message: 'Không mở được chia sẻ màn hình. Thử lại.' };
+    return {
+      ok: false,
+      reason: 'error',
+      message: `Không mở được chia sẻ màn hình (${name || 'lỗi lạ'} · ${describeBrowser()}). Thử lại.`,
+    };
   }
 
   const track = stream.getVideoTracks()[0];
@@ -79,8 +155,9 @@ export async function requestEntireScreen(): Promise<ScreenShareResult> {
  * Lấy một khung hình từ luồng chia sẻ, trả về JPEG đã thu nhỏ.
  *
  * Ưu tiên ImageCapture.grabFrame (Chrome/Edge): đọc thẳng từ track nên vẫn chạy
- * khi tab bài làm đang bị ẩn — đúng lúc cần chụp. Firefox không có API này nên
- * lùi về vẽ thẻ <video> lên canvas.
+ * khi tab bài làm đang bị ẩn — đúng lúc cần chụp. Firefox và Safari không có API
+ * này nên lùi về vẽ thẻ <video> lên canvas; thẻ đó phải nằm trong trang (xem
+ * ExamProctor.attachStream), Safari không cập nhật hình cho thẻ video lơ lửng.
  */
 export async function grabFrame(
   stream: MediaStream,

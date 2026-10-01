@@ -222,12 +222,17 @@ export class ProctorService {
    * được ghi. Cho phép cả khi bài đã nộp — hết giờ tự nộp trong lúc học sinh
    * đang ở ngoài thì vẫn cần biết em ra ngoài bao lâu.
    */
-  async endEvent(user: AuthUser, attemptId: string, eventId: string, body: { hidden?: boolean }) {
+  async endEvent(
+    user: AuthUser,
+    attemptId: string,
+    eventId: string,
+    body: { hidden?: boolean; captureFailures?: number }
+  ) {
     await this.ownAttempt(user, attemptId);
 
     const event = await this.prisma.quizProctorEvent.findUnique({
       where: { id: eventId },
-      select: { attemptId: true, type: true, occurredAt: true, durationMs: true },
+      select: { attemptId: true, type: true, occurredAt: true, durationMs: true, meta: true },
     });
     if (!event || event.attemptId !== attemptId) throw new NotFoundException('Không tìm thấy.');
     if (event.durationMs !== null) return { durationMs: event.durationMs };
@@ -241,9 +246,20 @@ export class ProctorService {
     const type: ProctorEventType =
       event.type === 'WINDOW_BLUR' && body.hidden === true ? 'TAB_HIDDEN' : event.type;
 
+    // Số lần đến giờ chụp mà trình duyệt không cho lấy hình (Safari/Firefox có thể
+    // ngừng cập nhật hình khi tab bị ẩn). Ghi lại để giáo viên biết vì sao lượt rời
+    // không có ảnh, thay vì chỉ thấy "0 ảnh".
+    const failures = Number.isInteger(body.captureFailures)
+      ? Math.min(20, Math.max(0, body.captureFailures as number))
+      : 0;
+    const meta =
+      failures > 0
+        ? { ...((event.meta as Prisma.JsonObject | null) ?? {}), captureFailures: failures }
+        : undefined;
+
     const updated = await this.prisma.quizProctorEvent.updateMany({
       where: { id: eventId, durationMs: null },
-      data: { durationMs: ms, type },
+      data: { durationMs: ms, type, ...(meta ? { meta } : {}) },
     });
     if (updated.count > 0 && LEAVE_TYPES.has(event.type)) {
       await this.prisma.quizAttempt.update({

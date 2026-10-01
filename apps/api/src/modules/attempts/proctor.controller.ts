@@ -28,7 +28,7 @@ export class ProctorController {
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Param('eventId') eventId: string,
-    @Body() body: { hidden?: boolean }
+    @Body() body: { hidden?: boolean; captureFailures?: number }
   ) {
     return this.service.endEvent(user, id, eventId, body ?? {});
   }

@@ -158,6 +158,16 @@ describe('Giám sát rời bài', () => {
     expect(event.type).toBe('TAB_HIDDEN');
   });
 
+  it('ghi số lần trình duyệt không cho lấy ảnh vào nhật ký lượt rời', async () => {
+    const { student, attempt } = await setup();
+    const me = asUser(student);
+    const { eventId } = await service.recordEvent(me, attempt.id, { type: 'TAB_HIDDEN' });
+    await service.endEvent(me, attempt.id, eventId!, { captureFailures: 3 });
+
+    const event = await testPrisma.quizProctorEvent.findUniqueOrThrow({ where: { id: eventId! } });
+    expect((event.meta as Record<string, unknown>).captureFailures).toBe(3);
+  });
+
   it('mở lại trang bài làm thì khép các lượt rời còn dở và đánh dấu reopened', async () => {
     const { student, attempt } = await setup();
     const me = asUser(student);

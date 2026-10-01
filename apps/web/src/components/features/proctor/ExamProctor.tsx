@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api-client';
 import {
   grabFrame,
+  isMacComputer,
   requestEntireScreen,
   screenCaptureSupported,
+  unsupportedMessage,
 } from '@/lib/proctor/screen-capture';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +36,8 @@ type AwayState = {
   hidden: boolean;
   eventId: Promise<string | null>;
   timers: number[];
+  /** Số lần đến giờ chụp mà trình duyệt không cho lấy hình (báo cho giáo viên). */
+  captureFailures: number;
 };
 
 type Props = {
@@ -75,7 +79,9 @@ export function ExamProctor({
   const [shareError, setShareError] = useState<string | null>(null);
   // Chỉ biết được sau khi chạy trên trình duyệt; mặc định true để HTML dựng ở
   // máy chủ không lệch với lần hydrate đầu.
-  const [supported, setSupported] = useState(true);
+  // null = chia sẻ được; chuỗi = lý do không chia sẻ được (kèm trình duyệt).
+  const [unsupported, setUnsupported] = useState<string | null>(null);
+  const [isMac, setIsMac] = useState(false);
   const started = phase !== 'gate';
 
   const streamRef = useRef<MediaStream | null>(null);
@@ -91,7 +97,8 @@ export function ExamProctor({
   const finishedRef = useRef(false);
 
   useEffect(() => {
-    setSupported(screenCaptureSupported());
+    setUnsupported(screenCaptureSupported() ? null : unsupportedMessage());
+    setIsMac(isMacComputer());
   }, []);
 
   function sendEvent(type: EventType, meta?: Record<string, unknown>): Promise<EventResult | null> {
@@ -106,11 +113,11 @@ export function ExamProctor({
       .catch(() => null);
   }
 
-  function endEvent(eventId: Promise<string | null>, hidden?: boolean) {
+  function endEvent(eventId: Promise<string | null>, hidden?: boolean, captureFailures?: number) {
     void eventId.then((id) => {
       if (!id) return;
       void apiClient
-        .post(`/attempts/${attemptId}/proctor/events/${id}/end`, { hidden })
+        .post(`/attempts/${attemptId}/proctor/events/${id}/end`, { hidden, captureFailures })
         .catch(() => {});
     });
   }
@@ -118,6 +125,7 @@ export function ExamProctor({
   function stopStream() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    videoRef.current?.remove();
     videoRef.current = null;
   }
 
@@ -125,8 +133,12 @@ export function ExamProctor({
     const stream = streamRef.current;
     if (!stream || awayRef.current !== state) return;
     const blob = await grabFrame(stream, videoRef.current);
+    if (!blob) {
+      state.captureFailures += 1;
+      return;
+    }
     const eventId = await state.eventId;
-    if (!blob || !eventId) return;
+    if (!eventId) return;
 
     const form = new FormData();
     form.append('file', blob, 'man-hinh.jpg');
@@ -171,6 +183,7 @@ export function ExamProctor({
         return r?.eventId ?? null;
       }),
       timers: [],
+      captureFailures: 0,
     };
     awayRef.current = state;
     updateLeaveCount(leaveCountRef.current + 1);
@@ -187,7 +200,7 @@ export function ExamProctor({
     if (!state) return;
     awayRef.current = null;
     state.timers.forEach((t) => window.clearTimeout(t));
-    endEvent(state.eventId, state.hidden);
+    endEvent(state.eventId, state.hidden, state.captureFailures);
     if (autoSubmittedRef.current) {
       finishAutoSubmit();
       return;
@@ -285,17 +298,26 @@ export function ExamProctor({
   // ── Chia sẻ màn hình ──────────────────────────────────────────
   function attachStream(stream: MediaStream) {
     streamRef.current = stream;
-    // Thẻ <video> chỉ để dự phòng cho Firefox (không có ImageCapture).
+    // Thẻ <video> để dự phòng cho Firefox và Safari (không có ImageCapture). Phải
+    // nằm trong trang: Safari không cập nhật hình cho thẻ video lơ lửng ngoài DOM.
+    // Thu về 2px, gần như trong suốt, không nhận chuột — học sinh không thấy.
     const video = document.createElement('video');
     video.muted = true;
     video.playsInline = true;
+    video.autoplay = true;
+    video.setAttribute('aria-hidden', 'true');
+    video.style.cssText =
+      'position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
     video.srcObject = stream;
+    document.body.appendChild(video);
     void video.play().catch(() => {});
+    videoRef.current?.remove();
     videoRef.current = video;
 
     stream.getVideoTracks()[0]?.addEventListener('ended', () => {
       if (streamRef.current !== stream) return;
       streamRef.current = null;
+      videoRef.current?.remove();
       videoRef.current = null;
       shareStoppedRef.current = sendEvent('SHARE_STOPPED').then((r) => r?.eventId ?? null);
       setPhase('paused');
@@ -334,7 +356,8 @@ export function ExamProctor({
     return (
       <ShareGate
         maxLeaves={maxLeaves}
-        supported={supported}
+        unsupported={unsupported}
+        isMac={isMac}
         sharing={sharing}
         error={shareError}
         onShare={() => void handleShare()}
@@ -403,13 +426,15 @@ function envMeta(surface: string | null, screenshots: boolean): Record<string, u
 
 function ShareGate({
   maxLeaves,
-  supported,
+  unsupported,
+  isMac,
   sharing,
   error,
   onShare,
 }: {
   maxLeaves: number | null;
-  supported: boolean;
+  unsupported: string | null;
+  isMac: boolean;
   sharing: boolean;
   error: string | null;
   onShare: () => void;
@@ -456,23 +481,38 @@ function ShareGate({
           (Entire screen) → chọn màn hình → bấm <strong className="text-foreground">Chia sẻ</strong>
           .
         </p>
+        <p className="text-muted-foreground">
+          Làm trên máy tính với Chrome, Edge, Firefox hoặc Safari. Điện thoại và máy tính bảng không
+          chia sẻ được màn hình.
+        </p>
+        {isMac && (
+          <p className="text-muted-foreground">
+            <strong className="text-foreground">Máy Mac:</strong> lần đầu, máy sẽ hỏi quyền Ghi màn
+            hình. Mở Cài đặt hệ thống → Quyền riêng tư &amp; Bảo mật → Ghi màn hình, bật cho trình
+            duyệt đang dùng, rồi thoát hẳn trình duyệt (⌘Q) và mở lại bài.
+          </p>
+        )}
       </div>
 
-      {!supported && (
+      {unsupported && (
         <p className="text-destructive flex items-start gap-2 text-sm">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-          Trình duyệt hoặc thiết bị này không hỗ trợ chia sẻ màn hình. Hãy làm bài trên máy tính
-          bằng Chrome, Edge hoặc Firefox.
+          {unsupported}
         </p>
       )}
-      {error && supported && (
+      {error && !unsupported && (
         <p className="text-destructive flex items-start gap-2 text-sm">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           {error}
         </p>
       )}
 
-      <Button onClick={onShare} disabled={!supported || sharing} className="w-full gap-2" size="lg">
+      <Button
+        onClick={onShare}
+        disabled={!!unsupported || sharing}
+        className="w-full gap-2"
+        size="lg"
+      >
         {sharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <MonitorUp className="h-4 w-4" />}
         {sharing ? 'Đang chờ bạn chọn màn hình…' : 'Chia sẻ màn hình và vào bài'}
       </Button>
