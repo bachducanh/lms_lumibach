@@ -1,4 +1,5 @@
 import { PrismaClient, type Prisma } from '@lumibach/db';
+import { matchingPairCorrect } from '@lumibach/types';
 
 // Logic chấm tự động cho các loại câu hỏi dựa trên QuestionOption.
 // Dùng chung giữa lúc học sinh nộp bài (AttemptsService.submit) và lúc giáo viên
@@ -220,9 +221,7 @@ export function gradeOptionAnswer(
     for (const opt of options) {
       const chosenId = map[opt.id];
       if (!chosenId) continue;
-      const expected = rightTextById.get(opt.id) ?? '';
-      const chosen = rightTextById.get(chosenId) ?? '';
-      if (expected !== '' && chosen === expected) correct++;
+      if (matchingPairCorrect(rightTextById.get(opt.id), rightTextById.get(chosenId))) correct++;
     }
     return {
       isCorrect: options.length > 0 && correct === options.length,

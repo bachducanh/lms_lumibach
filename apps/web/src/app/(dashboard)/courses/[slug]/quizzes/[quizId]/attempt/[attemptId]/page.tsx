@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { cookies, headers } from 'next/headers';
 import { apiServerClient } from '@/lib/api-client';
 import type { CourseDetail, AttemptData, QuizDetail } from '@lumibach/types';
+import { matchingPairCorrect } from '@lumibach/types';
 import { QuizTaker } from '@/components/features/quiz/QuizTaker';
 import { SebLockScreen } from '@/components/features/seb/SebLockScreen';
 import { ExamProctor } from '@/components/features/proctor/ExamProctor';
@@ -843,10 +844,12 @@ export default async function AttemptPage({
                       <div className="space-y-1.5 sm:pl-9">
                         {pairs.map((p, i) => {
                           const chosenId = map[p.id];
-                          const ok = chosenId === p.id;
                           const chosen = chosenId
                             ? pairs.find((x) => x.id === chosenId)?.right
                             : null;
+                          // So theo chữ vế phải như bộ chấm (quiz-grading.ts):
+                          // nhiều vế trái trùng đáp án thì thẻ nào cùng chữ cũng đúng.
+                          const ok = matchingPairCorrect(p.right, chosen);
                           return (
                             <div
                               key={p.id}

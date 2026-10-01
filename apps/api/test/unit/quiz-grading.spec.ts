@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gradeOptionAnswer, type GradableOption } from '../../src/common/grading/quiz-grading';
+import { matchingPairCorrect } from '@lumibach/types';
 
 /**
  * Chấm tự động cho MỌI loại câu hỏi quiz.
@@ -281,6 +282,16 @@ describe('MATCHING', () => {
   it('content hỏng → không tính là đúng', () => {
     const broken = [opt('b1', 'không phải JSON', true, 0)];
     expect(gradeOptionAnswer('MATCHING', broken, 5, text({ b1: 'b1' }))?.score).toBe(0);
+  });
+
+  // Trang kết quả và trang xem trước tô từng dòng bằng chính hàm này. Trước đây
+  // chúng so theo id thẻ: điểm báo đúng mà các dòng trùng chữ lại hiện sai.
+  it('luật từng cặp dùng chung cho bộ chấm và trang kết quả', () => {
+    expect(matchingPairCorrect('Thầy Bạch', 'Thầy Bạch')).toBe(true);
+    expect(matchingPairCorrect(' TCP ', 'TCP')).toBe(true);
+    expect(matchingPairCorrect('TCP', 'IP')).toBe(false);
+    expect(matchingPairCorrect('TCP', null)).toBe(false); // chưa ghép
+    expect(matchingPairCorrect('', '')).toBe(false); // cặp hỏng không bao giờ đúng
   });
 });
 

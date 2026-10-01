@@ -42,6 +42,7 @@ const MatchingQuestion = nextDynamic(
 );
 import { toast } from 'sonner';
 import type { PreviewQuizData, PreviewQuizQuestion, TCCheckResult } from '@lumibach/types';
+import { matchingPairCorrect } from '@lumibach/types';
 import type { CodeLanguage } from '@lumibach/db';
 import {
   QUESTION_TYPE_LABEL as TYPE_LABEL,
@@ -884,10 +885,12 @@ export function QuizPreview({ quiz }: Props) {
                       <div className="space-y-1.5 sm:pl-10">
                         {pairs.map((p, i) => {
                           const chosenId = map[p.id];
-                          const ok = chosenId === p.id;
                           const chosen = chosenId
                             ? pairs.find((x) => x.id === chosenId)?.right
                             : null;
+                          // So theo chữ vế phải như bộ chấm (quiz-grading.ts):
+                          // nhiều vế trái trùng đáp án thì thẻ nào cùng chữ cũng đúng.
+                          const ok = matchingPairCorrect(p.right, chosen);
                           return (
                             <div
                               key={p.id}
