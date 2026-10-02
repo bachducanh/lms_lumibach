@@ -228,6 +228,7 @@ export class QuestionBankService {
         content: source.content,
         explanation: source.explanation,
         points: source.points,
+        scoreRatios: source.scoreRatios,
         createdBy: user.id,
         starterCode: source.starterCode,
         solutionCode: source.solutionCode,

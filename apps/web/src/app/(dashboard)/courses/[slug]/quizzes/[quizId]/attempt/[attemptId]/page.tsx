@@ -358,7 +358,12 @@ export default async function AttemptPage({
                           ? ans?.score != null
                             ? `${ans.score}/${q.points}`
                             : `?/${q.points}`
-                          : isCodeAuto || isParsons || isCodeFill || isOrdering || isMatching
+                          : isCodeAuto ||
+                              isTFMulti ||
+                              isParsons ||
+                              isCodeFill ||
+                              isOrdering ||
+                              isMatching
                             ? ans?.score != null
                               ? `${ans.score}/${q.points}`
                               : `0/${q.points}`

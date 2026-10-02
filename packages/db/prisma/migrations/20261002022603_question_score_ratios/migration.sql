@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Question" ADD COLUMN     "scoreRatios" DOUBLE PRECISION[] DEFAULT ARRAY[]::DOUBLE PRECISION[];

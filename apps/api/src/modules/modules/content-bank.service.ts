@@ -732,6 +732,7 @@ export class ContentBankService {
         content: q.content,
         explanation: q.explanation,
         points: q.points,
+        scoreRatios: q.scoreRatios,
         createdBy: user.id,
         starterCode: q.starterCode,
         solutionCode: q.solutionCode,

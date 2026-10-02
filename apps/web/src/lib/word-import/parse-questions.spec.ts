@@ -203,6 +203,66 @@ describe('đúng sai', () => {
   });
 });
 
+describe('thang điểm câu Đúng/Sai nhiều ý', () => {
+  const dsn = (them = '', soY = 4) =>
+    parseQuestions(
+      doc(
+        [
+          'Câu 1. [DSN] Xét các phát biểu sau:',
+          ...['A. một', 'B. hai', 'C. ba', 'D. bốn', 'E. năm'].slice(0, soY),
+          `Đáp án: ${['Đ', 'S', 'Đ', 'S', 'Đ'].slice(0, soY).join(', ')}`,
+          them,
+        ].join('\n')
+      )
+    ).questions[0]!;
+
+  it('không ghi thang thì câu 4 ý theo thang THPT', () => {
+    const c = dsn();
+    expect(c.loi).toEqual([]);
+    expect(c.points).toBe(1);
+    expect(c.scoreRatios).toEqual([0, 0.1, 0.25, 0.5, 1]);
+  });
+
+  it('câu có số ý khác 4 mà không ghi thang thì chia đều', () => {
+    expect(dsn('', 3).scoreRatios).toEqual([]);
+  });
+
+  it('ghi đủ các mức kiểu Việt: mức cuối là trọn điểm', () => {
+    const c = dsn('Thang điểm: 0,2; 0,5; 1; 2');
+    expect(c.loi).toEqual([]);
+    expect(c.points).toBe(2);
+    expect(c.scoreRatios).toEqual([0, 0.1, 0.25, 0.5, 1]);
+  });
+
+  it('ghi thiếu mức cuối thì đúng hết lấy theo dòng Điểm', () => {
+    const c = dsn('Điểm: 1\nThang điểm: 0,1 | 0,3 | 0,6');
+    expect(c.loi).toEqual([]);
+    expect(c.scoreRatios).toEqual([0, 0.1, 0.3, 0.6, 1]);
+  });
+
+  it('viết THPT hay chia đều bằng chữ', () => {
+    expect(dsn('Thang điểm: THPT').scoreRatios).toEqual([0, 0.1, 0.25, 0.5, 1]);
+    expect(dsn('Thang điểm: chia đều').scoreRatios).toEqual([]);
+  });
+
+  it('số mức không khớp số phát biểu thì báo lỗi', () => {
+    expect(dsn('Thang điểm: 0,25; 1').loi.join(' ')).toContain('cần 4 mức');
+  });
+
+  it('thang giảm dần hoặc lệch dòng Điểm thì báo lỗi', () => {
+    expect(dsn('Thang điểm: 0,5; 0,25; 0,75; 1').loi.join(' ')).toContain('ít điểm hơn');
+    expect(dsn('Điểm: 2\nThang điểm: 0,1; 0,25; 0,5; 1').loi.join(' ')).toContain('Điểm:');
+  });
+
+  it('câu loại khác có dòng Thang điểm thì chỉ cảnh báo', () => {
+    const c = parseQuestions(doc('Câu 1. [TN1] Hỏi?\nA. x\nB. y\nĐáp án: A\nThang điểm: 0,5; 1'))
+      .questions[0]!;
+    expect(c.loi).toEqual([]);
+    expect(c.scoreRatios).toEqual([]);
+    expect(c.canhBao.join(' ')).toContain('Thang điểm');
+  });
+});
+
 describe('ghép nối và sắp xếp', () => {
   it('ghép nối tách hai vế bằng dấu gạch đứng', () => {
     const r = parseQuestions(

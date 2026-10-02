@@ -231,6 +231,7 @@ export class QuizzesService {
           content: qq.question.content,
           explanation: qq.question.explanation ?? null,
           starterCode: (qq.question as any).starterCode ?? null,
+          scoreRatios: qq.question.scoreRatios ?? [],
           options: qq.question.options.map((o) => ({
             id: o.id,
             content: o.content,

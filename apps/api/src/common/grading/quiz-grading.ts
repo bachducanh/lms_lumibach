@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from '@lumibach/db';
-import { matchingPairCorrect } from '@lumibach/types';
+import { matchingPairCorrect, tfMultiScore } from '@lumibach/types';
 
 // Logic chấm tự động cho các loại câu hỏi dựa trên QuestionOption.
 // Dùng chung giữa lúc học sinh nộp bài (AttemptsService.submit) và lúc giáo viên
@@ -132,12 +132,16 @@ function ratioScore(correct: number, total: number, points: number): number {
 /**
  * Chấm các loại câu hỏi dựa trên option. Trả về `null` với câu tự luận / code
  * (những loại cần chấm tay hoặc cần chạy Judge0).
+ *
+ * `scoreRatios` là thang điểm câu Đúng/Sai nhiều ý (Question.scoreRatios); các
+ * loại khác bỏ qua.
  */
 export function gradeOptionAnswer(
   type: string,
   options: GradableOption[],
   points: number,
-  answer: StoredAnswer
+  answer: StoredAnswer,
+  scoreRatios?: readonly number[] | null
 ): AutoGradeResult | null {
   if (isManualQuestionType(type) || isCodeAutoQuestionType(type)) return null;
 
@@ -178,7 +182,7 @@ export function gradeOptionAnswer(
     }
     return {
       isCorrect: options.length > 0 && correct === options.length,
-      score: ratioScore(correct, options.length, points),
+      score: tfMultiScore(correct, options.length, points, scoreRatios),
     };
   }
 
@@ -290,7 +294,13 @@ export async function regradeQuizAttempts(prisma: PrismaClient, quizId: string):
         continue;
       }
 
-      const graded = gradeOptionAnswer(type, qq.question.options, points, stored);
+      const graded = gradeOptionAnswer(
+        type,
+        qq.question.options,
+        points,
+        stored,
+        qq.question.scoreRatios
+      );
       if (!graded) continue;
       totalScore += graded.score;
 

@@ -22,6 +22,8 @@ export type QuestionItem = {
   content: string;
   explanation: string | null;
   points: number;
+  /** Thang điểm câu Đúng/Sai nhiều ý, xem tf-multi-scoring.ts. Rỗng = chia đều. */
+  scoreRatios?: number[];
   categoryId: string | null;
   options: QuestionOption[];
   testCases: QuestionTestCase[];
@@ -212,6 +214,8 @@ export const ImportQuestionSchema = z.object({
   content: z.string().min(1),
   explanation: z.string().nullable().optional(),
   points: z.number().positive().max(100).optional(),
+  /** Thang điểm câu Đúng/Sai nhiều ý (tỉ lệ theo số ý đúng); rỗng = chia đều. */
+  scoreRatios: z.array(z.number().min(0).max(1)).max(51).optional(),
   /** Tên thư mục trong kho; tạo mới nếu chưa có. */
   folder: z.string().trim().max(120).nullable().optional(),
   /**

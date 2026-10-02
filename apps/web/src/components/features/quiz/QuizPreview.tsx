@@ -42,7 +42,7 @@ const MatchingQuestion = nextDynamic(
 );
 import { toast } from 'sonner';
 import type { PreviewQuizData, PreviewQuizQuestion, TCCheckResult } from '@lumibach/types';
-import { matchingPairCorrect } from '@lumibach/types';
+import { matchingPairCorrect, tfMultiScore } from '@lumibach/types';
 import type { CodeLanguage } from '@lumibach/db';
 import {
   QUESTION_TYPE_LABEL as TYPE_LABEL,
@@ -149,7 +149,7 @@ function computeScore(
     for (const opt of opts) {
       if (studentDong.has(opt.id) === opt.isCorrect) correct++;
     }
-    const score = opts.length > 0 ? Math.round((correct / opts.length) * pts * 10) / 10 : 0;
+    const score = tfMultiScore(correct, opts.length, pts, q.question.scoreRatios);
     return { score, isCorrect: correct === opts.length };
   }
 

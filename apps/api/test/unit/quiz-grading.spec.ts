@@ -196,6 +196,39 @@ describe('TRUE_FALSE_MULTI', () => {
   });
 });
 
+describe('TRUE_FALSE_MULTI theo thang điểm', () => {
+  const options = [
+    opt('s1', 'Phát biểu 1', true, 0),
+    opt('s2', 'Phát biểu 2', false, 1),
+    opt('s3', 'Phát biểu 3', true, 2),
+    opt('s4', 'Phát biểu 4', false, 3),
+  ];
+  const THPT = [0, 0.1, 0.25, 0.5, 1];
+  const cham = (ids: string[], points = 1, ratios: number[] = THPT) =>
+    gradeOptionAnswer('TRUE_FALSE_MULTI', options, points, mcq(ids), ratios);
+
+  it('thang THPT: đúng 1/2/3/4 ý được 0,1/0,25/0,5/1', () => {
+    // s1, s3 là Đúng; chọn s2 hay bỏ s1/s3 là sai ý đó.
+    expect(cham(['s2', 's4'])?.score).toBe(0); // sai cả 4
+    expect(cham(['s1', 's2', 's4'])?.score).toBe(0.1); // đúng 1
+    expect(cham(['s1', 's2', 's3', 's4'])?.score).toBe(0.25); // đúng 2
+    expect(cham(['s1', 's2', 's3'])?.score).toBe(0.5); // đúng 3
+    expect(cham(['s1', 's3'])).toEqual({ isCorrect: true, score: 1 });
+  });
+
+  it('quiz đặt điểm khác thì thang nhân theo', () => {
+    expect(cham(['s1', 's2', 's3', 's4'], 2)?.score).toBe(0.5);
+  });
+
+  it('thang lệch số phát biểu thì quay về chia đều', () => {
+    expect(cham(['s1', 's2', 's3'], 4, [0, 0.5, 1])?.score).toBe(3);
+  });
+
+  it('không trả lời → 0 dù có thang', () => {
+    expect(gradeOptionAnswer('TRUE_FALSE_MULTI', options, 1, NO_ANSWER, THPT)?.score).toBe(0);
+  });
+});
+
 describe('PARSONS / ORDERING', () => {
   const options = [
     opt('l1', 'def f():', true, 0),

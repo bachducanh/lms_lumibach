@@ -131,6 +131,7 @@ export function WordImportWorkspace({
           content: q.content,
           explanation: q.explanation,
           points: q.points,
+          scoreRatios: q.scoreRatios,
           folder: tenThuMucDich === undefined ? q.folder : tenThuMucDich,
           // Đã chọn thư mục trên màn hình thì gửi mã: thư mục con có thể trùng
           // tên nhau, tìm theo tên là vào nhầm chỗ.
@@ -318,6 +319,18 @@ export function WordImportWorkspace({
                       {QUESTION_TYPE_LABEL[q.type] ?? q.type}
                     </span>
                     <span className="text-muted-foreground text-xs">{q.points} điểm</span>
+                    {q.scoreRatios.length > 0 && (
+                      <span
+                        className="text-muted-foreground text-xs"
+                        title="Điểm khi đúng 1, 2, … ý"
+                      >
+                        · thang{' '}
+                        {q.scoreRatios
+                          .slice(1)
+                          .map((r) => String(Math.round(r * q.points * 1000) / 1000))
+                          .join(' / ')}
+                      </span>
+                    )}
                     {(tenThuMucDich === undefined ? q.folder : tenThuMucDich) && (
                       <span className="text-muted-foreground text-xs">
                         · {tenThuMucDich === undefined ? q.folder : tenThuMucDich}

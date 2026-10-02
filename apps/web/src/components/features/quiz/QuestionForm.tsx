@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { QuestionTypeSelect } from '@/components/features/quiz/QuestionTypeSelect';
+import { THPT_TF4_RATIOS, defaultTfRatios, evenTfRatios } from '@lumibach/types';
 import type { QuestionItem } from '@lumibach/types';
 
 type QuestionFormValues = {
@@ -27,6 +28,7 @@ type QuestionFormValues = {
   content: string;
   explanation: string | null | undefined;
   points: number;
+  scoreRatios: number[];
   categoryId: string | null | undefined;
   options: { content: string; isCorrect: boolean }[];
   testCases: {
@@ -135,6 +137,38 @@ function defaultOptions(type: QType): Option[] {
   return [opt('', true), opt('', false), opt('', false), opt('', false)];
 }
 
+// ── Thang điểm câu Đúng/Sai nhiều ý ─────────────────────────────
+//
+// Ô nhập là ĐIỂM khi đúng 1..n-1 ý, tính theo điểm mặc định của câu — giáo viên
+// nghĩ "đúng 2 ý được 0,25", không nghĩ theo tỉ lệ. Đúng hết luôn là trọn điểm.
+// Lúc lưu mới đổi sang tỉ lệ (xem tf-multi-scoring.ts trong @lumibach/types).
+
+type CachTinhDiem = 'thang' | 'deu';
+
+const CACH_TINH_DIEM_OPTIONS = [
+  { value: 'thang', label: 'Theo thang điểm' },
+  { value: 'deu', label: 'Chia đều theo số ý đúng' },
+] as const;
+
+function dinhDangDiem(v: number): string {
+  return String(Math.round(v * 1000) / 1000);
+}
+
+function docDiem(raw: string): number {
+  return Number(raw.trim().replace(',', '.'));
+}
+
+/** Ô nhập cho đúng 1..n-1 ý, dựng từ một bảng tỉ lệ dài n + 1. */
+function thangTuTiLe(tiLe: readonly number[], soY: number, diem: number): string[] {
+  return tiLe.slice(1, soY).map((r) => dinhDangDiem(r * diem));
+}
+
+/** 4 ý theo đề THPT, số ý khác chia đều — giống mặc định khi nhập từ Word. */
+function thangMacDinh(soY: number, diem: number): string[] {
+  const tiLe = defaultTfRatios(soY);
+  return thangTuTiLe(tiLe.length ? tiLe : evenTfRatios(soY), soY, diem);
+}
+
 type Props = {
   /**
    * Câu hỏi mới thuộc về ĐÚNG MỘT nơi: kho riêng của một khoá học (`courseId`)
@@ -190,6 +224,17 @@ export function QuestionForm({
     return defaultOptions(initType);
   });
 
+  // Câu cũ chưa có thang thì giữ "chia đều" — đổi ngầm là đổi điểm bài đã nộp.
+  const [cachTinhDiem, setCachTinhDiem] = useState<CachTinhDiem>(() =>
+    question && !question.scoreRatios?.length ? 'deu' : 'thang'
+  );
+  const [thangDiem, setThangDiem] = useState<string[]>(() => {
+    const soY = question?.options.length ?? 4;
+    const diem = question?.points ?? 1;
+    const daLuu = question?.scoreRatios ?? [];
+    return daLuu.length === soY + 1 ? thangTuTiLe(daLuu, soY, diem) : thangMacDinh(soY, diem);
+  });
+
   const [testCases, setTestCases] = useState<TCInput[]>(() => {
     if (question?.testCases?.length) {
       return question.testCases.map((tc) => ({
@@ -205,6 +250,10 @@ export function QuestionForm({
   function handleTypeChange(t: QType) {
     setType(t);
     setOptions(defaultOptions(t));
+    if (t === 'TRUE_FALSE_MULTI') {
+      setCachTinhDiem('thang');
+      setThangDiem(thangMacDinh(4, Number(points) || 1));
+    }
     const hasTC: QType[] = [
       'CODE_PYTHON',
       'CODE_CPP',
@@ -248,6 +297,17 @@ export function QuestionForm({
 
   function removeOption(i: number) {
     setOptions((prev) => prev.filter((_, j) => j !== i));
+  }
+
+  // Thêm/bớt phát biểu thì bảng cũ không còn khớp số ý: dựng lại theo mặc định.
+  function themPhatBieu() {
+    setOptions((prev) => [...prev, opt('', true)]);
+    setThangDiem(thangMacDinh(options.length + 1, Number(points) || 1));
+  }
+
+  function xoaPhatBieu(i: number) {
+    removeOption(i);
+    setThangDiem(thangMacDinh(options.length - 1, Number(points) || 1));
   }
 
   function moveOption(i: number, dir: -1 | 1) {
@@ -362,6 +422,15 @@ export function QuestionForm({
       if (options.some((o) => richTextIsEmpty(o.content)))
         return 'Tất cả phát biểu phải có nội dung.';
       if (options.length < 2) return 'Phải có ít nhất 2 phát biểu.';
+      if (cachTinhDiem === 'thang') {
+        const diem = Number(points) || 1;
+        const cacMuc = thangDiem.map(docDiem);
+        const sai = cacMuc.findIndex((v) => !Number.isFinite(v) || v < 0 || v > diem);
+        if (sai >= 0) return `Điểm khi đúng ${sai + 1} ý phải từ 0 đến ${diem}.`;
+        if (cacMuc.some((v, k) => k > 0 && v < cacMuc[k - 1]!)) {
+          return 'Thang điểm: đúng nhiều ý hơn không được ít điểm hơn.';
+        }
+      }
     }
     if (type === 'SHORT_ANSWER') {
       if (options.length === 0) return 'Phải nhập ít nhất 1 đáp án được chấp nhận.';
@@ -408,11 +477,16 @@ export function QuestionForm({
 
     const isCode = type === 'CODE_PYTHON' || type === 'CODE_CPP' || type === 'CODE_WEB';
     const isDebug = type === 'CODE_DEBUG_PYTHON' || type === 'CODE_DEBUG_CPP';
+    const diem = Number(points) || 1;
     const baseVals = {
       type,
       content: content.trim(),
       explanation: richTextIsEmpty(explanation) ? null : explanation,
-      points: Number(points) || 1,
+      points: diem,
+      scoreRatios:
+        type === 'TRUE_FALSE_MULTI' && cachTinhDiem === 'thang'
+          ? [0, ...thangDiem.map((v) => docDiem(v) / diem), 1]
+          : [],
       categoryId: question?.categoryId ?? defaultCategoryId ?? null,
     };
     // Bỏ khoá nội bộ của form trước khi gửi.
@@ -675,7 +749,7 @@ export function QuestionForm({
                   </button>
                   {options.length > 2 && (
                     <button
-                      onClick={() => removeOption(i)}
+                      onClick={() => xoaPhatBieu(i)}
                       className="text-muted-foreground hover:text-destructive ml-1 rounded-md p-1.5"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -687,12 +761,76 @@ export function QuestionForm({
           </div>
           {options.length < 8 && (
             <button
-              onClick={() => setOptions((prev) => [...prev, opt('', true)])}
+              onClick={themPhatBieu}
               className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> Thêm phát biểu
             </button>
           )}
+
+          <div className="border-border bg-muted/20 space-y-3 rounded-lg border p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-muted-foreground text-xs font-medium">Cách tính điểm</span>
+              <SimpleSelect
+                size="sm"
+                aria-label="Cách tính điểm"
+                value={cachTinhDiem}
+                onValueChange={(v) => setCachTinhDiem(v as CachTinhDiem)}
+                options={CACH_TINH_DIEM_OPTIONS}
+              />
+            </div>
+            {cachTinhDiem === 'deu' ? (
+              <p className="text-muted-foreground text-xs">
+                Mỗi ý đúng được {dinhDangDiem((Number(points) || 1) / options.length)} điểm — đúng
+                một nửa số ý thì được nửa số điểm.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {thangDiem.map((v, k) => (
+                    <label key={k} className="space-y-1">
+                      <span className="text-muted-foreground block text-xs">Đúng {k + 1} ý</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={Number(points) || 1}
+                        step={0.05}
+                        value={v}
+                        onChange={(e) =>
+                          setThangDiem((prev) => prev.map((x, j) => (j === k ? e.target.value : x)))
+                        }
+                        className="border-input bg-background focus:ring-ring min-h-9 w-full rounded-lg border px-3 py-1.5 text-sm focus:ring-1 focus:outline-none"
+                      />
+                    </label>
+                  ))}
+                  <div className="space-y-1">
+                    <span className="text-muted-foreground block text-xs">
+                      Đúng {options.length} ý
+                    </span>
+                    <div className="border-border text-muted-foreground flex min-h-9 items-center rounded-lg border border-dashed px-3 text-sm">
+                      {Number(points) || 1} (trọn điểm)
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  {options.length === 4 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setThangDiem(thangTuTiLe(THPT_TF4_RATIOS, 4, Number(points) || 1))
+                      }
+                      className="text-primary font-medium hover:underline"
+                    >
+                      Điền thang THPT (0,1 · 0,25 · 0,5 · 1)
+                    </button>
+                  )}
+                  <span className="text-muted-foreground">
+                    Sai hết được 0 điểm. Quiz đặt điểm khác cho câu này thì thang tự nhân theo.
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 

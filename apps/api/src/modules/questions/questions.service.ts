@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClient } from '@lumibach/db';
+import { normalizeTfRatios } from '@lumibach/types';
 import type { BulkDeleteQuestionsResult, BulkMoveQuestionsResult } from '@lumibach/types';
 import type { AuthUser } from '../../common/auth/auth.types';
 import { canManageCourse } from '../../common/auth/course-access';
@@ -11,6 +12,11 @@ const ROLE_ORDER = ['STUDENT', 'TA', 'TEACHER', 'ADMIN', 'SUPERADMIN'] as const;
 type Role = (typeof ROLE_ORDER)[number];
 function hasMinRole(r: string, min: Role) {
   return ROLE_ORDER.indexOf(r as Role) >= ROLE_ORDER.indexOf(min);
+}
+
+/** Thang điểm chỉ có nghĩa với câu Đúng/Sai nhiều ý; loại khác luôn lưu rỗng. */
+function thangDiem(type: string, raw: unknown, soPhatBieu: number): number[] {
+  return type === 'TRUE_FALSE_MULTI' ? normalizeTfRatios(raw, soPhatBieu) : [];
 }
 
 @Injectable()
@@ -201,6 +207,7 @@ export class QuestionsService {
       content: string;
       explanation?: string | null;
       points?: number;
+      scoreRatios?: number[];
       options?: { content: string; isCorrect: boolean }[];
       testCases?: {
         input: string;
@@ -239,6 +246,7 @@ export class QuestionsService {
         content: data.content,
         explanation: data.explanation ?? null,
         points: data.points ?? 1,
+        scoreRatios: thangDiem(data.type, data.scoreRatios, (data.options ?? []).length),
         createdBy: user.id,
         starterCode: data.starterCode ?? null,
         solutionCode: data.solutionCode ?? null,
@@ -284,6 +292,7 @@ export class QuestionsService {
       content: string;
       explanation?: string | null;
       points?: number;
+      scoreRatios?: number[];
       folder?: string | null;
       folderId?: string | null;
       options?: { content: string; isCorrect: boolean }[];
@@ -383,6 +392,7 @@ export class QuestionsService {
             content: q.content,
             explanation: q.explanation ?? null,
             points: q.points ?? 1,
+            scoreRatios: thangDiem(q.type, q.scoreRatios, (q.options ?? []).length),
             createdBy: user.id,
             starterCode: q.starterCode ?? null,
             solutionCode: q.solutionCode ?? null,
@@ -427,6 +437,7 @@ export class QuestionsService {
       content?: string;
       explanation?: string | null;
       points?: number;
+      scoreRatios?: number[];
       options?: { content: string; isCorrect: boolean }[];
       testCases?: {
         input: string;
@@ -444,7 +455,7 @@ export class QuestionsService {
   ) {
     const existing = await this.prisma.question.findUnique({
       where: { id: questionId, deletedAt: null } as any,
-      select: { courseId: true, bankCategoryId: true, createdBy: true },
+      select: { courseId: true, bankCategoryId: true, createdBy: true, type: true },
     });
     if (!existing) throw new NotFoundException('Không tìm thấy.');
     await this.assertCanEditQuestion(user, existing);
@@ -461,6 +472,13 @@ export class QuestionsService {
           ...(data.content !== undefined && { content: data.content }),
           explanation: data.explanation ?? null,
           ...(data.points !== undefined && { points: data.points }),
+          ...(data.scoreRatios !== undefined && {
+            scoreRatios: thangDiem(
+              data.type ?? existing.type,
+              data.scoreRatios,
+              (data.options ?? []).length
+            ),
+          }),
           categoryId: data.categoryId ?? null,
           starterCode: data.starterCode ?? null,
           solutionCode: data.solutionCode ?? null,

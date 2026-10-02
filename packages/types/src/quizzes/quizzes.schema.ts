@@ -87,6 +87,8 @@ export type QuizPreview = {
       content: string;
       explanation: string | null;
       starterCode: string | null;
+      /** Thang điểm câu Đúng/Sai nhiều ý, xem tf-multi-scoring.ts. */
+      scoreRatios: number[];
       options: { id: string; content: string; isCorrect: boolean; position: number }[];
     };
   }[];

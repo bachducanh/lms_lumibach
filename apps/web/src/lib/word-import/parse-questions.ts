@@ -1,3 +1,4 @@
+import { THPT_TF4_RATIOS, defaultTfRatios } from '@lumibach/types';
 import type {
   DocLine,
   DocPara,
@@ -260,6 +261,7 @@ type TenKhoi =
   | 'dapAn'
   | 'giaiThich'
   | 'diem'
+  | 'thangDiem'
   | 'codeMau'
   | 'dapAnCode'
   | 'test'
@@ -277,6 +279,7 @@ const NHAN: { khoa: string; khoi: TenKhoi }[] = [
   { khoa: 'thoi gian', khoi: 'thoiGian' },
   { khoa: 'bo nho', khoi: 'boNho' },
   { khoa: 'diem', khoi: 'diem' },
+  { khoa: 'thang diem', khoi: 'thangDiem' },
   { khoa: 'test', khoi: 'test' },
   { khoa: 'de', khoi: 'de' },
 ];
@@ -405,6 +408,7 @@ type Dang = {
   dapAn: string;
   giaiThich: Manh[];
   diem: string;
+  thangDiem: string;
   codeMau: string[];
   dapAnCode: string[];
   test: ParsedTestCase[];
@@ -430,6 +434,7 @@ function dangMoi(
     dapAn: '',
     giaiThich: [],
     diem: '',
+    thangDiem: '',
     codeMau: [],
     dapAnCode: [],
     test: [],
@@ -647,6 +652,72 @@ function docTestMotDong(raw: string): ParsedTestCase | null {
   };
 }
 
+// ── Thang điểm câu Đúng/Sai nhiều ý ──────────────────────────────
+
+/**
+ * Dòng "Thang điểm:" của câu DSN: điểm khi đúng 1, 2, … ý, ngăn bởi ";" hoặc
+ * "|" — dấu phẩy là dấu thập phân kiểu Việt ("0,1; 0,25; 0,5; 1").
+ *
+ * Ghi đủ n mức thì mức cuối là trọn điểm của câu, khỏi cần dòng Điểm; ghi n - 1
+ * mức thì đúng hết lấy theo dòng Điểm. "THPT" lấy thang đề thi, "chia đều" giữ
+ * cách chấm chia đều. Không có dòng này thì câu 4 ý theo thang THPT.
+ *
+ * Trả về tỉ lệ (xem tf-multi-scoring.ts) và điểm của câu sau khi đọc thang.
+ */
+function docThangDiem(
+  raw: string,
+  soY: number,
+  diemGhi: number | null,
+  loi: string[]
+): { tiLe: number[]; diem: number | null } {
+  const t = chuanHoa(raw);
+  if (!t) return { tiLe: defaultTfRatios(soY), diem: diemGhi };
+  if (t === 'chia deu' || t === 'deu') return { tiLe: [], diem: diemGhi };
+  if (t === 'thpt') {
+    if (soY !== 4) loi.push('Thang điểm THPT chỉ dùng cho câu có đúng 4 phát biểu.');
+    return { tiLe: soY === 4 ? [...THPT_TF4_RATIOS] : [], diem: diemGhi };
+  }
+
+  const cacMuc = raw
+    .split(/[;|/\s]+/)
+    .map((x) => x.replace(/^,+|,+$/g, '').replace(/đ$/i, ''))
+    .filter(Boolean)
+    .map(doSo);
+  if (cacMuc.some((v) => v === null)) {
+    loi.push(
+      `Không đọc được thang điểm "${raw}". Viết các mức ngăn bởi dấu chấm phẩy: 0,1; 0,25; 0,5; 1`
+    );
+    return { tiLe: [], diem: diemGhi };
+  }
+  const so = cacMuc as number[];
+
+  let tron: number;
+  if (so.length === soY) {
+    tron = so[soY - 1]!;
+    if (diemGhi !== null && diemGhi !== tron) {
+      loi.push(`Thang điểm kết thúc ở ${tron} nhưng dòng "Điểm:" ghi ${diemGhi}.`);
+    }
+  } else if (so.length === soY - 1) {
+    tron = diemGhi ?? 1;
+    so.push(tron);
+  } else {
+    loi.push(
+      `Thang điểm có ${so.length} mức nhưng câu có ${soY} phát biểu — cần ${soY} mức, từ đúng 1 ý tới đúng ${soY} ý.`
+    );
+    return { tiLe: [], diem: diemGhi };
+  }
+
+  if (tron <= 0) {
+    loi.push('Thang điểm: đúng hết các ý phải được nhiều hơn 0 điểm.');
+    return { tiLe: [], diem: diemGhi };
+  }
+  if (so.some((v) => v > tron)) loi.push(`Thang điểm có mức lớn hơn trọn điểm của câu (${tron}).`);
+  if (so.some((v, k) => k > 0 && v < so[k - 1]!)) {
+    loi.push('Thang điểm: đúng nhiều ý hơn không được ít điểm hơn.');
+  }
+  return { tiLe: [0, ...so.map((v) => v / tron)], diem: tron };
+}
+
 // ── Chốt một câu ─────────────────────────────────────────────────
 
 function chot(d: Dang): ParsedQuestion {
@@ -682,9 +753,18 @@ function chot(d: Dang): ParsedQuestion {
     loi.push('Câu lập trình cần khối "Test:" để chấm tự động.');
   }
 
-  const diem = doSo(d.diem) ?? 1;
+  let diem = doSo(d.diem) ?? 1;
   if (d.diem.trim() && doSo(d.diem) === null) {
     canhBao.push(`Không đọc được điểm "${d.diem.trim()}", tạm lấy 1.`);
+  }
+
+  let scoreRatios: number[] = [];
+  if (loaiThat === 'TRUE_FALSE_MULTI') {
+    const thang = docThangDiem(d.thangDiem, options.length, doSo(d.diem), loi);
+    scoreRatios = thang.tiLe;
+    diem = thang.diem ?? diem;
+  } else if (d.thangDiem.trim()) {
+    canhBao.push('Dòng "Thang điểm:" chỉ dùng cho câu Đúng/Sai nhiều ý (DSN) nên bị bỏ qua.');
   }
 
   const laCode = LOAI_CODE.has(loaiThat);
@@ -696,6 +776,7 @@ function chot(d: Dang): ParsedQuestion {
     content,
     explanation: d.giaiThich.length > 0 ? dungHtml(d.giaiThich) : null,
     points: diem,
+    scoreRatios,
     folder: d.folder,
     // Parsons dựng mục từ khối mã nên không giữ lại khối đó nữa.
     options,
@@ -786,6 +867,9 @@ export function parseQuestions(lines: DocLine[]): ParseResult {
           break;
         case 'diem':
           dang.diem = v;
+          break;
+        case 'thangDiem':
+          dang.thangDiem = v;
           break;
         case 'thoiGian':
           dang.thoiGian = v;

@@ -956,6 +956,12 @@ model Question {
   explanation    String?      @db.Text
   points         Float        @default(1)
 
+  // Thang điểm câu Đúng/Sai nhiều ý: phần tử thứ k là TỈ LỆ điểm khi đúng k ý
+  // (k = 0..số phát biểu), ví dụ thang THPT [0, 0.1, 0.25, 0.5, 1]. Lưu tỉ lệ
+  // chứ không lưu điểm vì quiz đặt được điểm khác cho câu (QuizQuestion.points).
+  // Rỗng = chia đều theo số ý đúng, cách chấm có từ trước.
+  scoreRatios Float[] @default([])
+
   // Đưa câu hỏi vào ngân hàng chung của danh mục khoá học: khoá khác cùng nhánh
   // danh mục xem được và sao chép về kho riêng. Chỉ là cờ hiển thị — câu hỏi
   // vẫn thuộc về khoá đã tạo ra nó, nơi khác dùng thì nhận một BẢN SAO nên sửa

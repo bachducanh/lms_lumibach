@@ -348,7 +348,13 @@ export class AttemptsService {
         continue;
       }
 
-      const graded = gradeOptionAnswer(type, opts, pts, ans ?? null);
+      const graded = gradeOptionAnswer(
+        type,
+        opts,
+        pts,
+        ans ?? null,
+        qq.question.scoreRatios as number[] | undefined
+      );
       if (!graded) {
         // Loại câu hỏi mới chưa có luật chấm: để giáo viên chấm tay còn hơn bỏ
         // qua âm thầm — bỏ qua thì câu đó không có dòng Answer nào mà maxScore

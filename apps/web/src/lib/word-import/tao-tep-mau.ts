@@ -113,7 +113,7 @@ export async function taoTepMau(): Promise<Buffer> {
     chu('1. Mỗi câu mở đầu bằng "Câu 1.", "Câu 2."… và mã loại đặt trong ngoặc vuông.'),
     chu('2. Các phương án viết thành dòng bắt đầu bằng A. B. C. D. cho tới H.'),
     chu(
-      '3. Các dòng nhãn kết thúc bằng dấu hai chấm: Thư mục, Đề, Đáp án, Giải thích, Điểm, Code mẫu, Đáp án code, Test, Thời gian, Bộ nhớ.'
+      '3. Các dòng nhãn kết thúc bằng dấu hai chấm: Thư mục, Đề, Đáp án, Giải thích, Điểm, Thang điểm, Code mẫu, Đáp án code, Test, Thời gian, Bộ nhớ.'
     ),
     chu(
       'Mọi đoạn không thuộc ba dạng trên sẽ được nối vào phần ngay trước nó. Nhờ vậy công thức đứng riêng một dòng hay đề bài dài mấy đoạn đều không cần làm gì thêm.'
@@ -124,6 +124,17 @@ export async function taoTepMau(): Promise<Buffer> {
 
     tieuDe('Bảng mã loại'),
     bang(MA_LOAI),
+
+    tieuDe('Thang điểm cho câu Đúng / Sai nhiều ý'),
+    chu(
+      'Câu DSN có 4 phát biểu tự chấm theo thang đề thi THPT: đúng 1 ý được 0,1 điểm, đúng 2 ý 0,25, đúng 3 ý 0,5, đúng cả 4 ý được trọn 1 điểm.'
+    ),
+    chu(
+      'Muốn thang khác thì thêm dòng "Thang điểm:" ghi điểm khi đúng 1 ý, 2 ý… cách nhau bởi dấu chấm phẩy, ví dụ "Thang điểm: 0,2; 0,4; 0,7; 1". Mức cuối là trọn điểm của câu nên không cần dòng Điểm.'
+    ),
+    chu(
+      'Ghi "Thang điểm: chia đều" để mỗi ý đúng được điểm bằng nhau. Câu có số phát biểu khác 4 mà không ghi thang thì cũng chia đều.'
+    ),
 
     tieuDe('Khối Test cho câu lập trình'),
     chu(
@@ -190,6 +201,7 @@ export async function taoTepMau(): Promise<Buffer> {
     viDu('C. Số phép so sánh tối đa là log cơ số 2 của n, làm tròn lên.'),
     viDu('D. Luôn nhanh hơn tìm kiếm tuần tự với mọi kích thước dãy.'),
     viDu('Đáp án: Đ, S, Đ, S'),
+    viDu('Thang điểm: 0,1; 0,25; 0,5; 1'),
     viDu(''),
     viDu('Câu 4. [DS] Số 2 là số nguyên tố.'),
     viDu('Đáp án: Đ'),

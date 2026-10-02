@@ -46,6 +46,8 @@ export type ParsedQuestion = {
   content: string;
   explanation: string | null;
   points: number;
+  /** Thang điểm câu Đúng/Sai nhiều ý (tỉ lệ theo số ý đúng); rỗng = chia đều. */
+  scoreRatios: number[];
   /** Tên thư mục trong kho; null là để ngoài thư mục. */
   folder: string | null;
   options: ParsedOption[];
