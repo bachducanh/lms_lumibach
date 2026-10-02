@@ -23,6 +23,7 @@ import {
   type RoomBookingDetail,
 } from '@lumibach/types';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -115,10 +116,14 @@ export function BookingDetailDialog({
   const coTheHoanTat = booking?.availableActions.includes('complete') ?? false;
   const coTheNhanPhong = booking?.availableActions.includes('checkin') ?? false;
   const coTheTraPhong = booking?.availableActions.includes('checkout') ?? false;
+  const coNutNguoiMuon = coTheHuy || coTheSua;
+  const coNutXuLy = coTheNhanPhong || coTheTraPhong || coTheTuChoi || coTheDuyet || coTheHoanTat;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      {/* grid-cols-1 (minmax(0,1fr)) để nội dung rộng không kéo cột lưới
+          tràn ra ngoài khung hộp thoại. */}
+      <DialogContent className="max-h-[90dvh] grid-cols-1 overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Chi tiết đơn mượn phòng</DialogTitle>
           {booking && (
@@ -220,7 +225,7 @@ export function BookingDetailDialog({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="sm:flex-wrap">
           {dangTuChoi ? (
             <>
               <Button
@@ -240,67 +245,82 @@ export function BookingDetailDialog({
             </>
           ) : (
             <>
-              {coTheHuy && (
-                <Button variant="outline" onClick={huyDon} disabled={pending}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Huỷ đơn
-                </Button>
-              )}
-              {coTheSua && booking && (
-                <Button variant="outline" onClick={() => onEdit(booking)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Sửa đơn
-                </Button>
-              )}
-              {/* Bàn giao là một màn hình riêng, không nhét vừa hộp thoại:
-                  có nội quy, form trường động và phần chụp ảnh. */}
-              {coTheNhanPhong && (
-                <Button onClick={() => router.push(`/rooms/bookings/${bookingId}/checkin`)}>
-                  <DoorOpen className="mr-2 h-4 w-4" />
-                  Nhận phòng
-                </Button>
-              )}
-              {coTheTraPhong && (
-                <Button onClick={() => router.push(`/rooms/bookings/${bookingId}/checkout`)}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Trả phòng
-                </Button>
-              )}
-              {coTheTuChoi && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setDangTuChoi(true)}
-                  disabled={pending}
+              {/* Việc của người mượn nằm bên trái, việc xử lý đơn bên phải;
+                  chật thì nhóm bên phải xuống dòng thay vì tràn khung. */}
+              {coNutNguoiMuon && (
+                <div
+                  className={cn(
+                    'flex flex-col-reverse gap-2 sm:flex-row',
+                    coNutXuLy && 'sm:mr-auto'
+                  )}
                 >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Từ chối
+                  {coTheHuy && (
+                    <Button variant="outline" onClick={huyDon} disabled={pending}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Huỷ đơn
+                    </Button>
+                  )}
+                  {coTheSua && booking && (
+                    <Button variant="outline" onClick={() => onEdit(booking)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Sửa đơn
+                    </Button>
+                  )}
+                </div>
+              )}
+              {coNutXuLy && (
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                  {/* Bàn giao là một màn hình riêng, không nhét vừa hộp thoại:
+                      có nội quy, form trường động và phần chụp ảnh. */}
+                  {coTheNhanPhong && (
+                    <Button onClick={() => router.push(`/rooms/bookings/${bookingId}/checkin`)}>
+                      <DoorOpen className="mr-2 h-4 w-4" />
+                      Nhận phòng
+                    </Button>
+                  )}
+                  {coTheTraPhong && (
+                    <Button onClick={() => router.push(`/rooms/bookings/${bookingId}/checkout`)}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Trả phòng
+                    </Button>
+                  )}
+                  {coTheTuChoi && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => setDangTuChoi(true)}
+                      disabled={pending}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Từ chối
+                    </Button>
+                  )}
+                  {coTheDuyet && (
+                    <Button onClick={duyetDon} disabled={pending}>
+                      {pending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="mr-2 h-4 w-4" />
+                      )}
+                      Duyệt đơn
+                    </Button>
+                  )}
+                  {coTheHoanTat && (
+                    <Button onClick={xacNhanChiaKhoa} disabled={pending}>
+                      {pending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <KeyRound className="mr-2 h-4 w-4" />
+                      )}
+                      Đã nhận lại chìa khoá
+                    </Button>
+                  )}
+                </div>
+              )}
+              {!coNutNguoiMuon && !coNutXuLy && (
+                <Button variant="outline" onClick={onClose}>
+                  Đóng
                 </Button>
               )}
-              {coTheDuyet && (
-                <Button onClick={duyetDon} disabled={pending}>
-                  {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Check className="mr-2 h-4 w-4" />
-                  Duyệt đơn
-                </Button>
-              )}
-              {coTheHoanTat && (
-                <Button onClick={xacNhanChiaKhoa} disabled={pending}>
-                  {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  Đã nhận lại chìa khoá
-                </Button>
-              )}
-              {!coTheHuy &&
-                !coTheSua &&
-                !coTheDuyet &&
-                !coTheTuChoi &&
-                !coTheHoanTat &&
-                !coTheNhanPhong &&
-                !coTheTraPhong && (
-                  <Button variant="outline" onClick={onClose}>
-                    Đóng
-                  </Button>
-                )}
             </>
           )}
         </DialogFooter>
